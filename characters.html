@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Character Details</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Roboto', sans-serif;
+      background-color: #0e0e0e;
+      color: #f5f5f5;
+    }
+
+    header {
+      background: #1f1f1f;
+      padding: 20px;
+      text-align: center;
+      border-bottom: 3px solid #ffbd59;
+    }
+
+    header h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 2rem;
+      color: #ffbd59;
+      margin: 0;
+    }
+
+    .content {
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #1b1b1b;
+      border: 1px solid #444;
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    img {
+      width: 120px;
+      height: 120px;
+      border-radius: 12px;
+      object-fit: cover;
+      margin-bottom: 20px;
+      border: 2px solid #ffbd59;
+    }
+
+    h2 {
+      color: #ffbd59;
+      margin-bottom: 10px;
+    }
+
+    p {
+      color: #ccc;
+      line-height: 1.6;
+      font-size: 1rem;
+    }
+
+    .label {
+      font-weight: bold;
+      color: #ffbd59;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Character Details</h1>
+  </header>
+  <div class="content" id="characterDetail">
+    <p>Loading character data...</p>
+  </div>
+
+  <script>
+    function getQueryParam(param) {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get(param);
+    }
+
+    function renderCharacter(character) {
+      return `
+        <img src="${character.image_url}" alt="${character.name}" />
+        <h2>${character.name}</h2>
+        <p><span class="label">Role:</span> ${character.role}</p>
+        <p><span class="label">Skill:</span> ${character.skill} (${character.skill_type})</p>
+        <p>${character.description}</p>
+      `;
+    }
+
+    fetch('https://neptuneg1.github.io/freefire-caster/character.json')
+      .then(res => res.json())
+      .then(data => {
+        const name = getQueryParam('name');
+        const character = data.find(c => c.name.toLowerCase() === name?.toLowerCase());
+        const container = document.getElementById('characterDetail');
+
+        if (character) {
+          container.innerHTML = renderCharacter(character);
+        } else {
+          container.innerHTML = `<p>Character not found.</p>`;
+        }
+      })
+      .catch(() => {
+        document.getElementById('characterDetail').innerHTML = '<p>Error loading character data.</p>';
+      });
+  </script>
+</body>
+</html>
