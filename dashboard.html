@@ -80,6 +80,19 @@
       margin-bottom: 20px;
     }
 
+    .dropdown-container {
+      margin-bottom: 20px;
+    }
+
+    select {
+      padding: 8px 12px;
+      border-radius: 6px;
+      background: #1c1c1c;
+      color: #fff;
+      border: 1px solid #ffbd59;
+      margin: 0 10px;
+    }
+
     .preview-container {
       display: flex;
       flex-wrap: wrap;
@@ -93,20 +106,35 @@
       border-left: 4px solid #ffbd59;
       border-radius: 10px;
       padding: 16px;
-      width: 240px;
-      text-align: left;
+      width: 260px;
+      text-align: center;
+    }
+
+    .preview-card img {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-bottom: 10px;
     }
 
     .preview-card strong {
       display: block;
       margin-bottom: 6px;
       color: #ffffff;
+      font-size: 1.1rem;
     }
 
     .preview-card p {
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       color: #ccc;
-      margin: 0;
+      margin: 0 0 10px;
+    }
+
+    .preview-card a {
+      font-size: 0.85rem;
+      color: #ffbd59;
+      text-decoration: underline;
     }
   </style>
 </head>
@@ -132,46 +160,51 @@
 
   <div class="section-preview">
     <h3>Quick Glance</h3>
+    <div class="dropdown-container">
+      <select id="characterSelect"></select>
+      <select id="petSelect"></select>
+    </div>
     <div id="preview" class="preview-container"></div>
   </div>
 
   <script>
-    fetch('data.json')
+    let characterData = [], petData = [];
+
+    function createCard(item, type) {
+      const link = type === 'character' ? `character.html?name=${encodeURIComponent(item.name)}` : `pet.html?name=${encodeURIComponent(item.name)}`;
+      return `
+        <div class="preview-card">
+          <img src="${item.image_url}" alt="${item.name}" />
+          <strong>${item.name}</strong>
+          <p><em>${item.skill}</em> - ${item.description}</p>
+          <a href="${link}">View Details</a>
+        </div>`;
+    }
+
+    function updatePreview(type, index) {
+      const container = document.getElementById('preview');
+      const item = type === 'character' ? characterData[index] : petData[index];
+      container.innerHTML += createCard(item, type);
+    }
+
+    fetch('https://neptuneg1.github.io/freefire-caster/character.json')
       .then(res => res.json())
       .then(data => {
-        const container = document.getElementById('preview');
+        characterData = data;
+        const select = document.getElementById('characterSelect');
+        data.forEach((item, i) => select.add(new Option(item.name, i)));
+        select.addEventListener('change', (e) => updatePreview('character', e.target.value));
+        if (data.length) updatePreview('character', 0);
+      });
 
-        const char = data.characters?.[0];
-        const pet = data.pets?.[0];
-        const weapon = data.weapons?.[0];
-
-        if (char) {
-          container.innerHTML += `
-            <div class="preview-card">
-              <strong>${char.name}</strong>
-              <p>Skill: ${char.skillName} - ${char.description}</p>
-            </div>`;
-        }
-
-        if (pet) {
-          container.innerHTML += `
-            <div class="preview-card">
-              <strong>${pet.name}</strong>
-              <p>Skill: ${pet.skill} - ${pet.description}</p>
-            </div>`;
-        }
-
-        if (weapon) {
-          container.innerHTML += `
-            <div class="preview-card">
-              <strong>${weapon.name}</strong>
-              <p>Category: ${weapon.category} - Damage: ${weapon.damage}</p>
-            </div>`;
-        }
-      })
-      .catch(err => {
-        console.error('Failed to load data.json', err);
-        document.getElementById('preview').innerHTML = '<p>Error loading preview data.</p>';
+    fetch('https://neptuneg1.github.io/freefire-caster/pets.json')
+      .then(res => res.json())
+      .then(data => {
+        petData = data;
+        const select = document.getElementById('petSelect');
+        data.forEach((item, i) => select.add(new Option(item.name, i)));
+        select.addEventListener('change', (e) => updatePreview('pet', e.target.value));
+        if (data.length) updatePreview('pet', 0);
       });
   </script>
 </body>
