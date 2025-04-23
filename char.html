@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Character Skills</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Roboto', sans-serif;
+      background: #0e0e0e;
+      color: #f5f5f5;
+    }
+    header {
+      background: #1f1f1f;
+      padding: 20px;
+      text-align: center;
+      border-bottom: 3px solid #ffbd59;
+    }
+    header h1 {
+      font-family: 'Orbitron', sans-serif;
+      color: #ffbd59;
+      margin: 0;
+      font-size: 2rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 12px;
+      padding: 20px;
+      max-width: 1200px;
+      margin: auto;
+    }
+    .card {
+      position: relative;
+      cursor: pointer;
+    }
+    .card img {
+      width: 100%;
+      aspect-ratio: 3/4;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 2px solid #ffbd59;
+    }
+    .tooltip {
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1c1c1c;
+      padding: 10px;
+      border: 1px solid #ffbd59;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      color: #fff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      width: 180px;
+      z-index: 2;
+    }
+    .card:hover .tooltip,
+    .card:focus-within .tooltip {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    @media (hover: none) {
+      .card .tooltip {
+        display: none;
+      }
+      .card:active .tooltip {
+        display: block;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        opacity: 1;
+        pointer-events: auto;
+        z-index: 1000;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Character Gallery</h1>
+  </header>
+
+  <div class="grid" id="characterGrid">
+    <p>Loading characters...</p>
+  </div>
+
+  <script>
+    fetch('https://neptuneg1.github.io/freefire-caster/character.json')
+      .then(res => res.json())
+      .then(characters => {
+        const container = document.getElementById('characterGrid');
+        container.innerHTML = characters.map(c => `
+          <div class="card" tabindex="0">
+            <img src="${c.image_url}" alt="${c.name}" />
+            <div class="tooltip">
+              <strong>${c.name}</strong><br>
+              <em>${c.skill_type} Skill:</em> ${c.skill}<br>
+              ${c.description}<br>
+              <strong>Role:</strong> ${c.role || 'N/A'}
+            </div>
+          </div>
+        `).join('');
+      })
+      .catch(() => {
+        document.getElementById('characterGrid').innerHTML = '<p>Error loading character data.</p>';
+      });
+  </script>
+</body>
+</html>
