@@ -80,8 +80,15 @@
       margin-bottom: 20px;
     }
 
+    .preview-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+    }
+
     .dropdown-container {
-      margin-bottom: 20px;
+      margin-bottom: 10px;
     }
 
     select {
@@ -91,13 +98,6 @@
       color: #fff;
       border: 1px solid #ffbd59;
       margin: 0 10px;
-    }
-
-    .preview-container {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 20px;
     }
 
     .preview-card {
@@ -159,22 +159,35 @@
   </div>
 
   <div class="section-preview">
-    <h3>Quick Glance</h3>
+    <h3>Quick View</h3>
+
     <div class="dropdown-container">
+      <label for="characterSelect">Character:</label>
       <select id="characterSelect"></select>
-      <select id="petSelect"></select>
+      <div id="characterPreview" class="preview-container"></div>
     </div>
-    <div id="preview" class="preview-container"></div>
+
+    <div class="dropdown-container">
+      <label for="petSelect">Pet:</label>
+      <select id="petSelect"></select>
+      <div id="petPreview" class="preview-container"></div>
+    </div>
+
+    <div class="dropdown-container">
+      <label for="weaponSelect">Weapon:</label>
+      <select id="weaponSelect"></select>
+      <div id="weaponPreview" class="preview-container"></div>
+    </div>
   </div>
 
   <script>
-    let characterData = [], petData = [];
+    let characterData = [], petData = [], weaponData = [];
 
     function createCard(item, type) {
-      const link = type === 'character' ? `character.html?name=${encodeURIComponent(item.name)}` : `pet.html?name=${encodeURIComponent(item.name)}`;
+      const link = `${type}.html?name=${encodeURIComponent(item.name)}`;
       return `
         <div class="preview-card">
-          <img src="${item.image_url}" alt="${item.name}" />
+          <img src="${item.image_url || item.icon || ''}" alt="${item.name}" />
           <strong>${item.name}</strong>
           <p><em>${item.skill}</em> - ${item.description}</p>
           <a href="${link}">View Details</a>
@@ -182,9 +195,12 @@
     }
 
     function updatePreview(type, index) {
-      const container = document.getElementById('preview');
-      const item = type === 'character' ? characterData[index] : petData[index];
-      container.innerHTML += createCard(item, type);
+      const previewId = type + 'Preview';
+      const container = document.getElementById(previewId);
+      container.innerHTML = '';
+      const data = type === 'character' ? characterData : type === 'pet' ? petData : weaponData;
+      const item = data[index];
+      if (item) container.innerHTML = createCard(item, type);
     }
 
     fetch('https://neptuneg1.github.io/freefire-caster/character.json')
@@ -205,6 +221,16 @@
         data.forEach((item, i) => select.add(new Option(item.name, i)));
         select.addEventListener('change', (e) => updatePreview('pet', e.target.value));
         if (data.length) updatePreview('pet', 0);
+      });
+
+    fetch('https://neptuneg1.github.io/freefire-caster/weapons.json')
+      .then(res => res.json())
+      .then(data => {
+        weaponData = data;
+        const select = document.getElementById('weaponSelect');
+        data.forEach((item, i) => select.add(new Option(item.name, i)));
+        select.addEventListener('change', (e) => updatePreview('weapon', e.target.value));
+        if (data.length) updatePreview('weapon', 0);
       });
   </script>
 </body>
