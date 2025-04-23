@@ -132,20 +132,47 @@
 
   <div class="section-preview">
     <h3>Quick Glance</h3>
-    <div class="preview-container">
-      <div class="preview-card">
-        <strong>Alok</strong>
-        <p>Skill: Drop the Beat - Restores HP and boosts speed in an aura.</p>
-      </div>
-      <div class="preview-card">
-        <strong>Falco</strong>
-        <p>Skill: Skyline Spree - Boosts gliding and dive speed.</p>
-      </div>
-      <div class="preview-card">
-        <strong>MP40</strong>
-        <p>Category: SMG - Fast firing weapon with high damage.</p>
-      </div>
-    </div>
+    <div id="preview" class="preview-container"></div>
   </div>
+
+  <script>
+    fetch('data.json')
+      .then(res => res.json())
+      .then(data => {
+        const container = document.getElementById('preview');
+
+        const char = data.characters?.[0];
+        const pet = data.pets?.[0];
+        const weapon = data.weapons?.[0];
+
+        if (char) {
+          container.innerHTML += `
+            <div class="preview-card">
+              <strong>${char.name}</strong>
+              <p>Skill: ${char.skillName} - ${char.description}</p>
+            </div>`;
+        }
+
+        if (pet) {
+          container.innerHTML += `
+            <div class="preview-card">
+              <strong>${pet.name}</strong>
+              <p>Skill: ${pet.skill} - ${pet.description}</p>
+            </div>`;
+        }
+
+        if (weapon) {
+          container.innerHTML += `
+            <div class="preview-card">
+              <strong>${weapon.name}</strong>
+              <p>Category: ${weapon.category} - Damage: ${weapon.damage}</p>
+            </div>`;
+        }
+      })
+      .catch(err => {
+        console.error('Failed to load data.json', err);
+        document.getElementById('preview').innerHTML = '<p>Error loading preview data.</p>';
+      });
+  </script>
 </body>
 </html>
