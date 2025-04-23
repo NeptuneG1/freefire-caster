@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Character Skills</title>
+  <title>Character Grid (Hover/Click Details)</title>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto&display=swap" rel="stylesheet">
   <style>
     body {
@@ -35,9 +35,10 @@
     .card {
       position: relative;
       cursor: pointer;
+      outline: none;
     }
     .card img {
-      width: 75%;
+      width: 80%;
       aspect-ratio: 3/4;
       object-fit: cover;
       border-radius: 8px;
@@ -61,23 +62,25 @@
       z-index: 2;
     }
     .card:hover .tooltip,
-    .card:focus-within .tooltip {
+    .card.active .tooltip {
       opacity: 1;
       pointer-events: auto;
     }
     @media (hover: none) {
-      .card .tooltip {
-        display: none;
-      }
-      .card:active .tooltip {
-        display: block;
-        position: relative;
+      .tooltip {
+        position: fixed;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
+        z-index: 1000;
+        width: 90%;
+        max-width: 300px;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .card.active .tooltip {
         opacity: 1;
         pointer-events: auto;
-        z-index: 1000;
       }
     }
   </style>
@@ -86,20 +89,7 @@
   <header>
     <h1>Character Gallery</h1>
   </header>
-   <div style="text-align: center; margin-top: 20px;">
-      <a href="dashboard.html" style="
-        display: inline-block;
-        background: #ffbd59;
-        color: #1c1c1c;
-        padding: 10px 20px;
-        font-weight: bold;
-        border-radius: 6px;
-        text-decoration: none;
-        transition: background 0.2s;
-      " onmouseover="this.style.background='#e0a84f'" onmouseout="this.style.background='#ffbd59'">
-        ← Back to Dashboard
-      </a>
-    </div>
+
   <div class="grid" id="characterGrid">
     <p>Loading characters...</p>
   </div>
@@ -109,10 +99,10 @@
       .then(res => res.json())
       .then(characters => {
         const container = document.getElementById('characterGrid');
-        container.innerHTML = characters.map(c => `
-          <div class="card" tabindex="0">
+        container.innerHTML = characters.map((c, i) => `
+          <div class="card" tabindex="0" onclick="toggleTooltip(event, ${i})">
             <img src="${c.image_url}" alt="${c.name}" />
-            <div class="tooltip">
+            <div class="tooltip" id="tooltip-${i}">
               <strong>${c.name}</strong><br>
               <em>${c.skill_type} Skill:</em> ${c.skill}<br>
               ${c.description}<br>
@@ -124,6 +114,22 @@
       .catch(() => {
         document.getElementById('characterGrid').innerHTML = '<p>Error loading character data.</p>';
       });
+
+    function toggleTooltip(event, index) {
+      const cards = document.querySelectorAll('.card');
+      cards.forEach((card, i) => {
+        if (i === index) {
+          card.classList.toggle('active');
+        } else {
+          card.classList.remove('active');
+        }
+      });
+      event.stopPropagation();
+    }
+
+    document.body.addEventListener('click', () => {
+      document.querySelectorAll('.card').forEach(card => card.classList.remove('active'));
+    });
   </script>
 </body>
 </html>
