@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weapon Gallery</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Roboto', sans-serif;
+      background: #0e0e0e;
+      color: #f5f5f5;
+    }
+    header {
+      background: #1f1f1f;
+      padding: 20px;
+      text-align: center;
+      border-bottom: 3px solid #ffbd59;
+    }
+    header h1 {
+      font-family: 'Orbitron', sans-serif;
+      color: #ffbd59;
+      margin: 0;
+      font-size: 2rem;
+    }
+    .filter-bar {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 20px;
+      background: #1c1c1c;
+      border-bottom: 1px solid #333;
+    }
+    .filter-bar select,
+    .filter-bar input[type="text"] {
+      padding: 8px;
+      background: #2a2a2a;
+      border: 1px solid #ffbd59;
+      color: #fff;
+      border-radius: 6px;
+    }
+    .grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+      padding: 30px;
+    }
+    .card {
+      background: #1c1c1c;
+      border: 1px solid #444;
+      border-left: 4px solid #ffbd59;
+      border-radius: 10px;
+      padding: 16px;
+      width: 260px;
+      text-align: center;
+    }
+    .card img {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      border: 2px solid #ffbd59;
+    }
+    .card h3 {
+      margin: 0;
+      color: #ffbd59;
+      font-size: 1.2rem;
+    }
+    .card p {
+      font-size: 0.85rem;
+      color: #ccc;
+      margin: 4px 0;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Weapon Gallery</h1>
+  </header>
+  <div class="filter-bar">
+    <label>Type:
+      <select id="filterType">
+        <option value="">All</option>
+        <option value="Assault Rifle">Assault Rifle</option>
+        <option value="SMG">SMG</option>
+        <option value="Shotgun">Shotgun</option>
+        <option value="Sniper Rifle">Sniper Rifle</option>
+        <option value="Marksman Rifle">Marksman Rifle</option>
+        <option value="Pistol">Pistol</option>
+        <option value="Light Machine Gun">Light Machine Gun</option>
+      </select>
+    </label>
+    <label>Name:
+      <input type="text" id="filterName" placeholder="Search by name" />
+    </label>
+  </div>
+  <div class="grid" id="weaponGrid">
+    <p>Loading weapons...</p>
+  </div>
+
+  <script>
+    let allWeapons = [];
+
+    function renderWeaponCard(w) {
+      return `
+        <div class="card">
+          <img src="${w.image_url}" alt="${w.name}">
+          <h3>${w.name}</h3>
+          <p><strong>Type:</strong> ${w.type}</p>
+          <p><strong>Damage:</strong> ${w.damage}</p>
+          <p><strong>Rate of Fire:</strong> ${w.rate_of_fire}</p>
+          <p><strong>Range:</strong> ${w.range}</p>
+          <p><strong>Magazine:</strong> ${w.magazine_size}</p>
+          <p>${w.special_attributes}</p>
+        </div>`;
+    }
+
+    function updateGrid() {
+      const type = document.getElementById('filterType').value;
+      const nameSearch = document.getElementById('filterName').value.toLowerCase();
+      const container = document.getElementById('weaponGrid');
+
+      let filtered = allWeapons.filter(w => {
+        return (!type || w.type === type) &&
+               (!nameSearch || w.name.toLowerCase().includes(nameSearch));
+      });
+
+      filtered.sort((a, b) => a.name.localeCompare(b.name));
+
+      container.innerHTML = filtered.length
+        ? filtered.map(renderWeaponCard).join('')
+        : '<p>No weapons match the selected filters.</p>';
+    }
+
+    fetch('https://neptuneg1.github.io/freefire-caster/weapons.json')
+      .then(res => res.json())
+      .then(data => {
+        allWeapons = data;
+        updateGrid();
+        document.getElementById('filterType').addEventListener('change', updateGrid);
+        document.getElementById('filterName').addEventListener('input', updateGrid);
+      })
+      .catch(() => {
+        document.getElementById('weaponGrid').innerHTML = '<p>Error loading weapon data.</p>';
+      });
+  </script>
+</body>
+</html>
