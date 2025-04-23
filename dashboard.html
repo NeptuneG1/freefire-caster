@@ -157,11 +157,11 @@
   <div class="dashboard">
     <div class="card">
       <h2>Character Skills</h2>
-      <a href="character.html">Explore All Characters</a>
+      <a href="characters.html">Explore All Characters</a>
     </div>
     <div class="card">
       <h2>Pets</h2>
-      <a href="pet.html">View Pets</a>
+      <a href="pets.html">View Pets</a>
     </div>
     <div class="card">
       <h2>Weapons</h2>
@@ -199,10 +199,12 @@
   </div>
 
   <script>
+    const getQueryParam = (param) => new URLSearchParams(window.location.search).get(param);
+
     let characterData = [], petData = [], weaponData = [];
 
     function createCard(item, type) {
-      const page = type === 'character' ? 'character.html' : `${type}.html`;
+      const page = type === 'character' ? 'characters.html' : `${type}.html`;
       return `
         <div class="preview-card">
           <img src="${item.image_url || item.icon || ''}" alt="${item.name}" />
@@ -221,24 +223,34 @@
       if (item) container.innerHTML = createCard(item, type);
     }
 
+    function preselect(selectId, data, type) {
+      const queryName = getQueryParam(type);
+      const select = document.getElementById(selectId);
+      data.forEach((item, i) => {
+        select.add(new Option(item.name, i));
+        if (queryName && item.name.toLowerCase() === queryName.toLowerCase()) {
+          select.selectedIndex = i;
+        }
+      });
+      select.dispatchEvent(new Event('change'));
+    }
+
     fetch('https://neptuneg1.github.io/freefire-caster/character.json')
       .then(res => res.json())
       .then(data => {
         characterData = data;
         const select = document.getElementById('characterSelect');
-        data.forEach((item, i) => select.add(new Option(item.name, i)));
         select.addEventListener('change', (e) => updatePreview('character', e.target.value));
-        if (data.length) updatePreview('character', 0);
+        preselect('characterSelect', data, 'name');
       });
 
-    fetch('https://neptuneg1.github.io/freefire-caster/pet.json')
+    fetch('https://neptuneg1.github.io/freefire-caster/pets.json')
       .then(res => res.json())
       .then(data => {
         petData = data;
         const select = document.getElementById('petSelect');
-        data.forEach((item, i) => select.add(new Option(item.name, i)));
         select.addEventListener('change', (e) => updatePreview('pet', e.target.value));
-        if (data.length) updatePreview('pet', 0);
+        preselect('petSelect', data, 'pet');
       });
 
     fetch('https://neptuneg1.github.io/freefire-caster/weapons.json')
@@ -246,9 +258,8 @@
       .then(data => {
         weaponData = data;
         const select = document.getElementById('weaponSelect');
-        data.forEach((item, i) => select.add(new Option(item.name, i)));
         select.addEventListener('change', (e) => updatePreview('weapon', e.target.value));
-        if (data.length) updatePreview('weapon', 0);
+        preselect('weaponSelect', data, 'weapon');
       });
   </script>
 </body>
