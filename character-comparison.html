@@ -258,17 +258,33 @@
       result.innerHTML = '';
       const table = document.createElement('table');
       table.className = 'comparison-table';
+    
       const header = document.createElement('tr');
       header.innerHTML = '<th>Slot</th>' + Array.from({ length: 4 }, (_, i) => `<th>Player ${i + 1}</th>`).join('');
       table.appendChild(header);
+    
       const slots = ['Active Skill', 'Passive 1', 'Passive 2', 'Passive 3'];
       for (let slot = 0; slot < 4; slot++) {
         const row = document.createElement('tr');
-        row.innerHTML += `<td>${char ? `<img src="${char.image_url}" alt="${char.name}"><br>${char.name}<br><small>${char.skill_type} | ${char.role}</small>` : 'N/A'}</td>`;
+        row.innerHTML = `<td>${slots[slot]}</td>`;
+        for (let player = 0; player < 4; player++) {
+          const selectedName = selections[player][slot];
+          const char = allCharacters.find(c => c.name === selectedName);
+          row.innerHTML += `<td>${char ? `
+            <img src="${char.image_url}" alt="${char.name}"><br>
+            ${char.name}<br>
+            <small>${char.skill_type} | ${char.role}</small><br>
+            <em style="font-size:0.75rem;color:#bbb;display:block;max-height:60px;overflow:auto;">
+              ${char.description}
+            </em>
+          ` : 'N/A'}</td>`;
+        }
         table.appendChild(row);
       }
+    
       result.appendChild(table);
     }
+
     function resetSelections() {
       for (let player = 0; player < 4; player++) {
         for (let slot = 0; slot < 4; slot++) {
