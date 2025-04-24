@@ -55,6 +55,53 @@
       color: #fff;
       border-radius: 6px;
     }
+    .compare-btn {
+      display: block;
+      margin: 20px auto;
+      padding: 10px 20px;
+      background: #ffbd59;
+      color: #1c1c1c;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .comparison-table {
+      max-width: 1300px;
+      margin: 30px auto;
+      border-collapse: collapse;
+      width: 100%;
+      text-align: center;
+    }
+    .comparison-table th, .comparison-table td {
+      border: 1px solid #444;
+      padding: 10px;
+    }
+    .comparison-table th {
+      background: #1f1f1f;
+      color: #ffbd59;
+    }
+    .comparison-table img {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+    }
+    .preset-buttons {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 10px;
+    }
+    .preset-buttons button {
+      flex: 1;
+      margin: 2px;
+      background: #333;
+      color: #ffbd59;
+      border: 1px solid #ffbd59;
+      padding: 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
   </style>
 </head>
 <body>
@@ -62,62 +109,105 @@
     <h1>Character Comparison (4 Players)</h1>
   </header>
 
-  <div class="player-grid">
-    <div class="player" id="player1">
-      <h2>Player 1</h2>
-      <div class="character-slot"><label>Active Skill:<br><select class="active"></select></label></div>
-      <div class="character-slot"><label>Passive 1:<br><select class="passive"></select></label></div>
-      <div class="character-slot"><label>Passive 2:<br><select class="passive"></select></label></div>
-      <div class="character-slot"><label>Passive 3:<br><select class="passive"></select></label></div>
-    </div>
-    <div class="player" id="player2">
-      <h2>Player 2</h2>
-      <div class="character-slot"><label>Active Skill:<br><select class="active"></select></label></div>
-      <div class="character-slot"><label>Passive 1:<br><select class="passive"></select></label></div>
-      <div class="character-slot"><label>Passive 2:<br><select class="passive"></select></label></div>
-      <div class="character-slot"><label>Passive 3:<br><select class="passive"></select></label></div>
-    </div>
-    <div class="player" id="player3">
-      <h2>Player 3</h2>
-      <div class="character-slot"><label>Active Skill:<br><select class="active"></select></label></div>
-      <div class="character-slot"><label>Passive 1:<br><select class="passive"></select></label></div>
-      <div class="character-slot"><label>Passive 2:<br><select class="passive"></select></label></div>
-      <div class="character-slot"><label>Passive 3:<br><select class="passive"></select></label></div>
-    </div>
-    <div class="player" id="player4">
-      <h2>Player 4</h2>
-      <div class="character-slot"><label>Active Skill:<br><select class="active"></select></label></div>
-      <div class="character-slot"><label>Passive 1:<br><select class="passive"></select></label></div>
-      <div class="character-slot"><label>Passive 2:<br><select class="passive"></select></label></div>
-      <div class="character-slot"><label>Passive 3:<br><select class="passive"></select></label></div>
-    </div>
-  </div>
+  <div class="player-grid" id="playerGrid"></div>
+
+  <button class="compare-btn" onclick="compareCharacters()">Compare</button>
+
+  <div id="comparisonResult"></div>
 
   <script>
+    let allCharacters = [];
+
+    function createPlayerPanel(playerIndex) {
+      const player = document.createElement('div');
+      player.className = 'player';
+      player.innerHTML = `<h2>Player ${playerIndex + 1}</h2>` +
+        ['Active Skill', 'Passive 1', 'Passive 2', 'Passive 3'].map((label, i) => {
+          return `<div class="character-slot">
+            <label>${label}:<br><select data-player="${playerIndex}" data-slot="${i}" class="${i === 0 ? 'active' : 'passive'}"></select></label>
+          </div>`;
+        }).join('') +
+        `<div class="preset-buttons">
+          <button onclick="savePreset(${playerIndex})">💾 Save</button>
+          <button onclick="loadPreset(${playerIndex})">📂 Load</button>
+        </div>`;
+      return player;
+    }
+
+    function populateSelectors(data) {
+      const actives = data.filter(c => c.skill_type === 'Active');
+      const passives = data.filter(c => c.skill_type === 'Passive');
+
+      document.querySelectorAll('select.active').forEach(select => {
+        actives.forEach(c => {
+          const option = document.createElement('option');
+          option.value = c.name;
+          option.textContent = c.name;
+          select.appendChild(option);
+        });
+      });
+
+      document.querySelectorAll('select.passive').forEach(select => {
+        passives.forEach(c => {
+          const option = document.createElement('option');
+          option.value = c.name;
+          option.textContent = c.name;
+          select.appendChild(option);
+        });
+      });
+    }
+
+    function compareCharacters() {
+      const result = document.getElementById('comparisonResult');
+      result.innerHTML = '';
+
+      const table = document.createElement('table');
+      table.className = 'comparison-table';
+      const header = document.createElement('tr');
+      header.innerHTML = '<th>Slot</th>' + Array.from({ length: 4 }, (_, i) => `<th>Player ${i + 1}</th>`).join('');
+      table.appendChild(header);
+
+      const slots = ['Active Skill', 'Passive 1', 'Passive 2', 'Passive 3'];
+      for (let slot = 0; slot < 4; slot++) {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${slots[slot]}</td>`;
+        for (let player = 0; player < 4; player++) {
+          const select = document.querySelector(`select[data-player="${player}"][data-slot="${slot}"]`);
+          const char = allCharacters.find(c => c.name === select.value);
+          row.innerHTML += `<td>${char ? `<img src="${char.image_url}" alt="${char.name}"><br>${char.name}<br><small>${char.skill_type} | ${char.role}</small><br><strong>${char.damage}</strong> DMG` : 'N/A'}</td>`;
+        }
+        table.appendChild(row);
+      }
+
+      result.appendChild(table);
+    }
+
+    function savePreset(playerIndex) {
+      const selections = [];
+      for (let i = 0; i < 4; i++) {
+        const select = document.querySelector(`select[data-player="${playerIndex}"][data-slot="${i}"]`);
+        selections.push(select.value);
+      }
+      localStorage.setItem(`player${playerIndex + 1}Preset`, JSON.stringify(selections));
+    }
+
+    function loadPreset(playerIndex) {
+      const preset = JSON.parse(localStorage.getItem(`player${playerIndex + 1}Preset`) || '[]');
+      for (let i = 0; i < 4; i++) {
+        const select = document.querySelector(`select[data-player="${playerIndex}"][data-slot="${i}"]`);
+        if (preset[i]) select.value = preset[i];
+      }
+    }
+
     fetch('https://neptuneg1.github.io/freefire-caster/character.json')
       .then(res => res.json())
       .then(data => {
-        const actives = data.filter(c => c.skill_type === 'Active');
-        const passives = data.filter(c => c.skill_type === 'Passive');
-
-        document.querySelectorAll('select.active').forEach(select => {
-          actives.forEach(c => {
-            const option = document.createElement('option');
-            option.value = c.name;
-            option.textContent = c.name;
-            select.appendChild(option);
-          });
-        });
-
-        document.querySelectorAll('select.passive').forEach(select => {
-          passives.forEach(c => {
-            const option = document.createElement('option');
-            option.value = c.name;
-            option.textContent = c.name;
-            select.appendChild(option);
-          });
-        });
+        allCharacters = data;
+        const grid = document.getElementById('playerGrid');
+        for (let i = 0; i < 4; i++) grid.appendChild(createPlayerPanel(i));
+        populateSelectors(data);
       });
   </script>
 </body>
 </html>
+
