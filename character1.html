@@ -1,121 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Character Comparison</title>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Character Comparison Test</title>
   <style>
     body {
-      margin: 0;
-      font-family: 'Roboto', sans-serif;
       background: #0e0e0e;
       color: #f5f5f5;
-    }
-    header {
-      background: #1f1f1f;
-      padding: 20px;
-      text-align: center;
-      border-bottom: 3px solid #ffbd59;
-    }
-    header h1 {
-      font-family: 'Orbitron', sans-serif;
-      color: #ffbd59;
+      font-family: 'Roboto', sans-serif;
       margin: 0;
-      font-size: 2rem;
-    }
-    .player-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 20px;
-      padding: 20px;
-      max-width: 1300px;
-      margin: auto;
-    }
-    .player {
-      background: #1c1c1c;
-      padding: 15px;
-      border-radius: 10px;
-      border-left: 4px solid #ffbd59;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .player h2 {
-      color: #ffbd59;
-      font-size: 1.1rem;
-      margin-bottom: 10px;
-    }
-    .slots {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      width: 100%;
-    }
-    .slot-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 10px;
-      background: #2a2a2a;
-      border: 1px solid #444;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    .slot-btn img {
-      width: 32px;
-      height: 32px;
-      object-fit: cover;
-      border-radius: 4px;
-    }
-    .preset-buttons {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 10px;
-      width: 100%;
-    }
-    .preset-buttons button {
-      flex: 1;
-      margin: 2px;
-      background: #333;
-      color: #ffbd59;
-      border: 1px solid #ffbd59;
-      padding: 6px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.8rem;
-    }
-    .compare-btn {
-      display: block;
-      margin: 20px auto;
-      padding: 10px 20px;
-      background: #ffbd59;
-      color: #1c1c1c;
-      border: none;
-      border-radius: 6px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    .comparison-table {
-      max-width: 1300px;
-      margin: 30px auto;
-      border-collapse: collapse;
-      width: 100%;
-      text-align: center;
-    }
-    .comparison-table th, .comparison-table td {
-      border: 1px solid #444;
-      padding: 10px;
-    }
-    .comparison-table th {
-      background: #1f1f1f;
-      color: #ffbd59;
-    }
-    .comparison-table img {
-      width: 40px;
-      height: 40px;
-      object-fit: contain;
+      padding: 0;
     }
     .modal {
       position: fixed;
@@ -123,19 +18,29 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.8);
-      display: none;
+      background: rgba(0,0,0,0.85);
+      display: flex;
       justify-content: center;
       align-items: center;
-      z-index: 999;
+      z-index: 1000;
     }
     .modal-content {
       background: #1c1c1c;
-      padding: 20px;
       border-radius: 10px;
+      padding: 20px;
       max-width: 90%;
       max-height: 90%;
       overflow-y: auto;
+      width: 600px;
+    }
+    #searchInput {
+      width: 100%;
+      padding: 8px;
+      background: #2a2a2a;
+      border: 1px solid #ffbd59;
+      color: #fff;
+      border-radius: 4px;
+      margin-bottom: 10px;
     }
     .modal-grid {
       display: flex;
@@ -143,129 +48,87 @@
       gap: 10px;
       justify-content: center;
     }
-    .modal-grid img {
+    .modal-card {
+      width: 72px;
+      text-align: center;
+      font-size: 0.7rem;
+      color: #ccc;
+    }
+    .modal-card img {
       width: 60px;
-      height: 60px;
+      height: 80px;
       object-fit: cover;
       border: 2px solid #444;
       border-radius: 6px;
       cursor: pointer;
+      transition: transform 0.2s, border-color 0.2s;
     }
+    .modal-card img:hover {
+      transform: scale(1.05);
+      border-color: #ffbd59;
+    }
+    .modal-card .name {
+      margin-top: 4px;
+    }
+    .modal-card .role {
+      margin-top: 2px;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 0.6rem;
+      font-weight: bold;
+      display: inline-block;
+    }
+    .role-ATTACK { background: #aa0000; color: white; }
+    .role-DEFENSE { background: #0044aa; color: white; }
+    .role-SUPPORT { background: #00aa44; color: white; }
+    .role-SCOUT { background: #aaaa00; color: black; }
+    .role-INFO { background: #9933cc; color: white; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Character Comparison (4 Players)</h1>
-  </header>
-
-  <div class="player-grid" id="playerGrid"></div>
-
-  <button class="compare-btn" onclick="compareCharacters()">Compare</button>
-
-  <div id="comparisonResult"></div>
-
   <div class="modal" id="characterModal">
     <div class="modal-content">
+      <input type="text" id="searchInput" placeholder="Search character...">
       <div id="modalGrid" class="modal-grid"></div>
     </div>
   </div>
 
   <script>
-    let allCharacters = [];
-    const selections = Array.from({ length: 4 }, () => Array(4).fill(null));
-    let currentPlayer = 0;
-    let currentSlot = 0;
+    const characters = [
+      { name: 'Andrew', role: 'DEFENSE', image_url: 'https://i.imgur.com/qS4Wc4K.png' },
+      { name: 'Kelly', role: 'SCOUT', image_url: 'https://i.imgur.com/LzJ6nkz.png' },
+      { name: 'Moco', role: 'INFO', image_url: 'https://i.imgur.com/FXY2qk4.png' },
+      { name: 'Chrono', role: 'ATTACK', image_url: 'https://i.imgur.com/0eVTQKN.png' },
+      { name: 'Olivia', role: 'SUPPORT', image_url: 'https://i.imgur.com/I7bE4Ah.png' }
+    ];
 
-    function createPlayerPanel(playerIndex) {
-      const player = document.createElement('div');
-      player.className = 'player';
-      const slotLabels = ['Active Skill', 'Passive 1', 'Passive 2', 'Passive 3'];
-      const slots = slotLabels.map((label, slot) => {
-        return `<div class='slot-btn' onclick='openModal(${playerIndex}, ${slot})' id='slot-${playerIndex}-${slot}'>
-          <span>${label}</span>
-        </div>`;
-      }).join('');
-      player.innerHTML = `<h2>Player ${playerIndex + 1}</h2>
-        <div class="slots">${slots}</div>
-        <div class="preset-buttons">
-          <button onclick="savePreset(${playerIndex})">💾 Save</button>
-          <button onclick="loadPreset(${playerIndex})">📂 Load</button>
-        </div>`;
-      return player;
-    }
+    const modalGrid = document.getElementById('modalGrid');
 
-    function openModal(playerIdx, slotIdx) {
-      currentPlayer = playerIdx;
-      currentSlot = slotIdx;
-      const modal = document.getElementById('characterModal');
-      const grid = document.getElementById('modalGrid');
-      grid.innerHTML = '';
-      const skillType = slotIdx === 0 ? 'Active' : 'Passive';
-      const filtered = allCharacters.filter(c => c.skill_type === skillType);
-      filtered.forEach(c => {
-        const img = document.createElement('img');
-        img.src = c.image_url;
-        img.title = c.name;
-        img.onclick = () => {
-          selections[currentPlayer][currentSlot] = c.name;
-          const slot = document.getElementById(`slot-${currentPlayer}-${currentSlot}`);
-          slot.innerHTML = `<img src='${c.image_url}'/><span>${c.name}</span>`;
-          modal.style.display = 'none';
-        };
-        grid.appendChild(img);
+    function renderCharacters(data) {
+      modalGrid.innerHTML = '';
+      data.forEach(c => {
+        const card = document.createElement('div');
+        card.className = 'modal-card';
+        card.setAttribute('data-name', c.name);
+        card.innerHTML = `
+          <img src="${c.image_url}" title="${c.name}">
+          <div class="name">${c.name}</div>
+          <div class="role role-${c.role}">${c.role}</div>
+        `;
+        modalGrid.appendChild(card);
       });
-      modal.style.display = 'flex';
     }
 
-    window.onclick = e => {
-      const modal = document.getElementById('characterModal');
-      if (e.target === modal) modal.style.display = 'none';
-    };
-
-    function compareCharacters() {
-      const result = document.getElementById('comparisonResult');
-      result.innerHTML = '';
-      const table = document.createElement('table');
-      table.className = 'comparison-table';
-      const header = document.createElement('tr');
-      header.innerHTML = '<th>Slot</th>' + Array.from({ length: 4 }, (_, i) => `<th>Player ${i + 1}</th>`).join('');
-      table.appendChild(header);
-      const slots = ['Active Skill', 'Passive 1', 'Passive 2', 'Passive 3'];
-      for (let slot = 0; slot < 4; slot++) {
-        const row = document.createElement('tr');
-        row.innerHTML = `<td>${slots[slot]}</td>`;
-        for (let player = 0; player < 4; player++) {
-          const char = allCharacters.find(c => c.name === selections[player][slot]);
-          row.innerHTML += `<td>${char ? `<img src="${char.image_url}" alt="${char.name}"><br>${char.name}<br><small>${char.skill_type} | ${char.role}</small>` : 'N/A'}</td>`;
-        }
-        table.appendChild(row);
-      }
-      result.appendChild(table);
-    }
-
-    function savePreset(playerIndex) {
-      localStorage.setItem(`player${playerIndex + 1}Preset`, JSON.stringify(selections[playerIndex]));
-    }
-
-    function loadPreset(playerIndex) {
-      const preset = JSON.parse(localStorage.getItem(`player${playerIndex + 1}Preset`) || '[]');
-      selections[playerIndex] = preset;
-      for (let slot = 0; slot < 4; slot++) {
-        const char = allCharacters.find(c => c.name === preset[slot]);
-        if (char) {
-          const slotBtn = document.getElementById(`slot-${playerIndex}-${slot}`);
-          slotBtn.innerHTML = `<img src='${char.image_url}'/><span>${char.name}</span>`;
-        }
-      }
-    }
-
-    fetch('https://neptuneg1.github.io/freefire-caster/character.json')
-      .then(res => res.json())
-      .then(data => {
-        allCharacters = data;
-        const grid = document.getElementById('playerGrid');
-        for (let i = 0; i < 4; i++) grid.appendChild(createPlayerPanel(i));
+    document.getElementById('searchInput').addEventListener('input', function () {
+      const term = this.value.toLowerCase();
+      const cards = document.querySelectorAll('.modal-card');
+      cards.forEach(card => {
+        const name = card.getAttribute('data-name').toLowerCase();
+        card.style.display = name.includes(term) ? 'block' : 'none';
       });
+    });
+
+    renderCharacters(characters);
   </script>
 </body>
 </html>
