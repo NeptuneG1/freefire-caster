@@ -36,6 +36,9 @@
       position: relative;
       cursor: pointer;
       outline: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
     .card img {
       width: 80%;
@@ -43,6 +46,14 @@
       object-fit: cover;
       border-radius: 8px;
       border: 2px solid #ffbd59;
+    }
+    .char-name {
+      margin-top: 6px;
+      text-align: center;
+      font-size: 0.85rem;
+      color: #ffbd59;
+      font-weight: bold;
+      word-break: break-word;
     }
     .tooltip {
       position: absolute;
@@ -63,7 +74,6 @@
       z-index: 2;
       transition: opacity 0.2s;
     }
-    
     .card:hover .tooltip,
     .card.active .tooltip {
       opacity: 1;
@@ -76,20 +86,20 @@
     <h1>Character Gallery</h1>
   </header>
   <div style="text-align: center; margin-top: 20px;">
-      <a href="dashboard.html" style="
-        display: inline-block;
-        background: #ffbd59;
-        color: #1c1c1c;
-        padding: 10px 20px;
-        font-weight: bold;
-        border-radius: 6px;
-        text-decoration: none;
-        transition: background 0.2s;
-      " onmouseover="this.style.background='#e0a84f'" onmouseout="this.style.background='#ffbd59'">
-        ← Back to Dashboard
-      </a>
+    <a href="dashboard.html" style="
+      display: inline-block;
+      background: #ffbd59;
+      color: #1c1c1c;
+      padding: 10px 20px;
+      font-weight: bold;
+      border-radius: 6px;
+      text-decoration: none;
+      transition: background 0.2s;
+    " onmouseover="this.style.background='#e0a84f'" onmouseout="this.style.background='#ffbd59'">
+      ← Back to Dashboard
+    </a>
   </div>
-    
+
   <div class="grid" id="characterGrid">
     <p>Loading characters...</p>
   </div>
@@ -102,6 +112,7 @@
         container.innerHTML = characters.map((c, i) => `
           <div class="card" tabindex="0" onclick="toggleTooltip(event, ${i})">
             <img src="${c.image_url}" alt="${c.name}" />
+            <div class="char-name">${c.name}</div>
             <div class="tooltip" id="tooltip-${i}">
               <strong>${c.name}</strong><br>
               <em>${c.skill_type} Skill:</em> ${c.skill}<br>
@@ -118,10 +129,10 @@
     function isTouchDevice() {
       return 'ontouchstart' in window || navigator.maxTouchPoints;
     }
-    
+
     function toggleTooltip(event, index) {
-      if (!isTouchDevice()) return; // do nothing if not touch
-    
+      if (!isTouchDevice()) return;
+
       const cards = document.querySelectorAll('.card');
       cards.forEach((card, i) => {
         if (i === index) {
@@ -132,7 +143,7 @@
       });
       event.stopPropagation();
     }
-    
+
     document.body.addEventListener('click', () => {
       document.querySelectorAll('.card').forEach(card => card.classList.remove('active'));
     });
