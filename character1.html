@@ -45,15 +45,24 @@
       text-align: center;
     }
     .character-slot {
-      margin-bottom: 10px;
+      margin-bottom: 15px;
     }
-    select {
-      width: 100%;
-      padding: 8px;
-      background: #2a2a2a;
-      border: 1px solid #ffbd59;
-      color: #fff;
+    .character-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .character-options img {
+      width: 48px;
+      height: 48px;
+      border: 2px solid #444;
       border-radius: 6px;
+      cursor: pointer;
+      object-fit: cover;
+    }
+    .character-options img.selected {
+      border-color: #ffbd59;
     }
     .compare-btn {
       display: block;
@@ -117,14 +126,16 @@
 
   <script>
     let allCharacters = [];
+    const selections = Array.from({ length: 4 }, () => Array(4).fill(null));
 
     function createPlayerPanel(playerIndex) {
       const player = document.createElement('div');
       player.className = 'player';
       player.innerHTML = `<h2>Player ${playerIndex + 1}</h2>` +
-        ['Active Skill', 'Passive 1', 'Passive 2', 'Passive 3'].map((label, i) => {
+        ['Active Skill', 'Passive 1', 'Passive 2', 'Passive 3'].map((label, slot) => {
           return `<div class="character-slot">
-            <label>${label}:<br><select data-player="${playerIndex}" data-slot="${i}" class="${i === 0 ? 'active' : 'passive'}"></select></label>
+            <label>${label}</label>
+            <div class="character-options" data-player="${playerIndex}" data-slot="${slot}"></div>
           </div>`;
         }).join('') +
         `<div class="preset-buttons">
@@ -134,27 +145,32 @@
       return player;
     }
 
-    function populateSelectors(data) {
-      const actives = data.filter(c => c.skill_type === 'Active');
-      const passives = data.filter(c => c.skill_type === 'Passive');
+    function populateImageSelectors(data) {
+      for (let player = 0; player < 4; player++) {
+        for (let slot = 0; slot < 4; slot++) {
+          const container = document.querySelector(`.character-options[data-player='${player}'][data-slot='${slot}']`);
+          container.innerHTML = '';
+          const pool = slot === 0
+            ? data.filter(c => c.skill_type === 'Active')
+            : data.filter(c => c.skill_type === 'Passive');
 
-      document.querySelectorAll('select.active').forEach(select => {
-        actives.forEach(c => {
-          const option = document.createElement('option');
-          option.value = c.name;
-          option.textContent = c.name;
-          select.appendChild(option);
-        });
-      });
+          pool.forEach(c => {
+            const img = document.createElement('img');
+            img.src = c.image_url;
+            img.alt = c.name;
+            img.title = c.name;
+            img.onclick = () => selectCharacter(player, slot, c.name, img);
+            container.appendChild(img);
+          });
+        }
+      }
+    }
 
-      document.querySelectorAll('select.passive').forEach(select => {
-        passives.forEach(c => {
-          const option = document.createElement('option');
-          option.value = c.name;
-          option.textContent = c.name;
-          select.appendChild(option);
-        });
-      });
+    function selectCharacter(player, slot, name, imgEl) {
+      selections[player][slot] = name;
+      const allImgs = document.querySelectorAll(`.character-options[data-player='${player}'][data-slot='${slot}'] img`);
+      allImgs.forEach(i => i.classList.remove('selected'));
+      imgEl.classList.add('selected');
     }
 
     function compareCharacters() {
@@ -172,9 +188,8 @@
         const row = document.createElement('tr');
         row.innerHTML = `<td>${slots[slot]}</td>`;
         for (let player = 0; player < 4; player++) {
-          const select = document.querySelector(`select[data-player="${player}"][data-slot="${slot}"]`);
-          const char = allCharacters.find(c => c.name === select.value);
-          row.innerHTML += `<td>${char ? `<img src="${char.image_url}" alt="${char.name}"><br>${char.name}<br><small>${char.skill_type} | ${char.role}</small><br><strong>${char.damage}</strong> DMG` : 'N/A'}</td>`;
+          const char = allCharacters.find(c => c.name === selections[player][slot]);
+          row.innerHTML += `<td>${char ? `<img src="${char.image_url}" alt="${char.name}"><br>${char.name}<br><small>${char.skill_type} | ${char.role}</small>` : 'N/A'}</td>`;
         }
         table.appendChild(row);
       }
@@ -183,19 +198,20 @@
     }
 
     function savePreset(playerIndex) {
-      const selections = [];
-      for (let i = 0; i < 4; i++) {
-        const select = document.querySelector(`select[data-player="${playerIndex}"][data-slot="${i}"]`);
-        selections.push(select.value);
-      }
-      localStorage.setItem(`player${playerIndex + 1}Preset`, JSON.stringify(selections));
+      localStorage.setItem(`player${playerIndex + 1}Preset`, JSON.stringify(selections[playerIndex]));
     }
 
     function loadPreset(playerIndex) {
       const preset = JSON.parse(localStorage.getItem(`player${playerIndex + 1}Preset`) || '[]');
-      for (let i = 0; i < 4; i++) {
-        const select = document.querySelector(`select[data-player="${playerIndex}"][data-slot="${i}"]`);
-        if (preset[i]) select.value = preset[i];
+      selections[playerIndex] = preset;
+      for (let slot = 0; slot < 4; slot++) {
+        const container = document.querySelector(`.character-options[data-player='${playerIndex}'][data-slot='${slot}']`);
+        const imgs = container.querySelectorAll('img');
+        imgs.forEach(img => {
+          if (img.title === preset[slot]) {
+            selectCharacter(playerIndex, slot, preset[slot], img);
+          }
+        });
       }
     }
 
@@ -205,9 +221,10 @@
         allCharacters = data;
         const grid = document.getElementById('playerGrid');
         for (let i = 0; i < 4; i++) grid.appendChild(createPlayerPanel(i));
-        populateSelectors(data);
+        populateImageSelectors(data);
       });
   </script>
 </body>
 </html>
+
 
