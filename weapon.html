@@ -59,7 +59,7 @@
       width: 100%;
       aspect-ratio: 5 / 2;
       object-fit: contain;
-      background: #b0afaf;
+      background: #979695;
       border: 2px solid #ffbd59;
       border-radius: 4px;
     }
@@ -70,9 +70,7 @@
     }
 
     .card .tooltip {
-      visibility: hidden;
-      opacity: 0;
-      transition: opacity 0.2s;
+      display: none;
       position: absolute;
       z-index: 10;
       bottom: 110%;
@@ -89,9 +87,19 @@
       box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
       pointer-events: none;
     }
-    .card:hover .tooltip {
-      visibility: visible;
-      opacity: 1;
+
+    /* Desktop hover */
+    @media (hover: hover) {
+      .card:hover .tooltip {
+        display: block;
+        pointer-events: auto;
+      }
+    }
+
+    /* Mobile click */
+    .card.show-tooltip .tooltip {
+      display: block;
+      pointer-events: auto;
     }
 
     .back-button {
@@ -147,9 +155,9 @@
   <script>
     let allWeapons = [];
 
-    function renderWeaponCard(w) {
+    function renderWeaponCard(w, index) {
       return `
-        <div class="card">
+        <div class="card" data-index="${index}">
           <img src="${w.image_url}" alt="${w.name}">
           <h3>${w.name}</h3>
           <div class="tooltip">
@@ -162,6 +170,30 @@
             <em>${w.description}</em>
           </div>
         </div>`;
+    }
+
+    function enableTooltipClicks() {
+      // Remove previous listeners to avoid duplicates
+      document.querySelectorAll('.card').forEach(card => {
+        card.replaceWith(card.cloneNode(true));
+      });
+
+      document.querySelectorAll('.card').forEach(card => {
+        card.addEventListener('click', function (e) {
+          if (window.matchMedia('(hover: none)').matches) {
+            e.stopPropagation();
+            const alreadyOpen = card.classList.contains('show-tooltip');
+            document.querySelectorAll('.card').forEach(c => c.classList.remove('show-tooltip'));
+            if (!alreadyOpen) card.classList.add('show-tooltip');
+          }
+        });
+      });
+
+      document.addEventListener('click', function () {
+        if (window.matchMedia('(hover: none)').matches) {
+          document.querySelectorAll('.card').forEach(c => c.classList.remove('show-tooltip'));
+        }
+      });
     }
 
     function updateGrid() {
@@ -177,8 +209,10 @@
       filtered.sort((a, b) => a.name.localeCompare(b.name));
 
       container.innerHTML = filtered.length
-        ? filtered.map(renderWeaponCard).join('')
+        ? filtered.map((w, i) => renderWeaponCard(w, i)).join('')
         : '<p>No weapons match the selected filters.</p>';
+
+      enableTooltipClicks(); // hook up click tooltips
     }
 
     fetch('https://neptuneg1.github.io/freefire-caster/weapon.json')
@@ -195,4 +229,3 @@
   </script>
 </body>
 </html>
-
