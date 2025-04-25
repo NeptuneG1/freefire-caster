@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Weapon Gallery</title>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto&display=swap" rel="stylesheet">
   <style>
@@ -29,54 +29,87 @@
       justify-content: center;
       flex-wrap: wrap;
       gap: 10px;
-      padding: 20px;
+      padding: 15px;
       background: #1c1c1c;
       border-bottom: 1px solid #333;
     }
     .filter-bar select,
     .filter-bar input[type="text"] {
-      padding: 8px;
+      padding: 6px;
       background: #2a2a2a;
       border: 1px solid #ffbd59;
       color: #fff;
       border-radius: 6px;
     }
     .grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px; /* reduced from 20px */
-      justify-content: center;
-      padding: 15px; /* reduced from 30px */
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 10px;
+      padding: 15px;
     }
     .card {
+      position: relative;
       background: #1c1c1c;
-      border: 1px solid #444;
-      border-left: 4px solid #ffbd59;
-      border-radius: 8px;
-      padding: 12px; /* reduced from 16px */
-      width: 260px; /* reduced from 300px */
+      border-radius: 6px;
+      padding: 6px;
       text-align: center;
+      cursor: pointer;
     }
     .card img {
-      max-width: 100%;
-      height: auto;
-      aspect-ratio: 5 / 2; /* Keeps a consistent shape */
+      width: 100%;
+      aspect-ratio: 5 / 2;
       object-fit: contain;
-      border-radius: 6px;
-      margin-bottom: 8px;
-      border: 2px solid #ffbd59;
       background: #2a2a2a;
-      padding: 4px;
+      border: 2px solid #ffbd59;
+      border-radius: 4px;
     }
     .card h3 {
-      margin: 0;
+      font-size: 0.85rem;
       color: #ffbd59;
-      font-size: 1.2rem;
+      margin: 6px 0 0 0;
     }
-    .card p {
-      font-size: 0.8rem; /* slightly smaller */
-      color: #ccc;
-      margin: 2px 0; /* tighter vertical spacing */
+
+    .card .tooltip {
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.2s;
+      position: absolute;
+      z-index: 10;
+      bottom: 110%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #222;
+      padding: 10px;
+      border-radius: 6px;
+      width: 200px;
+      text-align: left;
+      font-size: 0.75rem;
+      color: #f5f5f5;
+      border: 1px solid #ffbd59;
+      box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+      pointer-events: none;
+    }
+    .card:hover .tooltip {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .back-button {
+      text-align: center;
+      margin: 20px;
+    }
+    .back-button a {
+      display: inline-block;
+      background: #ffbd59;
+      color: #1c1c1c;
+      padding: 10px 20px;
+      font-weight: bold;
+      border-radius: 6px;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .back-button a:hover {
+      background: #e0a84f;
     }
   </style>
 </head>
@@ -102,20 +135,11 @@
       <input type="text" id="filterName" placeholder="Search by name" />
     </label>
   </div>
-  <div style="text-align: center; margin-top: 20px;">
-      <a href="dashboard.html" style="
-        display: inline-block;
-        background: #ffbd59;
-        color: #1c1c1c;
-        padding: 10px 20px;
-        font-weight: bold;
-        border-radius: 6px;
-        text-decoration: none;
-        transition: background 0.2s;
-      " onmouseover="this.style.background='#e0a84f'" onmouseout="this.style.background='#ffbd59'">
-        ← Back to Dashboard
-      </a>
+
+  <div class="back-button">
+    <a href="dashboard.html">← Back to Dashboard</a>
   </div>
+
   <div class="grid" id="weaponGrid">
     <p>Loading weapons...</p>
   </div>
@@ -128,13 +152,15 @@
         <div class="card">
           <img src="${w.image_url}" alt="${w.name}">
           <h3>${w.name}</h3>
-          <p><strong>Type:</strong> ${w.type}</p>
-          <p><strong>Damage:</strong> ${w.damage}</p>
-          <p><strong>Rate of Fire:</strong> ${w.rate_of_fire}</p>
-          <p><strong>Range:</strong> ${w.range}</p>
-          <p><strong>Magazine:</strong> ${w.magazine_size}</p>
-          <p>${w.special_attributes}</p>
-          <p>${w.description}</p>
+          <div class="tooltip">
+            <strong>Type:</strong> ${w.type}<br>
+            <strong>Damage:</strong> ${w.damage}<br>
+            <strong>Rate of Fire:</strong> ${w.rate_of_fire}<br>
+            <strong>Range:</strong> ${w.range}<br>
+            <strong>Magazine:</strong> ${w.magazine_size}<br>
+            <strong>Attributes:</strong> ${w.special_attributes}<br>
+            <em>${w.description}</em>
+          </div>
         </div>`;
     }
 
@@ -169,3 +195,4 @@
   </script>
 </body>
 </html>
+
