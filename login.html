@@ -3,62 +3,38 @@
 <head>
   <meta charset="UTF-8" />
   <title>Login</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
-
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #1c1f26;
-      color: #f0f0f0;
+      background: #0e0e0e;
+      color: #fff;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
       margin: 0;
     }
-
     form {
-      background: #2b2f38;
+      background: #1f1f1f;
       padding: 30px;
       border-radius: 10px;
-      box-shadow: 0 0 10px #000;
       width: 300px;
     }
-
-    h2 {
-      margin-top: 0;
-      text-align: center;
-      color: #ffbd59;
-    }
-
-    input {
+    input, button {
       width: 100%;
-      padding: 10px;
       margin: 10px 0;
+      padding: 10px;
       border: none;
       border-radius: 5px;
     }
-
     button {
-      width: 100%;
-      padding: 10px;
-      background: #ffbd59;
+      background-color: #ffbd59;
       color: #000;
-      border: none;
-      border-radius: 5px;
       font-weight: bold;
       cursor: pointer;
     }
-
-    #error {
-      color: #ff4d4d;
-      text-align: center;
-      margin-top: 10px;
-    }
+    #error { color: red; }
   </style>
 </head>
 <body>
@@ -71,31 +47,24 @@
   </form>
 
   <script>
-    // ✅ Replace these with your Firebase project’s config values:
-    const firebaseConfig = {
-      apiKey: "AIzaSyDzUB3xr_POVTEb3HqMIDOv_Wctwu-I_NM",
-      authDomain: "caster-tool.firebaseapp.com",
-      projectId: "caster-tool",
-    };
+    const supabase = supabase.createClient(
+      'https://gkugecflfddkpitlrmws.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
+    );
 
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-
-    // Login form submit
     document.getElementById("login-form").addEventListener("submit", async (e) => {
       e.preventDefault();
       const email = document.getElementById("email").value.trim();
       const password = document.getElementById("password").value.trim();
 
-      try {
-        await auth.signInWithEmailAndPassword(email, password);
-        window.location.href = "index.html"; // Redirect to protected page
-      } catch (error) {
-        document.getElementById("error").innerText = error.message;
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        document.getElementById("error").textContent = error.message;
+      } else {
+        window.location.href = "index.html";
       }
     });
   </script>
 </body>
 </html>
-
