@@ -9,16 +9,27 @@
   <!-- Supabase SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const supabase = supabase.createClient(
-      'https://gkugecflfddkpitlrmws.supabase.co', // ← replace this
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'             // ← replace this
+    const client = supabase.createClient(
+      'https://gkugecflfddkpitlrmws.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    client.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
         window.location.href = "index.html";
+      } else {
+        const userInfo = document.getElementById("user-info");
+        if (userInfo && session.user?.email) {
+          userInfo.textContent = "Logged in as: " + session.user.email;
+        }
       }
     });
+
+    function logout() {
+      client.auth.signOut().then(() => {
+        window.location.href = "index.html";
+      });
+    }
   </script>
 
   <style>
@@ -41,6 +52,13 @@
       font-size: 2rem;
       color: #ffbd59;
       margin: 0;
+    }
+
+    #user-info {
+      font-size: 0.95rem;
+      color: #ccc;
+      text-align: center;
+      margin-top: 8px;
     }
 
     .dashboard {
@@ -180,6 +198,7 @@
 <body>
   <header>
     <h1>Free Fire Dashboard</h1>
+    <p id="user-info">Checking login...</p>
   </header>
 
   <div class="dashboard">
@@ -225,6 +244,8 @@
       </div>
     </div>
   </div>
+
+  <button class="logout-btn" onclick="logout()">Logout</button>
 
   <script>
     const getQueryParam = (param) => new URLSearchParams(window.location.search).get(param);
