@@ -41,7 +41,6 @@
       margin: auto;
     }
     .card {
-      position: relative;
       cursor: pointer;
       outline: none;
       display: flex;
@@ -84,30 +83,12 @@
       white-space: normal;
       z-index: 999;
       box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
-    }
-    .tooltip.active {
-      display: block;
+      pointer-events: none;
     }
 
-    /* Hover support for non-touch devices */
-    @media (hover: hover) {
-      .card:hover .hover-tooltip {
-        display: block;
-        position: absolute;
-        bottom: 110%;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #1c1c1c;
-        padding: 10px;
-        border: 1px solid #ffbd59;
-        border-radius: 6px;
-        font-size: 0.75rem;
-        color: #fff;
-        width: 220px;
-        word-break: break-word;
-        z-index: 10;
-        box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
-      }
+    .tooltip.active {
+      display: block;
+      pointer-events: auto;
     }
   </style>
 </head>
@@ -130,75 +111,75 @@
     <p>Loading characters...</p>
   </div>
 
+  <div id="tooltip" class="tooltip"></div>
+
   <script>
+    const tooltip = document.getElementById('tooltip');
+
     function isTouchDevice() {
       return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     }
 
-    let tooltipElement;
-
-    function toggleTooltip(event, index, character) {
-      if (!isTouchDevice()) return;
-
-      event.stopPropagation();
-
-      if (!tooltipElement) {
-        tooltipElement = document.createElement('div');
-        tooltipElement.className = 'tooltip';
-        document.body.appendChild(tooltipElement);
-      }
-
-      const alreadyVisible = tooltipElement.classList.contains('active');
-
-      tooltipElement.classList.remove('active');
-      tooltipElement.innerHTML = `
-        <strong>${character.name}</strong><br>
-        <em>${character.skill_type} Skill:</em> ${character.skill}<br>
-        ${character.description}<br>
-        <strong>Role:</strong> ${character.role || 'N/A'}
-      `;
-
-      if (!alreadyVisible) {
-        const rect = event.currentTarget.getBoundingClientRect();
-        const scrollY = window.scrollY || window.pageYOffset;
-
-        let top = rect.top + scrollY - tooltipElement.offsetHeight - 10;
-        let left = rect.left + (rect.width / 2) - (tooltipElement.offsetWidth / 2);
-
-        top = Math.max(10, Math.min(top, window.innerHeight - tooltipElement.offsetHeight - 10));
-        left = Math.max(10, Math.min(left, window.innerWidth - tooltipElement.offsetWidth - 10));
-
-        tooltipElement.style.top = `${top}px`;
-        tooltipElement.style.left = `${left}px`;
-
-        tooltipElement.classList.add('active');
-      }
+    function showTooltip(content, x, y) {
+      tooltip.innerHTML = content;
+      tooltip.style.left = `${Math.max(10, Math.min(x - tooltip.offsetWidth / 2, window.innerWidth - tooltip.offsetWidth - 10))}px`;
+      tooltip.style.top = `${Math.max(10, y - tooltip.offsetHeight - 10)}px`;
+      tooltip.classList.add('active');
     }
 
-    document.body.addEventListener('click', () => {
-      if (tooltipElement) tooltipElement.classList.remove('active');
-    });
+    function hideTooltip() {
+      tooltip.classList.remove('active');
+    }
 
     fetch('https://neptuneg1.github.io/freefire-caster/character.json')
       .then(res => res.json())
       .then(characters => {
         const container = document.getElementById('characterGrid');
         container.innerHTML = characters.map((c, i) => `
-          <div class="card" tabindex="0" onclick="toggleTooltip(event, ${i}, ${JSON.stringify(c).replace(/"/g, '&quot;')})">
+          <div class="card"
+            onmouseenter="if(!isTouchDevice()) handleHover(event, ${i})"
+            onmouseleave="if(!isTouchDevice()) hideTooltip()"
+            onclick="if(isTouchDevice()) handleClick(event, ${i})"
+            data-character='${JSON.stringify(c).replace(/'/g, "&apos;")}'
+          >
             <img src="${c.image_url}" alt="${c.name}" class="${c.skill_type === 'Passive' ? 'passive' : 'active'}" />
             <div class="char-name">${c.name}</div>
-            <div class="hover-tooltip">
-              <strong>${c.name}</strong><br>
-              <em>${c.skill_type} Skill:</em> ${c.skill}<br>
-              ${c.description}<br>
-              <strong>Role:</strong> ${c.role || 'N/A'}
-            </div>
           </div>
         `).join('');
-      })
-      .catch(() => {
-        document.getElementById('characterGrid').innerHTML = '<p>Error loading character data.</p>';
       });
+
+    function handleHover(event, index) {
+      const card = event.currentTarget;
+      const c = JSON.parse(card.getAttribute('data-character').replace(/&apos;/g, "'"));
+      const rect = card.getBoundingClientRect();
+      const scrollY = window.scrollY || window.pageYOffset;
+      const tooltipContent = `
+        <strong>${c.name}</strong><br>
+        <em>${c.skill_type} Skill:</em> ${c.skill}<br>
+        ${c.description}<br>
+        <strong>Role:</strong> ${c.role || 'N/A'}
+      `;
+      showTooltip(tooltipContent, rect.left + rect.width / 2, rect.top + scrollY);
+    }
+
+    function handleClick(event, index) {
+      event.stopPropagation();
+      const card = event.currentTarget;
+      const c = JSON.parse(card.getAttribute('data-character').replace(/&apos;/g, "'"));
+      const rect = card.getBoundingClientRect();
+      const scrollY = window.scrollY || window.pageYOffset;
+      const tooltipContent = `
+        <strong>${c.name}</strong><br>
+        <em>${c.skill_type} Skill:</em> ${c.skill}<br>
+        ${c.description}<br>
+        <strong>Role:</strong> ${c.role || 'N/A'}
+      `;
+      showTooltip(tooltipContent, rect.left + rect.width / 2, rect.top + scrollY);
+    }
+
+    document.body.addEventListener('click', () => {
+      hideTooltip();
+    });
   </script>
 </body>
 </html>
