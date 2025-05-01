@@ -236,7 +236,8 @@
 
   <script>
     let allWeapons = [];
-
+    let isListView = false;
+  
     function renderWeaponCard(w, index) {
       return `
         <div class="card" data-index="${index}">
@@ -253,7 +254,7 @@
           </div>
         </div>`;
     }
-
+  
     function enableTooltipClicks() {
       document.querySelectorAll('.card').forEach(card => {
         card.addEventListener('click', function (e) {
@@ -261,69 +262,69 @@
             e.stopPropagation();
             const alreadyOpen = card.classList.contains('show-tooltip');
             document.querySelectorAll('.card').forEach(c => c.classList.remove('show-tooltip'));
-
+  
             if (!alreadyOpen) {
               card.classList.add('show-tooltip');
-
+  
               const tooltip = card.querySelector('.tooltip');
               tooltip.style.position = 'fixed';
-
+  
               const rect = card.getBoundingClientRect();
               const scrollY = window.scrollY || window.pageYOffset;
-
+  
               let top = rect.top + scrollY - tooltip.offsetHeight - 10;
               let left = rect.left + (rect.width / 2) - (tooltip.offsetWidth / 2);
-
+  
               top = Math.max(10, Math.min(top, window.innerHeight - tooltip.offsetHeight - 10));
               left = Math.max(10, Math.min(left, window.innerWidth - tooltip.offsetWidth - 10));
-
+  
               tooltip.style.top = `${top}px`;
               tooltip.style.left = `${left}px`;
             }
           }
         });
       });
-
-      let isListView = false;
-
-        document.getElementById('toggleView').addEventListener('click', () => {
-          const grid = document.getElementById('weaponGrid');
-          isListView = !isListView;
-        
-          grid.classList.toggle('list-view', isListView);
-        
-          document.getElementById('toggleView').textContent = isListView ? '📃 List View' : '🔳 Grid View';
-        
-          // Re-render to reset hover-only tooltips (if needed)
-          updateGrid();
-        });
-
+  
       document.addEventListener('click', function () {
         if (window.matchMedia('(hover: none)').matches) {
           document.querySelectorAll('.card').forEach(c => c.classList.remove('show-tooltip'));
         }
       });
     }
-
+  
     function updateGrid() {
       const type = document.getElementById('filterType').value;
       const nameSearch = document.getElementById('filterName').value.toLowerCase();
       const container = document.getElementById('weaponGrid');
-
+  
       let filtered = allWeapons.filter(w => {
         return (!type || w.type === type) &&
                (!nameSearch || w.name.toLowerCase().includes(nameSearch));
       });
-
+  
       filtered.sort((a, b) => a.name.localeCompare(b.name));
-
+  
       container.innerHTML = filtered.length
         ? filtered.map((w, i) => renderWeaponCard(w, i)).join('')
         : '<p>No weapons match the selected filters.</p>';
-
+  
+      // Apply current view mode
+      if (isListView) {
+        container.classList.add('list-view');
+        document.getElementById('toggleView').textContent = '📃 List View';
+      } else {
+        container.classList.remove('list-view');
+        document.getElementById('toggleView').textContent = '🔳 Grid View';
+      }
+  
       enableTooltipClicks();
     }
-
+  
+    document.getElementById('toggleView').addEventListener('click', () => {
+      isListView = !isListView;
+      updateGrid();
+    });
+  
     fetch('https://neptuneg1.github.io/freefire-caster/weapon.json')
       .then(res => res.json())
       .then(data => {
