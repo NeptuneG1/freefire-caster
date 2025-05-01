@@ -1,3 +1,5 @@
+make the tool tip here to be always in view too
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -41,6 +43,7 @@
       margin: auto;
     }
     .card {
+      position: relative;
       cursor: pointer;
       outline: none;
       display: flex;
@@ -55,10 +58,10 @@
       border: 2px solid #ffbd59;
     }
     .card img.active {
-      border-color: #00d2ff;
+      border-color: #00d2ff; /* Cyan for Active */
     }
     .card img.passive {
-      border-color: #ff59c7;
+      border-color: #ff59c7; /* Pink for Passive */
     }
     .char-name {
       margin-top: 6px;
@@ -68,29 +71,28 @@
       font-weight: bold;
       word-break: break-word;
     }
-
     .tooltip {
-      display: none;
-      position: fixed;
-      top: 50%;
+      position: absolute;
+      bottom: 50%;
       left: 50%;
-      transform: translate(-50%, -50%);
+      transform: translateX(-50%);
       background: #1c1c1c;
-      padding: 12px;
+      padding: 10px;
       border: 1px solid #ffbd59;
       border-radius: 6px;
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       color: #fff;
-      width: 260px;
+      width: 220px;
       word-break: break-word;
       white-space: normal;
-      z-index: 999;
-      box-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
+      opacity: 0;
       pointer-events: none;
+      z-index: 2;
+      transition: opacity 0.2s;
     }
-
-    .tooltip.active {
-      display: block;
+    .card:hover .tooltip,
+    .card.active .tooltip {
+      opacity: 1;
       pointer-events: auto;
     }
   </style>
@@ -106,72 +108,80 @@
   </div>
 
   <div style="text-align: center; margin-top: 20px;">
-    <a href="dashboard.html" style="display:inline-block;background:#ffbd59;color:#1c1c1c;padding:10px 20px;font-weight:bold;border-radius:6px;text-decoration:none;margin-right:10px;transition:background 0.2s;" onmouseover="this.style.background='#e0a84f'" onmouseout="this.style.background='#ffbd59'">← Back to Dashboard</a>
-    <a href="character-comparison.html" style="display:inline-block;background:#ffbd59;color:#1c1c1c;padding:10px 20px;font-weight:bold;border-radius:6px;text-decoration:none;transition:background 0.2s;" onmouseover="this.style.background='#e0a84f'" onmouseout="this.style.background='#ffbd59'">➤ Compare Characters</a>
+    <a href="dashboard.html" style="
+      display: inline-block;
+      background: #ffbd59;
+      color: #1c1c1c;
+      padding: 10px 20px;
+      font-weight: bold;
+      border-radius: 6px;
+      text-decoration: none;
+      margin-right: 10px;
+      transition: background 0.2s;
+    " onmouseover="this.style.background='#e0a84f'" onmouseout="this.style.background='#ffbd59'">
+      ← Back to Dashboard
+    </a>
+  
+    <a href="character-comparison.html" style="
+      display: inline-block;
+      background: #ffbd59;
+      color: #1c1c1c;
+      padding: 10px 20px;
+      font-weight: bold;
+      border-radius: 6px;
+      text-decoration: none;
+      transition: background 0.2s;
+    " onmouseover="this.style.background='#e0a84f'" onmouseout="this.style.background='#ffbd59'">
+      ➤ Compare Characters
+    </a>
   </div>
 
   <div class="grid" id="characterGrid">
     <p>Loading characters...</p>
   </div>
 
-  <div id="tooltip" class="tooltip"></div>
-
   <script>
-    const tooltip = document.getElementById('tooltip');
-
-    function isTouchDevice() {
-      return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    }
-
-    function showTooltip(content) {
-      tooltip.innerHTML = content;
-      tooltip.classList.add('active');
-    }
-
-    function hideTooltip() {
-      tooltip.classList.remove('active');
-    }
-
     fetch('https://neptuneg1.github.io/freefire-caster/character.json')
       .then(res => res.json())
       .then(characters => {
         const container = document.getElementById('characterGrid');
         container.innerHTML = characters.map((c, i) => `
-          <div class="card"
-            onmouseenter="if(!isTouchDevice()) handleHover('${encodeURIComponent(JSON.stringify(c))}')"
-            onmouseleave="if(!isTouchDevice()) hideTooltip()"
-            onclick="if(isTouchDevice()) handleClick('${encodeURIComponent(JSON.stringify(c))}')"
-          >
+          <div class="card" tabindex="0" onclick="toggleTooltip(event, ${i})">
             <img src="${c.image_url}" alt="${c.name}" class="${c.skill_type === 'Passive' ? 'passive' : 'active'}" />
             <div class="char-name">${c.name}</div>
+            <div class="tooltip" id="tooltip-${i}">
+              <strong>${c.name}</strong><br>
+              <em>${c.skill_type} Skill:</em> ${c.skill}<br>
+              ${c.description}<br>
+              <strong>Role:</strong> ${c.role || 'N/A'}
+            </div>
           </div>
         `).join('');
+      })
+      .catch(() => {
+        document.getElementById('characterGrid').innerHTML = '<p>Error loading character data.</p>';
       });
 
-    function handleHover(data) {
-      const c = JSON.parse(decodeURIComponent(data));
-      const tooltipContent = `
-        <strong>${c.name}</strong><br>
-        <em>${c.skill_type} Skill:</em> ${c.skill}<br>
-        ${c.description}<br>
-        <strong>Role:</strong> ${c.role || 'N/A'}
-      `;
-      showTooltip(tooltipContent);
+    function isTouchDevice() {
+      return 'ontouchstart' in window || navigator.maxTouchPoints;
     }
 
-    function handleClick(data) {
-      const c = JSON.parse(decodeURIComponent(data));
-      const tooltipContent = `
-        <strong>${c.name}</strong><br>
-        <em>${c.skill_type} Skill:</em> ${c.skill}<br>
-        ${c.description}<br>
-        <strong>Role:</strong> ${c.role || 'N/A'}
-      `;
-      showTooltip(tooltipContent);
+    function toggleTooltip(event, index) {
+      if (!isTouchDevice()) return;
+
+      const cards = document.querySelectorAll('.card');
+      cards.forEach((card, i) => {
+        if (i === index) {
+          card.classList.toggle('active');
+        } else {
+          card.classList.remove('active');
+        }
+      });
+      event.stopPropagation();
     }
 
     document.body.addEventListener('click', () => {
-      hideTooltip();
+      document.querySelectorAll('.card').forEach(card => card.classList.remove('active'));
     });
   </script>
 </body>
