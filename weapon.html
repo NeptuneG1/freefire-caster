@@ -68,14 +68,10 @@
       color: #ffbd59;
       margin: 6px 0 0 0;
     }
-
     .card .tooltip {
       display: none;
-      position: absolute;
-      z-index: 10;
-      bottom: 110%;
-      left: 50%;
-      transform: translateX(-50%);
+      position: fixed;
+      z-index: 1000;
       background: #222;
       padding: 10px;
       border-radius: 6px;
@@ -87,21 +83,16 @@
       box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
       pointer-events: none;
     }
-
-    /* Desktop hover */
     @media (hover: hover) {
       .card:hover .tooltip {
         display: block;
         pointer-events: auto;
       }
     }
-
-    /* Mobile click */
     .card.show-tooltip .tooltip {
       display: block;
       pointer-events: auto;
     }
-
     .back-button {
       text-align: center;
       margin: 20px;
@@ -173,18 +164,31 @@
     }
 
     function enableTooltipClicks() {
-      // Remove previous listeners to avoid duplicates
-      document.querySelectorAll('.card').forEach(card => {
-        card.replaceWith(card.cloneNode(true));
-      });
-
       document.querySelectorAll('.card').forEach(card => {
         card.addEventListener('click', function (e) {
           if (window.matchMedia('(hover: none)').matches) {
             e.stopPropagation();
             const alreadyOpen = card.classList.contains('show-tooltip');
             document.querySelectorAll('.card').forEach(c => c.classList.remove('show-tooltip'));
-            if (!alreadyOpen) card.classList.add('show-tooltip');
+
+            if (!alreadyOpen) {
+              card.classList.add('show-tooltip');
+
+              const tooltip = card.querySelector('.tooltip');
+              tooltip.style.position = 'fixed';
+
+              const rect = card.getBoundingClientRect();
+              const scrollY = window.scrollY || window.pageYOffset;
+
+              let top = rect.top + scrollY - tooltip.offsetHeight - 10;
+              let left = rect.left + (rect.width / 2) - (tooltip.offsetWidth / 2);
+
+              top = Math.max(10, Math.min(top, window.innerHeight - tooltip.offsetHeight - 10));
+              left = Math.max(10, Math.min(left, window.innerWidth - tooltip.offsetWidth - 10));
+
+              tooltip.style.top = `${top}px`;
+              tooltip.style.left = `${left}px`;
+            }
           }
         });
       });
@@ -212,7 +216,7 @@
         ? filtered.map((w, i) => renderWeaponCard(w, i)).join('')
         : '<p>No weapons match the selected filters.</p>';
 
-      enableTooltipClicks(); // hook up click tooltips
+      enableTooltipClicks();
     }
 
     fetch('https://neptuneg1.github.io/freefire-caster/weapon.json')
