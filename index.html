@@ -143,15 +143,21 @@
     const password = document.getElementById("password").value.trim();
     const errorEl = document.getElementById("error");
   
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    console.log("Attempting login with:", email);
   
-    console.log("Login response:", data, error); // Add this
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      console.log("Login result:", data, error);
   
-    if (error) {
-      errorEl.textContent = "Authentication failed: " + error.message;
-    } else {
-      errorEl.textContent = "";
-      window.location.replace("dashboard.html"); // <— check this path is valid
+      if (error) {
+        errorEl.textContent = "Authentication failed: " + error.message;
+      } else {
+        errorEl.textContent = "";
+        window.location.href = "dashboard.html"; // simpler fallback
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      errorEl.textContent = "Something went wrong.";
     }
   });
 
