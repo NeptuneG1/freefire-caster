@@ -1,9 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Pet Gallery</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const client = supabase.createClient(
+      'https://gkugecflfddkpitlrmws.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
+    );
+
+    client.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        window.location.href = "index.html";
+      } else {
+        const userInfo = document.getElementById("user-info");
+        if (userInfo && session.user?.email) {
+          userInfo.textContent = "Logged in as: " + session.user.email;
+        }
+      }
+    });
+
+    function logout() {
+      client.auth.signOut().then(() => {
+        window.location.href = "index.html";
+      });
+    }
+  </script>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto&display=swap" rel="stylesheet">
   <style>
     body {
@@ -23,6 +47,12 @@
       color: #ffbd59;
       margin: 0;
       font-size: 2rem;
+    }
+    #user-info {
+      font-size: 0.9rem;
+      text-align: center;
+      color: #ccc;
+      margin-top: 6px;
     }
     .filter-bar {
       display: flex;
@@ -82,12 +112,38 @@
       font-size: 0.85rem;
       text-decoration: underline;
     }
+    .nav-buttons {
+      text-align: center;
+      margin-top: 20px;
+    }
+    .nav-buttons a,
+    .logout-btn {
+      display: inline-block;
+      background: #ffbd59;
+      color: #1c1c1c;
+      padding: 10px 20px;
+      font-weight: bold;
+      border-radius: 6px;
+      text-decoration: none;
+      margin: 0 10px;
+      transition: background 0.2s;
+    }
+    .nav-buttons a:hover,
+    .logout-btn:hover {
+      background: #e0a84f;
+    }
+    .logout-btn {
+      cursor: pointer;
+      border: none;
+    }
   </style>
 </head>
 <body>
   <header>
     <h1>Pet Gallery</h1>
+    <p id="user-info">Checking login...</p>
   </header>
+
   <div class="filter-bar">
     <label>Role:
       <select id="filterRole">
@@ -102,20 +158,12 @@
       <input type="text" id="filterName" placeholder="Search by name" />
     </label>
   </div>
-  <div style="text-align: center; margin-top: 20px;">
-      <a href="dashboard.html" style="
-        display: inline-block;
-        background: #ffbd59;
-        color: #1c1c1c;
-        padding: 10px 20px;
-        font-weight: bold;
-        border-radius: 6px;
-        text-decoration: none;
-        transition: background 0.2s;
-      " onmouseover="this.style.background='#e0a84f'" onmouseout="this.style.background='#ffbd59'">
-        ← Back to Dashboard
-      </a>
+
+  <div class="nav-buttons">
+    <a href="dashboard.html">← Back to Dashboard</a>
+    <button class="logout-btn" onclick="logout()">Logout</button>
   </div>
+
   <div class="grid" id="petGrid">
     <p>Loading pets...</p>
   </div>
