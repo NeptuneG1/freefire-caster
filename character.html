@@ -56,10 +56,10 @@
       border: 2px solid #ffbd59;
     }
     .card img.active {
-      border-color: #00d2ff; /* Cyan for Active */
+      border-color: #00d2ff;
     }
     .card img.passive {
-      border-color: #ff59c7; /* Pink for Passive */
+      border-color: #ff59c7;
     }
     .char-name {
       margin-top: 6px;
@@ -70,10 +70,8 @@
       word-break: break-word;
     }
     .tooltip {
-      position: absolute;
-      bottom: 50%;
-      left: 50%;
-      transform: translateX(-50%);
+      display: none;
+      position: fixed;
       background: #1c1c1c;
       padding: 10px;
       border: 1px solid #ffbd59;
@@ -83,15 +81,11 @@
       width: 220px;
       word-break: break-word;
       white-space: normal;
-      opacity: 0;
-      pointer-events: none;
-      z-index: 2;
-      transition: opacity 0.2s;
+      z-index: 999;
+      box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
     }
-    .card:hover .tooltip,
-    .card.active .tooltip {
-      opacity: 1;
-      pointer-events: auto;
+    .tooltip.active {
+      display: block;
     }
   </style>
 </head>
@@ -106,32 +100,8 @@
   </div>
 
   <div style="text-align: center; margin-top: 20px;">
-    <a href="dashboard.html" style="
-      display: inline-block;
-      background: #ffbd59;
-      color: #1c1c1c;
-      padding: 10px 20px;
-      font-weight: bold;
-      border-radius: 6px;
-      text-decoration: none;
-      margin-right: 10px;
-      transition: background 0.2s;
-    " onmouseover="this.style.background='#e0a84f'" onmouseout="this.style.background='#ffbd59'">
-      ← Back to Dashboard
-    </a>
-  
-    <a href="character-comparison.html" style="
-      display: inline-block;
-      background: #ffbd59;
-      color: #1c1c1c;
-      padding: 10px 20px;
-      font-weight: bold;
-      border-radius: 6px;
-      text-decoration: none;
-      transition: background 0.2s;
-    " onmouseover="this.style.background='#e0a84f'" onmouseout="this.style.background='#ffbd59'">
-      ➤ Compare Characters
-    </a>
+    <a href="dashboard.html" style="display:inline-block;background:#ffbd59;color:#1c1c1c;padding:10px 20px;font-weight:bold;border-radius:6px;text-decoration:none;margin-right:10px;transition:background 0.2s;" onmouseover="this.style.background='#e0a84f'" onmouseout="this.style.background='#ffbd59'">← Back to Dashboard</a>
+    <a href="character-comparison.html" style="display:inline-block;background:#ffbd59;color:#1c1c1c;padding:10px 20px;font-weight:bold;border-radius:6px;text-decoration:none;transition:background 0.2s;" onmouseover="this.style.background='#e0a84f'" onmouseout="this.style.background='#ffbd59'">➤ Compare Characters</a>
   </div>
 
   <div class="grid" id="characterGrid">
@@ -139,48 +109,66 @@
   </div>
 
   <script>
+    function isTouchDevice() {
+      return 'ontouchstart' in window || navigator.maxTouchPoints;
+    }
+
+    let tooltipElement;
+
+    function toggleTooltip(event, index, character) {
+      if (!isTouchDevice()) return;
+
+      event.stopPropagation();
+
+      if (!tooltipElement) {
+        tooltipElement = document.createElement('div');
+        tooltipElement.className = 'tooltip';
+        document.body.appendChild(tooltipElement);
+      }
+
+      const alreadyVisible = tooltipElement.classList.contains('active');
+
+      tooltipElement.classList.remove('active');
+      tooltipElement.innerHTML = `
+        <strong>${character.name}</strong><br>
+        <em>${character.skill_type} Skill:</em> ${character.skill}<br>
+        ${character.description}<br>
+        <strong>Role:</strong> ${character.role || 'N/A'}
+      `;
+
+      if (!alreadyVisible) {
+        const rect = event.currentTarget.getBoundingClientRect();
+        let top = rect.top + window.scrollY - tooltipElement.offsetHeight - 10;
+        let left = rect.left + (rect.width / 2) - (tooltipElement.offsetWidth / 2);
+
+        // Clamp position
+        tooltipElement.style.top = `${Math.max(10, Math.min(top, window.innerHeight - tooltipElement.offsetHeight - 10))}px`;
+        tooltipElement.style.left = `${Math.max(10, Math.min(left, window.innerWidth - tooltipElement.offsetWidth - 10))}px`;
+
+        tooltipElement.classList.add('active');
+      } else {
+        tooltipElement.classList.remove('active');
+      }
+    }
+
+    document.body.addEventListener('click', () => {
+      if (tooltipElement) tooltipElement.classList.remove('active');
+    });
+
     fetch('https://neptuneg1.github.io/freefire-caster/character.json')
       .then(res => res.json())
       .then(characters => {
         const container = document.getElementById('characterGrid');
         container.innerHTML = characters.map((c, i) => `
-          <div class="card" tabindex="0" onclick="toggleTooltip(event, ${i})">
+          <div class="card" tabindex="0" onclick="toggleTooltip(event, ${i}, ${JSON.stringify(c).replace(/"/g, '&quot;')})">
             <img src="${c.image_url}" alt="${c.name}" class="${c.skill_type === 'Passive' ? 'passive' : 'active'}" />
             <div class="char-name">${c.name}</div>
-            <div class="tooltip" id="tooltip-${i}">
-              <strong>${c.name}</strong><br>
-              <em>${c.skill_type} Skill:</em> ${c.skill}<br>
-              ${c.description}<br>
-              <strong>Role:</strong> ${c.role || 'N/A'}
-            </div>
           </div>
         `).join('');
       })
       .catch(() => {
         document.getElementById('characterGrid').innerHTML = '<p>Error loading character data.</p>';
       });
-
-    function isTouchDevice() {
-      return 'ontouchstart' in window || navigator.maxTouchPoints;
-    }
-
-    function toggleTooltip(event, index) {
-      if (!isTouchDevice()) return;
-
-      const cards = document.querySelectorAll('.card');
-      cards.forEach((card, i) => {
-        if (i === index) {
-          card.classList.toggle('active');
-        } else {
-          card.classList.remove('active');
-        }
-      });
-      event.stopPropagation();
-    }
-
-    document.body.addEventListener('click', () => {
-      document.querySelectorAll('.card').forEach(card => card.classList.remove('active'));
-    });
   </script>
 </body>
 </html>
