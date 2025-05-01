@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Login - Free Fire Caster</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - Free Fire Caster</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto&display=swap" rel="stylesheet">
   <style>
@@ -61,7 +61,22 @@
       color: #aaa;
     }
 
-    button {
+    .password-wrapper {
+      position: relative;
+    }
+
+    .toggle-password {
+      position: absolute;
+      right: 10px;
+      top: 14px;
+      background: none;
+      border: none;
+      color: #ffbd59;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    button[type="submit"] {
       width: 100%;
       padding: 12px;
       margin-top: 15px;
@@ -75,7 +90,7 @@
       transition: background 0.3s;
     }
 
-    button:hover {
+    button[type="submit"]:hover {
       background-color: #ffcf7f;
     }
 
@@ -102,13 +117,18 @@
   <form id="login-form">
     <h2>Login</h2>
     <input type="email" id="email" placeholder="Email" required />
-    <input type="password" id="password" placeholder="Password" required />
+    
+    <div class="password-wrapper">
+      <input type="password" id="password" placeholder="Password" required />
+      <button type="button" class="toggle-password" onclick="togglePassword()">Show</button>
+    </div>
+    
     <button type="submit">Login</button>
     <p id="error"></p>
   </form>
 
   <footer>
-    Free Fire Caster © 2025 — Neptune Version One
+    Free Fire Caster © 2025 — Powered by Supabase
   </footer>
 
   <script>
@@ -121,15 +141,29 @@
       e.preventDefault();
       const email = document.getElementById("email").value.trim();
       const password = document.getElementById("password").value.trim();
+      const errorEl = document.getElementById("error");
 
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
-        document.getElementById("error").textContent = error.message;
+        errorEl.textContent = "Authentication failed: " + error.message;
       } else {
+        errorEl.textContent = "";
         window.location.href = "index.html";
       }
     });
+
+    function togglePassword() {
+      const passwordInput = document.getElementById("password");
+      const toggleBtn = document.querySelector(".toggle-password");
+      if (passwordInput.type === "password") {
+        passwordInput.type = "text";
+        toggleBtn.textContent = "Hide";
+      } else {
+        passwordInput.type = "password";
+        toggleBtn.textContent = "Show";
+      }
+    }
   </script>
 </body>
 </html>
