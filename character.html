@@ -72,17 +72,20 @@
     .tooltip {
       display: none;
       position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
       background: #1c1c1c;
-      padding: 10px;
+      padding: 12px;
       border: 1px solid #ffbd59;
       border-radius: 6px;
-      font-size: 0.75rem;
+      font-size: 0.8rem;
       color: #fff;
-      width: 220px;
+      width: 260px;
       word-break: break-word;
       white-space: normal;
       z-index: 999;
-      box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
       pointer-events: none;
     }
 
@@ -120,27 +123,9 @@
       return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     }
 
-    function showTooltip(content, x, yFromBottom, yFromTop) {
+    function showTooltip(content) {
       tooltip.innerHTML = content;
-
-      tooltip.style.left = `-9999px`;
-      tooltip.style.top = `-9999px`;
       tooltip.classList.add('active');
-
-      const tooltipWidth = tooltip.offsetWidth;
-      const tooltipHeight = tooltip.offsetHeight;
-
-      // Try to show below, else above
-      let top = yFromBottom + 10;
-      if (top + tooltipHeight > window.innerHeight - 10) {
-        top = yFromTop - tooltipHeight - 10;
-      }
-
-      top = Math.max(10, top);
-      const left = Math.max(10, Math.min(x - tooltipWidth / 2, window.innerWidth - tooltipWidth - 10));
-
-      tooltip.style.left = `${left}px`;
-      tooltip.style.top = `${top}px`;
     }
 
     function hideTooltip() {
@@ -153,10 +138,9 @@
         const container = document.getElementById('characterGrid');
         container.innerHTML = characters.map((c, i) => `
           <div class="card"
-            onmouseenter="if(!isTouchDevice()) handleHover(event)"
+            onmouseenter="if(!isTouchDevice()) handleHover('${encodeURIComponent(JSON.stringify(c))}')"
             onmouseleave="if(!isTouchDevice()) hideTooltip()"
-            onclick="if(isTouchDevice()) handleClick(event)"
-            data-character='${JSON.stringify(c).replace(/'/g, "&apos;")}'
+            onclick="if(isTouchDevice()) handleClick('${encodeURIComponent(JSON.stringify(c))}')"
           >
             <img src="${c.image_url}" alt="${c.name}" class="${c.skill_type === 'Passive' ? 'passive' : 'active'}" />
             <div class="char-name">${c.name}</div>
@@ -164,47 +148,26 @@
         `).join('');
       });
 
-    function handleHover(event) {
-      const card = event.currentTarget;
-      const c = JSON.parse(card.getAttribute('data-character').replace(/&apos;/g, "'"));
-      const rect = card.getBoundingClientRect();
-      const scrollY = window.scrollY || window.pageYOffset;
-
+    function handleHover(data) {
+      const c = JSON.parse(decodeURIComponent(data));
       const tooltipContent = `
         <strong>${c.name}</strong><br>
         <em>${c.skill_type} Skill:</em> ${c.skill}<br>
         ${c.description}<br>
         <strong>Role:</strong> ${c.role || 'N/A'}
       `;
-
-      showTooltip(
-        tooltipContent,
-        rect.left + rect.width / 2,
-        rect.bottom + scrollY,
-        rect.top + scrollY
-      );
+      showTooltip(tooltipContent);
     }
 
-    function handleClick(event) {
-      event.stopPropagation();
-      const card = event.currentTarget;
-      const c = JSON.parse(card.getAttribute('data-character').replace(/&apos;/g, "'"));
-      const rect = card.getBoundingClientRect();
-      const scrollY = window.scrollY || window.pageYOffset;
-
+    function handleClick(data) {
+      const c = JSON.parse(decodeURIComponent(data));
       const tooltipContent = `
         <strong>${c.name}</strong><br>
         <em>${c.skill_type} Skill:</em> ${c.skill}<br>
         ${c.description}<br>
         <strong>Role:</strong> ${c.role || 'N/A'}
       `;
-
-      showTooltip(
-        tooltipContent,
-        rect.left + rect.width / 2,
-        rect.bottom + scrollY,
-        rect.top + scrollY
-      );
+      showTooltip(tooltipContent);
     }
 
     document.body.addEventListener('click', () => {
