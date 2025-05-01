@@ -120,10 +120,9 @@
       return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     }
 
-    function showTooltip(content, x, y) {
+    function showTooltip(content, x, yFromBottom, yFromTop) {
       tooltip.innerHTML = content;
 
-      // Temporarily position offscreen to measure size
       tooltip.style.left = `-9999px`;
       tooltip.style.top = `-9999px`;
       tooltip.classList.add('active');
@@ -131,13 +130,14 @@
       const tooltipWidth = tooltip.offsetWidth;
       const tooltipHeight = tooltip.offsetHeight;
 
-      let top = y + 10; // default: below
+      // Try to show below, else above
+      let top = yFromBottom + 10;
       if (top + tooltipHeight > window.innerHeight - 10) {
-        top = y - tooltipHeight - 10; // flip above if needed
+        top = yFromTop - tooltipHeight - 10;
       }
 
-      const left = Math.max(10, Math.min(x - tooltipWidth / 2, window.innerWidth - tooltipWidth - 10));
       top = Math.max(10, top);
+      const left = Math.max(10, Math.min(x - tooltipWidth / 2, window.innerWidth - tooltipWidth - 10));
 
       tooltip.style.left = `${left}px`;
       tooltip.style.top = `${top}px`;
@@ -153,9 +153,9 @@
         const container = document.getElementById('characterGrid');
         container.innerHTML = characters.map((c, i) => `
           <div class="card"
-            onmouseenter="if(!isTouchDevice()) handleHover(event, ${i})"
+            onmouseenter="if(!isTouchDevice()) handleHover(event)"
             onmouseleave="if(!isTouchDevice()) hideTooltip()"
-            onclick="if(isTouchDevice()) handleClick(event, ${i})"
+            onclick="if(isTouchDevice()) handleClick(event)"
             data-character='${JSON.stringify(c).replace(/'/g, "&apos;")}'
           >
             <img src="${c.image_url}" alt="${c.name}" class="${c.skill_type === 'Passive' ? 'passive' : 'active'}" />
@@ -164,7 +164,7 @@
         `).join('');
       });
 
-    function handleHover(event, index) {
+    function handleHover(event) {
       const card = event.currentTarget;
       const c = JSON.parse(card.getAttribute('data-character').replace(/&apos;/g, "'"));
       const rect = card.getBoundingClientRect();
@@ -177,10 +177,15 @@
         <strong>Role:</strong> ${c.role || 'N/A'}
       `;
 
-      showTooltip(tooltipContent, rect.left + rect.width / 2, rect.top + scrollY + rect.height);
+      showTooltip(
+        tooltipContent,
+        rect.left + rect.width / 2,
+        rect.bottom + scrollY,
+        rect.top + scrollY
+      );
     }
 
-    function handleClick(event, index) {
+    function handleClick(event) {
       event.stopPropagation();
       const card = event.currentTarget;
       const c = JSON.parse(card.getAttribute('data-character').replace(/&apos;/g, "'"));
@@ -194,7 +199,12 @@
         <strong>Role:</strong> ${c.role || 'N/A'}
       `;
 
-      showTooltip(tooltipContent, rect.left + rect.width / 2, rect.top + scrollY + rect.height);
+      showTooltip(
+        tooltipContent,
+        rect.left + rect.width / 2,
+        rect.bottom + scrollY,
+        rect.top + scrollY
+      );
     }
 
     document.body.addEventListener('click', () => {
