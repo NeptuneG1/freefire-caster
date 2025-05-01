@@ -122,9 +122,25 @@
 
     function showTooltip(content, x, y) {
       tooltip.innerHTML = content;
-      tooltip.style.left = `${Math.max(10, Math.min(x - tooltip.offsetWidth / 2, window.innerWidth - tooltip.offsetWidth - 10))}px`;
-      tooltip.style.top = `${Math.max(10, y - tooltip.offsetHeight - 10)}px`;
+
+      // Temporarily position offscreen to measure size
+      tooltip.style.left = `-9999px`;
+      tooltip.style.top = `-9999px`;
       tooltip.classList.add('active');
+
+      const tooltipWidth = tooltip.offsetWidth;
+      const tooltipHeight = tooltip.offsetHeight;
+
+      let top = y + 10; // default: below
+      if (top + tooltipHeight > window.innerHeight - 10) {
+        top = y - tooltipHeight - 10; // flip above if needed
+      }
+
+      const left = Math.max(10, Math.min(x - tooltipWidth / 2, window.innerWidth - tooltipWidth - 10));
+      top = Math.max(10, top);
+
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${top}px`;
     }
 
     function hideTooltip() {
@@ -153,13 +169,15 @@
       const c = JSON.parse(card.getAttribute('data-character').replace(/&apos;/g, "'"));
       const rect = card.getBoundingClientRect();
       const scrollY = window.scrollY || window.pageYOffset;
+
       const tooltipContent = `
         <strong>${c.name}</strong><br>
         <em>${c.skill_type} Skill:</em> ${c.skill}<br>
         ${c.description}<br>
         <strong>Role:</strong> ${c.role || 'N/A'}
       `;
-      showTooltip(tooltipContent, rect.left + rect.width / 2, rect.top + scrollY);
+
+      showTooltip(tooltipContent, rect.left + rect.width / 2, rect.top + scrollY + rect.height);
     }
 
     function handleClick(event, index) {
@@ -168,13 +186,15 @@
       const c = JSON.parse(card.getAttribute('data-character').replace(/&apos;/g, "'"));
       const rect = card.getBoundingClientRect();
       const scrollY = window.scrollY || window.pageYOffset;
+
       const tooltipContent = `
         <strong>${c.name}</strong><br>
         <em>${c.skill_type} Skill:</em> ${c.skill}<br>
         ${c.description}<br>
         <strong>Role:</strong> ${c.role || 'N/A'}
       `;
-      showTooltip(tooltipContent, rect.left + rect.width / 2, rect.top + scrollY);
+
+      showTooltip(tooltipContent, rect.left + rect.width / 2, rect.top + scrollY + rect.height);
     }
 
     document.body.addEventListener('click', () => {
