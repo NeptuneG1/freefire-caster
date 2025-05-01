@@ -179,6 +179,10 @@
 
     .role-group {
       margin-bottom: 30px;
+      padding: 10px 15px;
+      background: #1a1a1a;
+      border-radius: 8px;
+      border: 1px solid #333;
     }
 
     .role-title {
@@ -189,9 +193,10 @@
     }
 
     .grid.compact {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
-      gap: 6px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-start;
     }
 
     .grid.compact .card {
@@ -210,6 +215,7 @@
       object-fit: cover;
       border: 2px solid transparent;
       border-radius: 6px;
+      transition: transform 0.2s ease;
     }
 
     .grid.compact .card img.active {
@@ -224,6 +230,11 @@
     .grid.compact .tooltip {
       display: none;
     }
+    
+    .grid.compact .card img:hover {
+      transform: scale(1.05);
+    }
+    
   </style>
 </head>
 <body>
@@ -249,7 +260,7 @@
   </div>
 
   <!-- Compact overview section -->
-  <h2 style="text-align:center; margin-top: 40px; color:#ffbd59;">Quick Overview by Role</h2>
+  <h2 style="text-align:center; margin-top: 40px; color:#ffbd59;">Overview by Role</h2>
   <div id="compactByRole" class="compact-role-container"></div>
 
   <script>
@@ -272,17 +283,30 @@
         `).join('');
 
         // Grouped compact overview
-        const compactByRole = document.getElementById('compactByRole');
-        const roleGroups = {};
-        characters.forEach(c => {
-          const role = c.role || 'Other';
-          if (!roleGroups[role]) roleGroups[role] = [];
-          roleGroups[role].push(c);
-        });
-
-        compactByRole.innerHTML = Object.entries(roleGroups).map(([role, chars]) => `
+        // Bottom compact overview (grouped by role with icons)
+      const compactByRole = document.getElementById('compactByRole');
+      const roleGroups = {};
+      const roleIcons = {
+        Attack: "⚔️",
+        Support: "🛡️",
+        Info: "📡",
+        Heal: "💊",
+        Defense: "🛡️",
+        Scout: "👁️",
+        Other: "❓"
+      };
+      
+      characters.forEach(c => {
+        const role = c.role || 'Other';
+        if (!roleGroups[role]) roleGroups[role] = [];
+        roleGroups[role].push(c);
+      });
+      
+      compactByRole.innerHTML = Object.entries(roleGroups).map(([role, chars]) => {
+        const icon = roleIcons[role] || "🔸";
+        return `
           <div class="role-group">
-            <div class="role-title">${role}</div>
+            <div class="role-title">${icon} ${role}</div>
             <div class="grid compact">
               ${chars.map(c => `
                 <div class="card" tabindex="0">
@@ -291,7 +315,9 @@
               `).join('')}
             </div>
           </div>
-        `).join('');
+        `;
+      }).join('');
+
       })
       .catch(() => {
         document.getElementById('characterGrid').innerHTML = '<p>Error loading character data.</p>';
