@@ -12,26 +12,31 @@
       background: #0e0e0e;
       color: #f5f5f5;
     }
+
     header {
       background: #1f1f1f;
       padding: 20px;
       text-align: center;
       border-bottom: 3px solid #ffbd59;
     }
+
     header h1 {
       font-family: 'Orbitron', sans-serif;
       color: #ffbd59;
       margin: 0;
       font-size: 2rem;
     }
+
     .legend {
       text-align: center;
       margin-top: 10px;
     }
+
     .legend span {
       font-weight: bold;
       margin: 0 10px;
     }
+
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
@@ -40,6 +45,7 @@
       max-width: 1300px;
       margin: auto;
     }
+
     .card {
       position: relative;
       cursor: pointer;
@@ -48,6 +54,7 @@
       flex-direction: column;
       align-items: center;
     }
+
     .card img {
       width: 80%;
       aspect-ratio: 3/4;
@@ -55,12 +62,15 @@
       border-radius: 8px;
       border: 2px solid #ffbd59;
     }
+
     .card img.active {
-      border-color: #00d2ff; /* Cyan for Active */
+      border-color: #00d2ff;
     }
+
     .card img.passive {
-      border-color: #ff59c7; /* Pink for Passive */
+      border-color: #ff59c7;
     }
+
     .char-name {
       margin-top: 6px;
       text-align: center;
@@ -69,6 +79,7 @@
       font-weight: bold;
       word-break: break-word;
     }
+
     .tooltip {
       display: none;
       position: fixed;
@@ -81,19 +92,24 @@
       width: 220px;
       word-break: break-word;
       white-space: normal;
-      z-index: 999;
+      z-index: 9999;
       box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
     }
+
     .tooltip.active {
       display: block;
     }
 
-    .card:hover .tooltip,
-    .card.active .tooltip {
-      opacity: 1;
-      pointer-events: auto;
+    /* Hover tooltip only on non-touch devices */
+    @media (hover: hover) {
+      .card:hover .tooltip {
+        display: block;
+        position: absolute;
+        bottom: 110%;
+        left: 50%;
+        transform: translateX(-50%);
+      }
     }
-    
   </style>
 </head>
 <body>
@@ -107,32 +123,8 @@
   </div>
 
   <div style="text-align: center; margin-top: 20px;">
-    <a href="dashboard.html" style="
-      display: inline-block;
-      background: #ffbd59;
-      color: #1c1c1c;
-      padding: 10px 20px;
-      font-weight: bold;
-      border-radius: 6px;
-      text-decoration: none;
-      margin-right: 10px;
-      transition: background 0.2s;
-    " onmouseover="this.style.background='#e0a84f'" onmouseout="this.style.background='#ffbd59'">
-      ← Back to Dashboard
-    </a>
-  
-    <a href="character-comparison.html" style="
-      display: inline-block;
-      background: #ffbd59;
-      color: #1c1c1c;
-      padding: 10px 20px;
-      font-weight: bold;
-      border-radius: 6px;
-      text-decoration: none;
-      transition: background 0.2s;
-    " onmouseover="this.style.background='#e0a84f'" onmouseout="this.style.background='#ffbd59'">
-      ➤ Compare Characters
-    </a>
+    <a href="dashboard.html" style="display:inline-block;background:#ffbd59;color:#1c1c1c;padding:10px 20px;font-weight:bold;border-radius:6px;text-decoration:none;margin-right:10px;transition:background 0.2s;" onmouseover="this.style.background='#e0a84f'" onmouseout="this.style.background='#ffbd59'">← Back to Dashboard</a>
+    <a href="character-comparison.html" style="display:inline-block;background:#ffbd59;color:#1c1c1c;padding:10px 20px;font-weight:bold;border-radius:6px;text-decoration:none;transition:background 0.2s;" onmouseover="this.style.background='#e0a84f'" onmouseout="this.style.background='#ffbd59'">➤ Compare Characters</a>
   </div>
 
   <div class="grid" id="characterGrid">
@@ -162,40 +154,39 @@
       });
 
     function toggleTooltip(event, index) {
-      if (!isTouchDevice()) return;
-    
       const cards = document.querySelectorAll('.card');
       cards.forEach((card, i) => {
         const tooltip = card.querySelector('.tooltip');
+
         if (i === index) {
           const isActive = card.classList.contains('active');
           card.classList.toggle('active');
-    
+
           if (!isActive) {
             tooltip.classList.add('active');
             tooltip.style.display = 'block';
-    
+
             requestAnimationFrame(() => {
               const rect = card.getBoundingClientRect();
               const tooltipRect = tooltip.getBoundingClientRect();
-    
-              let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+
+              let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
               let top = rect.bottom + 10;
-    
-              // Adjust if going off left edge
-              if (left < 10) left = 10 + 20;
-    
-              // Adjust if going off right edge
+
+              // Adjust if offscreen left
+              if (left < 10) left = 30;
+
+              // Adjust if offscreen right
               if (left + tooltipRect.width > window.innerWidth - 10) {
-                left = window.innerWidth - tooltipRect.width - 10 - 20;
+                left = window.innerWidth - tooltipRect.width - 30;
               }
-    
-              // Keep it within vertical space
+
+              // Flip above if no room below
               if (top + tooltipRect.height > window.innerHeight - 10) {
                 top = rect.top - tooltipRect.height - 10;
               }
-    
-              // Apply positions
+
+              tooltip.style.position = 'fixed';
               tooltip.style.left = `${left}px`;
               tooltip.style.top = `${Math.max(top, 10)}px`;
             });
@@ -212,13 +203,20 @@
           }
         }
       });
-    
+
       event.stopPropagation();
     }
 
-
+    // Close tooltip on tap anywhere
     document.body.addEventListener('click', () => {
-      document.querySelectorAll('.card').forEach(card => card.classList.remove('active'));
+      document.querySelectorAll('.card').forEach(card => {
+        card.classList.remove('active');
+        const t = card.querySelector('.tooltip');
+        if (t) {
+          t.classList.remove('active');
+          t.style.display = 'none';
+        }
+      });
     });
   </script>
 </body>
