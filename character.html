@@ -169,6 +169,83 @@
       cursor: pointer;
       border: none;
     }
+
+    /* Compact overview styles */
+    .compact-role-container {
+      max-width: 1300px;
+      margin: 0 auto 60px;
+      padding: 0 40px;
+    }
+
+    .role-group {
+      margin-bottom: 30px;
+      padding: 10px 15px;
+      background: #1a1a1a;
+      border-radius: 8px;
+      border: 1px solid #333;
+    }
+
+    .role-title {
+      color: #ffbd59;
+      font-weight: bold;
+      font-size: 1.1rem;
+      margin: 10px 0;
+    }
+
+    .grid.compact {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-start;
+    }
+
+    .grid.compact .card {
+      width: 70px;
+      height: 100px;
+      padding: 4px;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .grid.compact .card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border: 2px solid transparent;
+      border-radius: 6px;
+      transition: transform 0.2s ease;
+    }
+
+    .grid.compact .card img.active {
+      border-color: #00d2ff;
+    }
+
+    .grid.compact .card img.passive {
+      border-color: #ff59c7;
+    }
+
+    .grid.compact .char-name,
+    .grid.compact .tooltip {
+      display: none;
+    }
+
+    .compact-name {
+      text-align: center;
+      font-size: 0.7rem;
+      color: #ccc;
+      margin-top: 4px;
+      word-break: break-word;
+      line-height: 1.1;
+      max-width: 72px;
+    }
+
+    
+    .grid.compact .card img:hover {
+      transform: scale(1.05);
+    }
+    
   </style>
 </head>
 <body>
@@ -188,14 +265,20 @@
     <button class="logout-btn" onclick="logout()">Logout</button>
   </div>
 
+  <!-- Main full grid -->
   <div class="grid" id="characterGrid">
     <p>Loading characters...</p>
   </div>
+
+  <!-- Compact overview section -->
+  <h2 style="text-align:center; margin-top: 40px; color:#ffbd59;">Overview by Role</h2>
+  <div id="compactByRole" class="compact-role-container"></div>
 
   <script>
     fetch('https://neptuneg1.github.io/freefire-caster/character.json')
       .then(res => res.json())
       .then(characters => {
+        // Populate full character grid
         const container = document.getElementById('characterGrid');
         container.innerHTML = characters.map((c, i) => `
           <div class="card" tabindex="0" onclick="toggleTooltip(event, ${i})">
@@ -209,6 +292,44 @@
             </div>
           </div>
         `).join('');
+
+        // Grouped compact overview
+        // Bottom compact overview (grouped by role with icons)
+      const compactByRole = document.getElementById('compactByRole');
+      const roleGroups = {};
+      const roleIcons = {
+        Attack: "⚔️",
+        Support: "🛡️",
+        Info: "📡",
+        Heal: "💊",
+        Defense: "🛡️",
+        Scout: "👁️",
+        Other: "❓"
+      };
+      
+      characters.forEach(c => {
+        const role = c.role || 'Other';
+        if (!roleGroups[role]) roleGroups[role] = [];
+        roleGroups[role].push(c);
+      });
+      
+      compactByRole.innerHTML = Object.entries(roleGroups).map(([role, chars]) => {
+        const icon = roleIcons[role] || "🔸";
+        return `
+          <div class="role-group">
+            <div class="role-title">${icon} ${role}</div>
+            <div class="grid compact">
+              ${chars.map(c => `
+                <div class="card" tabindex="0">
+                  <img src="${c.image_url}" alt="${c.name}" class="${c.skill_type === 'Passive' ? 'passive' : 'active'}" />
+                    <div class="compact-name">${c.name}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+
       })
       .catch(() => {
         document.getElementById('characterGrid').innerHTML = '<p>Error loading character data.</p>';
