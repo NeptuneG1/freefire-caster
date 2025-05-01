@@ -100,6 +100,12 @@
       margin-top: 10px;
     }
 
+    #success {
+      color: #66ff88;
+      font-size: 0.9rem;
+      margin-top: 10px;
+    }
+
     footer {
       position: absolute;
       bottom: 20px;
@@ -117,14 +123,15 @@
   <form id="login-form">
     <h2>Login</h2>
     <input type="email" id="email" placeholder="Email" required />
-    
+
     <div class="password-wrapper">
       <input type="password" id="password" placeholder="Password" required />
       <button type="button" class="toggle-password" onclick="togglePassword()">Show</button>
     </div>
-    
+
     <button type="submit">Login</button>
     <p id="error"></p>
+    <p id="success"></p>
   </form>
 
   <footer>
@@ -138,28 +145,34 @@
     );
 
     document.getElementById("login-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value.trim();
-    const errorEl = document.getElementById("error");
-  
-    console.log("Attempting login with:", email);
-  
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      console.log("Login result:", data, error);
-  
-      if (error) {
-        errorEl.textContent = "Authentication failed: " + error.message;
-      } else {
-        errorEl.textContent = "";
-        window.location.href = "dashboard.html"; // simpler fallback
+      e.preventDefault();
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const errorEl = document.getElementById("error");
+      const successEl = document.getElementById("success");
+
+      console.log("Attempting login with:", email);
+
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        console.log("Login result:", data, error);
+
+        if (error) {
+          errorEl.textContent = "Authentication failed: " + error.message;
+          successEl.textContent = "";
+        } else {
+          errorEl.textContent = "";
+          successEl.textContent = "Welcome, " + data.user.email + "! Redirecting...";
+          setTimeout(() => {
+            window.location.href = "dashboard.html";
+          }, 1200);
+        }
+      } catch (err) {
+        console.error("Unexpected error:", err);
+        errorEl.textContent = "Something went wrong.";
+        successEl.textContent = "";
       }
-    } catch (err) {
-      console.error("Unexpected error:", err);
-      errorEl.textContent = "Something went wrong.";
-    }
-  });
+    });
 
     function togglePassword() {
       const passwordInput = document.getElementById("password");
