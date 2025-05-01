@@ -69,6 +69,7 @@
       font-weight: bold;
       word-break: break-word;
     }
+
     .tooltip {
       display: none;
       position: fixed;
@@ -86,6 +87,27 @@
     }
     .tooltip.active {
       display: block;
+    }
+
+    /* Hover support for non-touch devices */
+    @media (hover: hover) {
+      .card:hover .hover-tooltip {
+        display: block;
+        position: absolute;
+        bottom: 110%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1c1c1c;
+        padding: 10px;
+        border: 1px solid #ffbd59;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        color: #fff;
+        width: 220px;
+        word-break: break-word;
+        z-index: 10;
+        box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+      }
     }
   </style>
 </head>
@@ -110,7 +132,7 @@
 
   <script>
     function isTouchDevice() {
-      return 'ontouchstart' in window || navigator.maxTouchPoints;
+      return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     }
 
     let tooltipElement;
@@ -138,16 +160,18 @@
 
       if (!alreadyVisible) {
         const rect = event.currentTarget.getBoundingClientRect();
-        let top = rect.top + window.scrollY - tooltipElement.offsetHeight - 10;
+        const scrollY = window.scrollY || window.pageYOffset;
+
+        let top = rect.top + scrollY - tooltipElement.offsetHeight - 10;
         let left = rect.left + (rect.width / 2) - (tooltipElement.offsetWidth / 2);
 
-        // Clamp position
-        tooltipElement.style.top = `${Math.max(10, Math.min(top, window.innerHeight - tooltipElement.offsetHeight - 10))}px`;
-        tooltipElement.style.left = `${Math.max(10, Math.min(left, window.innerWidth - tooltipElement.offsetWidth - 10))}px`;
+        top = Math.max(10, Math.min(top, window.innerHeight - tooltipElement.offsetHeight - 10));
+        left = Math.max(10, Math.min(left, window.innerWidth - tooltipElement.offsetWidth - 10));
+
+        tooltipElement.style.top = `${top}px`;
+        tooltipElement.style.left = `${left}px`;
 
         tooltipElement.classList.add('active');
-      } else {
-        tooltipElement.classList.remove('active');
       }
     }
 
@@ -163,6 +187,12 @@
           <div class="card" tabindex="0" onclick="toggleTooltip(event, ${i}, ${JSON.stringify(c).replace(/"/g, '&quot;')})">
             <img src="${c.image_url}" alt="${c.name}" class="${c.skill_type === 'Passive' ? 'passive' : 'active'}" />
             <div class="char-name">${c.name}</div>
+            <div class="hover-tooltip">
+              <strong>${c.name}</strong><br>
+              <em>${c.skill_type} Skill:</em> ${c.skill}<br>
+              ${c.description}<br>
+              <strong>Role:</strong> ${c.role || 'N/A'}
+            </div>
           </div>
         `).join('');
       })
