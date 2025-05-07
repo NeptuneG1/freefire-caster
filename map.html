@@ -136,32 +136,32 @@
   </style>
 </head>
 <body>
-  <div id="main">
-    <div id="map-container">
-      <div id="map">
-        <canvas id="pathCanvas"></canvas>
-      </div>
-    </div>
-    <div id="sidebar">
-      <div class="icon-grid" id="teamIcons"></div>
-      <div id="controls">
-        <button id="draw-circle">Draw Circle</button>
-        <select id="map-select">
-          <option value="https://i.imgur.com/V6iUHaA.jpeg">Bermuda</option>
-          <option value="https://i.imgur.com/ieY0LHk.jpeg">Purgatory</option>
-          <option value="https://i.imgur.com/48O1Jf8.jpeg">Alpine</option>
-          <option value="https://i.imgur.com/4Yz12P9.jpeg">Kalahari</option>
-          <option value="https://i.imgur.com/0MZNMJZ.jpeg">NeXTerra</option>
-          <option value="https://i.imgur.com/IX1oY9Z.jpeg">Solara</option>
-        </select>
-        <button id="undo-btn">Undo Last Point</button>
-        <button id="reset-all-btn">Reset All</button>
-        <button id="export-btn">Export</button>
-        <button onclick="document.getElementById('import-file').click()">Import</button>
-        <input type="file" id="import-file" accept=".json" />
-      </div>
+<div id="main">
+  <div id="map-container">
+    <div id="map">
+      <canvas id="pathCanvas"></canvas>
     </div>
   </div>
+  <div id="sidebar">
+    <div class="icon-grid" id="teamIcons"></div>
+    <div id="controls">
+      <button id="draw-circle">Draw Circle</button>
+      <select id="map-select">
+        <option value="https://i.imgur.com/V6iUHaA.jpeg">Bermuda</option>
+        <option value="https://i.imgur.com/ieY0LHk.jpeg">Purgatory</option>
+        <option value="https://i.imgur.com/48O1Jf8.jpeg">Alpine</option>
+        <option value="https://i.imgur.com/4Yz12P9.jpeg">Kalahari</option>
+        <option value="https://i.imgur.com/0MZNMJZ.jpeg">NeXTerra</option>
+        <option value="https://i.imgur.com/IX1oY9Z.jpeg">Solara</option>
+      </select>
+      <button id="undo-btn">Undo Last Point</button>
+      <button id="reset-all-btn">Reset All</button>
+      <button id="export-btn">Export</button>
+      <button onclick="document.getElementById('import-file').click()">Import</button>
+      <input type="file" id="import-file" accept=".json" />
+    </div>
+  </div>
+</div>
 
 <script>
 const map = document.getElementById("map");
@@ -192,9 +192,9 @@ mapSelect.value = savedMap || mapSelect.value;
 mapSelect.addEventListener("change", function () {
   map.style.backgroundImage = `url('${this.value}')`;
   localStorage.setItem("selectedMap", this.value);
+  drawPaths();
 });
 
-// Create team icons
 const hashes = [
   "GZxPNXi", "yXDnWtr", "vjq0Mqn", "i0VtqZ9", "6pj4iPl", "6eZfM0T",
   "Ij8Dsbw", "3D3YNrl", "NnVZy68", "kTq43ai", "QetHG72", "cHJrJTZ",
@@ -214,7 +214,6 @@ document.getElementById("draw-circle").onclick = () => {
   document.getElementById("draw-circle").textContent = drawCircleMode ? "Circle Mode: ON" : "Draw Circle";
 };
 
-// Get coordinates from mouse or touch
 function getInputCoords(e) {
   const rect = map.getBoundingClientRect();
   if (e.touches) {
@@ -230,11 +229,8 @@ function getInputCoords(e) {
   }
 }
 
-// Main map interaction
 function handleMapPress(e) {
   const { x, y } = getInputCoords(e);
-  const iconSize = 30;
-
   if (drawCircleMode) {
     circles.push({ x, y, r: 50, color: "#ffffff" });
     drawPaths();
@@ -274,7 +270,7 @@ function handleMapPress(e) {
     div.appendChild(label);
     div.appendChild(reset);
     map.appendChild(div);
-    div.addEventListener("click", () => activeTeam = id);
+    div.onclick = () => activeTeam = id;
 
     teamPaths[id] = [{ x, y }];
     undoStacks[id] = [];
@@ -290,16 +286,10 @@ function handleMapPress(e) {
   }
 }
 
-// Register both mouse and touch
 map.addEventListener("click", handleMapPress);
 map.addEventListener("touchstart", e => {
-  if (e.touches.length === 1) {
-    handleMapPress(e);
-  }
+  if (e.touches.length === 1) handleMapPress(e);
 });
-
-let resizingCircle = null;
-let isDragging = false;
 
 function findResizableCircle({ x, y }) {
   for (let c of circles) {
@@ -319,6 +309,7 @@ function startResize(e) {
 
 function resizeMove(e) {
   if (!isDragging || !resizingCircle) return;
+  e.preventDefault();
   const { x, y } = getInputCoords(e);
   const dx = x - resizingCircle.x;
   const dy = y - resizingCircle.y;
@@ -331,13 +322,11 @@ function endResize() {
   isDragging = false;
 }
 
-// Bind both mouse and touch events for resizing
 map.addEventListener("mousedown", startResize);
 map.addEventListener("mousemove", resizeMove);
 map.addEventListener("mouseup", endResize);
-
 map.addEventListener("touchstart", startResize);
-map.addEventListener("touchmove", resizeMove);
+map.addEventListener("touchmove", resizeMove, { passive: false });
 map.addEventListener("touchend", endResize);
 
 document.getElementById("undo-btn").addEventListener("click", () => {
@@ -487,9 +476,14 @@ function drawPaths() {
   }
 }
 
-window.addEventListener("resize", drawPaths);
-canvas.width = map.clientWidth;
-canvas.height = map.clientHeight;
+function resizeCanvas() {
+  canvas.width = map.clientWidth;
+  canvas.height = map.clientHeight;
+  drawPaths();
+}
+
+window.addEventListener("resize", resizeCanvas);
+window.addEventListener("load", resizeCanvas);
 </script>
 </body>
 </html>
