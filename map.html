@@ -19,19 +19,18 @@
       display: flex;
       height: 100vh;
       width: 100vw;
-      overflow: hidden;
     }
-    
+
     #map-container {
       flex: 1;
       position: relative;
       background: black;
     }
-    
+
     #map {
       width: 100%;
       height: 100%;
-      background-size: auto 100%;  /* full height */
+      background-size: auto 100%;
       background-position: center;
       background-repeat: no-repeat;
       position: relative;
@@ -48,14 +47,14 @@
 
     .unit {
       position: absolute;
-      width: 60px;
-      height: 60px;
+      width: 30px;
+      height: 30px;
       cursor: pointer;
     }
 
     .unit img {
-      width: 60px;
-      height: 60px;
+      width: 30px;
+      height: 30px;
     }
 
     .unit-label {
@@ -197,7 +196,6 @@
   let selectedIcon = null;
   let activeTeam = null;
 
-  // Set map from localStorage
   const savedMap = localStorage.getItem("selectedMap");
   if (savedMap) {
     map.style.backgroundImage = `url('${savedMap}')`;
@@ -207,39 +205,35 @@
   }
 
   mapSelect.addEventListener("change", function () {
-    const newMap = this.value;
-    map.style.backgroundImage = `url('${newMap}')`;
-    localStorage.setItem("selectedMap", newMap);
+    map.style.backgroundImage = `url('${this.value}')`;
+    localStorage.setItem("selectedMap", this.value);
   });
 
   document.querySelectorAll('.team-icon').forEach(icon => {
-    icon.addEventListener('click', () => {
-      selectedIcon = icon;
-    });
+    icon.addEventListener('click', () => selectedIcon = icon);
   });
 
   map.addEventListener("click", e => {
     const rect = map.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+    const iconSize = 30;
 
     if (selectedIcon) {
       const id = selectedIcon.dataset.id;
-      const index = parseInt(id.replace("team", "")) - 1;
       if (teamIcons[id]) return;
 
       const div = document.createElement("div");
       div.className = "unit";
-      const iconSize = 30;
       div.style.left = `${x - iconSize / 2}px`;
       div.style.top = `${y - iconSize / 2}px`;
-      div.style.width = iconSize + "px";
-      div.style.height = iconSize + "px";
-      img.style.width = iconSize + "px";
-      img.style.height = iconSize + "px";
-
+      div.style.width = `${iconSize}px`;
+      div.style.height = `${iconSize}px`;
 
       const img = selectedIcon.cloneNode(true);
+      img.style.width = `${iconSize}px`;
+      img.style.height = `${iconSize}px`;
+
       const label = document.createElement("div");
       label.className = "unit-label";
       label.textContent = id;
@@ -323,7 +317,6 @@
     const reader = new FileReader();
     reader.onload = function (e) {
       const loaded = JSON.parse(e.target.result);
-
       if (loaded.map) {
         map.style.backgroundImage = `url('${loaded.map}')`;
         mapSelect.value = loaded.map;
@@ -341,12 +334,18 @@
           if (!baseIcon || !points.length) return;
 
           const first = points[0];
+          const iconSize = 30;
           const div = document.createElement("div");
           div.className = "unit";
-          div.style.left = `${first.x - 30}px`;
-          div.style.top = `${first.y - 30}px`;
+          div.style.left = `${first.x - iconSize / 2}px`;
+          div.style.top = `${first.y - iconSize / 2}px`;
+          div.style.width = `${iconSize}px`;
+          div.style.height = `${iconSize}px`;
 
           const img = baseIcon.cloneNode(true);
+          img.style.width = `${iconSize}px`;
+          img.style.height = `${iconSize}px`;
+
           const label = document.createElement("div");
           label.className = "unit-label";
           label.textContent = id;
@@ -382,7 +381,6 @@
     drawPaths();
   });
 
-  // Initial canvas setup
   canvas.width = map.clientWidth;
   canvas.height = map.clientHeight;
 </script>
