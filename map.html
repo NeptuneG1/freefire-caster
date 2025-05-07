@@ -7,7 +7,7 @@
   <style>
     html, body {
       margin: 0;
-      paddi: 0;
+      padding: 0;
       height: 100vh;
       overflow: hidden;
       font-family: Arial, sans-serif;
@@ -23,16 +23,14 @@
     #map-container {
       position: relative;
       flex: 1;
-      background: #000;
     }
 
     #map {
       width: 100%;
       height: 100%;
-      background: url('https://i.imgur.com/TytkDtb.png') no-repeat center;
       background-size: cover;
+      background-position: center;
       position: relative;
-      overflow: hidden;
     }
 
     canvas {
@@ -78,14 +76,21 @@
     }
 
     #sidebar {
-      width: 200px;
+      width: 230px;
       background: #1c1c1c;
-      padding: 15px;
+      padding: 15px 10px;
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
-      align-items: center;
       gap: 15px;
+      overflow-y: auto;
+    }
+
+    .icon-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      justify-items: center;
     }
 
     .team-icon {
@@ -97,13 +102,14 @@
     }
 
     #controls {
-      margin-top: auto;
       display: flex;
       flex-direction: column;
       gap: 10px;
+      padding-top: 10px;
     }
 
-    #controls button {
+    #controls button,
+    #map-select {
       padding: 8px;
       background: #ff7733;
       border: none;
@@ -111,6 +117,12 @@
       color: white;
       font-weight: bold;
       cursor: pointer;
+    }
+
+    #map-select {
+      background: #333;
+      color: #fff;
+      font-weight: normal;
     }
 
     #import-file {
@@ -128,11 +140,36 @@
   </div>
 
   <div id="sidebar">
-    <img src="https://i.imgur.com/LtMzKj2.png" class="team-icon" data-id="team1" />
-    <img src="https://i.imgur.com/LtMzKj2.png" class="team-icon" data-id="team2" />
-    <img src="https://i.imgur.com/LtMzKj2.png" class="team-icon" data-id="team3" />
+    <div class="icon-grid">
+      <img src="https://i.imgur.com/GZxPNXi.png" class="team-icon" data-id="team1" />
+      <img src="https://i.imgur.com/yXDnWtr.png" class="team-icon" data-id="team2" />
+      <img src="https://i.imgur.com/vjq0Mqn.png" class="team-icon" data-id="team3" />
+      <img src="https://i.imgur.com/i0VtqZ9.png" class="team-icon" data-id="team4" />
+      <img src="https://i.imgur.com/6pj4iPl.png" class="team-icon" data-id="team5" />
+      <img src="https://i.imgur.com/6eZfM0T.png" class="team-icon" data-id="team6" />
+      <img src="https://i.imgur.com/Ij8Dsbw.png" class="team-icon" data-id="team7" />
+      <img src="https://i.imgur.com/3D3YNrl.png" class="team-icon" data-id="team8" />
+      <img src="https://i.imgur.com/NnVZy68.png" class="team-icon" data-id="team9" />
+      <img src="https://i.imgur.com/kTq43ai.png" class="team-icon" data-id="team10" />
+      <img src="https://i.imgur.com/QetHG72.png" class="team-icon" data-id="team11" />
+      <img src="https://i.imgur.com/cHJrJTZ.png" class="team-icon" data-id="team12" />
+      <img src="https://i.imgur.com/pa6Ne3B.png" class="team-icon" data-id="team13" />
+      <img src="https://i.imgur.com/KMgMXU2.png" class="team-icon" data-id="team14" />
+      <img src="https://i.imgur.com/aVTdNhl.png" class="team-icon" data-id="team15" />
+      <img src="https://i.imgur.com/BQp28V6.png" class="team-icon" data-id="team16" />
+      <img src="https://i.imgur.com/YfTWxX8.png" class="team-icon" data-id="team17" />
+      <img src="https://i.imgur.com/O6Xjkbx.png" class="team-icon" data-id="team18" />
+    </div>
 
     <div id="controls">
+      <select id="map-select">
+        <option value="https://i.imgur.com/V6iUHaA.jpeg">Bermuda</option>
+        <option value="https://i.imgur.com/ieY0LHk.jpeg">Purgatory</option>
+        <option value="https://i.imgur.com/48O1Jf8.jpeg">Alpine</option>
+        <option value="https://i.imgur.com/4Yz12P9.jpeg">Kalahari</option>
+        <option value="https://i.imgur.com/0MZNMJZ.jpeg">NeXTerra</option>
+        <option value="https://i.imgur.com/IX1oY9Z.jpeg">Solara</option>
+      </select>
       <button id="export-btn">Export</button>
       <button onclick="document.getElementById('import-file').click()">Import</button>
       <input type="file" id="import-file" accept=".json" />
@@ -144,16 +181,32 @@
   const map = document.getElementById("map");
   const canvas = document.getElementById("pathCanvas");
   const ctx = canvas.getContext("2d");
+  const mapSelect = document.getElementById("map-select");
   const teamPaths = {};
   const teamIcons = {};
-  const teamColors = { team1: "red", team2: "blue", team3: "lime" };
+  const teamColors = [
+    "#e6194b", "#3cb44b", "#ffe119", "#4363d8", "#f58231", "#911eb4",
+    "#46f0f0", "#f032e6", "#bcf60c", "#fabebe", "#008080", "#e6beff",
+    "#9a6324", "#fffac8", "#800000", "#aaffc3", "#808000", "#ffd8b1"
+  ];
 
   let selectedIcon = null;
   let activeTeam = null;
 
-  // Setup
-  canvas.width = map.clientWidth;
-  canvas.height = map.clientHeight;
+  // Set map from localStorage
+  const savedMap = localStorage.getItem("selectedMap");
+  if (savedMap) {
+    map.style.backgroundImage = `url('${savedMap}')`;
+    mapSelect.value = savedMap;
+  } else {
+    map.style.backgroundImage = `url('${mapSelect.value}')`;
+  }
+
+  mapSelect.addEventListener("change", function () {
+    const newMap = this.value;
+    map.style.backgroundImage = `url('${newMap}')`;
+    localStorage.setItem("selectedMap", newMap);
+  });
 
   document.querySelectorAll('.team-icon').forEach(icon => {
     icon.addEventListener('click', () => {
@@ -168,6 +221,7 @@
 
     if (selectedIcon) {
       const id = selectedIcon.dataset.id;
+      const index = parseInt(id.replace("team", "")) - 1;
       if (teamIcons[id]) return;
 
       const div = document.createElement("div");
@@ -176,14 +230,9 @@
       div.style.top = `${y - 30}px`;
 
       const img = selectedIcon.cloneNode(true);
-      img.style.width = "60px";
-      img.style.height = "60px";
-
       const label = document.createElement("div");
       label.className = "unit-label";
       label.textContent = id;
-      div.appendChild(img);
-      div.appendChild(label);
 
       const reset = document.createElement("button");
       reset.className = "reset-btn";
@@ -195,8 +244,10 @@
         delete teamIcons[id];
         drawPaths();
       };
-      div.appendChild(reset);
 
+      div.appendChild(img);
+      div.appendChild(label);
+      div.appendChild(reset);
       map.appendChild(div);
       div.addEventListener("click", () => activeTeam = id);
 
@@ -231,7 +282,8 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     for (let id in teamPaths) {
       const path = teamPaths[id];
-      const color = teamColors[id] || 'white';
+      const index = parseInt(id.replace("team", "")) - 1;
+      const color = teamColors[index] || 'white';
       for (let i = 0; i < path.length - 1; i++) {
         drawArrow(path[i], path[i + 1], color);
       }
@@ -239,8 +291,11 @@
   }
 
   document.getElementById("export-btn").addEventListener("click", () => {
-    const data = JSON.stringify(teamPaths, null, 2);
-    const blob = new Blob([data], { type: "application/json" });
+    const data = {
+      map: mapSelect.value,
+      paths: teamPaths
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -252,12 +307,58 @@
   document.getElementById("import-file").addEventListener("change", function () {
     const file = this.files[0];
     if (!file) return;
+
     const reader = new FileReader();
     reader.onload = function (e) {
       const loaded = JSON.parse(e.target.result);
-      for (let id in loaded) {
-        teamPaths[id] = loaded[id];
+
+      if (loaded.map) {
+        map.style.backgroundImage = `url('${loaded.map}')`;
+        mapSelect.value = loaded.map;
+        localStorage.setItem("selectedMap", loaded.map);
       }
+
+      Object.values(teamIcons).forEach(div => div.remove());
+      Object.keys(teamIcons).forEach(id => delete teamIcons[id]);
+      Object.keys(teamPaths).forEach(id => delete teamPaths[id]);
+
+      if (loaded.paths) {
+        Object.entries(loaded.paths).forEach(([id, points]) => {
+          teamPaths[id] = points;
+          const baseIcon = document.querySelector(`.team-icon[data-id="${id}"]`);
+          if (!baseIcon || !points.length) return;
+
+          const first = points[0];
+          const div = document.createElement("div");
+          div.className = "unit";
+          div.style.left = `${first.x - 30}px`;
+          div.style.top = `${first.y - 30}px`;
+
+          const img = baseIcon.cloneNode(true);
+          const label = document.createElement("div");
+          label.className = "unit-label";
+          label.textContent = id;
+
+          const reset = document.createElement("button");
+          reset.className = "reset-btn";
+          reset.textContent = "Reset";
+          reset.onclick = ev => {
+            ev.stopPropagation();
+            div.remove();
+            delete teamPaths[id];
+            delete teamIcons[id];
+            drawPaths();
+          };
+
+          div.appendChild(img);
+          div.appendChild(label);
+          div.appendChild(reset);
+          map.appendChild(div);
+          div.addEventListener("click", () => activeTeam = id);
+          teamIcons[id] = div;
+        });
+      }
+
       drawPaths();
     };
     reader.readAsText(file);
@@ -268,6 +369,10 @@
     canvas.height = map.clientHeight;
     drawPaths();
   });
+
+  // Initial canvas setup
+  canvas.width = map.clientWidth;
+  canvas.height = map.clientHeight;
 </script>
 
 </body>
