@@ -179,7 +179,12 @@ let drawCircleMode = false;
 let resizingCircle = null;
 let isDragging = false;
 
-// Load saved map
+const teamColors = [
+  "#FF0000", "#00FF00", "#00FFFF", "#FFFF00", "#FF00FF", "#FFA500",
+  "#00BFFF", "#FF69B4", "#7FFF00", "#FF4500", "#00FF7F", "#1E90FF",
+  "#FFD700", "#ADFF2F", "#FF1493", "#40E0D0", "#FF6347", "#87CEEB"
+];
+
 const savedMap = localStorage.getItem("selectedMap");
 map.style.backgroundImage = `url('${savedMap || mapSelect.value}')`;
 mapSelect.value = savedMap || mapSelect.value;
@@ -189,14 +194,13 @@ mapSelect.addEventListener("change", function () {
   localStorage.setItem("selectedMap", this.value);
 });
 
-// Add team icons
-const teamHashes = [
+// Create team icons
+const hashes = [
   "GZxPNXi", "yXDnWtr", "vjq0Mqn", "i0VtqZ9", "6pj4iPl", "6eZfM0T",
   "Ij8Dsbw", "3D3YNrl", "NnVZy68", "kTq43ai", "QetHG72", "cHJrJTZ",
   "pa6Ne3B", "KMgMXU2", "aVTdNhl", "BQp28V6", "YfTWxX8", "O6Xjkbx"
 ];
-
-teamHashes.forEach((hash, i) => {
+hashes.forEach((hash, i) => {
   const img = document.createElement("img");
   img.src = `https://i.imgur.com/${hash}.png`;
   img.className = "team-icon";
@@ -205,24 +209,31 @@ teamHashes.forEach((hash, i) => {
   document.getElementById("teamIcons").appendChild(img);
 });
 
-const teamColors = [
-  "#FF0000", "#00FF00", "#00FFFF", "#FFFF00", "#FF00FF", "#FFA500",
-  "#00BFFF", "#FF69B4", "#7FFF00", "#FF4500", "#00FF7F", "#1E90FF",
-  "#FFD700", "#ADFF2F", "#FF1493", "#40E0D0", "#FF6347", "#87CEEB"
-];
-
-// Draw Circle Toggle
 document.getElementById("draw-circle").onclick = () => {
   drawCircleMode = !drawCircleMode;
   document.getElementById("draw-circle").textContent = drawCircleMode ? "Circle Mode: ON" : "Draw Circle";
 };
 
-// Draw on map click
-map.addEventListener("click", e => {
-  if (isDragging) return;
+// Get coordinates from mouse or touch
+function getInputCoords(e) {
   const rect = map.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
+  if (e.touches) {
+    return {
+      x: e.touches[0].clientX - rect.left,
+      y: e.touches[0].clientY - rect.top
+    };
+  } else {
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+  }
+}
+
+// Main map interaction
+function handleMapPress(e) {
+  const { x, y } = getInputCoords(e);
+  const iconSize = 30;
 
   if (drawCircleMode) {
     circles.push({ x, y, r: 50, color: "#ffffff" });
@@ -230,10 +241,10 @@ map.addEventListener("click", e => {
     return;
   }
 
-  const iconSize = 30;
   if (selectedIcon) {
     const id = selectedIcon.dataset.id;
     if (teamIcons[id]) return;
+
     const div = document.createElement("div");
     div.className = "unit";
     div.style.left = `${x - 15}px`;
@@ -242,8 +253,6 @@ map.addEventListener("click", e => {
     const img = selectedIcon.cloneNode(true);
     img.style.width = "30px";
     img.style.height = "30px";
-    img.style.boxShadow = "0 0 8px 2px rgba(255, 255, 255, 0.6)";
-    img.style.borderRadius = "50%";
 
     const label = document.createElement("div");
     label.className = "unit-label";
@@ -265,11 +274,11 @@ map.addEventListener("click", e => {
     div.appendChild(label);
     div.appendChild(reset);
     map.appendChild(div);
-    div.onclick = () => activeTeam = id;
+    div.addEventListener("click", () => activeTeam = id);
 
     teamPaths[id] = [{ x, y }];
-    teamIcons[id] = div;
     undoStacks[id] = [];
+    teamIcons[id] = div;
     activeTeam = id;
     selectedIcon = null;
     drawPaths();
@@ -279,42 +288,57 @@ map.addEventListener("click", e => {
     teamPaths[activeTeam].push({ x, y });
     drawPaths();
   }
-});
+}
 
-// Resize and delete circles
-map.addEventListener("mousedown", e => {
-  const rect = map.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-  for (let c of circles) {
-    const dx = x - c.x, dy = y - c.y, dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < 10) {
-      circles.splice(circles.indexOf(c), 1);
-      drawPaths();
-      return;
-    } else if (Math.abs(dist - c.r) < 10) {
-      resizingCircle = c;
-      isDragging = true;
-      return;
-    }
+// Register both mouse and touch
+map.addEventListener("click", handleMapPress);
+map.addEventListener("touchstart", e => {
+  if (e.touches.length === 1) {
+    handleMapPress(e);
   }
 });
 
-map.addEventListener("mousemove", e => {
+let resizingCircle = null;
+let isDragging = false;
+
+function findResizableCircle({ x, y }) {
+  for (let c of circles) {
+    const dx = x - c.x;
+    const dy = y - c.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (Math.abs(dist - c.r) < 10) return c;
+  }
+  return null;
+}
+
+function startResize(e) {
+  const coords = getInputCoords(e);
+  resizingCircle = findResizableCircle(coords);
+  isDragging = !!resizingCircle;
+}
+
+function resizeMove(e) {
   if (!isDragging || !resizingCircle) return;
-  const rect = map.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
+  const { x, y } = getInputCoords(e);
   const dx = x - resizingCircle.x;
   const dy = y - resizingCircle.y;
   resizingCircle.r = Math.max(10, Math.sqrt(dx * dx + dy * dy));
   drawPaths();
-});
+}
 
-map.addEventListener("mouseup", () => {
-  isDragging = false;
+function endResize() {
   resizingCircle = null;
-});
+  isDragging = false;
+}
+
+// Bind both mouse and touch events for resizing
+map.addEventListener("mousedown", startResize);
+map.addEventListener("mousemove", resizeMove);
+map.addEventListener("mouseup", endResize);
+
+map.addEventListener("touchstart", startResize);
+map.addEventListener("touchmove", resizeMove);
+map.addEventListener("touchend", endResize);
 
 document.getElementById("undo-btn").addEventListener("click", () => {
   if (!activeTeam || !undoStacks[activeTeam]?.length) return;
@@ -323,11 +347,11 @@ document.getElementById("undo-btn").addEventListener("click", () => {
 });
 
 document.getElementById("reset-all-btn").addEventListener("click", () => {
-  if (!confirm("Are you sure you want to remove all team icons and paths?")) return;
+  if (!confirm("Reset all paths, icons, and circles?")) return;
   Object.values(teamIcons).forEach(div => div.remove());
-  Object.keys(teamIcons).forEach(id => delete teamIcons[id]);
-  Object.keys(teamPaths).forEach(id => delete teamPaths[id]);
-  Object.keys(undoStacks).forEach(id => delete undoStacks[id]);
+  for (let k in teamIcons) delete teamIcons[k];
+  for (let k in teamPaths) delete teamPaths[k];
+  for (let k in undoStacks) delete undoStacks[k];
   circles.length = 0;
   activeTeam = null;
   selectedIcon = null;
@@ -400,7 +424,7 @@ document.getElementById("import-file").addEventListener("change", function () {
         div.appendChild(label);
         div.appendChild(reset);
         map.appendChild(div);
-        div.addEventListener("click", () => activeTeam = id);
+        div.onclick = () => activeTeam = id;
         teamPaths[id] = points;
         teamIcons[id] = div;
         undoStacks[id] = [];
@@ -447,7 +471,6 @@ function drawPaths() {
     ctx.lineWidth = 2;
     ctx.stroke();
     ctx.setLineDash([]);
-
     ctx.beginPath();
     ctx.arc(c.x + c.r, c.y, 4, 0, 2 * Math.PI);
     ctx.fillStyle = c.color;
