@@ -3,27 +3,37 @@
 <head>
   <meta charset="UTF-8" />
   <title>Team Path Planner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body {
+    html, body {
       margin: 0;
+      padding: 0;
       font-family: Arial, sans-serif;
       background: #121212;
       color: white;
+      height: 100vh;
       overflow: hidden;
     }
 
     #map {
       position: relative;
       width: 100vw;
-      height: calc(100vh - 10vh);
-      background: url('https://i.imgur.com/V6iUHaA.jpeg') no-repeat center;
+      height: calc(100vh - 80px);
+      background: url('https://i.imgur.com/TytkDtb.png') no-repeat center;
       background-size: cover;
-      border-bottom: 2px solid #333;
       cursor: crosshair;
     }
 
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+      pointer-events: none;
+    }
+
     #team-bar {
-      height: 10vh;
+      height: 80px;
       background: #222;
       display: flex;
       align-items: center;
@@ -35,14 +45,9 @@
     .team-icon {
       width: 60px;
       height: 60px;
-      cursor: grab;
       border: 2px solid #555;
       border-radius: 8px;
-      transition: transform 0.2s;
-    }
-
-    .team-icon:hover {
-      transform: scale(1.1);
+      cursor: pointer;
     }
 
     .unit {
@@ -51,6 +56,24 @@
       height: 60px;
       pointer-events: auto;
       cursor: pointer;
+    }
+
+    .unit img {
+      width: 60px;
+      height: 60px;
+      pointer-events: none;
+    }
+
+    .unit-label {
+      position: absolute;
+      top: -20px;
+      left: 0;
+      font-size: 12px;
+      color: white;
+      background: rgba(0,0,0,0.6);
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
     }
 
     .reset-btn {
@@ -64,14 +87,6 @@
       padding: 2px 4px;
       border-radius: 4px;
       cursor: pointer;
-    }
-
-    canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      z-index: 1;
-      pointer-events: none;
     }
 
     #control-panel {
@@ -110,9 +125,9 @@
 </div>
 
 <div id="team-bar">
-  <img src="https://i.imgur.com/O6Xjkbx.png" draggable="true" class="team-icon" data-id="WAG" />
-  <img src="https://i.imgur.com/LtMzKj2.png" draggable="true" class="team-icon" data-id="team2" />
-  <img src="https://i.imgur.com/LtMzKj2.png" draggable="true" class="team-icon" data-id="team3" />
+  <img src="https://i.imgur.com/LtMzKj2.png" class="team-icon" data-id="team1" />
+  <img src="https://i.imgur.com/LtMzKj2.png" class="team-icon" data-id="team2" />
+  <img src="https://i.imgur.com/LtMzKj2.png" class="team-icon" data-id="team3" />
 </div>
 
 <script>
@@ -120,41 +135,51 @@
   const canvas = document.getElementById("pathCanvas");
   const ctx = canvas.getContext("2d");
   canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight * 0.9;
+  canvas.height = map.clientHeight;
 
-  let draggingIcon = null;
+  const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+  let selectedIcon = null;
   let activeTeam = null;
   const teamPaths = {};
   const teamIcons = {};
+  const teamColors = {
+    team1: 'red',
+    team2: 'blue',
+    team3: 'lime'
+  };
 
-  // Drag setup
-  document.querySelectorAll('.team-icon').forEach(icon => {
-    icon.addEventListener('dragstart', e => {
-      draggingIcon = icon;
-    });
-  });
+  function drawArrow(ctx, fromX, fromY, toX, toY, color) {
+    const headlen = 10;
+    const dx = toX - fromX;
+    const dy = toY - fromY;
+    const angle = Math.atan2(dy, dx);
+    ctx.moveTo(fromX, fromY);
+    ctx.lineTo(toX, toY);
+    ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+    ctx.moveTo(toX, toY);
+    ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
+  }
 
-  // Drop unit on map
-  map.addEventListener('dragover', e => e.preventDefault());
-  map.addEventListener('drop', e => {
-    e.preventDefault();
-    const id = draggingIcon.dataset.id;
-    if (teamIcons[id]) return; // already placed
+  function placeUnit(id, x, y) {
+    if (teamIcons[id]) return;
 
-    const img = draggingIcon.cloneNode(true);
-    img.classList.remove("team-icon");
+    const img = selectedIcon.cloneNode(true);
     img.style.width = "60px";
-    img.style.height = "60px";  // ✅ enforce size
-
+    img.style.height = "60px";
 
     const div = document.createElement("div");
     div.className = "unit";
-    div.style.left = `${e.offsetX - 30}px`;
-    div.style.top = `${e.offsetY - 30}px`;
+    div.style.left = `${x - 30}px`;
+    div.style.top = `${y - 30}px`;
     div.appendChild(img);
     div.dataset.id = id;
 
-    // Reset button
+    const label = document.createElement("div");
+    label.className = "unit-label";
+    label.textContent = id;
+    div.appendChild(label);
+
     const btn = document.createElement("button");
     btn.className = "reset-btn";
     btn.textContent = "Reset";
@@ -168,20 +193,51 @@
     div.appendChild(btn);
 
     map.appendChild(div);
-    div.addEventListener("click", () => {
-      activeTeam = id;
-    });
+    div.addEventListener("click", () => activeTeam = id);
 
     activeTeam = id;
-    teamPaths[id] = [{ x: e.offsetX, y: e.offsetY }];
+    teamPaths[id] = [{ x, y }];
     teamIcons[id] = div;
     drawPaths();
+  }
+
+  document.querySelectorAll('.team-icon').forEach(icon => {
+    if (isTouch) {
+      icon.addEventListener('click', () => {
+        selectedIcon = icon;
+      });
+    } else {
+      icon.addEventListener('dragstart', e => {
+        selectedIcon = icon;
+      });
+    }
   });
 
-  // Click to extend path
+  if (!isTouch) {
+    map.addEventListener('dragover', e => e.preventDefault());
+    map.addEventListener('drop', e => {
+      e.preventDefault();
+      if (!selectedIcon) return;
+      const id = selectedIcon.dataset.id;
+      placeUnit(id, e.offsetX, e.offsetY);
+    });
+  } else {
+    map.addEventListener('click', e => {
+      if (!selectedIcon) return;
+      const id = selectedIcon.dataset.id;
+      const rect = map.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      placeUnit(id, x, y);
+    });
+  }
+
   map.addEventListener("click", e => {
-    if (!activeTeam || !teamPaths[activeTeam]) return;
-    teamPaths[activeTeam].push({ x: e.offsetX, y: e.offsetY });
+    if (!activeTeam || !teamPaths[activeTeam] || selectedIcon) return;
+    const rect = map.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    teamPaths[activeTeam].push({ x, y });
     drawPaths();
   });
 
@@ -191,17 +247,15 @@
       const path = teamPaths[teamId];
       if (path.length < 2) continue;
       ctx.beginPath();
-      ctx.moveTo(path[0].x, path[0].y);
-      for (let i = 1; i < path.length; i++) {
-        ctx.lineTo(path[i].x, path[i].y);
+      for (let i = 0; i < path.length - 1; i++) {
+        drawArrow(ctx, path[i].x, path[i].y, path[i + 1].x, path[i + 1].y);
       }
-      ctx.strokeStyle = "red";
+      ctx.strokeStyle = teamColors[teamId] || "white";
       ctx.lineWidth = 2;
       ctx.stroke();
     }
   }
 
-  // Export JSON
   document.getElementById("export-btn").addEventListener("click", () => {
     const data = JSON.stringify(teamPaths, null, 2);
     const blob = new Blob([data], { type: "application/json" });
@@ -213,7 +267,6 @@
     URL.revokeObjectURL(url);
   });
 
-  // Import JSON
   document.getElementById("import-file").addEventListener("change", function () {
     const file = this.files[0];
     if (!file) return;
@@ -224,36 +277,8 @@
         if (!teamIcons[id]) {
           const baseIcon = document.querySelector(`.team-icon[data-id="${id}"]`);
           if (!baseIcon) continue;
-          const img = baseIcon.cloneNode(true);
-          img.classList.remove("team-icon");
-          img.style.width = "60px";
-          img.style.height = "60px";  // ✅ enforce size
-
-
-          const div = document.createElement("div");
-          div.className = "unit";
-          const first = loaded[id][0];
-          div.style.left = `${first.x - 30}px`;
-          div.style.top = `${first.y - 30}px`;
-          div.appendChild(img);
-          div.dataset.id = id;
-
-          const btn = document.createElement("button");
-          btn.className = "reset-btn";
-          btn.textContent = "Reset";
-          btn.addEventListener("click", (ev) => {
-            ev.stopPropagation();
-            delete teamPaths[id];
-            div.remove();
-            delete teamIcons[id];
-            drawPaths();
-          });
-          div.appendChild(btn);
-
-          map.appendChild(div);
-          div.addEventListener("click", () => activeTeam = id);
-
-          teamIcons[id] = div;
+          selectedIcon = baseIcon;
+          placeUnit(id, loaded[id][0].x, loaded[id][0].y);
         }
         teamPaths[id] = loaded[id];
       }
@@ -264,7 +289,7 @@
 
   window.addEventListener("resize", () => {
     canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight * 0.9;
+    canvas.height = map.clientHeight;
     drawPaths();
   });
 </script>
