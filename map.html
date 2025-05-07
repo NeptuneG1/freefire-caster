@@ -53,6 +53,19 @@
       cursor: pointer;
     }
 
+    .reset-btn {
+      position: absolute;
+      bottom: -20px;
+      left: 0;
+      background: rgba(255, 255, 255, 0.8);
+      color: #000;
+      border: none;
+      font-size: 10px;
+      padding: 2px 4px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
     canvas {
       position: absolute;
       top: 0;
@@ -61,18 +74,27 @@
       pointer-events: none;
     }
 
-    #export-btn {
+    #control-panel {
       position: absolute;
       top: 10px;
       right: 10px;
+      z-index: 10;
+      display: flex;
+      gap: 10px;
+    }
+
+    #control-panel button {
       background: #ff7733;
       border: none;
-      padding: 10px 15px;
-      font-size: 14px;
+      padding: 8px 12px;
+      font-size: 13px;
       font-weight: bold;
       cursor: pointer;
-      z-index: 10;
       border-radius: 5px;
+    }
+
+    #import-file {
+      display: none;
     }
   </style>
 </head>
@@ -80,7 +102,11 @@
 
 <div id="map">
   <canvas id="pathCanvas"></canvas>
-  <button id="export-btn">Save All Paths</button>
+  <div id="control-panel">
+    <button id="export-btn">Export Paths</button>
+    <button onclick="document.getElementById('import-file').click()">Import Paths</button>
+    <input type="file" id="import-file" accept=".json">
+  </div>
 </div>
 
 <div id="team-bar">
@@ -101,18 +127,20 @@
   const teamPaths = {};
   const teamIcons = {};
 
-  // Handle drag
+  // Drag setup
   document.querySelectorAll('.team-icon').forEach(icon => {
     icon.addEventListener('dragstart', e => {
       draggingIcon = icon;
     });
   });
 
-  // Handle drop on map
+  // Drop unit on map
   map.addEventListener('dragover', e => e.preventDefault());
   map.addEventListener('drop', e => {
     e.preventDefault();
     const id = draggingIcon.dataset.id;
+    if (teamIcons[id]) return; // already placed
+
     const img = draggingIcon.cloneNode(true);
     img.classList.remove("team-icon");
 
@@ -122,8 +150,21 @@
     div.style.top = `${e.offsetY - 30}px`;
     div.appendChild(img);
     div.dataset.id = id;
-    map.appendChild(div);
 
+    // Reset button
+    const btn = document.createElement("button");
+    btn.className = "reset-btn";
+    btn.textContent = "Reset";
+    btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      delete teamPaths[id];
+      div.remove();
+      delete teamIcons[id];
+      drawPaths();
+    });
+    div.appendChild(btn);
+
+    map.appendChild(div);
     div.addEventListener("click", () => {
       activeTeam = id;
     });
@@ -134,7 +175,7 @@
     drawPaths();
   });
 
-  // Click to plot additional points
+  // Click to extend path
   map.addEventListener("click", e => {
     if (!activeTeam || !teamPaths[activeTeam]) return;
     teamPaths[activeTeam].push({ x: e.offsetX, y: e.offsetY });
@@ -157,15 +198,62 @@
     }
   }
 
+  // Export JSON
   document.getElementById("export-btn").addEventListener("click", () => {
-    const exportData = JSON.stringify(teamPaths, null, 2);
-    const blob = new Blob([exportData], { type: "application/json" });
+    const data = JSON.stringify(teamPaths, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = "team-paths.json";
     a.click();
     URL.revokeObjectURL(url);
+  });
+
+  // Import JSON
+  document.getElementById("import-file").addEventListener("change", function () {
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const loaded = JSON.parse(e.target.result);
+      for (let id in loaded) {
+        if (!teamIcons[id]) {
+          const baseIcon = document.querySelector(`.team-icon[data-id="${id}"]`);
+          if (!baseIcon) continue;
+          const img = baseIcon.cloneNode(true);
+          img.classList.remove("team-icon");
+
+          const div = document.createElement("div");
+          div.className = "unit";
+          const first = loaded[id][0];
+          div.style.left = `${first.x - 30}px`;
+          div.style.top = `${first.y - 30}px`;
+          div.appendChild(img);
+          div.dataset.id = id;
+
+          const btn = document.createElement("button");
+          btn.className = "reset-btn";
+          btn.textContent = "Reset";
+          btn.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            delete teamPaths[id];
+            div.remove();
+            delete teamIcons[id];
+            drawPaths();
+          });
+          div.appendChild(btn);
+
+          map.appendChild(div);
+          div.addEventListener("click", () => activeTeam = id);
+
+          teamIcons[id] = div;
+        }
+        teamPaths[id] = loaded[id];
+      }
+      drawPaths();
+    };
+    reader.readAsText(file);
   });
 
   window.addEventListener("resize", () => {
