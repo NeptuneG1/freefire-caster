@@ -2,38 +2,37 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Team Path Planner - Zoomable</title>
+  <title>Team Path Planner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     html, body {
       margin: 0;
-      padding: 0;
-      overflow: hidden;
+      paddi: 0;
       height: 100vh;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
       background: #121212;
       color: white;
-      font-family: Arial, sans-serif;
     }
 
-    #container {
+    #main {
+      display: flex;
+      height: 100vh;
+    }
+
+    #map-container {
       position: relative;
-      width: 100%;
-      height: calc(100vh - 80px);
-      overflow: hidden;
-      touch-action: none;
+      flex: 1;
+      background: #000;
     }
 
     #map {
-      position: absolute;
-      top: 0; left: 0;
-      transform-origin: top left;
-    }
-
-    #map-image {
-      display: block;
-      max-width: none;
-      user-select: none;
-      pointer-events: none;
+      width: 100%;
+      height: 100%;
+      background: url('https://i.imgur.com/TytkDtb.png') no-repeat center;
+      background-size: cover;
+      position: relative;
+      overflow: hidden;
     }
 
     canvas {
@@ -47,7 +46,6 @@
       position: absolute;
       width: 60px;
       height: 60px;
-      pointer-events: auto;
       cursor: pointer;
     }
 
@@ -58,10 +56,9 @@
 
     .unit-label {
       position: absolute;
-      top: -20px;
+      top: -18px;
       left: 0;
       font-size: 12px;
-      color: white;
       background: rgba(0,0,0,0.6);
       padding: 2px 6px;
       border-radius: 4px;
@@ -71,50 +68,49 @@
       position: absolute;
       bottom: -20px;
       left: 0;
-      background: rgba(255, 255, 255, 0.8);
+      background: rgba(255,255,255,0.9);
       color: #000;
-      border: none;
       font-size: 10px;
-      padding: 2px 4px;
+      padding: 2px 5px;
+      border: none;
       border-radius: 4px;
       cursor: pointer;
     }
 
-    #team-bar {
-      height: 80px;
-      background: #222;
+    #sidebar {
+      width: 200px;
+      background: #1c1c1c;
+      padding: 15px;
+      box-sizing: border-box;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: center;
       gap: 15px;
-      padding: 10px;
     }
 
     .team-icon {
       width: 60px;
       height: 60px;
       border: 2px solid #555;
-      border-radius: 8px;
+      border-radius: 6px;
       cursor: pointer;
     }
 
-    #control-panel {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      z-index: 100;
+    #controls {
+      margin-top: auto;
       display: flex;
+      flex-direction: column;
       gap: 10px;
     }
 
-    #control-panel button {
+    #controls button {
+      padding: 8px;
       background: #ff7733;
       border: none;
-      padding: 8px 12px;
-      font-size: 13px;
+      border-radius: 6px;
+      color: white;
       font-weight: bold;
       cursor: pointer;
-      border-radius: 5px;
     }
 
     #import-file {
@@ -124,113 +120,51 @@
 </head>
 <body>
 
-<div id="control-panel">
-  <button id="export-btn">Export Paths</button>
-  <button onclick="document.getElementById('import-file').click()">Import Paths</button>
-  <input type="file" id="import-file" accept=".json">
-</div>
+<div id="main">
+  <div id="map-container">
+    <div id="map">
+      <canvas id="pathCanvas"></canvas>
+    </div>
+  </div>
 
-<div id="container">
-  <div id="map">
-    <img id="map-image" src="https://i.imgur.com/V6iUHaA.jpeg" />
-    <canvas id="pathCanvas"></canvas>
+  <div id="sidebar">
+    <img src="https://i.imgur.com/LtMzKj2.png" class="team-icon" data-id="team1" />
+    <img src="https://i.imgur.com/LtMzKj2.png" class="team-icon" data-id="team2" />
+    <img src="https://i.imgur.com/LtMzKj2.png" class="team-icon" data-id="team3" />
+
+    <div id="controls">
+      <button id="export-btn">Export</button>
+      <button onclick="document.getElementById('import-file').click()">Import</button>
+      <input type="file" id="import-file" accept=".json" />
+    </div>
   </div>
 </div>
 
-<div id="team-bar">
-  <img src="https://i.imgur.com/GZxPNXi.png" class="team-icon" data-id="AG" />
-  <img src="https://i.imgur.com/yXDnWtr.png" class="team-icon" data-id="BTR" />
-  <img src="https://i.imgur.com/vjq0Mqn.png" class="team-icon" data-id="BRU" />
-  <img src="https://i.imgur.com/i0VtqZ9.png" class="team-icon" data-id="CRM" />
-  <img src="https://i.imgur.com/6pj4iPl.png" class="team-icon" data-id="EVOS" />
-  <img src="https://i.imgur.com/6eZfM0T.png" class="team-icon" data-id="EXP" />
-  <img src="https://i.imgur.com/Ij8Dsbw.png" class="team-icon" data-id="GOW" />
-  <img src="https://i.imgur.com/3D3YNrl.png" class="team-icon" data-id="HEV" />
-  <img src="https://i.imgur.com/NnVZy68.png" class="team-icon" data-id="ONIC" />
-  <img src="https://i.imgur.com/kTq43ai.png" class="team-icon" data-id="PE" />
-  <img src="https://i.imgur.com/QetHG72.png" class="team-icon" data-id="RRQ" />
-  <img src="https://i.imgur.com/cHJrJTZ.png" class="team-icon" data-id="VESJ" />
-  <img src="https://i.imgur.com/pa6Ne3B.png" class="team-icon" data-id="FLCN" />
-  <img src="https://i.imgur.com/KMgMXU2.png" class="team-icon" data-id="FL" />
-  <img src="https://i.imgur.com/aVTdNhl.png" class="team-icon" data-id="VMS" />
-  <img src="https://i.imgur.com/BQp28V6.png" class="team-icon" data-id="TDK" />
-  <img src="https://i.imgur.com/YfTWxX8.png" class="team-icon" data-id="RED" />
-  <img src="https://i.imgur.com/O6Xjkbx.png" class="team-icon" data-id="WAG" />
-</div>
-
 <script>
-  const container = document.getElementById("container");
   const map = document.getElementById("map");
   const canvas = document.getElementById("pathCanvas");
   const ctx = canvas.getContext("2d");
-  const mapImage = document.getElementById("map-image");
-
   const teamPaths = {};
   const teamIcons = {};
-  const teamColors = {
-    team1: "red",
-    team2: "blue",
-    team3: "lime"
-  };
+  const teamColors = { team1: "red", team2: "blue", team3: "lime" };
 
   let selectedIcon = null;
   let activeTeam = null;
 
-  // zoom and pan
-  let scale = 1;
-  let offsetX = 0;
-  let offsetY = 0;
-  let isPanning = false;
-  let startPan = { x: 0, y: 0 };
+  // Setup
+  canvas.width = map.clientWidth;
+  canvas.height = map.clientHeight;
 
-  function updateTransform() {
-    map.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
-    drawPaths();
-  }
-
-  // Events: Zoom with wheel
-  container.addEventListener("wheel", e => {
-    e.preventDefault();
-    const zoomFactor = 0.1;
-    const delta = e.deltaY < 0 ? 1 + zoomFactor : 1 - zoomFactor;
-    const rect = map.getBoundingClientRect();
-    const mx = (e.clientX - rect.left - offsetX) / scale;
-    const my = (e.clientY - rect.top - offsetY) / scale;
-    scale *= delta;
-    offsetX -= mx * (delta - 1) * scale;
-    offsetY -= my * (delta - 1) * scale;
-    updateTransform();
-  });
-
-  // Pan support
-  container.addEventListener("mousedown", e => {
-    isPanning = true;
-    startPan = { x: e.clientX, y: e.clientY };
-  });
-
-  container.addEventListener("mousemove", e => {
-    if (isPanning) {
-      offsetX += (e.clientX - startPan.x);
-      offsetY += (e.clientY - startPan.y);
-      startPan = { x: e.clientX, y: e.clientY };
-      updateTransform();
-    }
-  });
-
-  container.addEventListener("mouseup", () => isPanning = false);
-  container.addEventListener("mouseleave", () => isPanning = false);
-
-  // Handle team icon selection
   document.querySelectorAll('.team-icon').forEach(icon => {
     icon.addEventListener('click', () => {
       selectedIcon = icon;
     });
   });
 
-  map.addEventListener('click', e => {
+  map.addEventListener("click", e => {
     const rect = map.getBoundingClientRect();
-    const x = (e.clientX - rect.left - offsetX) / scale;
-    const y = (e.clientY - rect.top - offsetY) / scale;
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
 
     if (selectedIcon) {
       const id = selectedIcon.dataset.id;
@@ -264,7 +198,7 @@
       div.appendChild(reset);
 
       map.appendChild(div);
-      div.addEventListener('click', () => activeTeam = id);
+      div.addEventListener("click", () => activeTeam = id);
 
       teamPaths[id] = [{ x, y }];
       teamIcons[id] = div;
@@ -285,29 +219,21 @@
     ctx.beginPath();
     ctx.moveTo(from.x, from.y);
     ctx.lineTo(to.x, to.y);
-    ctx.lineTo(
-      to.x - headlen * Math.cos(angle - Math.PI / 6),
-      to.y - headlen * Math.sin(angle - Math.PI / 6)
-    );
+    ctx.lineTo(to.x - headlen * Math.cos(angle - Math.PI / 6), to.y - headlen * Math.sin(angle - Math.PI / 6));
     ctx.moveTo(to.x, to.y);
-    ctx.lineTo(
-      to.x - headlen * Math.cos(angle + Math.PI / 6),
-      to.y - headlen * Math.sin(angle + Math.PI / 6)
-    );
+    ctx.lineTo(to.x - headlen * Math.cos(angle + Math.PI / 6), to.y - headlen * Math.sin(angle + Math.PI / 6));
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
     ctx.stroke();
   }
 
   function drawPaths() {
-    canvas.width = mapImage.naturalWidth;
-    canvas.height = mapImage.naturalHeight;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     for (let id in teamPaths) {
-      const points = teamPaths[id];
+      const path = teamPaths[id];
       const color = teamColors[id] || 'white';
-      for (let i = 0; i < points.length - 1; i++) {
-        drawArrow(points[i], points[i + 1], color);
+      for (let i = 0; i < path.length - 1; i++) {
+        drawArrow(path[i], path[i + 1], color);
       }
     }
   }
@@ -337,11 +263,11 @@
     reader.readAsText(file);
   });
 
-  mapImage.onload = () => {
-    canvas.width = mapImage.naturalWidth;
-    canvas.height = mapImage.naturalHeight;
+  window.addEventListener("resize", () => {
+    canvas.width = map.clientWidth;
+    canvas.height = map.clientHeight;
     drawPaths();
-  };
+  });
 </script>
 
 </body>
