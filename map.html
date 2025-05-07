@@ -252,14 +252,58 @@ function moveResize(e) {
   drawPaths();
 }
 function endResize() {
-  isDragging = false;
   resizingCircle = null;
+  isDragging = false;
 }
 
-["mousedown", "touchstart"].forEach(evt => map.addEventListener(evt, startResize));
-["mousemove", "touchmove"].forEach(evt => map.addEventListener(evt, moveResize));
-["mouseup", "touchend"].forEach(evt => map.addEventListener(evt, endResize));
+// Resize bindings
+map.addEventListener("mousedown", startResize);
+map.addEventListener("mousemove", resizeMove);
+map.addEventListener("mouseup", endResize);
+map.addEventListener("touchstart", startResize);
+map.addEventListener("touchmove", resizeMove);
+map.addEventListener("touchend", endResize);
 
+// === DRAG CIRCLE START ===
+let draggingCircle = null;
+let dragOffset = { x: 0, y: 0 };
+
+function findDraggableCircle({ x, y }) {
+  return circles.find(c => Math.hypot(c.x - x, c.y - y) <= c.r);
+}
+
+function startDrag(e) {
+  const pt = getCoords(e);
+  if (resizingCircle) return; // don't conflict with resizing
+  const target = findDraggableCircle(pt);
+  if (target) {
+    draggingCircle = target;
+    dragOffset = { x: pt.x - target.x, y: pt.y - target.y };
+    isDragging = true;
+  }
+}
+
+function moveDrag(e) {
+  if (!draggingCircle || !isDragging) return;
+  const pt = getCoords(e);
+  draggingCircle.x = pt.x - dragOffset.x;
+  draggingCircle.y = pt.y - dragOffset.y;
+  drawPaths();
+}
+
+function endDrag() {
+  draggingCircle = null;
+  isDragging = false;
+}
+
+// Drag bindings
+map.addEventListener("mousedown", startDrag);
+map.addEventListener("mousemove", moveDrag);
+map.addEventListener("mouseup", endDrag);
+map.addEventListener("touchstart", startDrag);
+map.addEventListener("touchmove", moveDrag);
+map.addEventListener("touchend", endDrag);
+// === DRAG CIRCLE END ===
 document.getElementById("undo-btn").onclick = () => {
   if (circleUndoStack.length > 0) {
     const last = circleUndoStack.pop();
