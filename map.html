@@ -273,17 +273,18 @@ function createNote(x, y, text) {
   map.appendChild(noteDiv);
   notes.push({ x, y, text });
 
-  let offsetX = 0, offsetY = 0, isDragging = false;
+  let offsetX = 0, offsetY = 0, isDraggingNote = false;
 
-  // Desktop drag
+  // Mouse
   noteDiv.addEventListener("mousedown", e => {
+    e.stopPropagation();
     offsetX = e.offsetX;
     offsetY = e.offsetY;
-    isDragging = true;
+    isDraggingNote = true;
   });
 
   window.addEventListener("mousemove", e => {
-    if (!isDragging) return;
+    if (!isDraggingNote) return;
     const rect = map.getBoundingClientRect();
     const newX = e.clientX - rect.left - offsetX;
     const newY = e.clientY - rect.top - offsetY;
@@ -292,20 +293,22 @@ function createNote(x, y, text) {
   });
 
   window.addEventListener("mouseup", () => {
-    isDragging = false;
+    isDraggingNote = false;
   });
 
-  // Touch drag (iPad Safari, mobile)
+  // Touch
   noteDiv.addEventListener("touchstart", e => {
+    e.stopPropagation();
+    e.preventDefault();
     const touch = e.touches[0];
     const rect = noteDiv.getBoundingClientRect();
     offsetX = touch.clientX - rect.left;
     offsetY = touch.clientY - rect.top;
-    isDragging = true;
+    isDraggingNote = true;
   });
 
   window.addEventListener("touchmove", e => {
-    if (!isDragging) return;
+    if (!isDraggingNote) return;
     const touch = e.touches[0];
     const rect = map.getBoundingClientRect();
     const newX = touch.clientX - rect.left - offsetX;
@@ -315,7 +318,7 @@ function createNote(x, y, text) {
   }, { passive: false });
 
   window.addEventListener("touchend", () => {
-    isDragging = false;
+    isDraggingNote = false;
   });
 }
 
@@ -407,6 +410,10 @@ function findCircleForDrag(pt) {
 
 function startTouch(e) {
   const pt = getCoords(e);
+
+  // NEW: ignore touches on notes
+  if (e.target.classList.contains("note")) return;
+
   resizingCircle = findCircleForResize(pt);
   if (resizingCircle) {
     isResizing = true;
