@@ -4,6 +4,31 @@
   <meta charset="UTF-8" />
   <title>Team Path Planner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const client = supabase.createClient(
+      'https://gkugecflfddkpitlrmws.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
+    );
+  
+    client.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        window.location.href = "index.html";
+      } else {
+        const userInfo = document.getElementById("user-info");
+        if (userInfo && session.user?.email) {
+          userInfo.textContent = "Logged in as: " + session.user.email;
+        }
+      }
+    });
+  
+    function logout() {
+      client.auth.signOut().then(() => {
+        window.location.href = "index.html";
+      });
+    }
+  </script>
+
   <style>
     html, body {
       margin: 0; padding: 0;
@@ -125,6 +150,8 @@
       <button onclick="document.getElementById('import-file').click()">Import</button>
       <input type="file" id="import-file" accept=".json" />
       <button onclick="location.href='dashboard.html'">← Back to Dashboard</button>
+      <button onclick="logout()">Logout</button>
+      <p id="user-info" style="font-size: 0.8rem; text-align: center; margin-top: 10px; color: #aaa;"></p>
     </div>
   </div>
 </div>
