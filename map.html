@@ -143,12 +143,25 @@
   background: white;
   color: black;
   border: 1px solid #333;
-  padding: 4px 8px;
+  padding: 0;
   font-size: 12px;
   border-radius: 6px;
   max-width: 200px;
-  cursor: move;
-  user-select: text;
+  overflow: hidden;
+}
+
+.drag-handle {
+  background: #ccc;
+  padding: 2px 6px;
+  font-weight: bold;
+  cursor: grab;
+  border-radius: 6px 6px 0 0;
+  user-select: none;
+}
+
+.note div[contenteditable] {
+  padding: 4px 8px;
+  min-height: 20px;
 }
   </style>
 </head>
@@ -266,60 +279,51 @@ function getCoords(e) {
 function createNote(x, y, text) {
   const noteDiv = document.createElement("div");
   noteDiv.className = "note";
-  noteDiv.textContent = text;
-  noteDiv.contentEditable = true;
   noteDiv.style.left = `${x}px`;
   noteDiv.style.top = `${y}px`;
+
+  const handle = document.createElement("div");
+  handle.className = "drag-handle";
+  handle.textContent = "☰";
+
+  const content = document.createElement("div");
+  content.textContent = text;
+  content.contentEditable = true;
+
+  noteDiv.appendChild(handle);
+  noteDiv.appendChild(content);
   map.appendChild(noteDiv);
   notes.push({ x, y, text });
 
-  let offsetX = 0, offsetY = 0, isDraggingNote = false;
+  let offsetX = 0, offsetY = 0, isDragging = false;
 
-  // Mouse
-  noteDiv.addEventListener("mousedown", e => {
-    e.stopPropagation();
-    offsetX = e.offsetX;
-    offsetY = e.offsetY;
-    isDraggingNote = true;
-  });
-
-  window.addEventListener("mousemove", e => {
-    if (!isDraggingNote) return;
-    const rect = map.getBoundingClientRect();
-    const newX = e.clientX - rect.left - offsetX;
-    const newY = e.clientY - rect.top - offsetY;
-    noteDiv.style.left = `${newX}px`;
-    noteDiv.style.top = `${newY}px`;
-  });
-
-  window.addEventListener("mouseup", () => {
-    isDraggingNote = false;
-  });
-
-  // Touch
-  noteDiv.addEventListener("touchstart", e => {
-    e.stopPropagation();
+  const startDrag = (e) => {
     e.preventDefault();
-    const touch = e.touches[0];
-    const rect = noteDiv.getBoundingClientRect();
-    offsetX = touch.clientX - rect.left;
-    offsetY = touch.clientY - rect.top;
-    isDraggingNote = true;
-  });
+    const touch = e.touches ? e.touches[0] : e;
+    const rect = map.getBoundingClientRect();
+    offsetX = touch.clientX - rect.left - noteDiv.offsetLeft;
+    offsetY = touch.clientY - rect.top - noteDiv.offsetTop;
+    isDragging = true;
+  };
 
-  window.addEventListener("touchmove", e => {
-    if (!isDraggingNote) return;
-    const touch = e.touches[0];
+  const moveDrag = (e) => {
+    if (!isDragging) return;
+    const touch = e.touches ? e.touches[0] : e;
     const rect = map.getBoundingClientRect();
     const newX = touch.clientX - rect.left - offsetX;
     const newY = touch.clientY - rect.top - offsetY;
     noteDiv.style.left = `${newX}px`;
     noteDiv.style.top = `${newY}px`;
-  }, { passive: false });
+  };
 
-  window.addEventListener("touchend", () => {
-    isDraggingNote = false;
-  });
+  const endDrag = () => isDragging = false;
+
+  handle.addEventListener("mousedown", startDrag);
+  handle.addEventListener("touchstart", startDrag, { passive: false });
+  window.addEventListener("mousemove", moveDrag);
+  window.addEventListener("touchmove", moveDrag, { passive: false });
+  window.addEventListener("mouseup", endDrag);
+  window.addEventListener("touchend", endDrag);
 }
 
 // Map click handler
