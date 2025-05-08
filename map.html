@@ -129,7 +129,7 @@
 const map = document.getElementById("map");
 const canvas = document.getElementById("pathCanvas");
 const ctx = canvas.getContext("2d");
-const teamPaths = {}, teamIcons = {}, undoStacks = {}, circles = [], circleUndoStack = [];
+const teamPaths = {}, teamIcons = {}, undoStacks = {}, circles = [], historyStack = [];
 
 let selectedIcon = null, activeTeam = null;
 let drawCircleMode = false, resizingCircle = null, draggingCircle = null;
@@ -181,7 +181,8 @@ function getCoords(e) {
 map.addEventListener("click", e => {
   const { x, y } = getCoords(e);
   if (drawCircleMode) {
-    circles.push({ x, y, r: 50, color: "#00f5ff" });
+    circles.push({ x, y, r: 50, color: "#00ffff" });
+    historyStack.push({ type: "circle" });
     circleUndoStack.push({ type: "add" });
     drawPaths();
     return;
@@ -228,6 +229,7 @@ map.addEventListener("click", e => {
   } else if (activeTeam) {
     undoStacks[activeTeam].push([...teamPaths[activeTeam]]);
     teamPaths[activeTeam].push({ x, y });
+    historyStack.push({ type: "line", team: activeTeam });
     drawPaths();
   }
 });
@@ -284,14 +286,23 @@ function endTouch() {
 
 // Undo button
 document.getElementById("undo-btn").onclick = () => {
-  if (circleUndoStack.length) {
-    circleUndoStack.pop();
+  const last = historyStack.pop();
+  if (!last) return;
+
+  if (last.type === "circle") {
     circles.pop();
-    drawPaths();
-    return;
+  } else if (last.type === "line") {
+    const path = teamPaths[last.team];
+    if (path) {
+      path.pop();
+      if (path.length === 0) {
+        delete teamPaths[last.team];
+        const icon = teamIcons[last.team];
+        if (icon) icon.remove();
+        delete teamIcons[last.team];
+      }
+    }
   }
-  if (!activeTeam || !undoStacks[activeTeam]?.length) return;
-  teamPaths[activeTeam] = undoStacks[activeTeam].pop();
   drawPaths();
 };
 
