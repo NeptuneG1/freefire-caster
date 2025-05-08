@@ -10,7 +10,7 @@
       'https://gkugecflfddkpitlrmws.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
     );
-  
+
     client.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
         window.location.href = "index.html";
@@ -21,7 +21,7 @@
         }
       }
     });
-  
+
     function logout() {
       client.auth.signOut().then(() => {
         window.location.href = "index.html";
@@ -77,6 +77,7 @@
       border: none; border-radius: 4px;
       cursor: pointer;
     }
+
     #sidebar {
       width: 320px;
       background: #1c1c1c;
@@ -123,6 +124,32 @@
     #import-file {
       display: none;
     }
+    .button-row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .button-row button {
+      flex: 1 1 auto;
+      white-space: nowrap;
+    }
+	.button-row button {
+      flex: 1;
+    }  
+    .note {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffbd59;
+      border: 1px solid #ffbd59;
+      padding: 4px 8px;
+      font-size: 12px;
+      border-radius: 6px;
+      max-width: 200px;
+      backdrop-filter: blur(3px);
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
@@ -135,7 +162,10 @@
   <div id="sidebar">
     <div class="icon-grid" id="teamIcons"></div>
     <div id="controls">
-      <button id="draw-circle">Draw Circle</button>
+      <div class="button-row">
+        <button id="draw-circle">Draw Circle</button>
+        <button id="note-mode">Add Note</button>
+      </div>
       <select id="map-select">
         <option value="https://i.imgur.com/V6iUHaA.jpeg">Bermuda</option>
         <option value="https://i.imgur.com/ieY0LHk.jpeg">Purgatory</option>
@@ -161,10 +191,11 @@ const map = document.getElementById("map");
 const canvas = document.getElementById("pathCanvas");
 const ctx = canvas.getContext("2d");
 const teamPaths = {}, teamIcons = {}, undoStacks = {}, circles = [], historyStack = [];
-
 let selectedIcon = null, activeTeam = null;
-let drawCircleMode = false, resizingCircle = null, draggingCircle = null;
+let drawCircleMode = false, noteMode = false;
+let resizingCircle = null, draggingCircle = null;
 let isResizing = false, isDragging = false;
+const notes = [];
 
 const teamColors = [
   "#FF0000", "#00FF00", "#00FFFF", "#FFFF00", "#FF00FF", "#FFA500",
@@ -192,20 +223,20 @@ hashes.forEach((h, i) => {
   wrapper.style.display = "flex";
   wrapper.style.flexDirection = "column";
   wrapper.style.alignItems = "center";
-  
+
   const img = document.createElement("img");
   img.src = `https://i.imgur.com/${h}.png`;
   img.className = "team-icon";
   img.dataset.id = "team" + (i + 1);
   img.onclick = () => selectedIcon = img;
-  
+
   const colorBar = document.createElement("div");
   colorBar.style.width = "60%";
   colorBar.style.height = "6px";
   colorBar.style.marginTop = "5px";
   colorBar.style.borderRadius = "8px";
   colorBar.style.backgroundColor = teamColors[i] || "#fff";
-  
+
   wrapper.appendChild(img);
   wrapper.appendChild(colorBar);
   document.getElementById("teamIcons").appendChild(wrapper);
@@ -219,15 +250,38 @@ document.getElementById("draw-circle").onclick = () => {
   btn.classList.toggle("active", drawCircleMode);
 };
 
+// Note Mode Toggle
+document.getElementById("note-mode").onclick = () => {
+  noteMode = !noteMode;
+  document.getElementById("note-mode").textContent = noteMode ? "Click on Map to Add Note" : "Add Note";
+};
+
+// Get click/touch coordinates relative to map
 function getCoords(e) {
   const rect = map.getBoundingClientRect();
   const touch = e.touches ? e.touches[0] : e;
   return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
 }
 
-// Place Unit or Circle
+// Map click handler
 map.addEventListener("click", e => {
   const { x, y } = getCoords(e);
+
+  if (noteMode) {
+    const text = prompt("Enter note:");
+    if (!text) return;
+    const noteDiv = document.createElement("div");
+    noteDiv.className = "note";
+    noteDiv.textContent = text;
+    noteDiv.style.left = `${x}px`;
+    noteDiv.style.top = `${y}px`;
+    map.appendChild(noteDiv);
+    notes.push({ x, y, text });
+    noteMode = false;
+    document.getElementById("note-mode").textContent = "Add Note";
+    return;
+  }
+
   if (drawCircleMode) {
     circles.push({ x, y, r: 50, color: "#00ffff" });
     historyStack.push({ type: "circle" });
@@ -311,6 +365,7 @@ function startTouch(e) {
     if (draggingCircle) isDragging = true;
   }
 }
+
 function moveTouch(e) {
   if (!isDragging && !isResizing) return;
   const { x, y } = getCoords(e);
@@ -322,6 +377,7 @@ function moveTouch(e) {
   }
   drawPaths();
 }
+
 function endTouch() {
   resizingCircle = draggingCircle = null;
   isResizing = isDragging = false;
@@ -360,6 +416,8 @@ document.getElementById("reset-all-btn").onclick = () => {
   Object.values(teamIcons).forEach(div => div.remove());
   [teamPaths, teamIcons, undoStacks].forEach(obj => Object.keys(obj).forEach(k => delete obj[k]));
   circles.length = 0;
+  notes.length = 0;
+  document.querySelectorAll(".note").forEach(n => n.remove());
   activeTeam = selectedIcon = null;
   drawPaths();
 };
@@ -369,7 +427,8 @@ document.getElementById("export-btn").onclick = () => {
   const data = {
     map: mapSelect.value,
     paths: teamPaths,
-    circles
+    circles,
+    notes
   };
   const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -391,9 +450,12 @@ document.getElementById("import-file").onchange = function () {
       mapSelect.value = data.map;
       map.style.backgroundImage = `url('${data.map}')`;
     }
+
     [teamPaths, teamIcons, undoStacks].forEach(obj => Object.keys(obj).forEach(k => delete obj[k]));
-    circles.length = 0;
     Object.values(teamIcons).forEach(div => div.remove());
+    circles.length = 0;
+    document.querySelectorAll(".note").forEach(n => n.remove());
+    notes.length = 0;
 
     Object.entries(data.paths || {}).forEach(([id, points]) => {
       const icon = document.querySelector(`.team-icon[data-id="${id}"]`);
@@ -406,9 +468,11 @@ document.getElementById("import-file").onchange = function () {
 
       const img = icon.cloneNode(true);
       img.style.width = img.style.height = "30px";
+
       const label = document.createElement("div");
       label.className = "unit-label";
       label.textContent = id;
+
       const reset = document.createElement("button");
       reset.className = "reset-btn";
       reset.textContent = "Reset";
@@ -430,6 +494,19 @@ document.getElementById("import-file").onchange = function () {
     });
 
     data.circles?.forEach(c => circles.push(c));
+
+    if (data.notes) {
+      data.notes.forEach(n => {
+        const noteDiv = document.createElement("div");
+        noteDiv.className = "note";
+        noteDiv.textContent = n.text;
+        noteDiv.style.left = `${n.x}px`;
+        noteDiv.style.top = `${n.y}px`;
+        map.appendChild(noteDiv);
+        notes.push(n);
+      });
+    }
+
     drawPaths();
   };
   reader.readAsText(file);
