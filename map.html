@@ -273,9 +273,9 @@ function createNote(x, y, text) {
   map.appendChild(noteDiv);
   notes.push({ x, y, text });
 
-  // Drag functionality
   let offsetX = 0, offsetY = 0, isDragging = false;
 
+  // Desktop drag
   noteDiv.addEventListener("mousedown", e => {
     offsetX = e.offsetX;
     offsetY = e.offsetY;
@@ -292,6 +292,29 @@ function createNote(x, y, text) {
   });
 
   window.addEventListener("mouseup", () => {
+    isDragging = false;
+  });
+
+  // Touch drag (iPad Safari, mobile)
+  noteDiv.addEventListener("touchstart", e => {
+    const touch = e.touches[0];
+    const rect = noteDiv.getBoundingClientRect();
+    offsetX = touch.clientX - rect.left;
+    offsetY = touch.clientY - rect.top;
+    isDragging = true;
+  });
+
+  window.addEventListener("touchmove", e => {
+    if (!isDragging) return;
+    const touch = e.touches[0];
+    const rect = map.getBoundingClientRect();
+    const newX = touch.clientX - rect.left - offsetX;
+    const newY = touch.clientY - rect.top - offsetY;
+    noteDiv.style.left = `${newX}px`;
+    noteDiv.style.top = `${newY}px`;
+  }, { passive: false });
+
+  window.addEventListener("touchend", () => {
     isDragging = false;
   });
 }
