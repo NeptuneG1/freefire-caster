@@ -263,6 +263,39 @@ function getCoords(e) {
   return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
 }
 
+function createNote(x, y, text) {
+  const noteDiv = document.createElement("div");
+  noteDiv.className = "note";
+  noteDiv.textContent = text;
+  noteDiv.contentEditable = true;
+  noteDiv.style.left = `${x}px`;
+  noteDiv.style.top = `${y}px`;
+  map.appendChild(noteDiv);
+  notes.push({ x, y, text });
+
+  // Drag functionality
+  let offsetX = 0, offsetY = 0, isDragging = false;
+
+  noteDiv.addEventListener("mousedown", e => {
+    offsetX = e.offsetX;
+    offsetY = e.offsetY;
+    isDragging = true;
+  });
+
+  window.addEventListener("mousemove", e => {
+    if (!isDragging) return;
+    const rect = map.getBoundingClientRect();
+    const newX = e.clientX - rect.left - offsetX;
+    const newY = e.clientY - rect.top - offsetY;
+    noteDiv.style.left = `${newX}px`;
+    noteDiv.style.top = `${newY}px`;
+  });
+
+  window.addEventListener("mouseup", () => {
+    isDragging = false;
+  });
+}
+
 // Map click handler
 map.addEventListener("click", e => {
   const { x, y } = getCoords(e);
