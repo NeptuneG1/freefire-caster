@@ -293,6 +293,7 @@ function createNote(x, y, text) {
   noteDiv.appendChild(handle);
   noteDiv.appendChild(content);
   map.appendChild(noteDiv);
+  historyStack.push({ type: "note", element: noteDiv });
   notes.push({ x, y, text });
 
   let offsetX = 0, offsetY = 0, isDragging = false;
@@ -467,10 +468,17 @@ document.getElementById("undo-btn").onclick = () => {
         delete teamIcons[last.team];
       }
     }
+  } else if (last.type === "note" && last.element) {
+    last.element.remove();
+    const index = notes.findIndex(n =>
+      parseInt(n.x) === parseInt(last.element.style.left) &&
+      parseInt(n.y) === parseInt(last.element.style.top)
+    );
+    if (index !== -1) notes.splice(index, 1);
   }
+
   drawPaths();
 };
-
 // Reset all
 document.getElementById("reset-all-btn").onclick = () => {
   if (!confirm("Reset all?")) return;
