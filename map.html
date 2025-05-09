@@ -1,137 +1,199 @@
 <!DOCTYPE html>
 <html lang="en">
-  
-  <head>
-    <meta charset="UTF-8" />
-    <title>
-      Team Path Planner
-    </title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"
-    />
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-    </script>
-    <script>
-      const client = supabase.createClient('https://gkugecflfddkpitlrmws.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE');
+<head>
+  <meta charset="UTF-8" />
+  <title>Team Path Planner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const client = supabase.createClient(
+      'https://gkugecflfddkpitlrmws.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
+    );
 
-      client.auth.getSession().then(({
-        data: {
-          session
+    client.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        window.location.href = "index.html";
+      } else {
+        const userInfo = document.getElementById("user-info");
+        if (userInfo && session.user?.email) {
+          userInfo.textContent = "Logged in as: " + session.user.email;
         }
-      }) = >{
-        if (!session) {
-          window.location.href = "index.html";
-        } else {
-          const userInfo = document.getElementById("user-info");
-          if (userInfo && session.user ? .email) {
-            userInfo.textContent = "Logged in as: " + session.user.email;
-          }
-        }
-      });
-
-      function logout() {
-        client.auth.signOut().then(() = >{
-          window.location.href = "index.html";
-        });
       }
-    </script>
-    <style>
-      html, body { margin: 0; padding: 0; height: 100vh; overflow: hidden; font-family:
-      Arial, sans-serif; background: #121212; color: white; -webkit-touch-callout:
-      none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
-      } #main { display: flex; height: 100vh; width: 100vw; } #map-container
-      { flex: 1; position: relative; background: black; } #map { width: 100%;
-      height: 100%; background-size: auto 100%; background-position: center;
-      background-repeat: no-repeat; position: relative; touch-action: none; }
-      canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      pointer-events: none; } .unit { position: absolute; width: 30px; height:
-      30px; background: #2e2e2e; border-radius: 50%; } .unit img { width: 100%;
-      height: 100%; box-shadow: 0 0 8px 2px rgba(255, 255, 255, 0.6); border-radius:
-      50%; } .unit-label { position: absolute; top: -18px; left: 0; font-size:
-      12px; background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 4px;
-      } .reset-btn { position: absolute; bottom: -20px; left: 0; background:
-      rgba(255,255,255,0.9); color: #000; font-size: 10px; padding: 2px 5px;
-      border: none; border-radius: 4px; cursor: pointer; } #sidebar { width:
-      320px; background: #1c1c1c; overflow-y: auto; display: flex; flex-direction:
-      column; padding: 10px; } .icon-grid { display: grid; grid-template-columns:
-      repeat(4, 1fr); gap: 8px; justify-items: center; } .team-icon { width:
-      55px; height: 60px; border: 2px solid #555; border-radius: 6px; cursor:
-      pointer; } #controls { display: flex; flex-direction: column; gap: 6px;
-      padding-top: 8px; } #controls button, #map-select { padding: 6px; background:
-      #e0a84f; border: none; border-radius: 6px; color: white; font-weight: bold;
-      cursor: pointer; } #draw-circle.active { background-color: #00ffff; color:
-      #000; } #map-select { background: #333; color: #fff; } #import-file { display:
-      none; } .button-row { display: flex; gap: 10px; justify-content: center;
-      flex-wrap: wrap; margin-bottom: 10px; } .button-row button { flex: 1 1
-      auto; white-space: nowrap; } .button-row button { flex: 1; } .note { position:
-      absolute; background: white; color: black; border: 1px solid #333; padding:
-      0; font-size: 12px; border-radius: 6px; max-width: 200px; overflow: hidden;
-      } .drag-handle { background: #ccc; padding: 2px 6px; font-weight: bold;
-      cursor: grab; border-radius: 6px 6px 0 0; user-select: none; } .note div[contenteditable]
-      { padding: 4px 8px; min-height: 20px; }
+    });
+
+    function logout() {
+      client.auth.signOut().then(() => {
+        window.location.href = "index.html";
+      });
+    }
+  </script>
+
+  <style>
+        html, body {
+          margin: 0; padding: 0;
+          height: 100vh; overflow: hidden;
+          font-family: Arial, sans-serif;
+          background: #121212; color: white;
+          -webkit-touch-callout: none;
+          -webkit-user-select: none;
+          -webkit-tap-highlight-color: transparent;
+        }
+        #main { display: flex; height: 100vh; width: 100vw; }
+        #map-container {
+          flex: 1; position: relative; background: black;
+        }
+        #map {
+          width: 100%; height: 100%;
+          background-size: auto 100%;
+          background-position: center;
+          background-repeat: no-repeat;
+          position: relative;
+          touch-action: none;
+        }
+        canvas {
+          position: absolute; top: 0; left: 0;
+          width: 100%; height: 100%;
+          pointer-events: none;
+        }
+        .unit {
+          position: absolute; width: 30px; height: 30px;
+          background: #2e2e2e; border-radius: 50%;
+        }
+        .unit img {
+          width: 100%; height: 100%;
+          box-shadow: 0 0 8px 2px rgba(255, 255, 255, 0.6);
+          border-radius: 50%;
+        }
+        .unit-label {
+          position: absolute; top: -18px; left: 0;
+          font-size: 12px; background: rgba(0,0,0,0.6);
+          padding: 2px 6px; border-radius: 4px;
+        }
+        .reset-btn {
+          position: absolute; bottom: -20px; left: 0;
+          background: rgba(255,255,255,0.9); color: #000;
+          font-size: 10px; padding: 2px 5px;
+          border: none; border-radius: 4px;
+          cursor: pointer;
+        }
+    
+        #sidebar {
+          width: 320px;
+          background: #1c1c1c;
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          padding: 10px;
+        }
+        .icon-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 8px;
+          justify-items: center;
+        }
+        .team-icon {
+          width: 55px; height: 60px;
+          border: 2px solid #555;
+          border-radius: 6px;
+          cursor: pointer;
+        }
+        #controls {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          padding-top: 8px;
+        }
+        #controls button, #map-select {
+          padding: 6px;
+          background: #e0a84f;
+          border: none;
+          border-radius: 6px;
+          color: white;
+          font-weight: bold;
+          cursor: pointer;
+        }
+        #draw-circle.active {
+          background-color: #00ffff;
+          color: #000;
+        }
+        #map-select {
+          background: #333;
+          color: #fff;
+        }
+        #import-file {
+          display: none;
+        }
+        .button-row {
+          display: flex;
+          gap: 10px;
+          justify-content: center;
+          flex-wrap: wrap;
+          margin-bottom: 10px;
+        }
+        .button-row button {
+          flex: 1 1 auto;
+          white-space: nowrap;
+        }
+    	.button-row button {
+          flex: 1;
+        }  
+        .note {
+      position: absolute;
+      background: white;
+      color: black;
+      border: 1px solid #333;
+      padding: 0;
+      font-size: 12px;
+      border-radius: 6px;
+      max-width: 200px;
+      overflow: hidden;
+    }
+    
+    .drag-handle {
+      background: #ccc;
+      padding: 2px 6px;
+      font-weight: bold;
+      cursor: grab;
+      border-radius: 6px 6px 0 0;
+      user-select: none;
+    }
+    
+    .note div[contenteditable] {
+      padding: 4px 8px;
+      min-height: 20px;
+    }
     </style>
   </head>
-  
-  <body>
-    <div id="main">
+     <div id="main">
       <div id="map-container">
         <div id="map">
-          <canvas id="pathCanvas">
-          </canvas>
+          <canvas id="pathCanvas"></canvas>
         </div>
       </div>
       <div id="sidebar">
-        <div class="icon-grid" id="teamIcons">
-        </div>
+        <div class="icon-grid" id="teamIcons"></div>
         <div id="controls">
           <div class="button-row">
-            <button id="draw-circle">
-              Draw Circle
-            </button>
-            <button id="note-mode">
-              Add Note
-            </button>
+            <button id="draw-circle">Draw Circle</button>
+            <button id="note-mode">Add Note</button>
           </div>
           <select id="map-select">
-            <option value="https://i.imgur.com/V6iUHaA.jpeg">
-              Bermuda
-            </option>
-            <option value="https://i.imgur.com/ieY0LHk.jpeg">
-              Purgatory
-            </option>
-            <option value="https://i.imgur.com/48O1Jf8.jpeg">
-              Alpine
-            </option>
-            <option value="https://i.imgur.com/4Yz12P9.jpeg">
-              Kalahari
-            </option>
-            <option value="https://i.imgur.com/0MZNMJZ.jpeg">
-              NeXTerra
-            </option>
-            <option value="https://i.imgur.com/IX1oY9Z.jpeg">
-              Solara
-            </option>
+            <option value="https://i.imgur.com/V6iUHaA.jpeg">Bermuda</option>
+            <option value="https://i.imgur.com/ieY0LHk.jpeg">Purgatory</option>
+            <option value="https://i.imgur.com/48O1Jf8.jpeg">Alpine</option>
+            <option value="https://i.imgur.com/4Yz12P9.jpeg">Kalahari</option>
+            <option value="https://i.imgur.com/0MZNMJZ.jpeg">NeXTerra</option>
+            <option value="https://i.imgur.com/IX1oY9Z.jpeg">Solara</option>
           </select>
-          <button id="undo-btn">
-            Undo
-          </button>
-          <button id="reset-all-btn">
-            Reset All
-          </button>
-          <button id="export-btn">
-            Export
-          </button>
-          <button onclick="document.getElementById('import-file').click()">
-            Import
-          </button>
+          <button id="undo-btn">Undo</button>
+          <button id="reset-all-btn">Reset All</button>
+          <button id="export-btn">Export</button>
+          <button onclick="document.getElementById('import-file').click()">Import</button>
           <input type="file" id="import-file" accept=".json" />
-          <button onclick="location.href='dashboard.html'">
-            ← Back to Dashboard
-          </button>
-          <button onclick="logout()">
-            Logout
-          </button>
-          <p id="user-info" style="font-size: 0.8rem; text-align: center; margin-top: 10px; color: #aaa;">
-          </p>
+          <button onclick="location.href='dashboard.html'">← Back to Dashboard</button>
+          <button onclick="logout()">Logout</button>
+          <p id="user-info" style="font-size: 0.8rem; text-align: center; margin-top: 10px; color: #aaa;"></p>
         </div>
       </div>
     </div>
