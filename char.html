@@ -40,7 +40,6 @@
     .nav-buttons a, .logout-btn { display: inline-block; background: #ffbd59; color: #1c1c1c; padding: 10px 20px; font-weight: bold; border-radius: 6px; text-decoration: none; margin: 0 10px; transition: background 0.2s; }
     .nav-buttons a:hover, .logout-btn:hover { background: #e0a84f; }
     .logout-btn { cursor: pointer; border: none; }
-    /* Compact Overview */
     .compact-role-container { max-width: 1300px; margin: 0 auto 60px; padding: 0 40px; }
     .role-group { margin-bottom: 30px; padding: 10px 15px; background: #1a1a1a; border-radius: 8px; border: 1px solid #333; }
     .role-title { color: #ffbd59; font-weight: bold; font-size: 1.1rem; margin: 10px 0; }
@@ -87,12 +86,12 @@
         metaGrid.innerHTML = '';
         nonMetaGrid.innerHTML = '';
 
-        characters.forEach((c, i) => {
+        characters.forEach(c => {
           const cardHTML = `
-            <div class="card" tabindex="0" onclick="toggleTooltip(event, ${i})">
+            <div class="card" tabindex="0" onclick="toggleTooltip(this)">
               <img src="${c.image_url}" alt="${c.name}" class="${c.skill_type === 'Passive' ? 'passive' : 'active'}" />
               <div class="char-name">${c.name}</div>
-              <div class="tooltip" id="tooltip-${i}">
+              <div class="tooltip">
                 <strong>${c.name}</strong><br>
                 <em>${c.skill_type} Skill:</em> ${c.skill}<br>
                 ${c.description}<br>
@@ -102,7 +101,6 @@
           (c.meta === 'yes' ? metaGrid : nonMetaGrid).innerHTML += cardHTML;
         });
 
-        // Compact by Role
         const roleGroups = {};
         const roleIcons = { Attack: "⚔️", Support: "🛡️", Info: "📡", Heal: "💊", Defense: "🛡️", Scout: "👁️", Other: "❓" };
         characters.forEach(c => {
@@ -127,42 +125,44 @@
         document.getElementById('nonMetaGrid').innerHTML = '<p>Error loading character data.</p>';
       });
 
-    function toggleTooltip(event, index) {
-      document.querySelectorAll('.card').forEach((card, i) => {
-        const tooltip = card.querySelector('.tooltip');
-        if (i === index) {
-          const isActive = card.classList.contains('active');
-          card.classList.toggle('active');
-          if (!isActive) {
-            tooltip.classList.add('active');
-            tooltip.style.display = 'block';
-            requestAnimationFrame(() => {
-              const rect = card.getBoundingClientRect();
-              const tooltipRect = tooltip.getBoundingClientRect();
-              let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
-              let top = rect.bottom + 10;
-              if (left < 10) left = 30;
-              if (left + tooltipRect.width > window.innerWidth - 10)
-                left = window.innerWidth - tooltipRect.width - 30;
-              if (top + tooltipRect.height > window.innerHeight - 10)
-                top = rect.top - tooltipRect.height - 10;
-              tooltip.style.position = 'fixed';
-              tooltip.style.left = `${left}px`;
-              tooltip.style.top = `${Math.max(top, 10)}px`;
-            });
-          } else { tooltip.classList.remove('active'); tooltip.style.display = 'none'; }
-        } else { card.classList.remove('active'); const t = card.querySelector('.tooltip'); if (t) { t.classList.remove('active'); t.style.display = 'none'; } }
+    function toggleTooltip(card) {
+      document.querySelectorAll('.card').forEach(c => {
+        const t = c.querySelector('.tooltip');
+        c.classList.remove('active');
+        if (t) t.classList.remove('active'), t.style.display = 'none';
       });
-      event.stopPropagation();
+
+      const tooltip = card.querySelector('.tooltip');
+      if (tooltip) {
+        card.classList.add('active');
+        tooltip.classList.add('active');
+        tooltip.style.display = 'block';
+
+        requestAnimationFrame(() => {
+          const rect = card.getBoundingClientRect();
+          const tooltipRect = tooltip.getBoundingClientRect();
+          let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
+          let top = rect.bottom + 10;
+          if (left < 10) left = 30;
+          if (left + tooltipRect.width > window.innerWidth - 10)
+            left = window.innerWidth - tooltipRect.width - 30;
+          if (top + tooltipRect.height > window.innerHeight - 10)
+            top = rect.top - tooltipRect.height - 10;
+          tooltip.style.position = 'fixed';
+          tooltip.style.left = `${left}px`;
+          tooltip.style.top = `${Math.max(top, 10)}px`;
+        });
+      }
     }
 
     document.body.addEventListener('click', () => {
       document.querySelectorAll('.card').forEach(card => {
         card.classList.remove('active');
         const t = card.querySelector('.tooltip');
-        if (t) { t.classList.remove('active'); t.style.display = 'none'; }
+        if (t) t.classList.remove('active'), t.style.display = 'none';
       });
     });
   </script>
 </body>
 </html>
+
