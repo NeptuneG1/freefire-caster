@@ -35,7 +35,6 @@
     .char-name { margin-top: 6px; text-align: center; font-size: 0.85rem; color: #ffbd59; font-weight: bold; word-break: break-word; }
     .tooltip { display: none; position: fixed; background: #1c1c1c; padding: 10px; border: 1px solid #ffbd59; border-radius: 6px; font-size: 0.75rem; color: #fff; width: 220px; z-index: 9999; box-shadow: 0 0 6px rgba(0,0,0,0.6); }
     .tooltip.active { display: block; }
-    @media (hover: hover) { .card:hover .tooltip { display: block; position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%); }}
     .nav-buttons { text-align: center; margin: 20px 0; }
     .nav-buttons a, .logout-btn { display: inline-block; background: #ffbd59; color: #1c1c1c; padding: 10px 20px; font-weight: bold; border-radius: 6px; text-decoration: none; margin: 0 10px; transition: background 0.2s; }
     .nav-buttons a:hover, .logout-btn:hover { background: #e0a84f; }
@@ -88,7 +87,7 @@
 
         characters.forEach(c => {
           const cardHTML = `
-            <div class="card" tabindex="0" onclick="toggleTooltip(this)">
+            <div class="card" tabindex="0" onclick="toggleTooltip(event, this)">
               <img src="${c.image_url}" alt="${c.name}" class="${c.skill_type === 'Passive' ? 'passive' : 'active'}" />
               <div class="char-name">${c.name}</div>
               <div class="tooltip">
@@ -119,13 +118,11 @@
                 </div>`).join('')}
             </div>
           </div>`).join('');
-      })
-      .catch(() => {
-        document.getElementById('metaGrid').innerHTML = '<p>Error loading character data.</p>';
-        document.getElementById('nonMetaGrid').innerHTML = '<p>Error loading character data.</p>';
       });
 
-    function toggleTooltip(card) {
+    function toggleTooltip(event, card) {
+      event.stopPropagation();
+
       document.querySelectorAll('.card').forEach(c => {
         const t = c.querySelector('.tooltip');
         c.classList.remove('active');
@@ -143,14 +140,14 @@
           const tooltipRect = tooltip.getBoundingClientRect();
           let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
           let top = rect.bottom + 10;
-          if (left < 10) left = 30;
-          if (left + tooltipRect.width > window.innerWidth - 10)
-            left = window.innerWidth - tooltipRect.width - 30;
-          if (top + tooltipRect.height > window.innerHeight - 10)
-            top = rect.top - tooltipRect.height - 10;
+
+          // constrain to viewport
+          left = Math.max(10, Math.min(left, window.innerWidth - tooltipRect.width - 10));
+          top = Math.max(10, Math.min(top, window.innerHeight - tooltipRect.height - 10));
+
           tooltip.style.position = 'fixed';
           tooltip.style.left = `${left}px`;
-          tooltip.style.top = `${Math.max(top, 10)}px`;
+          tooltip.style.top = `${top}px`;
         });
       }
     }
@@ -165,4 +162,5 @@
   </script>
 </body>
 </html>
+
 
