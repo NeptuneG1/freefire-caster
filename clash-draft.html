@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Clash Squad Draft</title>
+<title>Free Fire Clash Squad Draft (Enhanced)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto&display=swap" rel="stylesheet">
 <style>
@@ -12,17 +12,17 @@ header {background:#1f1f1f; padding:20px; text-align:center; border-bottom:3px s
 header h1 {font-family:'Orbitron', sans-serif; color:#ffbd59; margin:0; font-size:2rem}
 .teams {display:flex; justify-content:space-around; margin:20px}
 .team {width:45%; border:2px solid #ffbd59; border-radius:10px; padding:10px}
-.player {border-top:1px solid #555; padding:5px}
-.skill-grid {display:grid; grid-template-columns:repeat(auto-fit, 60px); gap:5px; justify-content:center}
-.skill-grid img {width:60px; height:60px; border-radius:8px; cursor:pointer; border:2px solid transparent}
-.skill-grid img.banned, .skill-grid img.picked {filter:grayscale(100%); border-color:red}
+.player {border-top:1px solid #555; padding:10px; display:flex; flex-direction:column; align-items:center}
+.weapon-slots img {width:40px; height:40px; margin:2px; border:2px solid #ffbd59; border-radius:6px}
+.player button {margin-top:5px; padding:5px 10px; background:#ffbd59; border:none; border-radius:5px; cursor:pointer; font-weight:bold}
+.player button:hover {background:#e0a84f}
 table {width:100%; border-collapse:collapse; margin-top:20px}
 table, th, td {border:1px solid #999}
 th, td {padding:4px; text-align:center}
 </style>
 </head>
 <body>
-<header><h1>Clash Squad Draft</h1></header>
+<header><h1>Free Fire Clash Squad Draft (Enhanced)</h1></header>
 <div class="teams">
 <div class="team" id="teamLeft">
 <h2>Team Left</h2>
@@ -33,11 +33,7 @@ th, td {padding:4px; text-align:center}
 <div id="rightPlayers"></div>
 </div>
 </div>
-<h2 style="text-align:center">Active Skills</h2>
-<div class="skill-grid" id="activeSkills"></div>
-<h2 style="text-align:center">Passive Skills</h2>
-<div class="skill-grid" id="passiveSkills"></div>
-<h2 style="text-align:center">Draft Overview</h2>
+<h2 style="text-align:center">Player Skill Overview</h2>
 <div class="teams">
 <div class="team"><h3>Team Left</h3><table id="tableLeft"></table></div>
 <div class="team"><h3>Team Right</h3><table id="tableRight"></table></div>
@@ -46,77 +42,56 @@ th, td {padding:4px; text-align:center}
 const client = supabase.createClient('https://gkugecflfddkpitlrmws.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0');
 client.auth.getSession().then(({ data: { session } }) => { if(!session) window.location.href="index.html"; });
 
-let activeBan=[], activePicks={left:[],right:[]}, players={left:[],right:[]}, characters=[];
-for(let t of['left','right']) for(let i=1;i<=4;i++) players[t].push({active:null,passives:[]});
+let players = {left:[], right:[]};
+for (let t of ['left', 'right']) for (let i = 1; i <= 4; i++) players[t].push({ weapons: [null, null], active: null, passives: [] });
 
-fetch('https://neptuneg1.github.io/freefire-caster/character.json').then(res=>res.json()).then(data=>{characters=data; loadSkills(); loadPlayers();});
-
-function loadPlayers(){
- ['left','right'].forEach(t=>{
-  let div=document.getElementById(t==='left'?'leftPlayers':'rightPlayers');
-  div.innerHTML='';
-  players[t].forEach((p,i)=>{
-   div.innerHTML+=`<div class="player"><b>Player ${i+1}</b><br>Active: <span id="${t}${i}active">None</span><br>Passives: <span id="${t}${i}passives">None</span></div>`;
+function loadPlayers() {
+  ['left','right'].forEach(t => {
+    let div = document.getElementById(t === 'left' ? 'leftPlayers' : 'rightPlayers');
+    div.innerHTML = '';
+    players[t].forEach((p, i) => {
+      div.innerHTML += `<div class='player'><div class='weapon-slots'>
+      <img src='https://via.placeholder.com/40' onclick='setWeapon("${t}",${i},0)'>
+      <img src='https://via.placeholder.com/40' onclick='setWeapon("${t}",${i},1)'></div>
+      <b>Player ${i+1}</b>
+      <button onclick='setActive("${t}",${i})'>Set Active Skill</button>
+      <button onclick='setPassive("${t}",${i})'>Add Passive Skill</button>
+      </div>`;
+    });
   });
- });
+  updateTables();
 }
 
-function loadSkills(){
- document.getElementById('activeSkills').innerHTML='';
- document.getElementById('passiveSkills').innerHTML='';
- characters.filter(c=>c.skill_type==='Active').forEach(c=>{
-  let img=document.createElement('img');
-  img.src=c.image_url; img.title=c.name;
-  img.onclick=()=>selectActive(c.name);
-  document.getElementById('activeSkills').appendChild(img);
- });
- characters.filter(c=>c.skill_type==='Passive').forEach(c=>{
-  let img=document.createElement('img');
-  img.src=c.image_url; img.title=c.name;
-  img.onclick=()=>selectPassive(c.name);
-  document.getElementById('passiveSkills').appendChild(img);
- });
+function setWeapon(team, player, slot) {
+  let weapon = prompt("Enter weapon name (or leave blank to clear)");
+  players[team][player].weapons[slot] = weapon || null;
+  loadPlayers();
 }
 
-function selectActive(name){
- let imgs=document.querySelectorAll('#activeSkills img');
- if(activeBan.length<2 && !activeBan.includes(name) && !activePicks.left.includes(name)&&!activePicks.right.includes(name)){
-  activeBan.push(name);
-  imgs.forEach(img=>{if(img.title===name) img.classList.add('banned');});
- } else if(activePicks.left.length<4 && !activeBan.includes(name)&&!activePicks.left.includes(name)&&!activePicks.right.includes(name)){
-  activePicks.left.push(name); assignActive('left',name);
-  imgs.forEach(img=>{if(img.title===name) img.classList.add('picked');});
- } else if(activePicks.right.length<4 && !activeBan.includes(name)&&!activePicks.left.includes(name)&&!activePicks.right.includes(name)){
-  activePicks.right.push(name); assignActive('right',name);
-  imgs.forEach(img=>{if(img.title===name) img.classList.add('picked');});
- }
+function setActive(team, player) {
+  let skill = prompt("Enter Active Skill Name");
+  players[team][player].active = skill;
+  loadPlayers();
 }
 
-function assignActive(team,name){
- for(let p of players[team]) if(!p.active){p.active=name; break;}
- updateTables(); loadPlayers();
+function setPassive(team, player) {
+  if (players[team][player].passives.length >= 3) return alert("Max 3 passives");
+  let skill = prompt("Enter Passive Skill Name");
+  players[team][player].passives.push(skill);
+  loadPlayers();
 }
 
-function selectPassive(name){
- let team=prompt('Select team: left or right');
- if(!['left','right'].includes(team)) return;
- let player=parseInt(prompt('Player number 1-4?'))-1;
- if(player<0||player>3) return;
- if(players[team][player].passives.length<3){
-  players[team][player].passives.push(name);
-  updateTables(); loadPlayers();
- }
-}
-
-function updateTables(){
- ['left','right'].forEach(t=>{
-  let tbl=document.getElementById(t==='left'?'tableLeft':'tableRight');
-  tbl.innerHTML='<tr><th>Player</th><th>Active</th><th>Passives</th></tr>';
-  players[t].forEach((p,i)=>{
-   tbl.innerHTML+=`<tr><td>Player ${i+1}</td><td>${p.active||'-'}</td><td>${p.passives.join(', ')||'-'}</td></tr>`;
+function updateTables() {
+  ['left','right'].forEach(t => {
+    let tbl = document.getElementById(t==='left'?'tableLeft':'tableRight');
+    tbl.innerHTML = '<tr><th>Player</th><th>Weapons</th><th>Active</th><th>Passives</th></tr>';
+    players[t].forEach((p,i)=>{
+      tbl.innerHTML += `<tr><td>Player ${i+1}</td><td>${p.weapons.filter(Boolean).join(', ')||'-'}</td><td>${p.active||'-'}</td><td>${p.passives.join(', ')||'-'}</td></tr>`;
+    });
   });
- });
 }
+
+loadPlayers();
 </script>
 </body>
 </html>
