@@ -1,3 +1,82 @@
+Let’s create a draft for freefire clash squad with 1 ban and 4 picks and everytime a skill is picked mark and make them unselectsble <!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Character Skills</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const client = supabase.createClient(
+      'https://gkugecflfddkpitlrmws.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
+    );
+    client.auth.getSession().then(({ data: { session } }) => {
+      if (!session) window.location.href = "index.html";
+      else document.getElementById("user-info").textContent = "Logged in as: " + session.user.email;
+    });
+    function logout() {
+      client.auth.signOut().then(() => window.location.href = "index.html");
+    }
+  </script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; font-family: 'Roboto', sans-serif; background: #0e0e0e; color: #f5f5f5; }
+    header { background: #1f1f1f; padding: 20px; text-align: center; border-bottom: 3px solid #ffbd59; }
+    header h1 { font-family: 'Orbitron', sans-serif; color: #ffbd59; margin: 0; font-size: 2rem; }
+    #user-info { font-size: 0.9rem; text-align: center; color: #ccc; margin-top: 4px; }
+    .legend { text-align: center; margin-top: 10px; }
+    .legend span { font-weight: bold; margin: 0 10px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px; padding: 40px; max-width: 1300px; margin: auto; }
+    .card { position: relative; cursor: pointer; display: flex; flex-direction: column; align-items: center; }
+    .card img { width: 80%; aspect-ratio: 3/4; object-fit: cover; border-radius: 8px; border: 2px solid #ffbd59; }
+    .card img.active { border-color: #00d2ff; }
+    .card img.passive { border-color: #ff59c7; }
+    .char-name { margin-top: 6px; text-align: center; font-size: 0.85rem; color: #ffbd59; font-weight: bold; word-break: break-word; }
+    .tooltip { display: none; position: fixed; background: #1c1c1c; padding: 10px; border: 1px solid #ffbd59; border-radius: 6px; font-size: 0.75rem; color: #fff; width: 220px; z-index: 9999; box-shadow: 0 0 6px rgba(0,0,0,0.6); }
+    .tooltip.active { display: block; }
+    .nav-buttons { text-align: center; margin: 20px 0; }
+    .nav-buttons a, .logout-btn { display: inline-block; background: #ffbd59; color: #1c1c1c; padding: 10px 20px; font-weight: bold; border-radius: 6px; text-decoration: none; margin: 0 10px; transition: background 0.2s; }
+    .nav-buttons a:hover, .logout-btn:hover { background: #e0a84f; }
+    .logout-btn { cursor: pointer; border: none; }
+    .compact-role-container { max-width: 1300px; margin: 0 auto 60px; padding: 0 40px; }
+    .role-group { margin-bottom: 30px; padding: 10px 15px; background: #1a1a1a; border-radius: 8px; border: 1px solid #333; }
+    .role-title { color: #ffbd59; font-weight: bold; font-size: 1.1rem; margin: 10px 0; }
+    .grid.compact { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start; }
+    .grid.compact .card { width: 70px; height: 100px; padding: 4px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }
+    .grid.compact .card img { width: 100%; height: 100%; object-fit: cover; border: 2px solid transparent; border-radius: 6px; transition: transform 0.2s ease; }
+    .grid.compact .card img.active { border-color: #00d2ff; }
+    .grid.compact .card img.passive { border-color: #ff59c7; }
+    .grid.compact .char-name, .grid.compact .tooltip { display: none; }
+    .compact-name { text-align: center; font-size: 0.7rem; color: #ccc; margin-top: 4px; word-break: break-word; line-height: 1.1; max-width: 72px; }
+    .grid.compact .card img:hover { transform: scale(1.05); }
+  </style>
+</head>
+<body>
+  <header><h1>Character Gallery</h1><p id="user-info">Checking login...</p></header>
+
+  <div class="legend">
+    <span style="color: #00d2ff;">■ Active Skill</span>
+    <span style="color: #ff59c7;">■ Passive Skill</span>
+  </div>
+
+  <div class="nav-buttons">
+    <a href="dashboard.html">← Back to Dashboard</a>
+    <a href="character-comparison.html">➤ Compare Characters</a>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+
+  <h2 style="text-align:center; color:#00d2ff;">Meta Characters</h2>
+  <div class="grid" id="metaGrid"><p>Loading meta characters...</p></div>
+
+  <h2 style="text-align:center; color:#ff59c7;">Non-Meta Characters</h2>
+  <div class="grid" id="nonMetaGrid"><p>Loading non-meta characters...</p></div>
+
+  <h2 style="text-align:center; margin-top: 40px; color:#ffbd59;">Overview by Role</h2>
+  <div id="compactByRole" class="compact-role-container"></div>
+
+  <script>
 <script>
 let draftPhase = 'ban';  // phases: ban -> pick
 let bannedSkill = null;
@@ -115,3 +194,8 @@ function toggleTooltip(event, card) {
   border-color: #ff4444 !important;
 }
 </style>
+
+  </script>
+
+</body>
+</html>
