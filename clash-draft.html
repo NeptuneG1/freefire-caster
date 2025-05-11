@@ -1,0 +1,117 @@
+<script>
+let draftPhase = 'ban';  // phases: ban -> pick
+let bannedSkill = null;
+let pickedSkills = [];
+
+fetch('https://neptuneg1.github.io/freefire-caster/character.json')
+  .then(res => res.json())
+  .then(characters => {
+    const metaGrid = document.getElementById('metaGrid');
+    const nonMetaGrid = document.getElementById('nonMetaGrid');
+    const compactByRole = document.getElementById('compactByRole');
+    metaGrid.innerHTML = '';
+    nonMetaGrid.innerHTML = '';
+
+    characters.forEach(c => {
+      const cardHTML = `
+        <div class="card" tabindex="0" onclick="selectCharacter('${c.name}', this)">
+          <img src="${c.image_url}" alt="${c.name}" class="${c.skill_type === 'Passive' ? 'passive' : 'active'}" />
+          <div class="char-name">${c.name}</div>
+          <div class="tooltip">
+            <strong>${c.name}</strong><br>
+            <em>${c.skill_type} Skill:</em> ${c.skill}<br>
+            ${c.description}<br>
+            <strong>Role:</strong> ${c.role || 'N/A'}
+          </div>
+        </div>`;
+      (c.meta === 'yes' ? metaGrid : nonMetaGrid).innerHTML += cardHTML;
+    });
+
+    const roleGroups = {};
+    const roleIcons = { Attack: "⚔️", Support: "🛡️", Info: "📡", Heal: "💊", Defense: "🛡️", Scout: "👁️", Other: "❓" };
+    characters.forEach(c => {
+      const role = c.role || 'Other';
+      if (!roleGroups[role]) roleGroups[role] = [];
+      roleGroups[role].push(c);
+    });
+    compactByRole.innerHTML = Object.entries(roleGroups).map(([role, chars]) => `
+      <div class="role-group">
+        <div class="role-title">${roleIcons[role] || "🔸"} ${role}</div>
+        <div class="grid compact">
+          ${chars.map(c => `
+            <div class="card" tabindex="0" onclick="selectCharacter('${c.name}', this)">
+              <img src="${c.image_url}" alt="${c.name}" class="${c.skill_type === 'Passive' ? 'passive' : 'active'}" />
+              <div class="compact-name">${c.name}</div>
+            </div>`).join('')}
+        </div>
+      </div>`).join('');
+  });
+
+function selectCharacter(name, card) {
+  if (bannedSkill === name || pickedSkills.includes(name)) return; // already banned or picked
+
+  if (draftPhase === 'ban') {
+    bannedSkill = name;
+    card.classList.add('banned');
+    card.style.opacity = '0.4';
+    alert(`${name} has been banned! Start picking now.`);
+    draftPhase = 'pick';
+  } else if (draftPhase === 'pick') {
+    if (pickedSkills.length >= 4) {
+      alert('All 4 picks are already selected!');
+      return;
+    }
+    pickedSkills.push(name);
+    card.classList.add('picked');
+    card.style.opacity = '0.4';
+    if (pickedSkills.length === 4) alert('Draft complete!');
+  }
+}
+
+document.body.addEventListener('click', () => {
+  document.querySelectorAll('.card').forEach(card => {
+    card.classList.remove('active');
+    const t = card.querySelector('.tooltip');
+    if (t) t.classList.remove('active'), t.style.display = 'none';
+  });
+});
+
+// Tooltip remains same
+function toggleTooltip(event, card) {
+  event.stopPropagation();
+
+  document.querySelectorAll('.card').forEach(c => {
+    const t = c.querySelector('.tooltip');
+    c.classList.remove('active');
+    if (t) t.classList.remove('active'), t.style.display = 'none';
+  });
+
+  const tooltip = card.querySelector('.tooltip');
+  if (tooltip) {
+    card.classList.add('active');
+    tooltip.classList.add('active');
+    tooltip.style.display = 'block';
+
+    requestAnimationFrame(() => {
+      const rect = card.getBoundingClientRect();
+      const tooltipRect = tooltip.getBoundingClientRect();
+      let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
+      let top = rect.bottom + 10;
+      left = Math.max(10, Math.min(left, window.innerWidth - tooltipRect.width - 10));
+      top = Math.max(10, Math.min(top, window.innerHeight - tooltipRect.height - 10));
+      tooltip.style.position = 'fixed';
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${top}px`;
+    });
+  }
+}
+</script>
+
+<style>
+/* extra style for banned and picked */
+.card.banned img,
+.card.picked img {
+  filter: grayscale(100%);
+  border-color: #ff4444 !important;
+}
+</style>
