@@ -21,8 +21,10 @@ header h1 {font-family:'Orbitron', sans-serif; color:#ff7733; margin:0; font-siz
 .slot.ban {border-color:red}
 table {width:90%; margin:20px auto; border-collapse:collapse; background:#2a2a2a; color:#fff; font-size:0.85rem}
 th, td {border:1px solid #444; padding:8px; text-align:center}
-#popup {position:fixed; top:10%; left:50%; transform:translateX(-50%); background:#222; padding:15px; border:2px solid #ff7733; border-radius:8px; display:none; z-index:9999; max-width:90%; max-height:70%; overflow:auto}
-#popup img {width:50px; height:50px; margin:5px; cursor:pointer; border-radius:5px; border:2px solid #333}
+#popup {position:fixed; top:10%; left:50%; transform:translateX(-50%); background:#222; padding:15px; border:2px solid #ff7733; border-radius:8px; display:none; z-index:9999; max-height:70%; overflow:auto}
+#popup img {margin:5px; cursor:pointer; border-radius:5px; border:2px solid #333}
+#popup.weapon img {width:100px; height:60px}
+#popup.character img, #popup.passive img {width:80px; height:120px}
 </style>
 </head>
 <body>
@@ -64,33 +66,34 @@ function draw(){
 
 function makeSlot(val,type,onClick){
  let div=document.createElement('div'); div.className='slot '+type; div.onclick=onClick;
- if(val){let img=document.createElement('img'); img.src=val.image_url||'https://via.placeholder.com/70'; div.appendChild(img);} else div.innerText=type==='weapon'?'W':type==='ban'?'BAN':'+';
+ let defaultImg='https://imgur.com/AdvPwAO.png';
+ if(val){let img=document.createElement('img'); img.src=val.image_url||defaultImg; div.appendChild(img);} else div.innerText=type==='weapon'?'W':type==='ban'?'BAN':'+';
  return div;
 }
 
 function chooseWeapon(team,player,slot){
- let pop=document.getElementById('popup'); pop.innerHTML='<h3 style="color:#ff7733">Select Weapon</h3>';
+ let pop=document.getElementById('popup'); pop.className=''; pop.classList.add('weapon'); pop.innerHTML='<h3 style="color:#ff7733">Select Weapon</h3>';
  weapons.forEach(w=>{let img=document.createElement('img'); img.src=w.image_url; img.title=w.name;
  img.onclick=()=>{players[team][player].weapons[slot]=w; pop.style.display='none'; draw();}; pop.appendChild(img);});
  pop.style.display='block';
 }
 
 function chooseCharacter(team,player){
- let pop=document.getElementById('popup'); pop.innerHTML='<h3 style="color:#00d2ff">Select Character</h3>';
+ let pop=document.getElementById('popup'); pop.className=''; pop.classList.add('character'); pop.innerHTML='<h3 style="color:#00d2ff">Select Character</h3>';
  characters.filter(c=>c.skill_type==='Active').forEach(ch=>{let img=document.createElement('img'); img.src=ch.image_url; img.title=ch.name;
  img.onclick=()=>{players[team][player].character=ch; pop.style.display='none'; draw();}; pop.appendChild(img); });
  pop.style.display='block';
 }
 
 function choosePassive(team,player,idx){
- let pop=document.getElementById('popup'); pop.innerHTML='<h3 style="color:#ff59c7">Select Passive Skill</h3>';
+ let pop=document.getElementById('popup'); pop.className=''; pop.classList.add('passive'); pop.innerHTML='<h3 style="color:#ff59c7">Select Passive Skill</h3>';
  characters.filter(c=>c.skill_type==='Passive').forEach(ch=>{let img=document.createElement('img'); img.src=ch.image_url; img.title=ch.name;
  img.onclick=()=>{players[team][player].passives[idx]=ch; pop.style.display='none'; draw();}; pop.appendChild(img); });
  pop.style.display='block';
 }
 
 function chooseBan(team){
- let pop=document.getElementById('popup'); pop.innerHTML='<h3 style="color:red">Ban Active Character</h3>';
+ let pop=document.getElementById('popup'); pop.className=''; pop.classList.add('character'); pop.innerHTML='<h3 style="color:red">Ban Active Character</h3>';
  characters.filter(c=>c.skill_type==='Active').forEach(ch=>{let img=document.createElement('img'); img.src=ch.image_url; img.title=ch.name;
  img.onclick=()=>{bans[team]=ch; pop.style.display='none'; draw();}; pop.appendChild(img); });
  pop.style.display='block';
