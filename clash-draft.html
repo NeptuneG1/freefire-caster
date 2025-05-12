@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Clash Squad Draft V2.2</title>
+  <title>Clash Squad Draft V2.4</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -191,7 +191,6 @@
       max-width: 100%;
       overflow-x: auto;
     }
-    
     .summary-team {
       display: flex;
       flex-direction: row;
@@ -217,9 +216,8 @@
   </style>
 </head>
 <body>
-<h1>Free Fire Clash Squad Draft V2.3</h1>
+  <h1>Free Fire Clash Squad Draft V2.4</h1>
 
-<!-- Draft grid stays fixed below -->
 <div class="draft-wrapper">
   <div class="team-container">
     <div class="team-label">TEAM LEFT</div>
@@ -235,16 +233,15 @@
 
 <div class="summary-wrapper">
   <div>
-    <h3 style="text-align:center;color:#ff7733;">TEAM LEFT</h3>
+    <h3>TEAM LEFT</h3>
     <div class="summary-team" id="summaryLeft"></div>
   </div>
   <div>
-    <h3 style="text-align:center;color:#ff7733;">TEAM RIGHT</h3>
+    <h3>TEAM RIGHT</h3>
     <div class="summary-team" id="summaryRight"></div>
   </div>
 </div>
 
-<!-- Modal -->
 <div class="modal" id="heroModal">
   <div class="modal-content">
     <span class="close-btn" onclick="closeModal()">X</span>
@@ -254,201 +251,130 @@
 </div>
 
 <script>
-let characters = [];
-let weapons = [];
-let draftState = {
-  bans: [null, null],
-  picks: Array.from({length:8}, () => null),
-  passives: Array.from({length:8}, () => [null, null, null]),
-  weapons: Array.from({length:8}, () => [null, null])
-};
-let currentSlot = null;
-document.addEventListener('DOMContentLoaded', () => loadData());
+let characters = [], weapons = [], draftState = {
+  bans:[null,null],
+  picks:Array(8).fill(null),
+  passives:Array(8).fill([null,null,null]),
+  weapons:Array(8).fill([null,null])
+}, currentSlot=null;
 
-async function loadData() {
-  const res1 = await fetch('https://neptuneg1.github.io/freefire-caster/character.json');
-  characters = await res1.json();
-  const res2 = await fetch('https://neptuneg1.github.io/freefire-caster/weapon.json');
-  weapons = await res2.json();
+document.addEventListener('DOMContentLoaded', async()=>{
+  characters = await (await fetch('https://neptuneg1.github.io/freefire-caster/character.json')).json();
+  weapons = await (await fetch('https://neptuneg1.github.io/freefire-caster/weapon.json')).json();
   drawDraft();
-}
-  function drawDraft() {
-  const teamLeft = document.getElementById('teamLeft');
-  const teamRight = document.getElementById('teamRight');
-  teamLeft.innerHTML = '';
-  teamRight.innerHTML = '';
-  teamLeft.appendChild(makeSlot('ban', 0));
-  for (let i = 0; i < 4; i++) teamLeft.appendChild(makeSlot('pick', i));
-  for (let i = 4; i < 8; i++) teamRight.appendChild(makeSlot('pick', i));
-  teamRight.appendChild(makeSlot('ban', 1));
+});
+
+function drawDraft() {
+  const l=document.getElementById('teamLeft'),r=document.getElementById('teamRight');
+  l.innerHTML=''; r.innerHTML='';
+  l.appendChild(makeSlot('ban',0)); for(let i=0;i<4;i++)l.appendChild(makeSlot('pick',i));
+  for(let i=4;i<8;i++)r.appendChild(makeSlot('pick',i)); r.appendChild(makeSlot('ban',1));
   updateSummary();
 }
 
-function makeSlot(type, index) {
-  const container = document.createElement('div');
-  container.className = 'slot';
-  const main = document.createElement('div');
-  main.className = type === 'ban' ? 'ban-slot' : 'pick-slot';
-  const img = document.createElement('img');
-  img.src = 'https://imgur.com/AdvPwAO.png';
-  img.style.width = '100%';
-  img.style.height = '100%';
-  img.style.borderRadius = '8px';
-  main.appendChild(img);
+function makeSlot(type,index){
+  const c=document.createElement('div'); c.className='slot';
+  const m=document.createElement('div'); m.className=type==='ban'?'ban-slot':'pick-slot';
+  const img=document.createElement('img'); img.src='https://imgur.com/AdvPwAO.png';
+  img.style.width='100%'; img.style.height='100%'; img.style.borderRadius='8px';
+  m.appendChild(img);
+  const nameDiv=document.createElement('div'); nameDiv.className='slot-name';
+  if(type==='ban'){const h=draftState.bans[index];if(h){img.src=h.image_url;nameDiv.innerText=h.name;m.classList.add('disabled');}
+  m.onclick=()=>{currentSlot={type,index};openModal('Select Hero to Ban');};}
+  else{const h=draftState.picks[index];if(h){img.src=h.image_url;nameDiv.innerText=h.name;}
+  m.onclick=()=>{currentSlot={type,index};openModal('Select Active Skill');};}
+  c.appendChild(m); c.appendChild(nameDiv);
 
-  const nameDiv = document.createElement('div');
-  nameDiv.className = 'slot-name';
+  if(type==='pick'){
+    const passives=draftState.passives[index];
+    const pDiv=document.createElement('div'); pDiv.className='passive-slots';
+    passives.forEach((ps,i)=>{const p=document.createElement('div'); p.className='passive-slot';
+    const pn=document.createElement('div');pn.className='passive-name';
+    if(ps){p.style.backgroundImage=`url(${ps.image_url})`;pn.innerText=ps.name;}
+    p.onclick=()=>{currentSlot={type:'passive',pickIndex:index,passiveIndex:i};openModal('Select Passive Skill');};
+    const box=document.createElement('div');box.style.display='flex';box.style.flexDirection='column';
+    box.style.alignItems='center';box.appendChild(p);box.appendChild(pn);pDiv.appendChild(box);});
+    c.appendChild(pDiv);
 
-  if (type === 'ban') {
-    const hero = draftState.bans[index];
-    if (hero) { img.src = hero.image_url; nameDiv.innerText = hero.name; main.classList.add('disabled'); }
-    main.onclick = () => { currentSlot = { type, index }; openModal('Select Hero to Ban'); };
-  } else {
-    const hero = draftState.picks[index];
-    if (hero) { img.src = hero.image_url; nameDiv.innerText = hero.name; }
-    main.onclick = () => { currentSlot = { type, index }; openModal('Select Active Skill'); };
-  }
-
-  container.appendChild(main);
-  container.appendChild(nameDiv);
-
-  if (type === 'pick') {
-    const passives = draftState.passives[index];
-    const passiveDiv = document.createElement('div');
-    passiveDiv.className = 'passive-slots';
-    passives.forEach((ps, i) => {
-      const pSlot = document.createElement('div');
-      pSlot.className = 'passive-slot';
-      const passiveName = document.createElement('div');
-      passiveName.className = 'passive-name';
-      if (ps) { pSlot.style.backgroundImage = `url(${ps.image_url})`; passiveName.innerText = ps.name; }
-      pSlot.onclick = () => { currentSlot = { type: 'passive', pickIndex: index, passiveIndex: i }; openModal('Select Passive Skill'); };
-      const box = document.createElement('div');
-      box.style.display = 'flex'; box.style.flexDirection = 'column'; box.style.alignItems = 'center';
-      box.appendChild(pSlot); box.appendChild(passiveName); passiveDiv.appendChild(box);
-    });
-    container.appendChild(passiveDiv);
-
-    const weaponDiv = document.createElement('div');
-    weaponDiv.className = 'weapon-slots';
-    draftState.weapons[index].forEach((w, i) => {
-      const wSlot = document.createElement('div');
-      wSlot.className = 'weapon-slot';
-      const wName = document.createElement('div');
-      wName.className = 'weapon-name';
-      if (w) { 
-        const wImg = document.createElement('img'); 
-        wImg.src = w.image_url; wSlot.appendChild(wImg); 
-        wName.innerText = w.name; 
-      }
-      wSlot.onclick = () => { currentSlot = { type: 'weapon', pickIndex: index, weaponIndex: i }; openModal('Select Weapon'); };
-      const wBox = document.createElement('div');
-      wBox.style.display = 'flex'; wBox.style.flexDirection = 'column'; wBox.style.alignItems = 'center';
-      wBox.appendChild(wSlot); wBox.appendChild(wName); weaponDiv.appendChild(wBox);
-    });
-    container.appendChild(weaponDiv);
-  }
-  return container;
+    const wDiv=document.createElement('div'); wDiv.className='weapon-slots';
+    draftState.weapons[index].forEach((w,i)=>{const wSlot=document.createElement('div'); wSlot.className='weapon-slot';
+    const wn=document.createElement('div');wn.className='weapon-name';
+    if(w){const wImg=document.createElement('img');wImg.src=w.image_url;wSlot.appendChild(wImg);wn.innerText=w.name;}
+    wSlot.onclick=()=>{currentSlot={type:'weapon',pickIndex:index,weaponIndex:i};openModal('Select Weapon');};
+    const box=document.createElement('div');box.style.display='flex';box.style.flexDirection='column';box.style.alignItems='center';
+    box.appendChild(wSlot);box.appendChild(wn);wDiv.appendChild(box);}); c.appendChild(wDiv);}
+  return c;
 }
 
-function openModal(title) {
-  document.getElementById('modalTitle').innerText = title;
-  const grid = document.getElementById('heroGrid');
-  grid.innerHTML = '';
-  const usedNames = new Set();
-  draftState.bans.forEach(h => h && usedNames.add(h.name));
-  draftState.picks.forEach(h => h && usedNames.add(h.name));
-  let list = [];
-  if (currentSlot.type === 'weapon') list = weapons;
-  else list = characters.filter(h => (currentSlot.type === 'passive') ? h.skill_type === 'Passive' : h.skill_type === 'Active');
-  list.forEach(item => {
-    const box = document.createElement('div');
-    box.className = 'hero-grid-item';
-    const img = document.createElement('img');
-    img.src = item.image_url;
-    img.title = item.name;
-    if ((currentSlot.type === 'ban' || currentSlot.type === 'pick') && usedNames.has(item.name)) img.classList.add('disabled');
-    else img.onclick = () => {
-      if (currentSlot.type === 'ban') draftState.bans[currentSlot.index] = item;
-      if (currentSlot.type === 'pick') draftState.picks[currentSlot.index] = item;
-      if (currentSlot.type === 'passive') draftState.passives[currentSlot.pickIndex][currentSlot.passiveIndex] = item;
-      if (currentSlot.type === 'weapon') draftState.weapons[currentSlot.pickIndex][currentSlot.weaponIndex] = item;
-      closeModal(); drawDraft();
-    };
-    box.appendChild(img); grid.appendChild(box);
-  });
-  document.getElementById('heroModal').style.display = 'block';
+function openModal(title){
+  document.getElementById('modalTitle').innerText=title;
+  const g=document.getElementById('heroGrid');g.innerHTML='';
+  const used=new Set(); draftState.bans.forEach(h=>h&&used.add(h.name));
+  draftState.picks.forEach(h=>h&&used.add(h.name));
+  let list=[]; if(currentSlot.type==='weapon')list=weapons;
+  else list=characters.filter(h=>(currentSlot.type==='passive')?h.skill_type==='Passive':h.skill_type==='Active');
+  list.forEach(item=>{const box=document.createElement('div');box.className='hero-grid-item';
+  const img=document.createElement('img');img.src=item.image_url;img.title=item.name;
+  if((currentSlot.type==='ban'||currentSlot.type==='pick')&&used.has(item.name))img.classList.add('disabled');
+  else img.onclick=()=>{if(currentSlot.type==='ban')draftState.bans[currentSlot.index]=item;
+  if(currentSlot.type==='pick')draftState.picks[currentSlot.index]=item;
+  if(currentSlot.type==='passive')draftState.passives[currentSlot.pickIndex][currentSlot.passiveIndex]=item;
+  if(currentSlot.type==='weapon')draftState.weapons[currentSlot.pickIndex][currentSlot.weaponIndex]=item;
+  closeModal();drawDraft();}; box.appendChild(img);g.appendChild(box);});
+  document.getElementById('heroModal').style.display='block';
 }
 
-function closeModal() { document.getElementById('heroModal').style.display = 'none'; }
+function closeModal(){document.getElementById('heroModal').style.display='none';}
+  function updateSummary(){
+  const left=document.getElementById('summaryLeft');
+  const right=document.getElementById('summaryRight');
+  left.innerHTML=""; right.innerHTML="";
 
-function updateSummary() {
-  const left = document.getElementById('summaryLeft');
-  const right = document.getElementById('summaryRight');
-  
-  // LEFT TEAM
-  left.innerHTML = "";
-  left.innerHTML += '<div style="display:flex;gap:6px">';
-  
-  let banL = draftState.bans[0];
-  let banHtml = `<div class="summary-card"><strong>BAN</strong>`;
-  if (banL) banHtml += `<br>${banL.name}<br>${banL.description || ''}`;
-  else banHtml += `<br>None`;
-  banHtml += `</div>`;
-  left.innerHTML += banHtml;
+  // TEAM LEFT
+  left.innerHTML+='<div style="display:flex;gap:6px">';
+  let banL=draftState.bans[0];
+  let banHtml=`<div class="summary-card"><strong>BAN</strong>`;
+  if(banL)banHtml+=`<br>${banL.name}<br>${banL.description||''}`;
+  else banHtml+=`<br>None`;
+  banHtml+=`</div>`; left.innerHTML+=banHtml;
 
-  for (let i = 0; i < 4; i++) {
-    const idx = i;
-    const hero = draftState.picks[idx];
-    let html = `<div class="summary-card"><strong>P${i + 1}</strong>`;
-    if (hero) html += `<br>${hero.name}<br>${hero.description || ''}`;
-    else html += `<br>None`;
-    html += `<br><u>Weapons:</u>`;
-    draftState.weapons[idx].forEach(w => {
-      if (w) html += `<br>${w.name}<br>Dmg:${w.damage} RoF:${w.rate_of_fire}<br>Rng:${w.range} Mag:${w.magazine_size}`;
-    });
-    html += `<br><u>Passives:</u><br>`;
-    draftState.passives[idx].forEach(ps => ps && (html += `${ps.name} `));
-    html += `</div>`;
-    left.innerHTML += html;
+  for(let i=0;i<4;i++){
+    const idx=i,hero=draftState.picks[idx];
+    let html=`<div class="summary-card"><strong>P${i+1}</strong>`;
+    if(hero)html+=`<br>${hero.name}<br>${hero.description||''}`;
+    else html+=`<br>None`;
+    html+=`<br><u>Weapons:</u>`;
+    draftState.weapons[idx].forEach(w=>{if(w)html+=`<br>${w.name}<br>Dmg:${w.damage} RoF:${w.rate_of_fire}<br>Rng:${w.range} Mag:${w.magazine_size}`;});
+    html+=`<br><u>Passives:</u>`;
+    draftState.passives[idx].forEach(ps=>{if(ps)html+=`<br>${ps.name}<br>${ps.description||''}`;});
+    html+=`</div>`; left.innerHTML+=html;
   }
-  left.innerHTML += '</div></div>';
+  left.innerHTML+='</div>';
 
-  // RIGHT TEAM
-  right.innerHTML = "";
-  right.innerHTML += '<div style="display:flex;gap:6px">';
-  
-  let banR = draftState.bans[1];
-  let banHtmlR = `<div class="summary-card"><strong>BAN</strong>`;
-  if (banR) banHtmlR += `<br>${banR.name}<br>${banR.description || ''}`;
-  else banHtmlR += `<br>None`;
-  banHtmlR += `</div>`;
-  right.innerHTML += banHtmlR;
-
-  for (let i = 3; i >= 0; i--) {
-    const idx = 4 + i;
-    const hero = draftState.picks[idx];
-    let html = `<div class="summary-card"><strong>P${4 - i}</strong>`;
-    if (hero) html += `<br>${hero.name}<br>${hero.description || ''}`;
-    else html += `<br>None`;
-    html += `<br><u>Weapons:</u>`;
-    draftState.weapons[idx].forEach(w => {
-      if (w) html += `<br>${w.name}<br>Dmg:${w.damage} RoF:${w.rate_of_fire}<br>Rng:${w.range} Mag:${w.magazine_size}`;
-    });
-    html += `<br><u>Passives:</u><br>`;
-    draftState.passives[idx].forEach(ps => ps && (html += `${ps.name} `));
-    html += `</div>`;
-    right.innerHTML += html;
+  // TEAM RIGHT
+  right.innerHTML+='<div style="display:flex;gap:6px">';
+  for(let i=0;i<4;i++){
+    const idx=4+i,hero=draftState.picks[idx];
+    let html=`<div class="summary-card"><strong>P${i+1}</strong>`;
+    if(hero)html+=`<br>${hero.name}<br>${hero.description||''}`;
+    else html+=`<br>None`;
+    html+=`<br><u>Weapons:</u>`;
+    draftState.weapons[idx].forEach(w=>{if(w)html+=`<br>${w.name}<br>Dmg:${w.damage} RoF:${w.rate_of_fire}<br>Rng:${w.range} Mag:${w.magazine_size}`;});
+    html+=`<br><u>Passives:</u>`;
+    draftState.passives[idx].forEach(ps=>{if(ps)html+=`<br>${ps.name}<br>${ps.description||''}`;});
+    html+=`</div>`; right.innerHTML+=html;
   }
-  right.innerHTML += '</div></div>';
+
+  let banR=draftState.bans[1];
+  let banHtmlR=`<div class="summary-card"><strong>BAN</strong>`;
+  if(banR)banHtmlR+=`<br>${banR.name}<br>${banR.description||''}`;
+  else banHtmlR+=`<br>None`;
+  banHtmlR+=`</div>`; right.innerHTML+=banHtmlR;
+  right.innerHTML+='</div>';
 }
-function resetDraft() {
-  draftState = {
-    bans: [null, null],
-    picks: Array.from({length:8}, () => null),
-    passives: Array.from({length:8}, () => [null, null, null]),
-    weapons: Array.from({length:8}, () => [null, null])
-  };
+
+function resetDraft(){
+  draftState={bans:[null,null],picks:Array(8).fill(null),passives:Array(8).fill([null,null,null]),weapons:Array(8).fill([null,null])};
   drawDraft();
 }
 </script>
