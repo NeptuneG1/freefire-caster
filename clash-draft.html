@@ -204,6 +204,7 @@
   flex-direction: row;
   gap: 6px;
   justify-content: center;
+  align-items: stretch;
 }
 
 .summary-card {
@@ -341,46 +342,50 @@ function updateSummary() {
     </div>
   `;
 
-  function buildTeamSummary(team, startIndex, banIndex) {
+  function buildTeamSummary(startIndex, banIndex) {
     let html = "";
 
-    // Row 1: BAN
+    // Row 0: BAN
     const ban = draftState.bans[banIndex];
     html += `<div class="summary-row">
       ${makeCard("BAN", ban ? `${ban.name}<br>${ban.description || ''}` : "None")}
     </div>`;
 
-    // Row 2: PICKS
+    // Row 1: ACTIVES (heroes)
     html += `<div class="summary-row">`;
     for (let i = startIndex; i < startIndex + 4; i++) {
       const hero = draftState.picks[i];
-      html += makeCard(`P${(i - startIndex) + 1}`, hero ? `${hero.name}<br>${hero.description || ''}` : "None");
+      html += makeCard(`Player ${i - startIndex + 1}`, hero ? `${hero.name}<br>${hero.description || ''}` : "None");
     }
     html += `</div>`;
 
-    // Row 3: WEAPONS
+    // Row 2: WEAPONS (both per player in same card)
     html += `<div class="summary-row">`;
     for (let i = startIndex; i < startIndex + 4; i++) {
+      let wContent = "";
       draftState.weapons[i].forEach(w => {
-        html += makeCard("Weapon", w ? `${w.name}<br>Dmg:${w.damage} RoF:${w.rate_of_fire}<br>Rng:${w.range} Mag:${w.magazine_size}` : "None");
+        if (w) wContent += `${w.name}<br>Dmg:${w.damage} RoF:${w.rate_of_fire}<br>Rng:${w.range} Mag:${w.magazine_size}<br><br>`;
       });
+      html += makeCard("Weapons", wContent || "None");
     }
     html += `</div>`;
 
-    // Row 4: PASSIVES
+    // Row 3: PASSIVES (all 3 passives per player in same card)
     html += `<div class="summary-row">`;
     for (let i = startIndex; i < startIndex + 4; i++) {
+      let pContent = "";
       draftState.passives[i].forEach(ps => {
-        html += makeCard("Passive", ps ? `${ps.name}<br>${ps.description || ''}` : "None");
+        if (ps) pContent += `${ps.name}<br>${ps.description || ''}<br><br>`;
       });
+      html += makeCard("Passives", pContent || "None");
     }
     html += `</div>`;
 
     return html;
   }
 
-  left.innerHTML = `<h3>TEAM LEFT</h3>${buildTeamSummary("left", 0, 0)}`;
-  right.innerHTML = `<h3>TEAM RIGHT</h3>${buildTeamSummary("right", 4, 1)}`;
+  left.innerHTML = `<h3>TEAM LEFT</h3>${buildTeamSummary(0, 0)}`;
+  right.innerHTML = `<h3>TEAM RIGHT</h3>${buildTeamSummary(4, 1)}`;
 }
   
 function resetDraft() {
