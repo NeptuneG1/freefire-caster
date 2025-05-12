@@ -128,11 +128,11 @@
       border: 2px solid #ff7733;
       border-radius: 8px;
       width: 90%;
-      max-width: 800px;
-      max-height: 90vh;
+      max-width: 1000px;        /* was 800px → increase to 1000px */
+      max-height: 95vh;          /* slightly taller for full list */
       overflow-y: auto;
       position: relative;
-    }
+  }
     .close-btn {
       position: absolute;
       top: 10px;
@@ -152,6 +152,7 @@
       width: 100%;
       border-radius: 6px;
       cursor: pointer;
+      max-width: 150px
     }
     .disabled {
       opacity: 0.3;
@@ -315,16 +316,38 @@ function openModal(title){
   const g=document.getElementById('heroGrid');g.innerHTML='';
   const used=new Set(); draftState.bans.forEach(h=>h&&used.add(h.name));
   draftState.picks.forEach(h=>h&&used.add(h.name));
-  let list=[]; if(currentSlot.type==='weapon')list=weapons;
-  else list=characters.filter(h=>(currentSlot.type==='passive')?h.skill_type==='Passive':h.skill_type==='Active');
-  list.forEach(item=>{const box=document.createElement('div');box.className='hero-grid-item';
-  const img=document.createElement('img');img.src=item.image_url;img.title=item.name;
-  if((currentSlot.type==='ban'||currentSlot.type==='pick')&&used.has(item.name))img.classList.add('disabled');
-  else img.onclick=()=>{if(currentSlot.type==='ban')draftState.bans[currentSlot.index]=item;
-  if(currentSlot.type==='pick')draftState.picks[currentSlot.index]=item;
-  if(currentSlot.type==='passive')draftState.passives[currentSlot.pickIndex][currentSlot.passiveIndex]=item;
-  if(currentSlot.type==='weapon')draftState.weapons[currentSlot.pickIndex][currentSlot.weaponIndex]=item;
-  closeModal();drawDraft();}; box.appendChild(img);g.appendChild(box);});
+
+  if(currentSlot.type==='weapon'){
+    const grouped={};
+    weapons.forEach(w=>{if(!grouped[w.type])grouped[w.type]=[]; grouped[w.type].push(w);});
+    for(const [type,list] of Object.entries(grouped)){
+      const header=document.createElement('div');
+      header.style.color='#ff7733'; header.style.marginTop='10px';
+      header.style.fontWeight='bold'; header.textContent=type.toUpperCase();
+      g.appendChild(header);
+      const groupDiv=document.createElement('div');
+      groupDiv.style.display='flex'; groupDiv.style.flexWrap='wrap'; groupDiv.style.gap='8px';
+      list.forEach(item=>{
+        const box=document.createElement('div');box.className='hero-grid-item';
+        const img=document.createElement('img');img.src=item.image_url;img.title=item.name;
+        img.onclick=()=>{draftState.weapons[currentSlot.pickIndex][currentSlot.weaponIndex]=item; closeModal();drawDraft();};
+        box.appendChild(img); groupDiv.appendChild(box);
+      });
+      g.appendChild(groupDiv);
+    }
+  } else {
+    let list=characters.filter(h=>(currentSlot.type==='passive')?h.skill_type==='Passive':h.skill_type==='Active');
+    list.forEach(item=>{
+      const box=document.createElement('div');box.className='hero-grid-item';
+      const img=document.createElement('img');img.src=item.image_url;img.title=item.name;
+      if((currentSlot.type==='ban'||currentSlot.type==='pick')&&used.has(item.name))img.classList.add('disabled');
+      else img.onclick=()=>{if(currentSlot.type==='ban')draftState.bans[currentSlot.index]=item;
+      if(currentSlot.type==='pick')draftState.picks[currentSlot.index]=item;
+      if(currentSlot.type==='passive')draftState.passives[currentSlot.pickIndex][currentSlot.passiveIndex]=item;
+      closeModal();drawDraft();};
+      box.appendChild(img); g.appendChild(box);
+    });
+  }
   document.getElementById('heroModal').style.display='block';
 }
 
