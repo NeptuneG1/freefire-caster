@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Clash Squad Draft V2.1</title>
+  <title>Clash Squad Draft V2.2</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -181,10 +181,26 @@
       cursor: pointer;
       font-size: 16px;
     }
+    .summary-wrapper {
+      display: flex;
+      justify-content: center;
+      gap: 50px;
+      margin-top: 30px;
+      font-size: 12px;
+      color: #ddd;
+    }
+    .summary-team {
+      max-width: 400px;
+    }
+    .summary-team h3 {
+      text-align: center;
+      color: #ff7733;
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
-<h1>Free Fire Clash Squad Draft V2.1</h1>
+<h1>Free Fire Clash Squad Draft V2.2</h1>
 <div class="draft-wrapper">
   <div class="team-container">
     <div class="team-label">TEAM LEFT</div>
@@ -196,6 +212,12 @@
   </div>
 </div>
 <button class="reset-btn" onclick="resetDraft()">Reset All</button>
+
+<!-- NEW summary display -->
+<div class="summary-wrapper">
+  <div class="summary-team" id="summaryLeft"></div>
+  <div class="summary-team" id="summaryRight"></div>
+</div>
 
 <!-- Modal -->
 <div class="modal" id="heroModal">
@@ -234,6 +256,7 @@ async function loadData() {
   for (let i = 0; i < 4; i++) teamLeft.appendChild(makeSlot('pick', i));
   for (let i = 4; i < 8; i++) teamRight.appendChild(makeSlot('pick', i));
   teamRight.appendChild(makeSlot('ban', 1));
+  updateSummary();
 }
 
 function makeSlot(type, index) {
@@ -333,6 +356,37 @@ function openModal(title) {
 }
 
 function closeModal() { document.getElementById('heroModal').style.display = 'none'; }
+
+function updateSummary() {
+  const left = document.getElementById('summaryLeft');
+  const right = document.getElementById('summaryRight');
+  left.innerHTML = "<h3>TEAM LEFT</h3>";
+  right.innerHTML = "<h3>TEAM RIGHT</h3>";
+
+  left.innerHTML += draftState.bans[0] ? `Ban: ${draftState.bans[0].name}<br><br>` : "Ban: None<br><br>";
+  right.innerHTML += draftState.bans[1] ? `Ban: ${draftState.bans[1].name}<br><br>` : "Ban: None<br><br>";
+
+  for (let team = 0; team <= 1; team++) {
+    const target = team === 0 ? left : right;
+    const start = team === 0 ? 0 : 4;
+    for (let i = 0; i < 4; i++) {
+      const idx = start + i;
+      const hero = draftState.picks[idx];
+      target.innerHTML += `<strong>Player ${i + 1}</strong><br>`;
+      if (hero) target.innerHTML += `Character: ${hero.name}<br>${hero.description || ''}<br>`;
+      else target.innerHTML += `Character: None<br>`;
+      target.innerHTML += `Weapons:<br>`;
+      draftState.weapons[idx].forEach(w => {
+        if (w) {
+          target.innerHTML += `- ${w.name} | Damage: ${w.damage}, RoF: ${w.rate_of_fire}, Range: ${w.range}, Mag: ${w.magazine_size}, Attr: ${w.special_attributes || 'None'}, Desc: ${w.description || ''}<br>`;
+        }
+      });
+      target.innerHTML += `Passives: `;
+      draftState.passives[idx].forEach(ps => ps && (target.innerHTML += `${ps.name} `));
+      target.innerHTML += `<br><br>`;
+    }
+  }
+}
 
 function resetDraft() {
   draftState = {
