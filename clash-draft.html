@@ -1,131 +1,286 @@
-<!-- FULL FINAL Free Fire Draft with Fixed Sizes + Smaller Passive/Ban Cards -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Free Fire Clash Squad Draft</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto&display=swap" rel="stylesheet">
-<style>
-body {margin:0; font-family:'Roboto', sans-serif; background:#1c1f26; color:#f0f0f0}
-header {background:#1f1f1f; padding:15px; text-align:center; border-bottom:3px solid #ff7733}
-header h1 {font-family:'Orbitron', sans-serif; color:#ff7733; margin:0; font-size:2rem}
-.draft-wrapper {display:flex; justify-content:space-between; gap:2rem; margin:20px}
-.team-column {width:48%; display:flex; flex-direction:column; align-items:center}
-.ban-section, .hero-section {display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap; justify-content:center}
-.card {background:#1e1e1e; border:1px solid #444; border-radius:10px; padding:8px; width:100px; text-align:center; display:flex; flex-direction:column; justify-content:center; align-items:center; cursor:pointer}
-.card img {width:100%; height:100px; border-radius:6px; object-fit:cover}
-.card.passive img, .card.ban img {height:70px !important;}
-table {width:90%; margin:20px auto; border-collapse:collapse; background:#2a2a2a; color:#fff; font-size:0.85rem}
-th, td {border:1px solid #444; padding:8px; text-align:center}
-#popup {position:fixed; top:10%; left:50%; transform:translateX(-50%); background:#222; padding:15px; border:2px solid #ff7733; border-radius:10px; display:none; z-index:9999; max-height:70%; overflow:auto}
-#popup img {margin:5px; cursor:pointer; border-radius:5px; border:2px solid #333}
-#popup.weapon img {width:150px; height:60px}
-#popup.character img, #popup.passive img {width:80px; height:120px}
-#popup .close-btn {position: absolute; top: 5px; right: 10px; color: #ff7733; font-size: 18px; font-weight: bold; cursor: pointer;}
-.reset-btn {margin-top:5px; padding:4px 8px; background:#ff7733; color:#fff; border:none; border-radius:4px; cursor:pointer}
-</style>
+  <meta charset="UTF-8" />
+  <title>FFWS Style Draft</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #1c1f26;
+      color: #f0f0f0;
+      margin: 0;
+      padding: 20px;
+    }
+    .draft-row {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .slot {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .ban-slot, .pick-slot {
+      width: 100px;
+      height: 100px;
+      background: #2a2a2a;
+      border: 2px solid #444;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+    }
+    .ban-slot {
+      border-color: #ff5a5a;
+    }
+    .ban-slot.disabled, .pick-slot.disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    .passive-slots {
+      display: flex;
+      gap: 5px;
+      margin-top: 5px;
+    }
+    .passive-slot {
+      width: 30px;
+      height: 30px;
+      background: #3a3a3a;
+      border: 1px solid #555;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 9999;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      overflow: auto;
+    }
+    .modal-content {
+      background: #1f1f1f;
+      margin: 5% auto;
+      padding: 16px;
+      border: 2px solid #ff7733;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 800px;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+    }
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      color: #ff7733;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .hero-grid-item {
+      text-align: center;
+      font-size: 11px;
+      position: relative;
+    }
+    .hero-grid-item img {
+      width: 100%;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .disabled {
+      pointer-events: none;
+      opacity: 0.3;
+    }
+    .banned-overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(255, 0, 0, 0.4);
+      color: white;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      font-size: 11px;
+    }
+    .reset-button {
+      background: #ff7733;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+  </style>
 </head>
 <body>
-<header><h1>Free Fire Clash Squad Draft</h1></header>
-<div class="draft-wrapper">
-<div class="team-column"><div class="ban-section" id="teamLeftBan"></div><div class="hero-section" id="teamLeft"></div></div>
-<div class="team-column"><div class="ban-section" id="teamRightBan"></div><div class="hero-section" id="teamRight"></div></div>
-</div>
-<table id="overview"><tr><th>Team</th><th>Player</th><th>Weapons</th><th>Character</th><th>Passives</th></tr></table>
-<div id="popup"></div>
-<script>
-const client = supabase.createClient('https://gkugecflfddkpitlrmws.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0');
-client.auth.getSession().then(({ data: { session } }) => { if(!session) window.location.href="index.html"; });
+  <h1 style="text-align:center;">FFWS Style Draft</h1>
+  <div class="draft-row" id="draftRow">
+    <!-- Slots will be generated by JavaScript -->
+  </div>
+  <div style="text-align:center;">
+    <button class="reset-button" onclick="resetDraft()">Reset</button>
+  </div>
 
-let players={left:[], right:[]}; let weapons=[], characters=[], bans={left:null,right:null};
-for(let t of['left','right']) for(let i=0;i<4;i++) players[t].push({weapons:[null,null],character:null,passives:[null,null,null]});
+  <!-- Modal -->
+  <div class="modal" id="heroModal">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeModal()">&times;</span>
+      <h3 style="color:#ff7733" id="modalTitle">Select Hero</h3>
+      <div class="hero-grid" id="heroGrid"></div>
+    </div>
+  </div>
 
-Promise.all([
- fetch('https://neptuneg1.github.io/freefire-caster/weapon.json').then(r=>r.json()),
- fetch('https://neptuneg1.github.io/freefire-caster/character.json').then(r=>r.json())
-]).then(([weaponData, charData]) => { weapons=weaponData; characters=charData; draw(); });
+  <script>
+    const draftRow = document.getElementById('draftRow');
+    const heroModal = document.getElementById('heroModal');
+    const heroGrid = document.getElementById('heroGrid');
+    const modalTitle = document.getElementById('modalTitle');
 
-function draw(){
- document.getElementById('teamLeftBan').innerHTML='';
- document.getElementById('teamRightBan').innerHTML='';
- document.getElementById('teamLeft').innerHTML='';
- document.getElementById('teamRight').innerHTML='';
- ['left','right'].forEach(t=>{
- document.getElementById(t==='left'?'teamLeftBan':'teamRightBan').appendChild(makeCard(bans[t],'ban',()=>chooseBan(t)));
- players[t].forEach((p,idx)=>{
-  let col=document.createElement('div'); col.style.display='flex'; col.style.flexDirection='column'; col.style.alignItems='center'; col.style.gap='5px';
-  [0,1].forEach(w=>{col.appendChild(makeCard(p.weapons[w],'weapon',()=>chooseWeapon(t,idx,w)));});
-  col.appendChild(makeCard(p.character,'character',()=>chooseCharacter(t,idx)));
-  p.passives.forEach((ps,i)=>col.appendChild(makeCard(ps,'passive',()=>choosePassive(t,idx,i))));
-  let resetBtn=document.createElement('button');
-  resetBtn.className='reset-btn';
-  resetBtn.innerText='Reset';
-  resetBtn.onclick=()=>{players[t][idx]={weapons:[null,null],character:null,passives:[null,null,null]}; draw();};
-  col.appendChild(resetBtn);
-  document.getElementById(t==='left'?'teamLeft':'teamRight').appendChild(col);
- });
-}); updateTable();
-}
+    let characterData = [];
+    let currentSlot = null;
+    let draftState = {
+      bans: [null, null],
+      picks: Array(8).fill(null),
+      passives: Array(8).fill([null, null, null])
+    };
 
-function makeCard(val,type,onClick){
- let div=document.createElement('div'); div.className='card ' + type; div.onclick=onClick;
- let defaultImg='https://imgur.com/AdvPwAO.png';
- if(val){let img=document.createElement('img'); img.src=val.image_url||defaultImg; div.appendChild(img);} else div.innerText=type==='weapon'?'W':type==='ban'?'BAN':'+';
- return div;
-}
-
-function chooseWeapon(team,player,slot){
- let pop=document.getElementById('popup'); pop.className=''; pop.classList.add('weapon'); pop.innerHTML='<h3 style="color:#ff7733">Select Weapon</h3>';
- weapons.forEach(w=>{let img=document.createElement('img'); img.src=w.image_url; img.title=w.name;
- img.onclick=()=>{players[team][player].weapons[slot]=w; pop.style.display='none'; draw();}; pop.appendChild(img);});
- pop.style.display='block';
-}
-
-function chooseCharacter(team,player){
- let pop=document.getElementById('popup'); pop.className=''; pop.classList.add('character'); pop.innerHTML='<h3 style="color:#00d2ff">Select Character</h3>';
- let used = [].concat(...['left','right'].map(t=>players[t].map(p=>p.character?.name))).filter(Boolean);
- let banned = Object.values(bans).filter(Boolean).map(b => b.name);
- characters.filter(c=>c.skill_type==='Active').forEach(ch=>{
-   let img=document.createElement('img'); img.src=ch.image_url; img.title=ch.name;
-   if(used.includes(ch.name) || banned.includes(ch.name)) {
-     img.style.opacity='0.4'; img.style.pointerEvents='none';
-   } else {
-     img.onclick=()=>{players[team][player].character=ch; pop.style.display='none'; draw();};
-   }
-   pop.appendChild(img);
- });
- pop.style.display='block';
-}
-
-function choosePassive(team,player,idx){
- let pop=document.getElementById('popup'); pop.className=''; pop.classList.add('passive'); pop.innerHTML='<h3 style="color:#ff59c7">Select Passive Skill</h3>';
- characters.filter(c=>c.skill_type==='Passive').forEach(ch=>{let img=document.createElement('img'); img.src=ch.image_url; img.title=ch.name;
- img.onclick=()=>{players[team][player].passives[idx]=ch; pop.style.display='none'; draw();}; pop.appendChild(img); });
- pop.style.display='block';
-}
-
-function chooseBan(team){
- let pop=document.getElementById('popup'); pop.className=''; pop.classList.add('character'); pop.innerHTML='<h3 style="color:red">Ban Active Character</h3>';
- characters.filter(c=>c.skill_type==='Active').forEach(ch=>{let img=document.createElement('img'); img.src=ch.image_url; img.title=ch.name;
- img.onclick=()=>{bans[team]=ch; pop.style.display='none'; draw();}; pop.appendChild(img); });
- pop.style.display='block';
-}
-
-function updateTable(){
- let tbl=document.getElementById('overview'); tbl.innerHTML='<tr><th>Team</th><th>Player</th><th>Weapons</th><th>Character</th><th>Passives</th></tr>';
- ['left','right'].forEach(t=>players[t].forEach((p,i)=>{
- let weaponDetails=p.weapons.filter(w=>w).map(w=>w.name+': '+(w.description||'-')).join('<br>')||'-';
- let passiveDetails=p.passives.filter(ps=>ps).map(ps=>ps.name+': '+(ps.description||'-')).join('<br>')||'-';
- tbl.innerHTML+=`<tr><td>${t}</td><td>${i+1}</td><td>${weaponDetails}</td><td>${p.character?(p.character.name+': '+(p.character.description||'-')):'-'}</td><td>${passiveDetails}</td></tr>`;
- }));
-}
-document.getElementById('popup').addEventListener('click', e => {
-    if(e.target.classList.contains('close-btn')) {
-        document.getElementById('popup').style.display = 'none';
+    // Load character data
+    async function loadCharacters() {
+      const res = await fetch('character.json');
+      characterData = await res.json();
+      renderDraft();
     }
-});
-</script>
-</body>
-</html>
+
+    function renderDraft() {
+      draftRow.innerHTML = '';
+      // Left Ban
+      draftRow.appendChild(createSlot('ban', 0));
+      // Picks
+      for (let i = 0; i < 8; i++) {
+        draftRow.appendChild(createSlot('pick', i));
+      }
+      // Right Ban
+      draftRow.appendChild(createSlot('ban', 1));
+    }
+
+    function createSlot(type, index) {
+      const slot = document.createElement('div');
+      slot.className = 'slot';
+      const mainSlot = document.createElement('div');
+      mainSlot.className = type === 'ban' ? 'ban-slot' : 'pick-slot';
+      const img = document.createElement('img');
+      img.src = 'https://i.imgur.com/kkUX3a3.jpeg';
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.borderRadius = '8px';
+      mainSlot.appendChild(img);
+
+      if (type === 'ban') {
+        const hero = draftState.bans[index];
+        if (hero) {
+          img.src = hero.ImageURL;
+          mainSlot.classList.add('disabled');
+        }
+        mainSlot.onclick = () => {
+          currentSlot = { type, index };
+          openModal('Select Hero to Ban');
+        };
+      } else {
+        const hero = draftState.picks[index];
+        if (hero) {
+          img.src = hero.ImageURL;
+        }
+        mainSlot.onclick = () => {
+          currentSlot = { type, index };
+          openModal('Select Hero to Pick');
+        };
+      }
+
+      slot.appendChild(mainSlot);
+
+      if (type === 'pick') {
+        const passiveContainer = document.createElement('div');
+        passiveContainer.className = 'passive-slots';
+        for (let i = 0; i < 3; i++) {
+          const pSlot = document.createElement('div');
+          pSlot.className = 'passive-slot';
+          const passive = draftState.passives[index][i];
+          if (passive) {
+            pSlot.style.backgroundImage = `url(${passive.ImageURL})`;
+            pSlot.style.backgroundSize = 'cover';
+          }
+          pSlot.onclick = () => {
+            currentSlot = { type: 'passive', pickIndex: index, passiveIndex: i };
+            openModal('Select Passive Skill');
+          };
+          passiveContainer.appendChild(pSlot);
+        }
+        slot.appendChild(passiveContainer);
+      }
+
+      return slot;
+    }
+
+    function openModal(title) {
+      modalTitle.textContent = title;
+      heroGrid.innerHTML = '';
+      const usedHeroes = new Set();
+      draftState.bans.forEach(h => h && usedHeroes.add(h.Hero));
+      draftState.picks.forEach(h => h && usedHeroes.add(h.Hero));
+
+      characterData.forEach(hero => {
+        const container = document.createElement('div');
+        container.className = 'hero-grid-item';
+        const img = document.createElement('img');
+        img.src = hero.ImageURL;
+        img.alt = hero.Hero;
+        img.title = hero.Hero;
+
+        const isUsed = usedHeroes.has(hero.Hero);
+        if (currentSlot.type === 'ban' && isUsed) {
+          img.classList.add('disabled');
+          const overlay = document.createElement('div');
+          overlay.className = 'banned-overlay';
+          overlay.innerText = 'USED';
+          container.appendChild(overlay);
+        } else if (currentSlot.type === 'pick' && isUsed) {
+          img.classList.add('disabled');
+          const overlay = document.createElement('div');
+          overlay.className = 'banned-overlay';
+          overlay.innerText = 'USED';
+          container.appendChild(overlay);
+        } else {
+          img.onclick = () => {
+            if (currentSlot.type === 'ban') {
+              draftState.bans[currentSlot.index] = hero;
+            } else if (currentSlot.type === 'pick') {
+              draftState.picks[currentSlot.index] = hero;
+            } else if (currentSlot.type === 'passive') {
+              draftState.passives[currentSlot.pickIndex][currentSlot.passiveIndex] = hero;
+            }
+            closeModal();
+            renderDraft();
+          };
+        }
+
+        container.appendChild(img);
+        container.appendChild(document.createElement('div 
