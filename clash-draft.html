@@ -412,9 +412,56 @@ function updateSummary() {
 
     return html;
   }
+  function buildTeamSummaryRight(startIndex, banIndex) {
+  let html = "";
+
+  // Row 0: BAN
+  const ban = draftState.bans[banIndex];
+  html += `<div class="summary-row">
+    ${makeCard("BAN", ban ? `${ban.name}<br>${ban.description || ''}` : "None")}
+  </div>`;
+
+  // Row 1: ACTIVES (heroes) → reverse order
+  html += `<div class="summary-row">`;
+  for (let i = startIndex + 3; i >= startIndex; i--) {
+    const hero = draftState.picks[i];
+    html += makeCard(
+      `Player ${i - startIndex + 1}`,
+      hero
+        ? `${hero.name}<br>Skill: ${hero.skill}<br>${hero.description || ''}`
+        : "None"
+    );
+  }
+  html += `</div>`;
+
+  // Row 2: WEAPONS
+  html += `<div class="summary-row">`;
+  for (let i = startIndex + 3; i >= startIndex; i--) {
+    let wContent = "";
+    draftState.weapons[i].forEach(w => {
+      if (w) wContent += `${w.name}<br>Dmg:${w.damage} RoF:${w.rate_of_fire}<br>Rng:${w.range} Mag:${w.magazine_size}<br><br>`;
+    });
+    html += makeCard("Weapons", wContent || "None");
+  }
+  html += `</div>`;
+
+  // Row 3: PASSIVES
+  html += `<div class="summary-row">`;
+  for (let i = startIndex + 3; i >= startIndex; i--) {
+    let pContent = "";
+    draftState.passives[i].forEach(ps => {
+      if (ps)
+        pContent += `Skill: ${ps.name}<br>${ps.description || ''}<br><br>`;
+    });
+    html += makeCard("Passives", pContent || "None");
+  }
+  html += `</div>`;
+
+  return html;
+}
 
   left.innerHTML = `<h3>TEAM LEFT</h3>${buildTeamSummary(0, 0)}`;
-  right.innerHTML = `<h3>TEAM RIGHT</h3>${buildTeamSummary(4, 1)}`;
+  right.innerHTML = `<h3>TEAM RIGHT</h3>${buildTeamSummaryRight(4, 1)}`;
 }
   
 function resetDraft() {
