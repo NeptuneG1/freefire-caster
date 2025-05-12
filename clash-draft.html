@@ -76,8 +76,17 @@ function chooseWeapon(team,player,slot){
 
 function chooseCharacter(team,player){
  let pop=document.getElementById('popup'); pop.className=''; pop.classList.add('character'); pop.innerHTML='<h3 style="color:#00d2ff">Select Character</h3>';
- characters.filter(c=>c.skill_type==='Active').forEach(ch=>{let img=document.createElement('img'); img.src=ch.image_url; img.title=ch.name;
- img.onclick=()=>{players[team][player].character=ch; pop.style.display='none'; draw();}; pop.appendChild(img); });
+ let used = [].concat(...['left','right'].map(t=>players[t].map(p=>p.character?.name))).filter(Boolean);
+ let banned = Object.values(bans).filter(Boolean).map(b => b.name);
+ characters.filter(c=>c.skill_type==='Active').forEach(ch=>{
+   let img=document.createElement('img'); img.src=ch.image_url; img.title=ch.name;
+   if(used.includes(ch.name) || banned.includes(ch.name)) {
+     img.style.opacity='0.4'; img.style.pointerEvents='none';
+   } else {
+     img.onclick=()=>{players[team][player].character=ch; pop.style.display='none'; draw();};
+   }
+   pop.appendChild(img);
+ });
  pop.style.display='block';
 }
 
