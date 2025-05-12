@@ -400,24 +400,68 @@ function openModal(title){
   draftState.picks.forEach(h=>h&&used.add(h.name));
 
   if(currentSlot.type==='weapon'){
-    const grouped={};
-    weapons.forEach(w=>{if(!grouped[w.type])grouped[w.type]=[]; grouped[w.type].push(w);});
-    for(const [type,list] of Object.entries(grouped)){
-      const header=document.createElement('div');
-      header.style.color='#ff7733'; header.style.marginTop='10px';
-      header.style.fontWeight='bold'; header.textContent=type.toUpperCase();
-      g.appendChild(header);
-      const groupDiv=document.createElement('div');
-      groupDiv.style.display='flex'; groupDiv.style.flexWrap='wrap'; groupDiv.style.gap='8px';
-      list.forEach(item=>{
-        const box=document.createElement('div');box.className='hero-grid-item';
-        const img=document.createElement('img');img.src=item.image_url;img.title=item.name;
-        img.onclick=()=>{draftState.weapons[currentSlot.pickIndex][currentSlot.weaponIndex]=item; closeModal();drawDraft();};
-        box.appendChild(img); groupDiv.appendChild(box);
-      });
-      g.appendChild(groupDiv);
+    const grouped = {};
+    weapons.forEach(w => {
+        if (!grouped[w.type]) grouped[w.type] = [];
+        grouped[w.type].push(w);
+    });
+
+    for (const [type, list] of Object.entries(grouped)) {
+        // Smaller type header
+        const header = document.createElement('div');
+        header.style.color = '#ff7733';
+        header.style.marginTop = '10px';
+        header.style.fontWeight = 'bold';
+        header.style.fontSize = '12px';  // smaller title text
+        header.textContent = type.toUpperCase();
+        g.appendChild(header);
+
+        // Group container
+        const groupDiv = document.createElement('div');
+        groupDiv.style.display = 'flex';
+        groupDiv.style.flexWrap = 'wrap';
+        groupDiv.style.gap = '8px';
+        groupDiv.style.justifyContent = 'center';
+
+        list.forEach(item => {
+            const box = document.createElement('div');
+            box.className = 'hero-grid-item';
+            box.style.display = 'flex';
+            box.style.flexDirection = 'column';
+            box.style.alignItems = 'center';
+            box.style.justifyContent = 'center';
+
+            // Bigger image
+            const img = document.createElement('img');
+            img.src = item.image_url;
+            img.title = item.name;
+            img.style.maxWidth = '90px';      // bigger weapon image
+            img.style.maxHeight = '90px';
+            img.style.borderRadius = '6px';
+            img.style.cursor = 'pointer';
+            img.onclick = () => {
+                draftState.weapons[currentSlot.pickIndex][currentSlot.weaponIndex] = item;
+                closeModal();
+                drawDraft();
+            };
+
+            // Weapon name below
+            const label = document.createElement('div');
+            label.style.marginTop = '4px';
+            label.style.fontSize = '10px';
+            label.style.textAlign = 'center';
+            label.style.color = '#ddd';
+            label.textContent = item.name;
+
+            box.appendChild(img);
+            box.appendChild(label);
+            groupDiv.appendChild(box);
+        });
+
+        g.appendChild(groupDiv);
     }
-  } else {
+}
+  else {
     let list=characters.filter(h=>(currentSlot.type==='passive')?h.skill_type==='Passive':h.skill_type==='Active');
     list.forEach(item=>{
       const box=document.createElement('div');box.className='hero-grid-item';
