@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Clash Squad Draft</title>
+  <title>Clash Squad Draft V2</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -16,19 +16,34 @@
       text-align: center;
       color: #ff7733;
     }
-    .draft-row {
+    .draft-wrapper {
       display: flex;
       justify-content: center;
       align-items: flex-start;
-      gap: 10px;
+      gap: 50px;
       margin-top: 20px;
       flex-wrap: nowrap;
+    }
+    .team-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .team-label {
+      color: #ff7733;
+      font-weight: bold;
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+    .team-row {
+      display: flex;
+      gap: 10px;
     }
     .slot {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 5px;
+      gap: 4px;
     }
     .ban-slot, .pick-slot {
       width: 100px;
@@ -63,6 +78,20 @@
       cursor: pointer;
       background-size: cover;
       background-position: center;
+    }
+    .slot-name {
+      font-size: 12px;
+      color: #ccc;
+      text-align: center;
+    }
+    .passive-name {
+      font-size: 10px;
+      color: #ccc;
+      text-align: center;
+      max-width: 40px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
     }
     .modal {
       display: none;
@@ -125,7 +154,7 @@
       font-size: 12px;
     }
     .reset-btn {
-      margin: 15px auto;
+      margin: 20px auto;
       display: block;
       background: #ff7733;
       color: #fff;
@@ -138,8 +167,17 @@
   </style>
 </head>
 <body>
-<h1>Clash Squad Draft</h1>
-<div class="draft-row" id="draftRow"></div>
+<h1>Free Fire Clash Squad Draft V2</h1>
+<div class="draft-wrapper">
+  <div class="team-container">
+    <div class="team-label">TEAM LEFT</div>
+    <div class="team-row" id="teamLeft"></div>
+  </div>
+  <div class="team-container">
+    <div class="team-label">TEAM RIGHT</div>
+    <div class="team-row" id="teamRight"></div>
+  </div>
+</div>
 <button class="reset-btn" onclick="resetDraft()">Reset All</button>
 
 <!-- Modal -->
@@ -167,16 +205,20 @@ async function loadData() {
   drawDraft();
 }
   function drawDraft() {
-  const row = document.getElementById('draftRow');
-  row.innerHTML = '';
-  // Left ban
-  row.appendChild(makeSlot('ban', 0));
-  // Picks
-  for (let i = 0; i < 8; i++) {
-    row.appendChild(makeSlot('pick', i));
+  const teamLeft = document.getElementById('teamLeft');
+  const teamRight = document.getElementById('teamRight');
+  teamLeft.innerHTML = '';
+  teamRight.innerHTML = '';
+  // Left ban + 4 picks
+  teamLeft.appendChild(makeSlot('ban', 0));
+  for (let i = 0; i < 4; i++) {
+    teamLeft.appendChild(makeSlot('pick', i));
   }
-  // Right ban
-  row.appendChild(makeSlot('ban', 1));
+  // Right 4 picks + ban
+  for (let i = 4; i < 8; i++) {
+    teamRight.appendChild(makeSlot('pick', i));
+  }
+  teamRight.appendChild(makeSlot('ban', 1));
 }
 
 function makeSlot(type, index) {
@@ -191,11 +233,15 @@ function makeSlot(type, index) {
   img.style.borderRadius = '8px';
   main.appendChild(img);
 
+  const nameDiv = document.createElement('div');
+  nameDiv.className = 'slot-name';
+
   if (type === 'ban') {
     const hero = draftState.bans[index];
     if (hero) {
       img.src = hero.image_url;
       main.classList.add('disabled');
+      nameDiv.innerText = hero.name;
     }
     main.onclick = () => {
       currentSlot = { type, index };
@@ -203,15 +249,19 @@ function makeSlot(type, index) {
     };
   } else {
     const hero = draftState.picks[index];
-    if (hero) img.src = hero.image_url;
+    if (hero) {
+      img.src = hero.image_url;
+      nameDiv.innerText = hero.name;
+    }
     main.onclick = () => {
       currentSlot = { type, index };
       openModal('Select Active Skill');
     };
   }
-  container.appendChild(main);
 
-  // Add passive slots under picks
+  container.appendChild(main);
+  container.appendChild(nameDiv);
+
   if (type === 'pick') {
     const passives = draftState.passives[index];
     const passiveDiv = document.createElement('div');
@@ -219,12 +269,23 @@ function makeSlot(type, index) {
     for (let i = 0; i < 3; i++) {
       const pSlot = document.createElement('div');
       pSlot.className = 'passive-slot';
-      if (passives[i]) pSlot.style.backgroundImage = `url(${passives[i].image_url})`;
+      const passiveName = document.createElement('div');
+      passiveName.className = 'passive-name';
+      if (passives[i]) {
+        pSlot.style.backgroundImage = `url(${passives[i].image_url})`;
+        passiveName.innerText = passives[i].name;
+      }
       pSlot.onclick = () => {
         currentSlot = { type: 'passive', pickIndex: index, passiveIndex: i };
         openModal('Select Passive Skill');
       };
-      passiveDiv.appendChild(pSlot);
+      const passiveContainer = document.createElement('div');
+      passiveContainer.style.display = 'flex';
+      passiveContainer.style.flexDirection = 'column';
+      passiveContainer.style.alignItems = 'center';
+      passiveContainer.appendChild(pSlot);
+      passiveContainer.appendChild(passiveName);
+      passiveDiv.appendChild(passiveContainer);
     }
     container.appendChild(passiveDiv);
   }
