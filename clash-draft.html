@@ -161,11 +161,11 @@
       border: 2px solid #ff7733;
       border-radius: 8px;
       width: 90%;
-      max-width: 1000px;        /* was 800px → increase to 1000px */
-      max-height: 95vh;          /* slightly taller for full list */
+      max-width: 1000px;
+      max-height: 95vh;
       overflow-y: auto;
       position: relative;
-  }
+    }
     .close-btn {
       position: absolute;
       top: 10px;
@@ -185,7 +185,7 @@
       width: 100%;
       border-radius: 6px;
       cursor: pointer;
-      max-width: 150px
+      max-width: 150px;
     }
     .disabled {
       opacity: 0.3;
@@ -231,9 +231,6 @@
       align-items: center;
       gap: 10px;
     }
-    .summary-wrapper > div > .summary-row:first-child > .summary-ban {
-    flex: 1 1 100%;
-    }
     .summary-row {
       display: flex;
       flex-direction: row;
@@ -241,7 +238,6 @@
       justify-content: center;
       align-items: stretch;
     }
-    
     .summary-card {
       background: #2a2a2a;
       border: 2px solid #444;
@@ -293,43 +289,43 @@
   </style>
 </head>
 <body>
-   <header>
+  <header>
     <h1>Clash Squad Draft</h1>
     <p id="user-info">Checking login...</p>
   </header>
-<div class="nav-buttons">
+  <div class="nav-buttons">
     <a href="dashboard.html">← Back to Dashboard</a>
     <button class="logout-btn" onclick="logout()">Logout</button>
   </div>
-<div class="draft-wrapper">
-  <div class="team-container">
-    <div class="team-label">TEAM LEFT</div>
-    <div class="team-row" id="teamLeft"></div>
+  <div class="draft-wrapper">
+    <div class="team-container">
+      <div class="team-label">TEAM LEFT</div>
+      <div class="team-row" id="teamLeft"></div>
+    </div>
+    <div class="team-container">
+      <div class="team-label">TEAM RIGHT</div>
+      <div class="team-row" id="teamRight"></div>
+          </div>
   </div>
-  <div class="team-container">
-    <div class="team-label">TEAM RIGHT</div>
-    <div class="team-row" id="teamRight"></div>
-  </div>
-</div>
 
-<button class="reset-btn" onclick="resetDraft()">Reset All</button>
+  <button class="reset-btn" onclick="resetDraft()">Reset All</button>
 
-<div class="summary-wrapper">
-  <div>
-    <div class="summary-team" id="summaryLeft"></div>
+  <div class="summary-wrapper">
+    <div>
+      <div class="summary-team" id="summaryLeft"></div>
+    </div>
+    <div>
+      <div class="summary-team" id="summaryRight"></div>
+    </div>
   </div>
-  <div>
-    <div class="summary-team" id="summaryRight"></div>
-  </div>
-</div>
 
-<div class="modal" id="heroModal">
-  <div class="modal-content">
-    <span class="close-btn" onclick="closeModal()">X</span>
-    <h3 style="color:#ff7733;" id="modalTitle">Select</h3>
-    <div class="hero-grid" id="heroGrid"></div>
+  <div class="modal" id="heroModal">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeModal()">X</span>
+      <h3 style="color:#ff7733;" id="modalTitle">Select</h3>
+      <div class="hero-grid" id="heroGrid"></div>
+    </div>
   </div>
-</div>
 
 <script>
 let characters=[], weapons=[], draftState={
@@ -350,7 +346,7 @@ function drawDraft(){
   l.innerHTML=''; r.innerHTML='';
   l.appendChild(makeSlot('ban',0));
   for(let i=0;i<4;i++)l.appendChild(makeSlot('pick',i));
-  for(let i=7;i>=4;i--)r.appendChild(makeSlot('pick',i));   // <-- reversed order
+  for(let i=7;i>=4;i--)r.appendChild(makeSlot('pick',i));
   r.appendChild(makeSlot('ban',1));
   updateSummary();
 }
@@ -430,7 +426,6 @@ function openModal(title){
 }
 
 function closeModal(){document.getElementById('heroModal').style.display='none';}
-  
 function updateSummary() {
   const left = document.getElementById('summaryLeft');
   const right = document.getElementById('summaryRight');
@@ -444,107 +439,107 @@ function updateSummary() {
   `;
 
   function buildTeamSummary(startIndex, banIndex) {
-  let html = "";
+    let html = "";
 
-  // Row 0: BAN
-  const ban = draftState.bans[banIndex];
-  html += `<div class="summary-row">
-    <div class="summary-ban"><strong>BAN</strong><br>${ban ? `${ban.name}<br>${ban.description || ''}` : "None"}</div>
-  </div>`;
+    // Row 0: BAN full width
+    const ban = draftState.bans[banIndex];
+    html += `<div class="summary-row" style="justify-content:center;">
+      <div class="summary-ban"><strong>BAN</strong><br>${ban ? `${ban.name}<br>${ban.description || ''}` : "None"}</div>
+    </div>`;
 
-  // Row 1: ACTIVES
-  html += `<div class="summary-row">`;
-  for (let i = startIndex; i < startIndex + 4; i++) {
-    const hero = draftState.picks[i];
-    html += makeCard(
-      `Player ${i - startIndex + 1}`,
-      hero
-        ? `${hero.name}<br>Skill: ${hero.skill}<br>${hero.description || ''}`
-        : "None"
-    );
+    // Row 1: ACTIVES (heroes)
+    html += `<div class="summary-row">`;
+    for (let i = startIndex; i < startIndex + 4; i++) {
+      const hero = draftState.picks[i];
+      html += makeCard(
+        `Player ${i - startIndex + 1}`,
+        hero
+          ? `${hero.name}<br>Skill: ${hero.skill}<br>${hero.description || ''}`
+          : "None"
+      );
+    }
+    html += `</div>`;
+
+    // Row 2: WEAPONS
+    html += `<div class="summary-row">`;
+    for (let i = startIndex; i < startIndex + 4; i++) {
+      let wContent = "";
+      draftState.weapons[i].forEach(w => {
+        if (w) wContent += `${w.name}<br>Dmg:${w.damage} RoF:${w.rate_of_fire}<br>Rng:${w.range} Mag:${w.magazine_size}<br><br>`;
+      });
+      html += makeCard("Weapons", wContent || "None");
+    }
+    html += `</div>`;
+
+    // Row 3: PASSIVES
+    html += `<div class="summary-row">`;
+    for (let i = startIndex; i < startIndex + 4; i++) {
+      let pContent = "";
+      draftState.passives[i].forEach(ps => {
+        if (ps)
+          pContent += `Skill: ${ps.name}<br>${ps.description || ''}<br><br>`;
+      });
+      html += makeCard("Passives", pContent || "None");
+    }
+    html += `</div>`;
+
+    return html;
   }
-  html += `</div>`;
 
-  // Row 2: WEAPONS
-  html += `<div class="summary-row">`;
-  for (let i = startIndex; i < startIndex + 4; i++) {
-    let wContent = "";
-    draftState.weapons[i].forEach(w => {
-      if (w) wContent += `${w.name}<br>Dmg:${w.damage} RoF:${w.rate_of_fire}<br>Rng:${w.range} Mag:${w.magazine_size}<br><br>`;
-    });
-    html += makeCard("Weapons", wContent || "None");
-  }
-  html += `</div>`;
-
-  // Row 3: PASSIVES
-  html += `<div class="summary-row">`;
-  for (let i = startIndex; i < startIndex + 4; i++) {
-    let pContent = "";
-    draftState.passives[i].forEach(ps => {
-      if (ps)
-        pContent += `Skill: ${ps.name}<br>${ps.description || ''}<br><br>`;
-    });
-    html += makeCard("Passives", pContent || "None");
-  }
-  html += `</div>`;
-
-  return html;
-}
-  
   function buildTeamSummaryRight(startIndex, banIndex) {
-  let html = "";
+    let html = "";
 
-  // Row 0: BAN
-  const ban = draftState.bans[banIndex];
-  html += `<div class="summary-row">
-    <div class="summary-ban"><strong>BAN</strong><br>${ban ? `${ban.name}<br>${ban.description || ''}` : "None"}</div>
-  </div>`;
+    // Row 0: BAN full width
+    const ban = draftState.bans[banIndex];
+    html += `<div class="summary-row" style="justify-content:center;">
+      <div class="summary-ban"><strong>BAN</strong><br>${ban ? `${ban.name}<br>${ban.description || ''}` : "None"}</div>
+    </div>`;
 
-  // Row 1: ACTIVES (heroes) → reversed
-  html += `<div class="summary-row">`;
-  for (let offset = 3; offset >= 0; offset--) {
-    const i = startIndex + offset;
-    const hero = draftState.picks[i];
-    html += makeCard(
-      `Player ${4 - offset}`,
-      hero
-        ? `${hero.name}<br>Skill: ${hero.skill}<br>${hero.description || ''}`
-        : "None"
-    );
+    // Row 1: ACTIVES (reversed order display, P1-P4 label correct)
+    html += `<div class="summary-row">`;
+    for (let offset = 3; offset >= 0; offset--) {
+      const i = startIndex + offset;
+      const hero = draftState.picks[i];
+      html += makeCard(
+        `Player ${4 - offset}`,
+        hero
+          ? `${hero.name}<br>Skill: ${hero.skill}<br>${hero.description || ''}`
+          : "None"
+      );
+    }
+    html += `</div>`;
+
+    // Row 2: WEAPONS
+    html += `<div class="summary-row">`;
+    for (let offset = 3; offset >= 0; offset--) {
+      const i = startIndex + offset;
+      let wContent = "";
+      draftState.weapons[i].forEach(w => {
+        if (w) wContent += `${w.name}<br>Dmg:${w.damage} RoF:${w.rate_of_fire}<br>Rng:${w.range} Mag:${w.magazine_size}<br><br>`;
+      });
+      html += makeCard("Weapons", wContent || "None");
+    }
+    html += `</div>`;
+
+    // Row 3: PASSIVES
+    html += `<div class="summary-row">`;
+    for (let offset = 3; offset >= 0; offset--) {
+      const i = startIndex + offset;
+      let pContent = "";
+      draftState.passives[i].forEach(ps => {
+        if (ps)
+          pContent += `Skill: ${ps.name}<br>${ps.description || ''}<br><br>`;
+      });
+      html += makeCard("Passives", pContent || "None");
+    }
+    html += `</div>`;
+
+    return html;
   }
-  html += `</div>`;
 
-  // Row 2: WEAPONS
-  html += `<div class="summary-row">`;
-  for (let offset = 3; offset >= 0; offset--) {
-    const i = startIndex + offset;
-    let wContent = "";
-    draftState.weapons[i].forEach(w => {
-      if (w) wContent += `${w.name}<br>Dmg:${w.damage} RoF:${w.rate_of_fire}<br>Rng:${w.range} Mag:${w.magazine_size}<br><br>`;
-    });
-    html += makeCard("Weapons", wContent || "None");
-  }
-  html += `</div>`;
-
-  // Row 3: PASSIVES
-  html += `<div class="summary-row">`;
-  for (let offset = 3; offset >= 0; offset--) {
-    const i = startIndex + offset;
-    let pContent = "";
-    draftState.passives[i].forEach(ps => {
-      if (ps)
-        pContent += `Skill: ${ps.name}<br>${ps.description || ''}<br><br>`;
-    });
-    html += makeCard("Passives", pContent || "None");
-  }
-  html += `</div>`;
-
-  return html;
-}
   left.innerHTML = `<h3>TEAM LEFT</h3>${buildTeamSummary(0, 0)}`;
   right.innerHTML = `<h3>TEAM RIGHT</h3>${buildTeamSummaryRight(4, 1)}`;
 }
-  
 function resetDraft() {
   draftState = {
     bans: [null, null],
