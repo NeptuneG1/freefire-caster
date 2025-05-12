@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Clash Squad Draft V2</title>
+  <title>Clash Squad Draft V2.1</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -64,10 +64,11 @@
       opacity: 0.4;
       pointer-events: none;
     }
-    .passive-slots {
+    .passive-slots, .weapon-slots {
       display: flex;
       gap: 3px;
       justify-content: center;
+      flex-wrap: wrap;
     }
     .passive-slot {
       width: 30px;
@@ -79,12 +80,28 @@
       background-size: cover;
       background-position: center;
     }
+    .weapon-slot {
+      width: 100px;
+      height: 40px;
+      background: #2a2a2a;
+      border: 2px solid #444;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+    .weapon-slot img {
+      max-height: 100%;
+      max-width: 100%;
+    }
     .slot-name {
       font-size: 12px;
       color: #ccc;
       text-align: center;
     }
-    .passive-name {
+    .passive-name, .weapon-name {
       font-size: 10px;
       color: #ccc;
       text-align: center;
@@ -167,7 +184,7 @@
   </style>
 </head>
 <body>
-<h1>Free Fire Clash Squad Draft V2</h1>
+<h1>Free Fire Clash Squad Draft V2.1</h1>
 <div class="draft-wrapper">
   <div class="team-container">
     <div class="team-label">TEAM LEFT</div>
@@ -191,17 +208,21 @@
 
 <script>
 let characters = [];
+let weapons = [];
 let draftState = {
   bans: [null, null],
-  picks: Array(8).fill(null),
-  passives: Array.from({ length: 8 }, () => [null, null, null])
+  picks: Array.from({length:8}, () => null),
+  passives: Array.from({length:8}, () => [null, null, null]),
+  weapons: Array.from({length:8}, () => [null, null])
 };
 let currentSlot = null;
 document.addEventListener('DOMContentLoaded', () => loadData());
 
 async function loadData() {
-  const res = await fetch('https://neptuneg1.github.io/freefire-caster/character.json');
-  characters = await res.json();
+  const res1 = await fetch('https://neptuneg1.github.io/freefire-caster/character.json');
+  characters = await res1.json();
+  const res2 = await fetch('https://neptuneg1.github.io/freefire-caster/weapon.json');
+  weapons = await res2.json();
   drawDraft();
 }
   function drawDraft() {
@@ -209,15 +230,9 @@ async function loadData() {
   const teamRight = document.getElementById('teamRight');
   teamLeft.innerHTML = '';
   teamRight.innerHTML = '';
-  // Left ban + 4 picks
   teamLeft.appendChild(makeSlot('ban', 0));
-  for (let i = 0; i < 4; i++) {
-    teamLeft.appendChild(makeSlot('pick', i));
-  }
-  // Right 4 picks + ban
-  for (let i = 4; i < 8; i++) {
-    teamRight.appendChild(makeSlot('pick', i));
-  }
+  for (let i = 0; i < 4; i++) teamLeft.appendChild(makeSlot('pick', i));
+  for (let i = 4; i < 8; i++) teamRight.appendChild(makeSlot('pick', i));
   teamRight.appendChild(makeSlot('ban', 1));
 }
 
@@ -238,25 +253,12 @@ function makeSlot(type, index) {
 
   if (type === 'ban') {
     const hero = draftState.bans[index];
-    if (hero) {
-      img.src = hero.image_url;
-      main.classList.add('disabled');
-      nameDiv.innerText = hero.name;
-    }
-    main.onclick = () => {
-      currentSlot = { type, index };
-      openModal('Select Hero to Ban');
-    };
+    if (hero) { img.src = hero.image_url; nameDiv.innerText = hero.name; main.classList.add('disabled'); }
+    main.onclick = () => { currentSlot = { type, index }; openModal('Select Hero to Ban'); };
   } else {
     const hero = draftState.picks[index];
-    if (hero) {
-      img.src = hero.image_url;
-      nameDiv.innerText = hero.name;
-    }
-    main.onclick = () => {
-      currentSlot = { type, index };
-      openModal('Select Active Skill');
-    };
+    if (hero) { img.src = hero.image_url; nameDiv.innerText = hero.name; }
+    main.onclick = () => { currentSlot = { type, index }; openModal('Select Active Skill'); };
   }
 
   container.appendChild(main);
@@ -266,30 +268,38 @@ function makeSlot(type, index) {
     const passives = draftState.passives[index];
     const passiveDiv = document.createElement('div');
     passiveDiv.className = 'passive-slots';
-    for (let i = 0; i < 3; i++) {
+    passives.forEach((ps, i) => {
       const pSlot = document.createElement('div');
       pSlot.className = 'passive-slot';
       const passiveName = document.createElement('div');
       passiveName.className = 'passive-name';
-      if (passives[i]) {
-        pSlot.style.backgroundImage = `url(${passives[i].image_url})`;
-        passiveName.innerText = passives[i].name;
-      }
-      pSlot.onclick = () => {
-        currentSlot = { type: 'passive', pickIndex: index, passiveIndex: i };
-        openModal('Select Passive Skill');
-      };
-      const passiveContainer = document.createElement('div');
-      passiveContainer.style.display = 'flex';
-      passiveContainer.style.flexDirection = 'column';
-      passiveContainer.style.alignItems = 'center';
-      passiveContainer.appendChild(pSlot);
-      passiveContainer.appendChild(passiveName);
-      passiveDiv.appendChild(passiveContainer);
-    }
+      if (ps) { pSlot.style.backgroundImage = `url(${ps.image_url})`; passiveName.innerText = ps.name; }
+      pSlot.onclick = () => { currentSlot = { type: 'passive', pickIndex: index, passiveIndex: i }; openModal('Select Passive Skill'); };
+      const box = document.createElement('div');
+      box.style.display = 'flex'; box.style.flexDirection = 'column'; box.style.alignItems = 'center';
+      box.appendChild(pSlot); box.appendChild(passiveName); passiveDiv.appendChild(box);
+    });
     container.appendChild(passiveDiv);
-  }
 
+    const weaponDiv = document.createElement('div');
+    weaponDiv.className = 'weapon-slots';
+    draftState.weapons[index].forEach((w, i) => {
+      const wSlot = document.createElement('div');
+      wSlot.className = 'weapon-slot';
+      const wName = document.createElement('div');
+      wName.className = 'weapon-name';
+      if (w) { 
+        const wImg = document.createElement('img'); 
+        wImg.src = w.image_url; wSlot.appendChild(wImg); 
+        wName.innerText = w.name; 
+      }
+      wSlot.onclick = () => { currentSlot = { type: 'weapon', pickIndex: index, weaponIndex: i }; openModal('Select Weapon'); };
+      const wBox = document.createElement('div');
+      wBox.style.display = 'flex'; wBox.style.flexDirection = 'column'; wBox.style.alignItems = 'center';
+      wBox.appendChild(wSlot); wBox.appendChild(wName); weaponDiv.appendChild(wBox);
+    });
+    container.appendChild(weaponDiv);
+  }
   return container;
 }
 
@@ -300,46 +310,36 @@ function openModal(title) {
   const usedNames = new Set();
   draftState.bans.forEach(h => h && usedNames.add(h.name));
   draftState.picks.forEach(h => h && usedNames.add(h.name));
-
-  characters.forEach(hero => {
-    if (currentSlot.type === 'ban' || currentSlot.type === 'pick') {
-      if (hero.skill_type !== 'Active') return;
-    } else if (currentSlot.type === 'passive') {
-      if (hero.skill_type !== 'Passive') return;
-    }
-
-    const item = document.createElement('div');
-    item.className = 'hero-grid-item';
+  let list = [];
+  if (currentSlot.type === 'weapon') list = weapons;
+  else list = characters.filter(h => (currentSlot.type === 'passive') ? h.skill_type === 'Passive' : h.skill_type === 'Active');
+  list.forEach(item => {
+    const box = document.createElement('div');
+    box.className = 'hero-grid-item';
     const img = document.createElement('img');
-    img.src = hero.image_url;
-    img.title = hero.name;
-    if ((currentSlot.type === 'ban' || currentSlot.type === 'pick') && usedNames.has(hero.name)) {
-      img.classList.add('disabled');
-    } else {
-      img.onclick = () => {
-        if (currentSlot.type === 'ban') draftState.bans[currentSlot.index] = hero;
-        if (currentSlot.type === 'pick') draftState.picks[currentSlot.index] = hero;
-        if (currentSlot.type === 'passive') draftState.passives[currentSlot.pickIndex][currentSlot.passiveIndex] = hero;
-        closeModal();
-        drawDraft();
-      };
-    }
-    item.appendChild(img);
-    grid.appendChild(item);
+    img.src = item.image_url;
+    img.title = item.name;
+    if ((currentSlot.type === 'ban' || currentSlot.type === 'pick') && usedNames.has(item.name)) img.classList.add('disabled');
+    else img.onclick = () => {
+      if (currentSlot.type === 'ban') draftState.bans[currentSlot.index] = item;
+      if (currentSlot.type === 'pick') draftState.picks[currentSlot.index] = item;
+      if (currentSlot.type === 'passive') draftState.passives[currentSlot.pickIndex][currentSlot.passiveIndex] = item;
+      if (currentSlot.type === 'weapon') draftState.weapons[currentSlot.pickIndex][currentSlot.weaponIndex] = item;
+      closeModal(); drawDraft();
+    };
+    box.appendChild(img); grid.appendChild(box);
   });
-
   document.getElementById('heroModal').style.display = 'block';
 }
 
-function closeModal() {
-  document.getElementById('heroModal').style.display = 'none';
-}
+function closeModal() { document.getElementById('heroModal').style.display = 'none'; }
 
 function resetDraft() {
   draftState = {
     bans: [null, null],
-    picks: Array(8).fill(null),
-    passives: Array(8).fill([null, null, null])
+    picks: Array.from({length:8}, () => null),
+    passives: Array.from({length:8}, () => [null, null, null]),
+    weapons: Array.from({length:8}, () => [null, null])
   };
   drawDraft();
 }
