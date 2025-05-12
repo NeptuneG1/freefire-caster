@@ -192,21 +192,19 @@
     overflow-x: auto;
 }
 
-/* NEW: force each team container to be column layout */
 .summary-wrapper > div {
     display: flex;
     flex-direction: column;
     align-items: center;
 }
 
-/* remove this, it’s not used anymore:
-.summary-team {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    gap: 6px;
+.summary-row {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 6px;
 }
-*/
 
 .summary-card {
     background: #2a2a2a;
@@ -337,81 +335,76 @@ function updateSummary() {
   left.innerHTML = "";
   right.innerHTML = "";
 
+  // HELPER to create small summary cards
+  const card = (title, content) => `<div class="summary-card"><strong>${title}</strong><br>${content}</div>`;
+
   // LEFT TEAM
   left.innerHTML += `<h3>TEAM LEFT</h3>`;
 
-  // BANS
-  left.innerHTML += `<div style="display:flex;justify-content:center;margin-bottom:6px">
-    <div class="summary-card"><strong>BAN</strong>${
-      draftState.bans[0] ? `<br>${draftState.bans[0].name}<br>${draftState.bans[0].description || ''}` : `<br>None`
-    }</div></div>`;
+  // Row 1: BAN
+  let banL = draftState.bans[0];
+  left.innerHTML += `<div class="summary-row">${card("BAN", banL ? `${banL.name}<br>${banL.description || ''}` : "None")}</div>`;
 
-  // PICKS
-  left.innerHTML += '<div style="display:flex;gap:6px;margin-bottom:6px">';
+  // Row 2: PICKS
+  left.innerHTML += `<div class="summary-row">`;
   for (let i = 0; i < 4; i++) {
-    const hero = draftState.picks[i];
-    let html = `<div class="summary-card"><strong>P${i+1}</strong>`;
-    if (hero) html += `<br>${hero.name}<br>${hero.description || ''}`;
-    else html += `<br>None`;
-    html += `<br><u>Weapons:</u>`;
+    let hero = draftState.picks[i];
+    left.innerHTML += card(`P${i+1}`, hero ? `${hero.name}<br>${hero.description || ''}` : "None");
+  }
+  left.innerHTML += `</div>`;
+
+  // Row 3: WEAPONS (2 per player = 8)
+  left.innerHTML += `<div class="summary-row">`;
+  for (let i = 0; i < 4; i++) {
     draftState.weapons[i].forEach(w => {
-      if (w) html += `<br>${w.name}<br>Dmg:${w.damage} RoF:${w.rate_of_fire}<br>Rng:${w.range} Mag:${w.magazine_size}`;
+      left.innerHTML += card("Weapon", w ? `${w.name}<br>Dmg:${w.damage} RoF:${w.rate_of_fire}<br>Rng:${w.range} Mag:${w.magazine_size}` : "None");
     });
-    html += `</div>`;
-    left.innerHTML += html;
   }
-  left.innerHTML += '</div>';
+  left.innerHTML += `</div>`;
 
-  // PASSIVES
-  left.innerHTML += '<div style="display:flex;gap:6px;margin-bottom:10px">';
+  // Row 4: PASSIVES (3 per player = 12)
+  left.innerHTML += `<div class="summary-row">`;
   for (let i = 0; i < 4; i++) {
-    let html = `<div class="summary-card"><strong>P${i+1} Passives</strong>`;
     draftState.passives[i].forEach(ps => {
-      if (ps) html += `<br>${ps.name}<br>${ps.description || ''}`;
+      left.innerHTML += card("Passive", ps ? `${ps.name}<br>${ps.description || ''}` : "None");
     });
-    html += `</div>`;
-    left.innerHTML += html;
   }
-  left.innerHTML += '</div>';
+  left.innerHTML += `</div>`;
 
   // RIGHT TEAM
   right.innerHTML += `<h3>TEAM RIGHT</h3>`;
 
-  // BANS
-  right.innerHTML += `<div style="display:flex;justify-content:center;margin-bottom:6px">
-    <div class="summary-card"><strong>BAN</strong>${
-      draftState.bans[1] ? `<br>${draftState.bans[1].name}<br>${draftState.bans[1].description || ''}` : `<br>None`
-    }</div></div>`;
+  // Row 1: BAN
+  let banR = draftState.bans[1];
+  right.innerHTML += `<div class="summary-row">${card("BAN", banR ? `${banR.name}<br>${banR.description || ''}` : "None")}</div>`;
 
-  // PICKS
-  right.innerHTML += '<div style="display:flex;gap:6px;margin-bottom:6px">';
-  for (let i = 0; i < 4; i++) {
-    const hero = draftState.picks[4 + i];
-    let html = `<div class="summary-card"><strong>P${i+1}</strong>`;
-    if (hero) html += `<br>${hero.name}<br>${hero.description || ''}`;
-    else html += `<br>None`;
-    html += `<br><u>Weapons:</u>`;
-    draftState.weapons[4 + i].forEach(w => {
-      if (w) html += `<br>${w.name}<br>Dmg:${w.damage} RoF:${w.rate_of_fire}<br>Rng:${w.range} Mag:${w.magazine_size}`;
-    });
-    html += `</div>`;
-    right.innerHTML += html;
+  // Row 2: PICKS
+  right.innerHTML += `<div class="summary-row">`;
+  for (let i = 4; i < 8; i++) {
+    let hero = draftState.picks[i];
+    right.innerHTML += card(`P${i-3}`, hero ? `${hero.name}<br>${hero.description || ''}` : "None");
   }
-  right.innerHTML += '</div>';
+  right.innerHTML += `</div>`;
 
-  // PASSIVES
-  right.innerHTML += '<div style="display:flex;gap:6px;margin-bottom:10px">';
-  for (let i = 0; i < 4; i++) {
-    let html = `<div class="summary-card"><strong>P${i+1} Passives</strong>`;
-    draftState.passives[4 + i].forEach(ps => {
-      if (ps) html += `<br>${ps.name}<br>${ps.description || ''}`;
+  // Row 3: WEAPONS
+  right.innerHTML += `<div class="summary-row">`;
+  for (let i = 4; i < 8; i++) {
+    draftState.weapons[i].forEach(w => {
+      right.innerHTML += card("Weapon", w ? `${w.name}<br>Dmg:${w.damage} RoF:${w.rate_of_fire}<br>Rng:${w.range} Mag:${w.magazine_size}` : "None");
     });
-    html += `</div>`;
-    right.innerHTML += html;
   }
-  right.innerHTML += '</div>';
+  right.innerHTML += `</div>`;
+
+  // Row 4: PASSIVES
+  right.innerHTML += `<div class="summary-row">`;
+  for (let i = 4; i < 8; i++) {
+    draftState.passives[i].forEach(ps => {
+      right.innerHTML += card("Passive", ps ? `${ps.name}<br>${ps.description || ''}` : "None");
+    });
+  }
+  right.innerHTML += `</div>`;
 }
-
+  
 function resetDraft() {
   draftState = {
     bans: [null, null],
