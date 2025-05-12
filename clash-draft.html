@@ -363,45 +363,58 @@ function updateSummary() {
   left.innerHTML = "<h3>TEAM LEFT</h3>";
   right.innerHTML = "<h3>TEAM RIGHT</h3>";
 
-  left.innerHTML += draftState.bans[0] ? `Ban: ${draftState.bans[0].name}<br><br>` : "Ban: None<br><br>";
-  right.innerHTML += draftState.bans[1] ? `Ban: ${draftState.bans[1].name}<br><br>` : "Ban: None<br><br>";
+  // Ban info with description
+  if (draftState.bans[0]) {
+    left.innerHTML += `<strong>Ban:</strong> ${draftState.bans[0].name}<br>${draftState.bans[0].description || ''}<br><br>`;
+  } else left.innerHTML += `<strong>Ban:</strong> None<br><br>`;
+  if (draftState.bans[1]) {
+    right.innerHTML += `<strong>Ban:</strong> ${draftState.bans[1].name}<br>${draftState.bans[1].description || ''}<br><br>`;
+  } else right.innerHTML += `<strong>Ban:</strong> None<br><br>`;
 
-  // TEAM LEFT (normal order)
+  // Wrap players in columns
+  left.innerHTML += '<div style="display:flex;gap:10px">';
   for (let i = 0; i < 4; i++) {
     const idx = i;
     const hero = draftState.picks[idx];
-    left.innerHTML += `<strong>Player ${i + 1}</strong><br>`;
-    if (hero) left.innerHTML += `Character: ${hero.name}<br>${hero.description || ''}<br>`;
-    else left.innerHTML += `Character: None<br>`;
-    left.innerHTML += `Weapons:<br>`;
+    let html = `<div style="display:flex;flex-direction:column;align-items:flex-start;width:180px;">`;
+    html += `<strong>Player ${i + 1}</strong><br>`;
+    if (hero) html += `Character: ${hero.name}<br>${hero.description || ''}<br>`;
+    else html += `Character: None<br>`;
+    html += `Weapons:<br>`;
     draftState.weapons[idx].forEach(w => {
       if (w) {
-        left.innerHTML += `- ${w.name} | Damage: ${w.damage}, RoF: ${w.rate_of_fire}, Range: ${w.range}, Mag: ${w.magazine_size}, Attr: ${w.special_attributes || 'None'}, Desc: ${w.description || ''}<br>`;
+        html += `- ${w.name}<br>Damage: ${w.damage}, RoF: ${w.rate_of_fire}, Range: ${w.range}, Mag: ${w.magazine_size}, Attr: ${w.special_attributes || 'None'}, Desc: ${w.description || ''}<br>`;
       }
     });
-    left.innerHTML += `Passives: `;
-    draftState.passives[idx].forEach(ps => ps && (left.innerHTML += `${ps.name} `));
-    left.innerHTML += `<br><br>`;
+    html += `Passives: `;
+    draftState.passives[idx].forEach(ps => ps && (html += `${ps.name} `));
+    html += `<br></div>`;
+    left.innerHTML += html;
   }
+  left.innerHTML += '</div>';
 
-  // TEAM RIGHT (reversed order)
+  right.innerHTML += '<div style="display:flex;gap:10px">';
   for (let i = 3; i >= 0; i--) {
     const idx = 4 + i;
     const hero = draftState.picks[idx];
-    right.innerHTML += `<strong>Player ${4 - i}</strong><br>`;
-    if (hero) right.innerHTML += `Character: ${hero.name}<br>${hero.description || ''}<br>`;
-    else right.innerHTML += `Character: None<br>`;
-    right.innerHTML += `Weapons:<br>`;
+    let html = `<div style="display:flex;flex-direction:column;align-items:flex-start;width:180px;">`;
+    html += `<strong>Player ${4 - i}</strong><br>`;
+    if (hero) html += `Character: ${hero.name}<br>${hero.description || ''}<br>`;
+    else html += `Character: None<br>`;
+    html += `Weapons:<br>`;
     draftState.weapons[idx].forEach(w => {
       if (w) {
-        right.innerHTML += `- ${w.name} | Damage: ${w.damage}, RoF: ${w.rate_of_fire}, Range: ${w.range}, Mag: ${w.magazine_size}, Attr: ${w.special_attributes || 'None'}, Desc: ${w.description || ''}<br>`;
+        html += `- ${w.name}<br>Damage: ${w.damage}, RoF: ${w.rate_of_fire}, Range: ${w.range}, Mag: ${w.magazine_size}, Attr: ${w.special_attributes || 'None'}, Desc: ${w.description || ''}<br>`;
       }
     });
-    right.innerHTML += `Passives: `;
-    draftState.passives[idx].forEach(ps => ps && (right.innerHTML += `${ps.name} `));
-    right.innerHTML += `<br><br>`;
+    html += `Passives: `;
+    draftState.passives[idx].forEach(ps => ps && (html += `${ps.name} `));
+    html += `<br></div>`;
+    right.innerHTML += html;
   }
+  right.innerHTML += '</div>';
 }
+  
 function resetDraft() {
   draftState = {
     bans: [null, null],
