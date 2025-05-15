@@ -229,7 +229,13 @@
       justify-items: center;
       width: 100%;
     }
-    
+    #heroGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+      gap: 10px;
+      justify-items: center;
+      width: 100%;
+    }
     /* Weapon card */
     .hero-grid-item {
       background: #1a1a1a;
@@ -502,8 +508,8 @@ function makeSlot(type,index){
 
   function openModal(title) {
   document.getElementById('modalTitle').innerText = title;
-  const g = document.getElementById('heroGrid');
-  g.innerHTML = '';
+  const grid = document.getElementById('heroGrid');
+  grid.innerHTML = '';
 
   if (currentSlot.type === 'weapon') {
     // Add Armory filter dropdown
@@ -519,104 +525,58 @@ function makeSlot(type,index){
       armoryFilter.appendChild(option);
     });
     filterWrapper.appendChild(armoryFilter);
-    g.appendChild(filterWrapper);
-
-    const weaponGrid = document.createElement('div');
-    weaponGrid.className = 'weapon-grid';
-    g.appendChild(weaponGrid);
-
-    // Create weapon type groups
-    const grouped = {};
-    weapons.forEach(w => {
-      if (!grouped[w.type]) grouped[w.type] = [];
-      grouped[w.type].push(w);
-    });
+    grid.appendChild(filterWrapper);
 
     function renderWeapons(filter) {
-      weaponGrid.innerHTML = '';
-      for (const [type, list] of Object.entries(grouped)) {
-        const groupBlock = document.createElement('div');
-        groupBlock.style.marginBottom = '10px';
-        const groupTitle = document.createElement('div');
-        groupTitle.style.color = '#ff7733';
-        groupTitle.style.fontSize = '11px';
-        groupTitle.style.fontWeight = 'bold';
-        groupTitle.style.margin = '4px 0';
-        groupTitle.textContent = type.toUpperCase();
-        groupBlock.appendChild(groupTitle);
+      // Clear existing cards except filter dropdown
+      Array.from(grid.children).forEach((child, index) => { if (index !== 0) child.remove(); });
 
-        const cardsContainer = document.createElement('div');
-        cardsContainer.style.display = 'grid';
-        cardsContainer.style.gridTemplateColumns = 'repeat(auto-fill, minmax(70px, 1fr))';
-        cardsContainer.style.gap = '8px';
+      weapons.forEach(item => {
+        if (filter !== 'all' && item.armory && !item.armory.toLowerCase().includes(filter)) return;
 
-        list.forEach(item => {
-          if (filter !== 'all' && item.armory && !item.armory.toLowerCase().includes(filter)) return;
+        const card = document.createElement('div');
+        card.className = 'hero-grid-item';
 
-          const card = document.createElement('div');
-          card.style.background = '#1a1a1a';
-          card.style.border = '1px solid #333';
-          card.style.borderRadius = '8px';
-          card.style.padding = '6px';
-          card.style.display = 'flex';
-          card.style.flexDirection = 'column';
-          card.style.alignItems = 'center';
-          card.style.cursor = 'pointer';
-          card.style.transition = 'transform 0.2s ease';
-          card.onmouseover = () => card.style.transform = 'scale(1.05)';
-          card.onmouseleave = () => card.style.transform = 'scale(1)';
+        const img = document.createElement('img');
+        img.src = item.image_url;
+        img.alt = item.name;
+        img.style.width = '50px';
+        img.style.height = '50px';
+        img.style.objectFit = 'contain';
+        img.style.marginBottom = '4px';
 
-          const img = document.createElement('img');
-          img.src = item.image_url;
-          img.alt = item.name;
-          img.style.width = '50px';
-          img.style.height = '50px';
-          img.style.objectFit = 'contain';
-          img.style.marginBottom = '4px';
+        const name = document.createElement('div');
+        name.textContent = item.name;
+        name.style.fontSize = '10px';
+        name.style.color = '#ddd';
+        name.style.textAlign = 'center';
+        name.style.maxWidth = '60px';
+        name.style.overflowWrap = 'break-word';
 
-          const name = document.createElement('div');
-          name.style.fontSize = '10px';
-          name.style.color = '#ddd';
-          name.style.textAlign = 'center';
-          name.style.maxWidth = '60px';
-          name.style.overflowWrap = 'break-word';
-          name.textContent = item.name;
+        card.appendChild(img);
+        card.appendChild(name);
+        card.onclick = () => {
+          draftState.weapons[currentSlot.pickIndex][currentSlot.weaponIndex] = item;
+          closeModal();
+          drawDraft();
+        };
 
-          card.appendChild(img);
-          card.appendChild(name);
-          card.onclick = () => {
-            draftState.weapons[currentSlot.pickIndex][currentSlot.weaponIndex] = item;
-            closeModal();
-            drawDraft();
-          };
-
-          cardsContainer.appendChild(card);
-        });
-
-        if (cardsContainer.children.length > 0) {
-          groupBlock.appendChild(cardsContainer);
-          weaponGrid.appendChild(groupBlock);
-        }
-      }
+        grid.appendChild(card);
+      });
     }
 
     renderWeapons('all');
     armoryFilter.addEventListener('change', () => renderWeapons(armoryFilter.value));
 
   } else {
-    // fallback for characters (ban, pick, passive)
+    // for bans, picks, passives
     const used = new Set();
     draftState.bans.forEach(h => h && used.add(h.name));
     draftState.picks.forEach(h => h && used.add(h.name));
 
-    let list = characters.filter(h => 
+    let list = characters.filter(h =>
       (currentSlot.type === 'passive') ? h.skill_type === 'Passive' : h.skill_type === 'Active'
     );
-
-    // ✅ Create a grid wrapper for heroes
-    const heroGrid = document.createElement('div');
-    heroGrid.className = 'weapon-grid'; // reuse same grid style
-    g.appendChild(heroGrid);
 
     list.forEach(item => {
       const box = document.createElement('div');
@@ -652,9 +612,9 @@ function makeSlot(type,index){
 
       box.appendChild(img);
       box.appendChild(label);
-      heroGrid.appendChild(box);
+      grid.appendChild(box);
     });
-}
+  }
 
   document.getElementById('heroModal').style.display = 'block';
 }
