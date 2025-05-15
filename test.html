@@ -393,88 +393,138 @@ function makeSlot(type,index){
   return c;
 }
 
-function openModal(title){
-  document.getElementById('modalTitle').innerText=title;
-  const g=document.getElementById('heroGrid');g.innerHTML='';
-  const used=new Set(); draftState.bans.forEach(h=>h&&used.add(h.name));
-  draftState.picks.forEach(h=>h&&used.add(h.name));
+function openModal(title) {
+    document.getElementById('modalTitle').innerText = title;
+    const g = document.getElementById('heroGrid');
+    g.innerHTML = '';
 
-  if(currentSlot.type==='weapon'){
-    const grouped = {};
-    weapons.forEach(w => {
-        if (!grouped[w.type]) grouped[w.type] = [];
-        grouped[w.type].push(w);
-    });
+    // Clear + create armory filter only for weapons
+    if (currentSlot.type === 'weapon') {
+        const filterWrapper = document.createElement('div');
+        filterWrapper.style.display = 'flex';
+        filterWrapper.style.justifyContent = 'center';
+        filterWrapper.style.marginBottom = '10px';
 
-    for (const [type, list] of Object.entries(grouped)) {
-        // Smaller type header
-        const header = document.createElement('div');
-        header.style.color = '#ff7733';
-        header.style.marginTop = '10px';
-        header.style.fontWeight = 'bold';
-        header.style.fontSize = '12px';  // smaller title text
-        header.textContent = type.toUpperCase();
-        g.appendChild(header);
+        const select = document.createElement('select');
+        select.style.padding = '5px';
+        select.style.fontSize = '14px';
 
-        // Group container
-        const groupDiv = document.createElement('div');
-        groupDiv.style.display = 'flex';
-        groupDiv.style.flexWrap = 'wrap';
-        groupDiv.style.gap = '8px';
-        groupDiv.style.justifyContent = 'center';
+        // Get unique armory values from weapons
+        const armorySet = new Set();
+        weapons.forEach(w => {
+            if (w.armory) {
+                w.armory.split(',').map(x => x.trim().toLowerCase()).forEach(a => armorySet.add(a));
+            }
+        });
 
+        const armories = Array.from(armorySet).sort();
+        select.innerHTML = `<option value="">All Armories</option>`;
+        armories.forEach(a => {
+            select.innerHTML += `<option value="${a}">${a.charAt(0).toUpperCase() + a.slice(1)}</option>`;
+        });
+
+        filterWrapper.appendChild(select);
+        g.appendChild(filterWrapper);
+
+        const renderWeapons = (filterArmory) => {
+            // Clear everything below the select
+            Array.from(g.children).forEach((child, idx) => { if (idx > 0) child.remove(); });
+
+            const grouped = {};
+            weapons.forEach(w => {
+                if (!filterArmory || (w.armory && w.armory.toLowerCase().includes(filterArmory))) {
+                    if (!grouped[w.type]) grouped[w.type] = [];
+                    grouped[w.type].push(w);
+                }
+            });
+
+            for (const [type, list] of Object.entries(grouped)) {
+                const header = document.createElement('div');
+                header.style.color = '#ff7733';
+                header.style.marginTop = '10px';
+                header.style.fontWeight = 'bold';
+                header.style.fontSize = '12px';
+                header.textContent = type.toUpperCase();
+                g.appendChild(header);
+
+                const groupDiv = document.createElement('div');
+                groupDiv.style.display = 'flex';
+                groupDiv.style.flexWrap = 'wrap';
+                groupDiv.style.gap = '8px';
+                groupDiv.style.justifyContent = 'center';
+
+                list.forEach(item => {
+                    const box = document.createElement('div');
+                    box.className = 'hero-grid-item';
+                    box.style.display = 'flex';
+                    box.style.flexDirection = 'column';
+                    box.style.alignItems = 'center';
+                    box.style.justifyContent = 'center';
+
+                    const img = document.createElement('img');
+                    img.src = item.image_url;
+                    img.title = item.name;
+                    img.style.maxWidth = '90px';
+                    img.style.maxHeight = '90px';
+                    img.style.borderRadius = '6px';
+                    img.style.cursor = 'pointer';
+                    img.onclick = () => {
+                        draftState.weapons[currentSlot.pickIndex][currentSlot.weaponIndex] = item;
+                        closeModal();
+                        drawDraft();
+                    };
+
+                    const label = document.createElement('div');
+                    label.style.marginTop = '4px';
+                    label.style.fontSize = '10px';
+                    label.style.textAlign = 'center';
+                    label.style.color = '#ddd';
+                    label.textContent = item.name;
+
+                    box.appendChild(img);
+                    box.appendChild(label);
+                    groupDiv.appendChild(box);
+                });
+
+                g.appendChild(groupDiv);
+            }
+        };
+
+        // Initial render
+        renderWeapons('');
+
+        // On filter change
+        select.addEventListener('change', () => {
+            renderWeapons(select.value);
+        });
+
+    } else {
+        // normal hero/passive picker
+        const used = new Set();
+        draftState.bans.forEach(h => h && used.add(h.name));
+        draftState.picks.forEach(h => h && used.add(h.name));
+
+        let list = characters.filter(h => (currentSlot.type === 'passive') ? h.skill_type === 'Passive' : h.skill_type === 'Active');
         list.forEach(item => {
             const box = document.createElement('div');
             box.className = 'hero-grid-item';
-            box.style.display = 'flex';
-            box.style.flexDirection = 'column';
-            box.style.alignItems = 'center';
-            box.style.justifyContent = 'center';
-
-            // Bigger image
             const img = document.createElement('img');
             img.src = item.image_url;
             img.title = item.name;
-            img.style.maxWidth = '90px';      // bigger weapon image
-            img.style.maxHeight = '90px';
-            img.style.borderRadius = '6px';
-            img.style.cursor = 'pointer';
-            img.onclick = () => {
-                draftState.weapons[currentSlot.pickIndex][currentSlot.weaponIndex] = item;
+            if ((currentSlot.type === 'ban' || currentSlot.type === 'pick') && used.has(item.name)) img.classList.add('disabled');
+            else img.onclick = () => {
+                if (currentSlot.type === 'ban') draftState.bans[currentSlot.index] = item;
+                if (currentSlot.type === 'pick') draftState.picks[currentSlot.index] = item;
+                if (currentSlot.type === 'passive') draftState.passives[currentSlot.pickIndex][currentSlot.passiveIndex] = item;
                 closeModal();
                 drawDraft();
             };
-
-            // Weapon name below
-            const label = document.createElement('div');
-            label.style.marginTop = '4px';
-            label.style.fontSize = '10px';
-            label.style.textAlign = 'center';
-            label.style.color = '#ddd';
-            label.textContent = item.name;
-
             box.appendChild(img);
-            box.appendChild(label);
-            groupDiv.appendChild(box);
+            g.appendChild(box);
         });
-
-        g.appendChild(groupDiv);
     }
-}
-  else {
-    let list=characters.filter(h=>(currentSlot.type==='passive')?h.skill_type==='Passive':h.skill_type==='Active');
-    list.forEach(item=>{
-      const box=document.createElement('div');box.className='hero-grid-item';
-      const img=document.createElement('img');img.src=item.image_url;img.title=item.name;
-      if((currentSlot.type==='ban'||currentSlot.type==='pick')&&used.has(item.name))img.classList.add('disabled');
-      else img.onclick=()=>{if(currentSlot.type==='ban')draftState.bans[currentSlot.index]=item;
-      if(currentSlot.type==='pick')draftState.picks[currentSlot.index]=item;
-      if(currentSlot.type==='passive')draftState.passives[currentSlot.pickIndex][currentSlot.passiveIndex]=item;
-      closeModal();drawDraft();};
-      box.appendChild(img); g.appendChild(box);
-    });
-  }
-  document.getElementById('heroModal').style.display='block';
+
+    document.getElementById('heroModal').style.display = 'block';
 }
 
 function closeModal(){document.getElementById('heroModal').style.display='none';}
