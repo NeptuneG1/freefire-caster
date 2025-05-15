@@ -268,7 +268,7 @@
       flex-direction: row;
       gap: 6px;
       justify-content: center;
-      align-items: stretch;
+      align-items: stretch;  /* <-- THIS will match height only for bans */
     }
     .nav-buttons {
       text-align: center;
@@ -313,8 +313,9 @@
     <div class="team-container">
       <div class="team-label">TEAM RIGHT</div>
       <div class="team-row" id="teamRight"></div>
-    </div>
+          </div>
   </div>
+
   <button class="reset-btn" onclick="resetDraft()">Reset All</button>
 
   <div class="summary-wrapper">
@@ -335,146 +336,19 @@
   </div>
 
 <script>
-let characters = [], weapons = [], armoryData = {}, draftState = {
-  bans: [null, null],
-  picks: Array(8).fill(null),
-  passives: Array(8).fill(0).map(() => [null, null, null]),
-  weapons: Array(8).fill(0).map(() => [null, null, null])
-}, currentSlot = null;
+let characters=[], weapons=[], draftState={
+  bans:[null,null],
+  picks:Array(8).fill(null),
+  passives:Array(8).fill(0).map(()=>[null,null,null]),
+  weapons:Array(8).fill(0).map(()=>[null,null,null])
+}, currentSlot=null;
 
-document.addEventListener('DOMContentLoaded', async () => {
-  characters = await (await fetch('https://neptuneg1.github.io/freefire-caster/character.json')).json();
-  weapons = await (await fetch('https://neptuneg1.github.io/freefire-caster/weapon.json')).json();
-  armoryData = await (await fetch('https://neptuneg1.github.io/freefire-caster/free_fire_full_weapon_data_with_armory.json')).json();
+document.addEventListener('DOMContentLoaded',async()=>{
+  characters=await(await fetch('https://neptuneg1.github.io/freefire-caster/character.json')).json();
+  weapons=await(await fetch('https://neptuneg1.github.io/freefire-caster/weapon.json')).json();
   drawDraft();
 });
 
-function getArmoryForWeapon(weaponName) {
-  if (!armoryData || !Array.isArray(armoryData)) return "";
-  let entry = armoryData.find(w => w.name === weaponName);
-  return entry ? entry.armory : "";
-}
-
-function updateSummary() {
-  const left = document.getElementById('summaryLeft');
-  const right = document.getElementById('summaryRight');
-  left.innerHTML = "";
-  right.innerHTML = "";
-
-  const makeCard = (title, content) => `
-    <div class="summary-card">
-      <strong>${title}</strong><br>${content}
-    </div>
-  `;
-
-  function buildTeamSummary(startIndex, banIndex) {
-    let html = "";
-    const ban = draftState.bans[banIndex];
-    html += `<div class="summary-row summary-ban-row">
-      <div class="summary-ban"><strong>BAN</strong><br>${ban ? `${ban.name}<br>${ban.description || ''}` : "None"}</div>
-    </div>`;
-
-    html += `<div class="summary-row">`;
-    for (let i = startIndex; i < startIndex + 4; i++) {
-      const hero = draftState.picks[i];
-      html += makeCard(`Player ${i - startIndex + 1}`, hero ? `${hero.name}<br>Skill: ${hero.skill}<br>${hero.description || ''}` : "None");
-    }
-    html += `</div>`;
-
-    html += `<div class="summary-row">`;
-    for (let i = startIndex; i < startIndex + 4; i++) {
-      let wContent = "";
-      let armorySuggestions = new Set();
-      draftState.weapons[i].forEach(w => {
-        if (w) {
-          wContent += `${w.name}<br>Dmg:${w.damage} RoF:${w.rate_of_fire}<br>Rng:${w.range} Mag:${w.magazine_size}<br><br>`;
-          let armory = getArmoryForWeapon(w.name);
-          if (armory) armory.split(",").map(x => x.trim()).forEach(p => armorySuggestions.add(p));
-        }
-      });
-      if (armorySuggestions.size > 0) {
-        wContent += `<strong>Suggested Armory:</strong><br>${Array.from(armorySuggestions).join(", ")}`;
-      }
-      html += makeCard("Weapons", wContent || "None");
-    }
-    html += `</div>`;
-
-    html += `<div class="summary-row">`;
-    for (let i = startIndex; i < startIndex + 4; i++) {
-      let pContent = "";
-      draftState.passives[i].forEach(ps => {
-        if (ps)
-          pContent += `Skill: ${ps.name}<br>${ps.description || ''}<br><br>`;
-      });
-      html += makeCard("Passives", pContent || "None");
-    }
-    html += `</div>`;
-
-    return html;
-  }
-
-  function buildTeamSummaryRight(startIndex, banIndex) {
-    let html = "";
-    const ban = draftState.bans[banIndex];
-    html += `<div class="summary-row summary-ban-row">
-      <div class="summary-ban"><strong>BAN</strong><br>${ban ? `${ban.name}<br>${ban.description || ''}` : "None"}</div>
-    </div>`;
-
-    html += `<div class="summary-row">`;
-    for (let offset = 3; offset >= 0; offset--) {
-      const i = startIndex + offset;
-      const hero = draftState.picks[i];
-      html += makeCard(`Player ${4 - offset}`, hero ? `${hero.name}<br>Skill: ${hero.skill}<br>${hero.description || ''}` : "None");
-    }
-    html += `</div>`;
-
-    html += `<div class="summary-row">`;
-    for (let offset = 3; offset >= 0; offset--) {
-      const i = startIndex + offset;
-      let wContent = "";
-      let armorySuggestions = new Set();
-      draftState.weapons[i].forEach(w => {
-        if (w) {
-          wContent += `${w.name}<br>Dmg:${w.damage} RoF:${w.rate_of_fire}<br>Rng:${w.range} Mag:${w.magazine_size}<br><br>`;
-          let armory = getArmoryForWeapon(w.name);
-          if (armory) armory.split(",").map(x => x.trim()).forEach(p => armorySuggestions.add(p));
-        }
-      });
-      if (armorySuggestions.size > 0) {
-        wContent += `<strong>Suggested Armory:</strong><br>${Array.from(armorySuggestions).join(", ")}`;
-      }
-      html += makeCard("Weapons", wContent || "None");
-    }
-    html += `</div>`;
-
-    html += `<div class="summary-row">`;
-    for (let offset = 3; offset >= 0; offset--) {
-      const i = startIndex + offset;
-      let pContent = "";
-      draftState.passives[i].forEach(ps => {
-        if (ps)
-          pContent += `Skill: ${ps.name}<br>${ps.description || ''}<br><br>`;
-      });
-      html += makeCard("Passives", pContent || "None");
-    }
-    html += `</div>`;
-
-    return html;
-  }
-
-  left.innerHTML = `<h3>TEAM LEFT</h3>${buildTeamSummary(0, 0)}`;
-  right.innerHTML = `<h3>TEAM RIGHT</h3>${buildTeamSummaryRight(4, 1)}`;
-}
-
-function resetDraft() {
-  draftState = {
-    bans: [null, null],
-    picks: Array(8).fill(null),
-    passives: Array(8).fill(0).map(() => [null, null, null]),
-    weapons: Array(8).fill(0).map(() => [null, null, null])
-  };
-  drawDraft();
-}
 function drawDraft(){
   const l=document.getElementById('teamLeft'),r=document.getElementById('teamRight');
   l.innerHTML=''; r.innerHTML='';
@@ -488,7 +362,7 @@ function drawDraft(){
 function makeSlot(type,index){
   const c=document.createElement('div'); c.className='slot';
   const m=document.createElement('div'); m.className=type==='ban'?'ban-slot':'pick-slot';
-  const img=document.createElement('img'); img.src='https://i.imgur.com/AdvPwAO.png';
+  const img=document.createElement('img'); img.src='https://imgur.com/AdvPwAO.png';
   img.style.width='100%'; img.style.height='100%'; img.style.borderRadius='8px';
   m.appendChild(img);
   const nameDiv=document.createElement('div'); nameDiv.className='slot-name';
@@ -533,14 +407,16 @@ function openModal(title){
     });
 
     for (const [type, list] of Object.entries(grouped)) {
+        // Smaller type header
         const header = document.createElement('div');
         header.style.color = '#ff7733';
         header.style.marginTop = '10px';
         header.style.fontWeight = 'bold';
-        header.style.fontSize = '12px';
+        header.style.fontSize = '12px';  // smaller title text
         header.textContent = type.toUpperCase();
         g.appendChild(header);
 
+        // Group container
         const groupDiv = document.createElement('div');
         groupDiv.style.display = 'flex';
         groupDiv.style.flexWrap = 'wrap';
@@ -555,10 +431,11 @@ function openModal(title){
             box.style.alignItems = 'center';
             box.style.justifyContent = 'center';
 
+            // Bigger image
             const img = document.createElement('img');
             img.src = item.image_url;
             img.title = item.name;
-            img.style.maxWidth = '90px';
+            img.style.maxWidth = '90px';      // bigger weapon image
             img.style.maxHeight = '90px';
             img.style.borderRadius = '6px';
             img.style.cursor = 'pointer';
@@ -568,6 +445,7 @@ function openModal(title){
                 drawDraft();
             };
 
+            // Weapon name below
             const label = document.createElement('div');
             label.style.marginTop = '4px';
             label.style.fontSize = '10px';
@@ -582,7 +460,7 @@ function openModal(title){
 
         g.appendChild(groupDiv);
     }
-  }
+}
   else {
     let list=characters.filter(h=>(currentSlot.type==='passive')?h.skill_type==='Passive':h.skill_type==='Active');
     list.forEach(item=>{
@@ -600,7 +478,142 @@ function openModal(title){
 }
 
 function closeModal(){document.getElementById('heroModal').style.display='none';}
+function updateSummary() {
+  const left = document.getElementById('summaryLeft');
+  const right = document.getElementById('summaryRight');
+  left.innerHTML = "";
+  right.innerHTML = "";
 
+  const makeCard = (title, content) => `
+    <div class="summary-card">
+      <strong>${title}</strong><br>${content}
+    </div>
+  `;
+
+  function buildTeamSummary(startIndex, banIndex) {
+  let html = "";
+
+  // Row 0: BAN
+  const ban = draftState.bans[banIndex];
+  html += `<div class="summary-row summary-ban-row">
+    <div class="summary-ban"><strong>BAN</strong><br>${ban ? `${ban.name}<br>${ban.description || ''}` : "None"}</div>
+  </div>`;
+
+  // Row 1: ACTIVES
+  html += `<div class="summary-row">`;
+  for (let i = startIndex; i < startIndex + 4; i++) {
+    const hero = draftState.picks[i];
+    html += makeCard(
+      `Player ${i - startIndex + 1}`,
+      hero
+        ? `${hero.name}<br>Skill: ${hero.skill}<br>${hero.description || ''}`
+        : "None"
+    );
+  }
+  html += `</div>`;
+
+  // Row 2: WEAPONS
+  html += `<div class="summary-row">`;
+  for (let i = startIndex; i < startIndex + 4; i++) {
+    let wContent = "";
+    draftState.weapons[i].forEach(w => {
+      if (w) {
+        wContent += `${w.name}<br>Dmg:${w.damage} RoF:${w.rate_of_fire}<br>Rng:${w.range} Mag:${w.magazine_size}<br>`;
+        const armory = getWeaponArmory(w.name);        // 👈 NEW LINE
+        if (armory) wContent += `Armory: ${armory}<br>`; // 👈 NEW LINE
+        wContent += `<br>`;
+      }
+    });
+    html += makeCard("Weapons", wContent || "None");
+  }
+  html += `</div>`;
+
+  // Row 3: PASSIVES
+  html += `<div class="summary-row">`;
+  for (let i = startIndex; i < startIndex + 4; i++) {
+    let pContent = "";
+    draftState.passives[i].forEach(ps => {
+      if (ps)
+        pContent += `Skill: ${ps.name}<br>${ps.description || ''}<br><br>`;
+    });
+    html += makeCard("Passives", pContent || "None");
+  }
+  html += `</div>`;
+
+  return html;
+}
+
+  function buildTeamSummaryRight(startIndex, banIndex) {
+    let html = "";
+
+    // Row 0: BAN full width
+    const ban = draftState.bans[banIndex];
+    html += `<div class="summary-row summary-ban-row">
+      <div class="summary-ban"><strong>BAN</strong><br>${ban ? `${ban.name}<br>${ban.description || ''}` : "None"}</div>
+    </div>`;
+
+    // Row 1: ACTIVES (reversed order display, P1-P4 label correct)
+    html += `<div class="summary-row">`;
+    for (let offset = 3; offset >= 0; offset--) {
+      const i = startIndex + offset;
+      const hero = draftState.picks[i];
+      html += makeCard(
+        `Player ${4 - offset}`,
+        hero
+          ? `${hero.name}<br>Skill: ${hero.skill}<br>${hero.description || ''}`
+          : "None"
+      );
+    }
+    html += `</div>`;
+
+    // Row 2: WEAPONS
+    html += `<div class="summary-row">`;
+    for (let offset = 3; offset >= 0; offset--) {
+      const i = startIndex + offset;
+      let wContent = "";
+      if (w) {
+        wContent += `${w.name}<br>Dmg:${w.damage} RoF:${w.rate_of_fire}<br>Rng:${w.range} Mag:${w.magazine_size}<br>`;
+        const armory = getWeaponArmory(w.name);        // 👈 NEW LINE
+        if (armory) wContent += `Armory: ${armory}<br>`; // 👈 NEW LINE
+        wContent += `<br>`;
+      }
+    });
+      html += makeCard("Weapons", wContent || "None");
+    }
+    html += `</div>`;
+
+    // Row 3: PASSIVES
+    html += `<div class="summary-row">`;
+    for (let offset = 3; offset >= 0; offset--) {
+      const i = startIndex + offset;
+      let pContent = "";
+      draftState.passives[i].forEach(ps => {
+        if (ps)
+          pContent += `Skill: ${ps.name}<br>${ps.description || ''}<br><br>`;
+      });
+      html += makeCard("Passives", pContent || "None");
+    }
+    html += `</div>`;
+
+    return html;
+  }
+
+  left.innerHTML = `<h3>TEAM LEFT</h3>${buildTeamSummary(0, 0)}`;
+  right.innerHTML = `<h3>TEAM RIGHT</h3>${buildTeamSummaryRight(4, 1)}`;
+}
+function resetDraft() {
+  draftState = {
+    bans: [null, null],
+    picks: Array(8).fill(null),
+    passives: Array(8).fill(0).map(() => [null, null, null]),
+    weapons: Array(8).fill(0).map(() => [null, null, null])
+  };
+  drawDraft();
+}
+function getWeaponArmory(weaponName) {
+  const weapon = weapons.find(w => w.name === weaponName);
+  return weapon && weapon.armory ? weapon.armory : "";
+}
 
 </script>
 </body>
