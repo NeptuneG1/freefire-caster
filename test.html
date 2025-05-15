@@ -268,7 +268,7 @@
       flex-direction: row;
       gap: 6px;
       justify-content: center;
-      align-items: stretch;  /* <-- THIS will match height only for bans */
+      align-items: stretch;
     }
     .nav-buttons {
       text-align: center;
@@ -313,9 +313,8 @@
     <div class="team-container">
       <div class="team-label">TEAM RIGHT</div>
       <div class="team-row" id="teamRight"></div>
-          </div>
+    </div>
   </div>
-
   <button class="reset-btn" onclick="resetDraft()">Reset All</button>
 
   <div class="summary-wrapper">
@@ -336,17 +335,16 @@
   </div>
 
 <script>
-let characters=[], weapons=[], armoryData={}, draftState={
-  bans:[null,null],
-  picks:Array(8).fill(null),
-  passives:Array(8).fill(0).map(()=>[null,null,null]),
-  weapons:Array(8).fill(0).map(()=>[null,null,null])
-}, currentSlot=null;
+let characters = [], weapons = [], armoryData = {}, draftState = {
+  bans: [null, null],
+  picks: Array(8).fill(null),
+  passives: Array(8).fill(0).map(() => [null, null, null]),
+  weapons: Array(8).fill(0).map(() => [null, null, null])
+}, currentSlot = null;
 
-document.addEventListener('DOMContentLoaded',async()=>{
-  characters=await(await fetch('https://neptuneg1.github.io/freefire-caster/character.json')).json();
-  weapons=await(await fetch('https://neptuneg1.github.io/freefire-caster/weapon.json')).json();
-  // Load saved armory data
+document.addEventListener('DOMContentLoaded', async () => {
+  characters = await (await fetch('https://neptuneg1.github.io/freefire-caster/character.json')).json();
+  weapons = await (await fetch('https://neptuneg1.github.io/freefire-caster/weapon.json')).json();
   armoryData = await (await fetch('https://neptuneg1.github.io/freefire-caster/free_fire_full_weapon_data_with_armory.json')).json();
   drawDraft();
 });
@@ -355,7 +353,6 @@ function getArmoryForWeapon(weaponName) {
   let entry = armoryData.find(w => w.name === weaponName);
   return entry ? entry.armory : "";
 }
-
 function updateSummary() {
   const left = document.getElementById('summaryLeft');
   const right = document.getElementById('summaryRight');
@@ -466,6 +463,7 @@ function updateSummary() {
   left.innerHTML = `<h3>TEAM LEFT</h3>${buildTeamSummary(0, 0)}`;
   right.innerHTML = `<h3>TEAM RIGHT</h3>${buildTeamSummaryRight(4, 1)}`;
 }
+
 function resetDraft() {
   draftState = {
     bans: [null, null],
@@ -475,6 +473,128 @@ function resetDraft() {
   };
   drawDraft();
 }
-</script>
-</body>
-</html>
+function drawDraft(){
+  const l=document.getElementById('teamLeft'),r=document.getElementById('teamRight');
+  l.innerHTML=''; r.innerHTML='';
+  l.appendChild(makeSlot('ban',0));
+  for(let i=0;i<4;i++)l.appendChild(makeSlot('pick',i));
+  for(let i=7;i>=4;i--)r.appendChild(makeSlot('pick',i));
+  r.appendChild(makeSlot('ban',1));
+  updateSummary();
+}
+
+function makeSlot(type,index){
+  const c=document.createElement('div'); c.className='slot';
+  const m=document.createElement('div'); m.className=type==='ban'?'ban-slot':'pick-slot';
+  const img=document.createElement('img'); img.src='https://imgur.com/AdvPwAO.png';
+  img.style.width='100%'; img.style.height='100%'; img.style.borderRadius='8px';
+  m.appendChild(img);
+  const nameDiv=document.createElement('div'); nameDiv.className='slot-name';
+  if(type==='ban'){const h=draftState.bans[index];if(h){img.src=h.image_url;nameDiv.innerText=h.name;m.classList.add('disabled');}
+  m.onclick=()=>{currentSlot={type,index};openModal('Select Hero to Ban');};}
+  else{const h=draftState.picks[index];if(h){img.src=h.image_url;nameDiv.innerText=h.name;}
+  m.onclick=()=>{currentSlot={type,index};openModal('Select Active Skill');};}
+  c.appendChild(m); c.appendChild(nameDiv);
+
+  if(type==='pick'){
+    const passives=draftState.passives[index];
+    const pDiv=document.createElement('div'); pDiv.className='passive-slots';
+    passives.forEach((ps,i)=>{const p=document.createElement('div'); p.className='passive-slot';
+    const pn=document.createElement('div');pn.className='passive-name';
+    if(ps){p.style.backgroundImage=`url(${ps.image_url})`;pn.innerText=ps.name;}
+    p.onclick=()=>{currentSlot={type:'passive',pickIndex:index,passiveIndex:i};openModal('Select Passive Skill');};
+    const box=document.createElement('div');box.style.display='flex';box.style.flexDirection='column';
+    box.style.alignItems='center';box.appendChild(p);box.appendChild(pn);pDiv.appendChild(box);});
+    c.appendChild(pDiv);
+
+    const wDiv=document.createElement('div'); wDiv.className='weapon-slots';
+    draftState.weapons[index].forEach((w,i)=>{const wSlot=document.createElement('div'); wSlot.className='weapon-slot';
+    const wn=document.createElement('div');wn.className='weapon-name';
+    if(w){const wImg=document.createElement('img');wImg.src=w.image_url;wSlot.appendChild(wImg);wn.innerText=w.name;}
+    wSlot.onclick=()=>{currentSlot={type:'weapon',pickIndex:index,weaponIndex:i};openModal('Select Weapon');};
+    const box=document.createElement('div');box.style.display='flex';box.style.flexDirection='column';box.style.alignItems='center';
+    box.appendChild(wSlot);box.appendChild(wn);wDiv.appendChild(box);}); c.appendChild(wDiv);}
+  return c;
+}
+
+function openModal(title){
+  document.getElementById('modalTitle').innerText=title;
+  const g=document.getElementById('heroGrid');g.innerHTML='';
+  const used=new Set(); draftState.bans.forEach(h=>h&&used.add(h.name));
+  draftState.picks.forEach(h=>h&&used.add(h.name));
+
+  if(currentSlot.type==='weapon'){
+    const grouped = {};
+    weapons.forEach(w => {
+        if (!grouped[w.type]) grouped[w.type] = [];
+        grouped[w.type].push(w);
+    });
+
+    for (const [type, list] of Object.entries(grouped)) {
+        const header = document.createElement('div');
+        header.style.color = '#ff7733';
+        header.style.marginTop = '10px';
+        header.style.fontWeight = 'bold';
+        header.style.fontSize = '12px';
+        header.textContent = type.toUpperCase();
+        g.appendChild(header);
+
+        const groupDiv = document.createElement('div');
+        groupDiv.style.display = 'flex';
+        groupDiv.style.flexWrap = 'wrap';
+        groupDiv.style.gap = '8px';
+        groupDiv.style.justifyContent = 'center';
+
+        list.forEach(item => {
+            const box = document.createElement('div');
+            box.className = 'hero-grid-item';
+            box.style.display = 'flex';
+            box.style.flexDirection = 'column';
+            box.style.alignItems = 'center';
+            box.style.justifyContent = 'center';
+
+            const img = document.createElement('img');
+            img.src = item.image_url;
+            img.title = item.name;
+            img.style.maxWidth = '90px';
+            img.style.maxHeight = '90px';
+            img.style.borderRadius = '6px';
+            img.style.cursor = 'pointer';
+            img.onclick = () => {
+                draftState.weapons[currentSlot.pickIndex][currentSlot.weaponIndex] = item;
+                closeModal();
+                drawDraft();
+            };
+
+            const label = document.createElement('div');
+            label.style.marginTop = '4px';
+            label.style.fontSize = '10px';
+            label.style.textAlign = 'center';
+            label.style.color = '#ddd';
+            label.textContent = item.name;
+
+            box.appendChild(img);
+            box.appendChild(label);
+            groupDiv.appendChild(box);
+        });
+
+        g.appendChild(groupDiv);
+    }
+  }
+  else {
+    let list=characters.filter(h=>(currentSlot.type==='passive')?h.skill_type==='Passive':h.skill_type==='Active');
+    list.forEach(item=>{
+      const box=document.createElement('div');box.className='hero-grid-item';
+      const img=document.createElement('img');img.src=item.image_url;img.title=item.name;
+      if((currentSlot.type==='ban'||currentSlot.type==='pick')&&used.has(item.name))img.classList.add('disabled');
+      else img.onclick=()=>{if(currentSlot.type==='ban')draftState.bans[currentSlot.index]=item;
+      if(currentSlot.type==='pick')draftState.picks[currentSlot.index]=item;
+      if(currentSlot.type==='passive')draftState.passives[currentSlot.pickIndex][currentSlot.passiveIndex]=item;
+      closeModal();drawDraft();};
+      box.appendChild(img); g.appendChild(box);
+    });
+  }
+  document.getElementById('heroModal').style.display='block';
+}
+
+function closeModal(){document.getElementById('heroModal').style.display='none';}
