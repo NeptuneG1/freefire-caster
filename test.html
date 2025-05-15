@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Clash Squad Draft</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const client = supabase.createClient(
+      'https://gkugecflfddkpitlrmws.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
+    );
+
+    client.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        window.location.href = "index.html";
+      } else {
+        const userInfo = document.getElementById("user-info");
+        if (userInfo && session.user?.email) {
+          userInfo.textContent = "Logged in as: " + session.user.email;
+        }
+      }
+    });
+
+    function logout() {
+      client.auth.signOut().then(() => {
+        window.location.href = "index.html";
+      });
+    }
+  </script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Roboto', sans-serif;
+      background: #0e0e0e;
+      color: #f5f5f5;
+    }
+    header {
+      background: #1f1f1f;
+      padding: 20px;
+      text-align: center;
+      border-bottom: 3px solid #ffbd59;
+    }
+    h1 {
+      font-family: 'Orbitron', sans-serif;
+      color: #ffbd59;
+      margin: 0;
+      font-size: 2rem;
+    }
+    .draft-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 50px;
+      margin-top: 20px;
+      flex-wrap: nowrap;
+    }
+    .team-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .team-label {
+      color: #ff7733;
+      font-weight: bold;
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+    .team-row {
+      display: flex;
+      gap: 10px;
+    }
+    .slot {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .ban-slot, .pick-slot {
+      width: 100px;
+      height: 150px;
+      background: #2a2a2a;
+      border: 2px solid #444;
+      border-radius: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      position: relative;
+    }
+    .ban-slot {
+      border-color: #ff5a5a;
+    }
+    .ban-slot.disabled, .pick-slot.disabled {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+    .passive-slots, .weapon-slots {
+      display: flex;
+      gap: 3px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .passive-slot {
+      width: 30px;
+      height: 50px;
+      background: #3a3a3a;
+      border: 1px solid #555;
+      border-radius: 4px;
+      cursor: pointer;
+      background-size: cover;
+      background-position: center;
+    }
+    .weapon-slot {
+      width: 100px;
+      height: 40px;
+      background: #868686;
+      border: 2px solid #444;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+    .weapon-slot img {
+      max-height: 100%;
+      max-width: 100%;
+    }
+    .slot-name {
+      font-size: 12px;
+      color: #ccc;
+      text-align: center;
+    }
+    .passive-name, .weapon-name {
+      font-size: 10px;
+      color: #ccc;
+      text-align: center;
+      max-width: 40px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 9999;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background: #1f1f1f;
+      overflow: auto;
+    }
+    .modal-content {
+      background: #1f1f1f;
+      margin: 5% auto;
+      padding: 15px;
+      border: 2px solid #ff7733;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 1000px;
+      max-height: 95vh;
+      overflow-y: auto;
+      position: relative;
+    }
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      color: #ff7733;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .hero-grid-item img {
+      width: 100%;
+      border-radius: 6px;
+      cursor: pointer;
+      max-width: 150px;
+    }
+    .disabled {
+      opacity: 0.3;
+      pointer-events: none;
+    }
+    .banned-overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(255,0,0,0.4);
+      color: white;
+      font-weight: bold;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    .reset-btn {
+      margin: 20px auto;
+      display: block;
+      background: #ff7733;
+      color: #fff;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .summary-wrapper {
+      display: flex;
+      justify-content: center;
+      gap: 50px;
+      margin-top: 10px;
+      font-size: 12px;
+      color: #ddd;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+    .summary-wrapper > div {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .summary-row {
+      display: flex;
+      flex-direction: row;
+      gap: 6px;
+      justify-content: center;
+      align-items: stretch;
+    }
+    .summary-card {
+      background: #2a2a2a;
+      border: 2px solid #444;
+      border-radius: 8px;
+      padding: 8px;
+      width: 100px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 10px;
+      text-align: center;
+    }
+    .summary-ban {
+      min-width: 430px;
+      max-width: 430px;
+      background: #2a2a2a;
+      border: 2px solid #ff5a5a;
+      border-radius: 8px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 10px;
+      text-align: center;
+    }
+    .summary-ban-row {
+      display: flex;
+      flex-direction: row;
+      gap: 6px;
+      justify-content: center;
+      align-items: stretch;  /* <-- THIS will match height only for bans */
+    }
+    .nav-buttons {
+      text-align: center;
+      margin-top: 20px;
+    }
+    .nav-buttons a,
+    .logout-btn {
+      display: inline-block;
+      background: #ffbd59;
+      color: #1c1c1c;
+      padding: 10px 20px;
+      font-weight: bold;
+      border-radius: 6px;
+      text-decoration: none;
+      margin: 0 10px;
+      transition: background 0.2s;
+    }
+    .nav-buttons a:hover,
+    .logout-btn:hover {
+      background: #e0a84f;
+    }
+    .logout-btn {
+      cursor: pointer;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Clash Squad Draft</h1>
+    <p id="user-info">Checking login...</p>
+  </header>
+  <div class="nav-buttons">
+    <a href="dashboard.html">← Back to Dashboard</a>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+  <div class="draft-wrapper">
+    <div class="team-container">
+      <div class="team-label">TEAM LEFT</div>
+      <div class="team-row" id="teamLeft"></div>
+    </div>
+    <div class="team-container">
+      <div class="team-label">TEAM RIGHT</div>
+      <div class="team-row" id="teamRight"></div>
+          </div>
+  </div>
+
+  <button class="reset-btn" onclick="resetDraft()">Reset All</button>
+
+  <div class="summary-wrapper">
+    <div>
+      <div class="summary-team" id="summaryLeft"></div>
+    </div>
+    <div>
+      <div class="summary-team" id="summaryRight"></div>
+    </div>
+  </div>
+
+  <div class="modal" id="heroModal">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeModal()">X</span>
+      <h3 style="color:#ff7733;" id="modalTitle">Select</h3>
+      <div class="hero-grid" id="heroGrid"></div>
+    </div>
+  </div>
+
+<script>
+let characters=[], weapons=[], armoryData={}, draftState={
+  bans:[null,null],
+  picks:Array(8).fill(null),
+  passives:Array(8).fill(0).map(()=>[null,null,null]),
+  weapons:Array(8).fill(0).map(()=>[null,null,null])
+}, currentSlot=null;
+
+document.addEventListener('DOMContentLoaded',async()=>{
+  characters=await(await fetch('https://neptuneg1.github.io/freefire-caster/character.json')).json();
+  weapons=await(await fetch('https://neptuneg1.github.io/freefire-caster/weapon.json')).json();
+  // Load saved armory data
+  armoryData = await (await fetch('https://neptuneg1.github.io/freefire-caster/free_fire_full_weapon_data_with_armory.json')).json();
+  drawDraft();
+});
+
+function getArmoryForWeapon(weaponName) {
+  let entry = armoryData.find(w => w.name === weaponName);
+  return entry ? entry.armory : "";
+}
+
+function updateSummary() {
+  const left = document.getElementById('summaryLeft');
+  const right = document.getElementById('summaryRight');
+  left.innerHTML = "";
+  right.innerHTML = "";
+
+  const makeCard = (title, content) => `
+    <div class="summary-card">
+      <strong>${title}</strong><br>${content}
+    </div>
+  `;
+
+  function buildTeamSummary(startIndex, banIndex) {
+    let html = "";
+    const ban = draftState.bans[banIndex];
+    html += `<div class="summary-row summary-ban-row">
+      <div class="summary-ban"><strong>BAN</strong><br>${ban ? `${ban.name}<br>${ban.description || ''}` : "None"}</div>
+    </div>`;
+
+    html += `<div class="summary-row">`;
+    for (let i = startIndex; i < startIndex + 4; i++) {
+      const hero = draftState.picks[i];
+      html += makeCard(`Player ${i - startIndex + 1}`, hero ? `${hero.name}<br>Skill: ${hero.skill}<br>${hero.description || ''}` : "None");
+    }
+    html += `</div>`;
+
+    html += `<div class="summary-row">`;
+    for (let i = startIndex; i < startIndex + 4; i++) {
+      let wContent = "";
+      let armorySuggestions = new Set();
+      draftState.weapons[i].forEach(w => {
+        if (w) {
+          wContent += `${w.name}<br>Dmg:${w.damage} RoF:${w.rate_of_fire}<br>Rng:${w.range} Mag:${w.magazine_size}<br><br>`;
+          let armory = getArmoryForWeapon(w.name);
+          if (armory) armory.split(",").map(x => x.trim()).forEach(p => armorySuggestions.add(p));
+        }
+      });
+      if (armorySuggestions.size > 0) {
+        wContent += `<strong>Suggested Armory:</strong><br>${Array.from(armorySuggestions).join(", ")}`;
+      }
+      html += makeCard("Weapons", wContent || "None");
+    }
+    html += `</div>`;
+
+    html += `<div class="summary-row">`;
+    for (let i = startIndex; i < startIndex + 4; i++) {
+      let pContent = "";
+      draftState.passives[i].forEach(ps => {
+        if (ps)
+          pContent += `Skill: ${ps.name}<br>${ps.description || ''}<br><br>`;
+      });
+      html += makeCard("Passives", pContent || "None");
+    }
+    html += `</div>`;
+
+    return html;
+  }
+
+  function buildTeamSummaryRight(startIndex, banIndex) {
+    let html = "";
+    const ban = draftState.bans[banIndex];
+    html += `<div class="summary-row summary-ban-row">
+      <div class="summary-ban"><strong>BAN</strong><br>${ban ? `${ban.name}<br>${ban.description || ''}` : "None"}</div>
+    </div>`;
+
+    html += `<div class="summary-row">`;
+    for (let offset = 3; offset >= 0; offset--) {
+      const i = startIndex + offset;
+      const hero = draftState.picks[i];
+      html += makeCard(`Player ${4 - offset}`, hero ? `${hero.name}<br>Skill: ${hero.skill}<br>${hero.description || ''}` : "None");
+    }
+    html += `</div>`;
+
+    html += `<div class="summary-row">`;
+    for (let offset = 3; offset >= 0; offset--) {
+      const i = startIndex + offset;
+      let wContent = "";
+      let armorySuggestions = new Set();
+      draftState.weapons[i].forEach(w => {
+        if (w) {
+          wContent += `${w.name}<br>Dmg:${w.damage} RoF:${w.rate_of_fire}<br>Rng:${w.range} Mag:${w.magazine_size}<br><br>`;
+          let armory = getArmoryForWeapon(w.name);
+          if (armory) armory.split(",").map(x => x.trim()).forEach(p => armorySuggestions.add(p));
+        }
+      });
+      if (armorySuggestions.size > 0) {
+        wContent += `<strong>Suggested Armory:</strong><br>${Array.from(armorySuggestions).join(", ")}`;
+      }
+      html += makeCard("Weapons", wContent || "None");
+    }
+    html += `</div>`;
+
+    html += `<div class="summary-row">`;
+    for (let offset = 3; offset >= 0; offset--) {
+      const i = startIndex + offset;
+      let pContent = "";
+      draftState.passives[i].forEach(ps => {
+        if (ps)
+          pContent += `Skill: ${ps.name}<br>${ps.description || ''}<br><br>`;
+      });
+      html += makeCard("Passives", pContent || "None");
+    }
+    html += `</div>`;
+
+    return html;
+  }
+
+  left.innerHTML = `<h3>TEAM LEFT</h3>${buildTeamSummary(0, 0)}`;
+  right.innerHTML = `<h3>TEAM RIGHT</h3>${buildTeamSummaryRight(4, 1)`;
+}
+function resetDraft() {
+  draftState = {
+    bans: [null, null],
+    picks: Array(8).fill(null),
+    passives: Array(8).fill(0).map(() => [null, null, null]),
+    weapons: Array(8).fill(0).map(() => [null, null, null])
+  };
+  drawDraft();
+}
+</script>
+</body>
+</html>
