@@ -276,13 +276,9 @@ document.getElementById("note-mode").onclick = () => {
 
 // Get click/touch coordinates relative to map
 function getCoords(e) {
-  const rect = canvas.getBoundingClientRect();
+  const rect = map.getBoundingClientRect();
   const touch = e.touches ? e.touches[0] : e;
-  const dpr = window.devicePixelRatio || 1;
-  return {
-    x: (touch.clientX - rect.left) * dpr,
-    y: (touch.clientY - rect.top) * dpr
-  };
+  return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
 }
 
 function createNote(x, y, text) {
@@ -627,6 +623,8 @@ function drawArrow(from, to, color) {
 }
 
 function drawPaths() {
+  canvas.width = map.clientWidth;
+  canvas.height = map.clientHeight;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   for (let c of circles) {
@@ -653,30 +651,19 @@ function drawPaths() {
   }
 }
 
-function resizeCanvas() {
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = map.clientWidth * dpr;
-  canvas.height = map.clientHeight * dpr;
-  canvas.style.width = map.clientWidth + "px";
-  canvas.style.height = map.clientHeight + "px";
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  drawPaths();
-}
-window.addEventListener("resize", resizeCanvas);
-resizeCanvas();
-
+window.addEventListener("resize", drawPaths);
+drawPaths();
 
 let mapState = {};
 
 // Load map state from Supabase
 async function loadMapState() {
-  console.log('🔄 Attempting to load map state...');
   const { data, error } = await client.from('map').select('state').eq('id', 1).single();
   if (error) {
     console.error('❌ Failed to load map state:', error);
   } else if (data?.state) {
-    console.log('✅ Loaded state:', data.state);
     applyMapState(data.state);
+    console.log('✅ Map state loaded');
   }
 }
 
