@@ -276,10 +276,17 @@ document.getElementById("note-mode").onclick = () => {
 
 // Get click/touch coordinates relative to map
 function getCoords(e) {
-  const rect = map.getBoundingClientRect();
+  const rect = canvas.getBoundingClientRect();
   const touch = e.touches ? e.touches[0] : e;
-  return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+
+  return {
+    x: (touch.clientX - rect.left) * scaleX,
+    y: (touch.clientY - rect.top) * scaleY
+  };
 }
+
 
 function createNote(x, y, text) {
   const noteDiv = document.createElement("div");
@@ -651,8 +658,18 @@ function drawPaths() {
   }
 }
 
-window.addEventListener("resize", drawPaths);
-drawPaths();
+function resizeCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = map.clientWidth * dpr;
+  canvas.height = map.clientHeight * dpr;
+  canvas.style.width = map.clientWidth + "px";
+  canvas.style.height = map.clientHeight + "px";
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // scale all drawings
+  drawPaths();
+}
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
 
 let mapState = {};
 
