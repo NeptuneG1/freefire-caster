@@ -462,15 +462,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   await loadDraftState();
 
-  client.channel('public:draft')
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'draft' }, payload => {
-      if (payload.new.id === 1) {
-        draftState = payload.new.state;
-        drawDraft();
-        console.log('🔄 Draft state synced from server');
-      }
-    })
-    .subscribe();
+  client
+  .channel('public:draft')
+  .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'draft' }, payload => {
+    if (payload.new.id === 1) {
+      draftState = payload.new.state;
+      drawDraft();
+      console.log('🔄 Draft state synced');
+    }
+  })
+  .subscribe();
 });
 
 function drawDraft(){
