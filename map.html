@@ -359,6 +359,7 @@ map.addEventListener("click", e => {
     circles.push({ x, y, r: 50, color: "#00ffff" });
     historyStack.push({ type: "circle" });
     drawPaths();
+	  saveMapState()
     return;
   }
 
@@ -388,6 +389,7 @@ map.addEventListener("click", e => {
       delete teamIcons[id];
       delete undoStacks[id];
       drawPaths();
+	    saveMapState()
     };
 
     div.append(img, label, reset);
@@ -401,11 +403,13 @@ map.addEventListener("click", e => {
     selectedIcon = null;
     historyStack.push({ type: "line", team: id });
     drawPaths();
+	  saveMapState()
   } else if (activeTeam) {
     undoStacks[activeTeam].push([...teamPaths[activeTeam]]);
     teamPaths[activeTeam].push({ x, y });
     historyStack.push({ type: "line", team: activeTeam });
     drawPaths();
+	  saveMapState()
   }
 });
 
@@ -453,6 +457,7 @@ function moveTouch(e) {
     draggingCircle.y = y;
   }
   drawPaths();
+	saveMapState()
 }
 
 function endTouch() {
@@ -493,6 +498,7 @@ document.getElementById("undo-btn").onclick = () => {
   }
 
   drawPaths();
+	saveMapState()
 };
 // Reset all
 document.getElementById("reset-all-btn").onclick = () => {
@@ -567,6 +573,7 @@ document.getElementById("import-file").onchange = function () {
         delete teamIcons[id];
         delete undoStacks[id];
         drawPaths();
+	      saveMapState()
       };
 
       div.append(img, label, reset);
@@ -592,6 +599,7 @@ document.getElementById("import-file").onchange = function () {
     }
 
     drawPaths();
+	saveMapState()
   };
   reader.readAsText(file);
 };
@@ -644,6 +652,106 @@ function drawPaths() {
 
 window.addEventListener("resize", drawPaths);
 drawPaths();
+saveMapState()
+
+let mapState = {};
+
+// Load map state from Supabase
+async function loadMapState() {
+  const { data, error } = await client.from('map').select('state').eq('id', 1).single();
+  if (error) {
+    console.error('❌ Failed to load map state:', error);
+  } else if (data?.state) {
+    applyMapState(data.state);
+    console.log('✅ Map state loaded');
+  }
+}
+
+// Save map state to Supabase
+async function saveMapState() {
+  const state = {
+    map: mapSelect.value,
+    paths: teamPaths,
+    circles,
+    notes
+  };
+  const { error } = await client
+    .from('map')
+    .update({ state, updated_at: new Date().toISOString() })
+    .eq('id', 1);
+
+  if (error) {
+    console.error('❌ Failed to save map state:', error);
+  } else {
+    console.log('✅ Map state saved');
+  }
+}
+
+// Apply state to UI
+function applyMapState(state) {
+  mapSelect.value = state.map || mapSelect.value;
+  map.style.backgroundImage = `url('${mapSelect.value}')`;
+
+  // Reset old data
+  [teamPaths, teamIcons, undoStacks].forEach(obj => Object.keys(obj).forEach(k => delete obj[k]));
+  Object.values(teamIcons).forEach(div => div.remove());
+  circles.length = 0;
+  notes.length = 0;
+  document.querySelectorAll(".note").forEach(n => n.remove());
+
+  // Load teams
+  Object.entries(state.paths || {}).forEach(([id, points]) => {
+    const icon = document.querySelector(`.team-icon[data-id="${id}"]`);
+    if (!icon || !points.length) return;
+    const first = points[0];
+    const div = document.createElement("div");
+    div.className = "unit";
+    div.style.left = `${first.x - 15}px`;
+    div.style.top = `${first.y - 15}px`;
+    const img = icon.cloneNode(true);
+    img.style.width = img.style.height = "30px";
+    const label = document.createElement("div");
+    label.className = "unit-label";
+    label.textContent = id;
+    const reset = document.createElement("button");
+    reset.className = "reset-btn";
+    reset.textContent = "Reset";
+    reset.onclick = ev => {
+      ev.stopPropagation();
+      div.remove();
+      delete teamPaths[id];
+      delete teamIcons[id];
+      delete undoStacks[id];
+      drawPaths();
+    };
+    div.append(img, label, reset);
+    map.appendChild(div);
+    div.onclick = () => activeTeam = id;
+    teamPaths[id] = points;
+    undoStacks[id] = [];
+    teamIcons[id] = div;
+  });
+
+  // Load circles
+  (state.circles || []).forEach(c => circles.push(c));
+
+  // Load notes
+  (state.notes || []).forEach(n => createNote(n.x, n.y, n.text));
+  drawPaths();
+}
+
+// Real-time sync
+client.channel('public:map')
+  .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'map' }, payload => {
+    if (payload.new.id === 1) {
+      applyMapState(payload.new.state);
+      console.log('🔄 Map state synced');
+    }
+  })
+  .subscribe();
+
+// Call load on page load
+window.addEventListener("DOMContentLoaded", loadMapState);
 </script>
 
 </body>
