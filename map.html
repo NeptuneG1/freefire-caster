@@ -511,8 +511,15 @@ document.getElementById("undo-btn").onclick = () => {
 // Reset all
 document.getElementById("reset-all-btn").onclick = () => {
   if (!confirm("Reset all?")) return;
-  Object.values(teamIcons).forEach(div => div.remove());
-  [teamPaths, teamIcons, undoStacks].forEach(obj => Object.keys(obj).forEach(k => delete obj[k]));
+	
+  // Remove all dynamically added .unit elements from map
+	document.querySelectorAll("#map .unit").forEach(unit => unit.remove());
+	
+	// Clear all tracking objects
+	Object.keys(teamPaths).forEach(k => delete teamPaths[k]);
+	Object.keys(teamIcons).forEach(k => delete teamIcons[k]);
+	Object.keys(undoStacks).forEach(k => delete undoStacks[k]);
+
   circles.length = 0;
   notes.length = 0;
   document.querySelectorAll(".note").forEach(n => n.remove());
@@ -741,7 +748,7 @@ function applyMapState(state) {
       delete teamPaths[id];
       delete teamIcons[id];
       delete undoStacks[id];
-      drawPaths();
+      drawPaths(); 
     };
     div.append(img, label, reset);
     map.appendChild(div);
