@@ -462,16 +462,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   weapons = await (await fetch('https://neptuneg1.github.io/freefire-caster/weapon.json')).json();
 
   // ✅ Load draft state from Supabase
+  try {
   const { data } = await client.from('draft').select('state').eq('id', 1).single();
-  if (data && data.state) {
-    draftState = data.state;
-  }
-
+  if (data?.state) draftState = data.state;
   drawDraft();
+} catch (err) {
+  console.error("Failed to load draft state:", err);
+}
 
   // 🔁 Real-time sync listener
   client
-    .channel('draft-sync')
+    .channel('public:draft')
     .on(
       'postgres_changes',
       { event: 'UPDATE', schema: 'public', table: 'draft', filter: 'id=eq.1' },
@@ -625,6 +626,7 @@ function makeSlot(type,index){
           if (currentSlot.type === 'passive') draftState.passives[currentSlot.pickIndex][currentSlot.passiveIndex] = item;
           closeModal();
           drawDraft();
+          saveDraftState(); 
         };
       }
 
