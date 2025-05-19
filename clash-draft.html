@@ -560,6 +560,7 @@ function makeSlot(type,index){
           draftState.weapons[currentSlot.pickIndex][currentSlot.weaponIndex] = item;
           closeModal();
           drawDraft();
+          saveDraftState();
         };
 
         grid.appendChild(card);
@@ -754,10 +755,17 @@ function resetDraft() {
     weapons: Array(8).fill(0).map(() => [null, null, null])
   };
   drawDraft();
+  saveDraftState();
 }
 function getWeaponArmory(weaponName) {
   const weapon = weapons.find(w => w.name === weaponName);
   return weapon && weapon.armory ? weapon.armory : "";
+}
+async function saveDraftState() {
+  await client
+    .from('draft')
+    .update({ state: draftState, updated_at: new Date().toISOString() })
+    .eq('id', 1);
 }
 
 </script>
