@@ -457,11 +457,35 @@ let characters=[], weapons=[], draftState={
   weapons:Array(8).fill(0).map(()=>[null,null,null])
 }, currentSlot=null;
 
-document.addEventListener('DOMContentLoaded',async()=>{
-  characters=await(await fetch('https://neptuneg1.github.io/freefire-caster/character.json')).json();
-  weapons=await(await fetch('https://neptuneg1.github.io/freefire-caster/weapon.json')).json();
+document.addEventListener('DOMContentLoaded', async () => {
+  characters = await (await fetch('https://neptuneg1.github.io/freefire-caster/character.json')).json();
+  weapons = await (await fetch('https://neptuneg1.github.io/freefire-caster/weapon.json')).json();
+
+  // ✅ Load draft state from Supabase
+  const { data } = await client.from('draft').select('state').eq('id', 1).single();
+  if (data && data.state) {
+    draftState = data.state;
+  }
+
   drawDraft();
+
+  // 🔁 Real-time sync listener
+  client
+    .channel('draft-sync')
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'draft', filter: 'id=eq.1' },
+      (payload) => {
+        const newState = payload.new.state;
+        if (JSON.stringify(draftState) !== JSON.stringify(newState)) {
+          draftState = newState;
+          drawDraft();
+        }
+      }
+    )
+    .subscribe();
 });
+
 
 function drawDraft(){
   const l=document.getElementById('teamLeft'),r=document.getElementById('teamRight');
