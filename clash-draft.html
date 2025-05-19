@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -457,10 +456,21 @@ let characters=[], weapons=[], draftState={
   weapons:Array(8).fill(0).map(()=>[null,null,null])
 }, currentSlot=null;
 
-document.addEventListener('DOMContentLoaded',async()=>{
-  characters=await(await fetch('https://neptuneg1.github.io/freefire-caster/character.json')).json();
-  weapons=await(await fetch('https://neptuneg1.github.io/freefire-caster/weapon.json')).json();
-  drawDraft();
+document.addEventListener('DOMContentLoaded', async () => {
+  characters = await (await fetch('https://neptuneg1.github.io/freefire-caster/character.json')).json();
+  weapons = await (await fetch('https://neptuneg1.github.io/freefire-caster/weapon.json')).json();
+
+  await loadDraftState();
+
+  client.channel('public:draft')
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'draft' }, payload => {
+      if (payload.new.id === 1) {
+        draftState = payload.new.state;
+        drawDraft();
+        console.log('🔄 Draft state synced from server');
+      }
+    })
+    .subscribe();
 });
 
 function drawDraft(){
@@ -761,11 +771,31 @@ function getWeaponArmory(weaponName) {
   const weapon = weapons.find(w => w.name === weaponName);
   return weapon && weapon.armory ? weapon.armory : "";
 }
+
+async function loadDraftState() {
+  const { data, error } = await client.from('draft').select('state').eq('id', 1).single();
+  if (error) {
+    console.error('❌ Failed to load draft state:', error);
+    return;
+  }
+  if (data?.state) {
+    draftState = data.state;
+    drawDraft();
+    console.log('✅ Draft state loaded');
+  }
+}
+
 async function saveDraftState() {
-  await client
+  const { error } = await client
     .from('draft')
     .update({ state: draftState, updated_at: new Date().toISOString() })
     .eq('id', 1);
+
+  if (error) {
+    console.error('❌ Failed to save draft state:', error);
+  } else {
+    console.log('✅ Draft state saved');
+  }
 }
 
 </script>
