@@ -777,9 +777,9 @@ canvas {
 	};
 
 	  const { error } = await client
-	    .from('map')
-	    .update({ state, updated_at: new Date().toISOString() })
-	    .eq('id', 1);
+	  .from('map')
+	  .update({ state: JSON.stringify(state), updated_at: new Date().toISOString() })
+	  .eq('id', 1);
 	
 	  if (error) {
 	    console.error('❌ Failed to save map state:', error);
@@ -873,13 +873,19 @@ canvas {
 	  realtimeChannel = client
 	    .channel('public:map')
 	    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'map' }, payload => {
-	      if (realtimeEnabled && payload.new.id === 1) {
-	        console.log("🔄 Real-time update applied");
-	        applyMapState(payload.new.state);
-	      } else {
-	        console.log("⏹️ Update received but realtime is OFF");
-	      }
-	    });
+	 if (realtimeEnabled && payload.new.id === 1) {
+	    console.log("🔄 Real-time update applied", payload.new.state);
+	
+	    // FIX: parse state if it’s a string
+	    const parsedState = typeof payload.new.state === "string"
+	      ? JSON.parse(payload.new.state)
+	      : payload.new.state;
+	
+	    applyMapState(parsedState);
+	  } else {
+	    console.log("⏹️ Update received but realtime is OFF");
+	  }
+	});
 	
 	  const { error } = await realtimeChannel.subscribe();
 	  if (error) {
