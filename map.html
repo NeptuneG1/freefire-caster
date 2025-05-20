@@ -778,18 +778,10 @@ function applyMapState(state) {
   drawPaths();
 }
 
-// Real-time sync
-client.channel('public:map')
-  .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'map' }, payload => {
-    if (payload.new.id === 1) {
-      applyMapState(payload.new.state);
-      console.log('🔄 Map state synced');
-    }
-  })
-  .subscribe();
-
 // Call load on page load
 window.addEventListener("DOMContentLoaded", loadMapState);
+	enableRealtime(); // only if you want it ON by default
+
 
 function enableRealtime() {
   if (realtimeChannel) return;
