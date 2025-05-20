@@ -769,11 +769,13 @@ canvas {
 	// Save map state to Supabase
 	async function saveMapState() {
 	  const state = {
-	    map: mapSelect.value,
-	    paths: teamPaths,
-	    circles,
-	    notes
-	  };
+	  map: mapSelect.value,
+	  paths: teamPaths,
+	  circles,
+	  notes,
+	  version: Date.now()  // ensures state is always different
+	};
+
 	  const { error } = await client
 	    .from('map')
 	    .update({ state, updated_at: new Date().toISOString() })
@@ -788,7 +790,8 @@ canvas {
 	
 	// Apply state to UI
 	function applyMapState(state) {
-	  mapSelect.value = state.map || mapSelect.value;
+	  const { map, paths, circles: savedCircles, notes: savedNotes } = state;
+	  mapSelect.value = map || mapSelect.value;
 	  map.style.backgroundImage = `url('${mapSelect.value}')`;
 	
 	  // Reset old data
