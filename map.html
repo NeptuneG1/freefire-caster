@@ -781,15 +781,14 @@ function applyMapState(state) {
 // Call load on page load
 window.addEventListener("DOMContentLoaded", () => {
   loadMapState();
-  enableRealtime(); // default ON
+  enableRealtime(); // ✅ Start ON by default
 
   const realtimeBtn = document.getElementById("realtime-toggle-btn");
   realtimeBtn.textContent = "Real-time: ON";
   realtimeBtn.style.backgroundColor = "#e0a84f";
   realtimeBtn.style.color = "#fff";
 
-  // Attach click handler once DOM is ready
-  realtimeBtn.onclick = () => {
+  realtimeBtn.onclick = async () => {
     realtimeEnabled = !realtimeEnabled;
 
     realtimeBtn.textContent = realtimeEnabled ? "Real-time: ON" : "Real-time: OFF";
@@ -797,40 +796,44 @@ window.addEventListener("DOMContentLoaded", () => {
     realtimeBtn.style.color = realtimeEnabled ? "#fff" : "#ccc";
 
     if (realtimeEnabled) {
-      enableRealtime();
+      await enableRealtime();
     } else {
-      disableRealtime();
+      await disableRealtime();
     }
   };
 });
 
-function enableRealtime() {
+async function enableRealtime() {
   if (realtimeChannel) return;
 
   realtimeChannel = client
     .channel('public:map')
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'map' }, payload => {
       if (realtimeEnabled && payload.new.id === 1) {
-        applyMapState(payload.new.state);
         console.log("🔄 Real-time update applied");
+        applyMapState(payload.new.state);
+      } else {
+        console.log("⏹️ Update received but realtime is OFF");
       }
     });
 
-  realtimeChannel.subscribe((status) => {
-    if (status === "SUBSCRIBED") {
-      console.log("✅ Real-time updates enabled");
-    }
-  });
-}
-
-
-function disableRealtime() {
-  if (realtimeChannel) {
-    client.removeChannel(realtimeChannel);
-    realtimeChannel = null;
-    console.log("⏹️ Real-time updates disabled");
+  const { error } = await realtimeChannel.subscribe();
+  if (error) {
+    console.error("❌ Error subscribing to real-time:", error.message);
+  } else {
+    console.log("✅ Real-time subscription active");
   }
 }
+
+async function disableRealtime() {
+  if (realtimeChannel) {
+    console.log("⏹️ Attempting to remove real-time channel...");
+    const result = await client.removeChannel(realtimeChannel);
+    console.log("⏹️ Channel removal result:", result);
+    realtimeChannel = null;
+  }
+}
+
 
 </script>
 
