@@ -73,6 +73,15 @@ function logout() {
   position: relative;
   touch-action: none;
 }
+	  
+#maskCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
 canvas {
   position: absolute; top: 0; left: 0;
   width: 100%; height: 100%;
@@ -228,20 +237,28 @@ canvas {
 	<div id="main">
 	  <div id="map-container">
 	    <div id="map">
+		<canvas id="maskCanvas"></canvas>
 	      <canvas id="pathCanvas"></canvas>
 	    </div>
 	  </div>
 	  <div id="sidebar">
 	    <div class="icon-grid" id="teamIcons"></div>
 	    <div id="controls">
-	      <select id="map-select">
-	        <option value="https://i.imgur.com/V6iUHaA.jpeg">Bermuda</option>
-	        <option value="https://i.imgur.com/ieY0LHk.jpeg">Purgatory</option>
-	        <option value="https://i.imgur.com/48O1Jf8.jpeg">Alpine</option>
-	        <option value="https://i.imgur.com/4Yz12P9.jpeg">Kalahari</option>
-	        <option value="https://i.imgur.com/0MZNMJZ.jpeg">NeXTerra</option>
-	        <option value="https://i.imgur.com/IX1oY9Z.jpeg">Solara</option>
-	      </select>
+	    <select id="map-select">
+		<option value="https://i.imgur.com/V6iUHaA.jpeg" data-mode="">Bermuda</option>
+		<option value="https://i.imgur.com/ieY0LHk.jpeg" data-mode="">Purgatory</option>
+		<option value="https://i.imgur.com/48O1Jf8.jpeg" data-mode="">Alpine</option>
+		<option value="https://i.imgur.com/4Yz12P9.jpeg" data-mode="">Kalahari</option>
+		<option value="https://i.imgur.com/0MZNMJZ.jpeg" data-mode="">NeXTerra</option>
+		<option value="https://i.imgur.com/IX1oY9Z.jpeg" data-mode="">Solara</option>
+		<option value="https://i.imgur.com/V6iUHaA.jpeg" data-mode="CS">Bermuda-CS</option>
+		<option value="https://i.imgur.com/ieY0LHk.jpeg" data-mode="CS">Purgatory-CS</option>
+		<option value="https://i.imgur.com/ieY0LHk.jpeg" data-mode="CS">Purgatory-CS</option>
+		<option value="https://i.imgur.com/48O1Jf8.jpeg" data-mode="CS">Alpine-CS</option>
+		<option value="https://i.imgur.com/4Yz12P9.jpeg" data-mode="CS">Kalahari-CS</option>
+		<option value="https://i.imgur.com/0MZNMJZ.jpeg" data-mode="CS">NeXTerra-CS</option>
+		<option value="https://i.imgur.com/IX1oY9Z.jpeg" data-mode="CS">Solara-CS</option>
+	    </select>
 	      <button id="realtime-toggle-btn">Real-time: ON</button>
 	      <div class="button-row">
 	        <button id="draw-circle">Draw Circle</button>
@@ -282,9 +299,22 @@ canvas {
 	const mapSelect = document.getElementById("map-select");
 	map.style.backgroundImage = `url('${mapSelect.value}')`;
 	mapSelect.onchange = () => {
-	  map.style.backgroundImage = `url('${mapSelect.value}')`;
-		saveMapState();
+	  const selectedOption = [...mapSelect.options].find(o => o.value === mapSelect.value);
+	  const mapURL = selectedOption.value;
+	  const mode = selectedOption?.dataset.mode;
+	
+	  map.style.backgroundImage = `url('${mapURL}')`;
+	
+	  if (mode === "CS") {
+	    drawOverlayMask(circles); // ✅ Use current live circles
+	  } else {
+	    document.getElementById("maskCanvas").style.display = "none";
+	  }
+	
+	  saveMapState(); // optional if you want to save map change
 	};
+
+
 	
 	// Team icons
 	const hashes = [
@@ -828,6 +858,14 @@ canvas {
 	  // Load notes
 	  (state.notes || []).forEach(n => createNote(n.x, n.y, n.text));
 	  drawPaths();
+
+	const selectedOption = mapSelect.options[mapSelect.selectedIndex];
+		if (selectedOption?.dataset.mode === "CS") {
+		  drawOverlayMask(circles);
+		} else {
+		  document.getElementById("maskCanvas").style.display = "none";
+		}
+
 	}
 	
 	// Call load on page load
@@ -884,7 +922,37 @@ canvas {
 	    realtimeChannel = null;
 	  }
 	}
+
+	function drawOverlayMask(circlesToReveal) {
+	  const maskCanvas = document.getElementById("maskCanvas");
+	  const ctx = maskCanvas.getContext("2d");
 	
+	  const dpr = window.devicePixelRatio || 1;
+	  maskCanvas.width = map.clientWidth * dpr;
+	  maskCanvas.height = map.clientHeight * dpr;
+	  maskCanvas.style.width = map.clientWidth + "px";
+	  maskCanvas.style.height = map.clientHeight + "px";
+	  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+	
+	  // Draw full dark overlay
+	  ctx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+	  ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+	  ctx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+	
+	  // Punch out the circles
+	  ctx.globalCompositeOperation = "destination-out";
+	  circlesToReveal.forEach(c => {
+	    ctx.beginPath();
+	    ctx.arc(c.x, c.y, c.r, 0, 2 * Math.PI);
+	    ctx.fill();
+	  });
+	
+	  // Reset mode for future drawing
+	  ctx.globalCompositeOperation = "source-over";
+	}
+
+	
+
 	
 	</script>
 	
