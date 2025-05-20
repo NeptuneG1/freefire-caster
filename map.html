@@ -204,9 +204,12 @@ function logout() {
       </select>
       <button id="undo-btn">Undo</button>
       <button id="reset-all-btn">Reset All</button>
-      <button id="export-btn">Export</button>
-      <button onclick="document.getElementById('import-file').click()">Import</button>
+      <div class="button-row">
+	  <button id="export-btn">Export</button>
+	  <button onclick="document.getElementById('import-file').click()">Import</button>
+	</div>
       <input type="file" id="import-file" accept=".json" />
+      <button id="realtime-toggle-btn">Real-time: ON</button>
       <button onclick="location.href='dashboard.html'">← Back to Dashboard</button>
       <button onclick="logout()">Logout</button>
       <p id="user-info" style="font-size: 0.8rem; text-align: center; margin-top: 10px; color: #aaa;"></p>
@@ -685,6 +688,9 @@ resizeCanvas();
 
 
 let mapState = {};
+let realtimeEnabled = true;
+let realtimeChannel = null;
+
 
 // Load map state from Supabase
 async function loadMapState() {
@@ -784,6 +790,35 @@ client.channel('public:map')
 // Call load on page load
 window.addEventListener("DOMContentLoaded", loadMapState);
 
+function enableRealtime() {
+  if (realtimeChannel) return;
+  realtimeChannel = client.channel('public:map')
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'map' }, payload => {
+      if (payload.new.id === 1 && realtimeEnabled) {
+        applyMapState(payload.new.state);
+        console.log('🔄 Real-time map update received');
+      }
+    })
+    .subscribe();
+}
+
+function disableRealtime() {
+  if (realtimeChannel) {
+    client.removeChannel(realtimeChannel);
+    realtimeChannel = null;
+    console.log('⏹️ Real-time updates disabled');
+  }
+}
+
+document.getElementById("realtime-toggle-btn").onclick = () => {
+  realtimeEnabled = !realtimeEnabled;
+  document.getElementById("realtime-toggle-btn").textContent = realtimeEnabled ? "Real-time: ON" : "Real-time: OFF";
+  if (realtimeEnabled) {
+    enableRealtime();
+  } else {
+    disableRealtime();
+  }
+};
 
 
 </script>
