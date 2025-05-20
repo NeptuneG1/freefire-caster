@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 
 <html lang="en">
@@ -570,32 +571,21 @@ canvas {
 	// Reset all
 	document.getElementById("reset-all-btn").onclick = () => {
 	  if (!confirm("Reset all?")) return;
-	
+		
 	  // Remove all dynamically added .unit elements from map
-	  document.querySelectorAll("#map .unit").forEach(unit => unit.remove());
-	
-	  // Clear all tracking objects
-	  Object.keys(teamPaths).forEach(k => delete teamPaths[k]);
-	  Object.keys(teamIcons).forEach(k => delete teamIcons[k]);
-	  Object.keys(undoStacks).forEach(k => delete undoStacks[k]);
+		document.querySelectorAll("#map .unit").forEach(unit => unit.remove());
+		
+		// Clear all tracking objects
+		Object.keys(teamPaths).forEach(k => delete teamPaths[k]);
+		Object.keys(teamIcons).forEach(k => delete teamIcons[k]);
+		Object.keys(undoStacks).forEach(k => delete undoStacks[k]);
 	
 	  circles.length = 0;
 	  notes.length = 0;
 	  document.querySelectorAll(".note").forEach(n => n.remove());
-	
 	  activeTeam = selectedIcon = null;
 	  drawPaths();
-	
-	  // 💡 Force map to a temporary dummy and back to trigger state difference
-	  const originalMap = mapSelect.value;
-	  const dummyMap = "dummy://" + Date.now();
-	  mapSelect.value = dummyMap;
-	  saveMapState();
-	  setTimeout(() => {
-	    mapSelect.value = originalMap;
-	    map.style.backgroundImage = `url('${originalMap}')`;
-	    saveMapState(); // final save with correct map
-	  }, 50);
+		saveMapState();
 	};
 	
 	// Export JSON
@@ -769,17 +759,15 @@ canvas {
 	// Save map state to Supabase
 	async function saveMapState() {
 	  const state = {
-	  map: mapSelect.value,
-	  paths: teamPaths,
-	  circles,
-	  notes,
-	  version: Date.now()  // ensures state is always different
-	};
-
+	    map: mapSelect.value,
+	    paths: teamPaths,
+	    circles,
+	    notes
+	  };
 	  const { error } = await client
-	  .from('map')
-	  .update({ state: JSON.stringify(state), updated_at: new Date().toISOString() })
-	  .eq('id', 1);
+	    .from('map')
+	    .update({ state, updated_at: new Date().toISOString() })
+	    .eq('id', 1);
 	
 	  if (error) {
 	    console.error('❌ Failed to save map state:', error);
@@ -790,8 +778,7 @@ canvas {
 	
 	// Apply state to UI
 	function applyMapState(state) {
-	  const { map, paths, circles: savedCircles, notes: savedNotes } = state;
-	  mapSelect.value = map || mapSelect.value;
+	  mapSelect.value = state.map || mapSelect.value;
 	  map.style.backgroundImage = `url('${mapSelect.value}')`;
 	
 	  // Reset old data
@@ -873,19 +860,13 @@ canvas {
 	  realtimeChannel = client
 	    .channel('public:map')
 	    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'map' }, payload => {
-	 if (realtimeEnabled && payload.new.id === 1) {
-	    console.log("🔄 Real-time update applied", payload.new.state);
-	
-	    // FIX: parse state if it’s a string
-	    const parsedState = typeof payload.new.state === "string"
-	      ? JSON.parse(payload.new.state)
-	      : payload.new.state;
-	
-	    applyMapState(parsedState);
-	  } else {
-	    console.log("⏹️ Update received but realtime is OFF");
-	  }
-	});
+	      if (realtimeEnabled && payload.new.id === 1) {
+	        console.log("🔄 Real-time update applied");
+	        applyMapState(payload.new.state);
+	      } else {
+	        console.log("⏹️ Update received but realtime is OFF");
+	      }
+	    });
 	
 	  const { error } = await realtimeChannel.subscribe();
 	  if (error) {
