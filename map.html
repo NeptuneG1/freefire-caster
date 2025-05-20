@@ -781,7 +781,8 @@ function applyMapState(state) {
 // Call load on page load
 window.addEventListener("DOMContentLoaded", () => {
   loadMapState();
-  enableRealtime(); // keep real-time ON by default
+  enableRealtime(); // default ON
+});
 
   const realtimeBtn = document.getElementById("realtime-toggle-btn");
   realtimeBtn.textContent = "Real-time: ON";
@@ -792,23 +793,32 @@ window.addEventListener("DOMContentLoaded", () => {
 
 function enableRealtime() {
   if (realtimeChannel) return;
-  realtimeChannel = client.channel('public:map')
+
+  realtimeChannel = client
+    .channel('public:map')
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'map' }, payload => {
-      if (payload.new.id === 1 && realtimeEnabled) {
+      if (realtimeEnabled && payload.new.id === 1) {
         applyMapState(payload.new.state);
-        console.log('🔄 Real-time map update received');
+        console.log("🔄 Real-time update applied");
       }
-    })
-    .subscribe();
+    });
+
+  realtimeChannel.subscribe((status) => {
+    if (status === "SUBSCRIBED") {
+      console.log("✅ Real-time updates enabled");
+    }
+  });
 }
+
 
 function disableRealtime() {
   if (realtimeChannel) {
     client.removeChannel(realtimeChannel);
     realtimeChannel = null;
-    console.log('⏹️ Real-time updates disabled');
+    console.log("⏹️ Real-time updates disabled");
   }
 }
+
 
 const realtimeBtn = document.getElementById("realtime-toggle-btn");
 
