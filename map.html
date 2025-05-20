@@ -515,20 +515,22 @@ canvas {
 	
 	  if (resizingCircle && isResizing) {
 	    resizingCircle.r = Math.max(10, Math.hypot(x - resizingCircle.x, y - resizingCircle.y));
-	    drawPaths();
-	    saveMapState(); // Save on resize
 	  } else if (draggingCircle && isDragging) {
 	    draggingCircle.x = x;
 	    draggingCircle.y = y;
-	    drawPaths();
-	    saveMapState(); // Save on move
 	  }
+	
+	  drawPaths(); // Just redraw live
 	}
 	
 	function endTouch() {
+	  if (isDragging || isResizing) {
+	    saveMapState(); // Save after drag/resize ends
+	  }
 	  resizingCircle = draggingCircle = null;
 	  isResizing = isDragging = false;
 	}
+
 	
 	// Add touch + mouse listeners
 	["mousedown", "touchstart"].forEach(evt => map.addEventListener(evt, startTouch));
