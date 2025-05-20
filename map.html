@@ -318,16 +318,15 @@ canvas {
 	  map.style.backgroundImage = `url('${mapURL}')`;
 	
 	  if (mode === "CS") {
-	    if (circles.length === 0 && default_circles_data[mapURL]) {
-	      circles.push(...default_circles_data[mapURL]);
-	      drawPaths();
-	      saveMapState();
-	    }
-	    drawOverlayMask(circles);
-	  } else {
-	    document.getElementById("maskCanvas").style.display = "none";
+	  if (circles.length === 0 && default_circles_data[mapURL]) {
+	    circles.push(...default_circles_data[mapURL]);
+	    drawPaths();
+	    saveMapState();
 	  }
-	
+	  drawOverlayMask(circles);
+	} else {
+	  document.getElementById("maskCanvas").style.display = "none";
+	}
 	  saveMapState();
 	};
 
@@ -782,6 +781,10 @@ canvas {
 	  canvas.style.height = map.clientHeight + "px";
 	  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // scale all drawings
 	  drawPaths();
+		const selectedOption = mapSelect.options[mapSelect.selectedIndex];
+		if (selectedOption?.dataset.mode === "CS") {
+		  drawOverlayMask(circles);
+		}
 	}
 	window.addEventListener("resize", resizeCanvas);
 	resizeCanvas();
@@ -883,7 +886,6 @@ canvas {
 		} else {
 		  document.getElementById("maskCanvas").style.display = "none";
 		}
-
 	}
 	
 	// Call load on page load
