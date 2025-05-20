@@ -297,21 +297,40 @@ canvas {
 	
 	const mapSelect = document.getElementById("map-select");
 	map.style.backgroundImage = `url('${mapSelect.value}')`;
+	
+	const default_circles_data = {
+	  "https://i.imgur.com/V6iUHaA.jpeg": [  // Bermuda-CS
+	    { r: 50, x: 345, y: 589, color: "#00ffff" },
+	    { r: 50, x: 391, y: 710, color: "#00ffff" },
+	    { r: 50, x: 748, y: 413, color: "#00ffff" },
+	    { r: 50, x: 254, y: 513, color: "#00ffff" },
+	    { r: 50, x: 411, y: 236, color: "#00ffff" },
+	    { r: 50, x: 85, y: 294, color: "#00ffff" }
+	  ],
+	  // Add more maps if needed
+	};
+	
 	mapSelect.onchange = () => {
-	  const selectedOption = [...mapSelect.options].find(o => o.value === mapSelect.value);
+	  const selectedOption = mapSelect.options[mapSelect.selectedIndex];
 	  const mapURL = selectedOption.value;
 	  const mode = selectedOption?.dataset.mode;
 	
 	  map.style.backgroundImage = `url('${mapURL}')`;
 	
 	  if (mode === "CS") {
-	    drawOverlayMask(circles); // ✅ Use current live circles
+	    if (circles.length === 0 && default_circles_data[mapURL]) {
+	      circles.push(...default_circles_data[mapURL]);
+	      drawPaths();
+	      saveMapState();
+	    }
+	    drawOverlayMask(circles);
 	  } else {
 	    document.getElementById("maskCanvas").style.display = "none";
 	  }
 	
-	  saveMapState(); // optional if you want to save map change
+	  saveMapState();
 	};
+
 
 
 	
