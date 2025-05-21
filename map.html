@@ -341,27 +341,27 @@ canvas {
 	  ]
 	};
 
+	mapSelect.addEventListener("change", () => {
+	const selectedOption = mapSelect.options[mapSelect.selectedIndex];
+	const mapURL = selectedOption.value;
+	const mode = selectedOption.dataset.mode || "";
 	
-	mapSelect.onchange = () => {
-	  const selectedOption = mapSelect.options[mapSelect.selectedIndex];
-	  const mapURL = selectedOption.value;
-	  const mode = selectedOption?.dataset.mode;
+	map.style.backgroundImage = `url('${mapURL}')`;
 	
-	  mapSelect.value = mapURL; // reapply value in case it was reset
-	  map.style.backgroundImage = `url('${mapURL}')`;
+	// Clear circles if not from state
+	if (mode === "CS" && circles.length === 0 && default_circles_data[mapURL]) {
+	circles.push(...default_circles_data[mapURL]);
+	drawPaths();
+	}
 	
-	  if (mode === "CS") {
-	    if (circles.length === 0 && default_circles_data[mapURL]) {
-	      circles.push(...default_circles_data[mapURL]);
-	      drawPaths();
-	    }
-	    drawOverlayMask(circles);
-	  } else {
-	    document.getElementById("maskCanvas").style.display = "none";
-	  }
+	if (mode === "CS") {
+	drawOverlayMask(circles);
+	} else {
+	document.getElementById("maskCanvas").style.display = "none";
+	}
 	
-	  saveMapState(); // force save selected map
-	};
+	saveMapState();
+	});
 	
 	// Team icons
 	const hashes = [
