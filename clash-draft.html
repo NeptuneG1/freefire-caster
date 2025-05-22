@@ -542,13 +542,14 @@ function makeSlot(type,index){
     function renderWeapons(filter) {
       // Clear existing cards except filter dropdown
       Array.from(grid.children).forEach((child, index) => { if (index !== 0) child.remove(); });
-
+    
       weapons.forEach(item => {
-        if (filter !== 'all' && item.armory && !item.armory.toLowerCase().includes(filter)) return;
-
+        if (!item.armory) return; // ✅ Skip if no armory
+        if (filter !== 'all' && !item.armory.toLowerCase().includes(filter)) return;
+    
         const card = document.createElement('div');
         card.className = 'hero-grid-item';
-
+    
         const img = document.createElement('img');
         img.src = item.image_url;
         img.alt = item.name;
@@ -556,7 +557,7 @@ function makeSlot(type,index){
         img.style.height = '80px';
         img.style.objectFit = 'contain';
         img.style.marginBottom = '6px';
-
+    
         const name = document.createElement('div');
         name.textContent = item.name;
         name.style.fontSize = '10px';
@@ -564,7 +565,7 @@ function makeSlot(type,index){
         name.style.textAlign = 'center';
         name.style.maxWidth = '60px';
         name.style.overflowWrap = 'break-word';
-
+    
         card.appendChild(img);
         card.appendChild(name);
         card.onclick = () => {
@@ -573,11 +574,11 @@ function makeSlot(type,index){
           drawDraft();
           saveDraftState();
         };
-
+    
         grid.appendChild(card);
       });
     }
-
+    
     renderWeapons('all');
     armoryFilter.addEventListener('change', () => renderWeapons(armoryFilter.value));
 
