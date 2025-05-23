@@ -514,6 +514,21 @@
     </div>
   </div>
 
+  <h2 style="text-align:center;margin-top:30px;">Draft History</h2>
+    <table id="recordTable" style="width: 100%; color: #fff; text-align: left; border-collapse: collapse;">
+      <thead style="background: #222;">
+        <tr>
+          <th style="padding: 8px;">Date</th>
+          <th style="padding: 8px;">Game</th>
+          <th style="padding: 8px;">Team Left</th>
+          <th style="padding: 8px;">Team Right</th>
+          <th style="padding: 8px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="recordBody" style="background: #111;"></tbody>
+    </table>
+
+
 <script>
 let characters = [], weapons = [], currentSlot = null;
 
@@ -545,6 +560,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   })
   .subscribe();
+  loadAllDraftRecords();
 });
 
 function drawDraft(){
@@ -1032,6 +1048,66 @@ async function loadDraftState() {
       }
     }
   };
+
+  <script>
+async function loadAllDraftRecords() {
+  const { data, error } = await client
+    .from('draft_records')
+    .select('id, match_date, game_number, team_left, team_right')
+    .order('match_date', { ascending: false })
+    .order('game_number', { ascending: true });
+
+  if (error) {
+    console.error("❌ Failed to fetch draft records:", error);
+    return;
+  }
+
+  const table = document.getElementById('recordBody');
+  table.innerHTML = '';
+
+  data.forEach(record => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td style="padding: 6px;">${record.match_date}</td>
+      <td style="padding: 6px;">Game ${record.game_number}</td>
+      <td style="padding: 6px;">${record.team_left}</td>
+      <td style="padding: 6px;">${record.team_right}</td>
+      <td style="padding: 6px;">
+        <button onclick="loadSpecificDraft(${record.id})">Load</button>
+      </td>
+    `;
+    table.appendChild(row);
+  });
+}
+
+async function loadSpecificDraft(id) {
+  const { data, error } = await client
+    .from('draft_records')
+    .select('state')
+    .eq('id', id)
+    .single();
+
+  if (error || !data) {
+    alert("❌ Failed to load specific draft.");
+    return;
+  }
+
+  draftState = {
+    ...{
+      bans: [null, null],
+      picks: Array(8).fill(null),
+      passives: Array(8).fill(0).map(() => [null, null, null]),
+      weapons: Array(8).fill(0).map(() => [null, null, null]),
+      teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
+      playerCards: Array(8).fill('')
+    },
+    ...data.state
+  };
+  drawDraft();
+  console.log("✅ Specific draft loaded.");
+}
+</script>
+
 
 </script>
 </body>
