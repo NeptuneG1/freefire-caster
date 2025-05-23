@@ -431,34 +431,28 @@
     <h1>Clash Squad Draft</h1>
     <p id="user-info">Checking login...</p>
   </header>
+
   <div class="top-controls">
     <a href="dashboard.html">← Back to Dashboard</a>
-    <span style="margin: 0 10px;">|</span>
     <button onclick="logout()">Logout</button>
-    <span style="margin: 0 10px;">|</span>
+  
     <label for="gameNumberSelect">Game:</label>
     <select id="gameNumberSelect">
-      <option value="1">1</option>
-      <option value="2">2</option>
-      <option value="3">3</option>
-      <option value="4">4</option>
-      <option value="5">5</option>
-      <option value="6">6</option>
-      <option value="7">7</option>
+      <option value="1">Game 1</option>
+      <option value="2">Game 2</option>
+      <option value="3">Game 3</option>
+      <option value="4">Game 4</option>
+      <option value="5">Game 5</option>
+      <option value="6">Game 6</option>
+      <option value="7">Game 7</option>
     </select>
-    <button onclick="saveDraftRecord()">💾 Save</button>
-    <button onclick="loadDraftRecord()">📥 Load</button>
-    <button onclick="updateDraftRecord()">♻️ Update</button>
-  </div>
-  <div class="draft-wrapper">
-    <div class="team-container">
-      <input class="team-label" id="teamNameLeft" value="TEAM LEFT" onchange="updateTeamName(0)">
-      <div class="team-row" id="teamLeft"></div>
-    </div>
-    <div class="team-container">
-      <input class="team-label" id="teamNameRight" value="TEAM RIGHT" onchange="updateTeamName(1)">
-      <div class="team-row" id="teamRight"></div>
-          </div>
+  
+    <label for="matchDate">Date:</label>
+    <input type="date" id="matchDate" />
+  
+    <button onclick="saveDraftRecord()">Save</button>
+    <button onclick="loadDraftRecord()">Load</button>
+    <button onclick="updateDraftRecord()">Update</button>
   </div>
 
   <button class="reset-btn" onclick="resetDraft()">Reset All</button>
@@ -901,124 +895,136 @@ async function loadDraftState() {
 
 
 async function saveDraftState() {
-  // 🚫 Prevent saving if draftState is missing or empty
-  if (!draftState || Object.keys(draftState).length === 0) {
-    console.warn('⚠️ Draft state is empty. Skipping save.');
-    return;
+    // 🚫 Prevent saving if draftState is missing or empty
+    if (!draftState || Object.keys(draftState).length === 0) {
+      console.warn('⚠️ Draft state is empty. Skipping save.');
+      return;
+    }
+  
+    const { error } = await client
+      .from('draft')
+      .update({ state: draftState, updated_at: new Date().toISOString() })
+      .eq('id', 1);
+  
+    if (error) {
+      console.error('❌ Failed to save draft state:', error);
+    } else {
+      console.log('✅ Draft state saved');
+    }
   }
-
-  const { error } = await client
-    .from('draft')
-    .update({ state: draftState, updated_at: new Date().toISOString() })
-    .eq('id', 1);
-
-  if (error) {
-    console.error('❌ Failed to save draft state:', error);
-  } else {
-    console.log('✅ Draft state saved');
-  }
-}
-
-async function saveDraftRecord() {
-  const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
-  const { error } = await client.from('draft_records').insert({
+  
+  const gameNumber = parseInt(document.getElementById("gameNumberSelect").value);
+  const matchDate = document.getElementById("matchDate").value;
+  const teamLeft = draftState.teamNames[0];
+  const teamRight = draftState.teamNames[1];
+  
+  await client.from('draft_records').insert({
     game_number: gameNumber,
-    team_left: draftState.teamNames[0],
-    team_right: draftState.teamNames[1],
+    team_left: teamLeft,
+    team_right: teamRight,
+    match_date: matchDate,
     state: draftState
   });
 
-  if (error) {
-    console.error("❌ Failed to save draft record:", error);
-    alert("Save failed.");
-  } else {
-    console.log("✅ Draft record saved.");
-    alert("Draft saved for Game " + gameNumber);
-  }
-}
 
-async function loadDraftRecord() {
-  const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
-  const { data, error } = await client
-    .from('draft_records')
-    .select('state')
-    .eq('game_number', gameNumber)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
-
-  if (error || !data) {
-    console.error("❌ Failed to load draft record:", error);
-    alert("No saved draft for Game " + gameNumber);
-  } else {
-    draftState = {
-      ...{
-        bans: [null, null],
-        picks: Array(8).fill(null),
-        passives: Array(8).fill(0).map(() => [null, null, null]),
-        weapons: Array(8).fill(0).map(() => [null, null, null]),
-        teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
-        playerCards: Array(8).fill('')
-      },
-      ...data.state
-    };
-    drawDraft();
-    console.log("✅ Draft record loaded.");
-  }
-}
-
-async function saveOrUpdateDraft() {
-  const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
-  const teamLeft = draftState.teamNames[0];
-  const teamRight = draftState.teamNames[1];
-  const matchDate = new Date().toISOString().split('T')[0]; // format YYYY-MM-DD
-
-  const { data, error: fetchError } = await client
-    .from('draft_records')
-    .select('id')
-    .eq('game_number', gameNumber)
-    .eq('team_left', teamLeft)
-    .eq('team_right', teamRight)
-    .eq('match_date', matchDate)
-    .single();
-
-  if (fetchError && fetchError.code !== 'PGRST116') {
-    alert("❌ Error checking existing draft.");
-    console.error(fetchError);
-    return;
-  }
-
-  if (!data) {
-    // INSERT new draft
-    const { error: insertError } = await client.from('draft_records').insert({
-      game_number: gameNumber,
-      team_left: teamLeft,
-      team_right: teamRight,
-      match_date: matchDate,
-      state: draftState
-    });
-
-    if (insertError) {
-      alert("❌ Failed to save draft.");
-      console.error(insertError);
-    } else {
-      alert("✅ Draft saved.");
+  async function loadDraftRecord() {
+    const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
+    const matchDate = document.getElementById('matchDate').value;
+    const teamLeft = draftState.teamNames[0];
+    const teamRight = draftState.teamNames[1];
+  
+    if (!matchDate) {
+      alert("⚠️ Please select a match date.");
+      return;
     }
-
-  } else {
-    // UPDATE existing draft
-    const { error: updateError } = await client.from('draft_records')
-      .update({ state: draftState, updated_at: new Date().toISOString() })
-      .eq('id', data.id);
-
-    if (updateError) {
-      alert("❌ Failed to update draft.");
-      console.error(updateError);
+  
+    const { data, error } = await client
+      .from('draft_records')
+      .select('state')
+      .eq('game_number', gameNumber)
+      .eq('match_date', matchDate)
+      .eq('team_left', teamLeft)
+      .eq('team_right', teamRight)
+      .single();
+  
+    if (error || !data) {
+      console.error("❌ Failed to load draft record:", error);
+      alert(`No saved draft for Game ${gameNumber} on ${matchDate}`);
     } else {
-      alert("✅ Draft updated.");
+      draftState = {
+        ...{
+          bans: [null, null],
+          picks: Array(8).fill(null),
+          passives: Array(8).fill(0).map(() => [null, null, null]),
+          weapons: Array(8).fill(0).map(() => [null, null, null]),
+          teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
+          playerCards: Array(8).fill('')
+        },
+        ...data.state
+      };
+      drawDraft();
+      console.log("✅ Draft record loaded.");
     }
   }
-}
+
+  async function saveOrUpdateDraft() {
+    const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
+    const teamLeft = draftState.teamNames[0];
+    const teamRight = draftState.teamNames[1];
+    const matchDate = document.getElementById('matchDate').value;
+  
+    if (!matchDate) {
+      alert("⚠️ Please select a match date.");
+      return;
+    }
+  
+    const { data, error: fetchError } = await client
+      .from('draft_records')
+      .select('id')
+      .eq('game_number', gameNumber)
+      .eq('team_left', teamLeft)
+      .eq('team_right', teamRight)
+      .eq('match_date', matchDate)
+      .single();
+  
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      alert("❌ Error checking existing draft.");
+      console.error(fetchError);
+      return;
+    }
+  
+    if (!data) {
+      // INSERT new draft
+      const { error: insertError } = await client.from('draft_records').insert({
+        game_number: gameNumber,
+        team_left: teamLeft,
+        team_right: teamRight,
+        match_date: matchDate,
+        state: draftState
+      });
+  
+      if (insertError) {
+        alert("❌ Failed to save draft.");
+        console.error(insertError);
+      } else {
+        alert("✅ Draft saved.");
+      }
+  
+    } else {
+      // UPDATE existing draft
+      const { error: updateError } = await client.from('draft_records')
+        .update({ state: draftState, updated_at: new Date().toISOString() })
+        .eq('id', data.id);
+  
+      if (updateError) {
+        alert("❌ Failed to update draft.");
+        console.error(updateError);
+      } else {
+        alert("✅ Draft updated.");
+      }
+    }
+  }
+
 
 
 </script>
