@@ -538,7 +538,9 @@ let draftState = {
   passives: Array(8).fill(0).map(() => [null, null, null]),
   weapons: Array(8).fill(0).map(() => [null, null, null]),
   teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
-  playerCards: Array(8).fill('') // Player name per slot
+  playerCards: Array(8).fill(''),
+  matchDate: '',
+  gameNumber: 1 
 };
 
 
@@ -962,6 +964,28 @@ function getWeaponArmory(weaponName) {
   const weapon = weapons.find(w => w.name === weaponName);
   return weapon && weapon.armory ? weapon.armory : "";
 }
+
+async function saveDraftState() {
+  draftState.matchDate = document.getElementById('matchDate')?.value || '';
+  draftState.gameNumber = parseInt(document.getElementById('gameNumberSelect')?.value || '1', 10);
+
+  if (!draftState || Object.keys(draftState).length === 0) {
+    console.warn('⚠️ Draft state is empty. Skipping save.');
+    return;
+  }
+
+  const { error } = await client
+    .from('draft')
+    .update({ state: draftState, updated_at: new Date().toISOString() })
+    .eq('id', 1);
+
+  if (error) {
+    console.error('❌ Failed to save draft state:', error);
+  } else {
+    console.log('✅ Draft state saved');
+  }
+}
+
 
 async function loadDraftState() {
   const { data, error } = await client.from('draft').select('state').eq('id', 1).single();
