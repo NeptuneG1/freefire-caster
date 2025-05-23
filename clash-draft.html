@@ -452,10 +452,21 @@
   
     <button onclick="saveDraftRecord()">Save</button>
     <button onclick="loadDraftRecord()">Load</button>
-    <button onclick="updateDraftRecord()">Update</button>
+    <button onclick="saveOrUpdateDraft()">Update</button>
   </div>
 
   <button class="reset-btn" onclick="resetDraft()">Reset All</button>
+
+  <div class="draft-wrapper">
+    <div class="team-container">
+      <input class="team-label" id="teamNameLeft" value="TEAM LEFT" onchange="updateTeamName(0)" />
+      <div class="team-row" id="teamLeft"></div>
+    </div>
+    <div class="team-container">
+      <input class="team-label" id="teamNameRight" value="TEAM RIGHT" onchange="updateTeamName(1)" />
+      <div class="team-row" id="teamRight"></div>
+    </div>
+  </div>
 
   <div class="summary-wrapper">
     <div>
@@ -491,6 +502,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   characters = await (await fetch('https://neptuneg1.github.io/freefire-caster/character.json')).json();
   weapons = await (await fetch('https://neptuneg1.github.io/freefire-caster/weapon.json')).json();
 
+  document.getElementById('matchDate').valueAsDate = new Date();
+  
   await loadDraftState();
 
   client
@@ -911,20 +924,7 @@ async function saveDraftState() {
     } else {
       console.log('✅ Draft state saved');
     }
-  }
-  
-  const gameNumber = parseInt(document.getElementById("gameNumberSelect").value);
-  const matchDate = document.getElementById("matchDate").value;
-  const teamLeft = draftState.teamNames[0];
-  const teamRight = draftState.teamNames[1];
-  
-  await client.from('draft_records').insert({
-    game_number: gameNumber,
-    team_left: teamLeft,
-    team_right: teamRight,
-    match_date: matchDate,
-    state: draftState
-  });
+  };
 
 
   async function loadDraftRecord() {
