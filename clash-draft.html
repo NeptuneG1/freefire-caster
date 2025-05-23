@@ -835,16 +835,20 @@ function updateSummary() {
   left.innerHTML = `<h3>TEAM LEFT</h3>${buildTeamSummary(0, 0)}`;
   right.innerHTML = `<h3>TEAM RIGHT</h3>${buildTeamSummaryRight(4, 1)}`;
 }
+  
 function resetDraft() {
   draftState = {
     bans: [null, null],
     picks: Array(8).fill(null),
     passives: Array(8).fill(0).map(() => [null, null, null]),
-    weapons: Array(8).fill(0).map(() => [null, null, null])
+    weapons: Array(8).fill(0).map(() => [null, null, null]),
+    teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
+    playerCards: Array(8).fill('')
   };
   drawDraft();
   saveDraftState();
 }
+
 function getWeaponArmory(weaponName) {
   const weapon = weapons.find(w => w.name === weaponName);
   return weapon && weapon.armory ? weapon.armory : "";
@@ -855,11 +859,22 @@ async function loadDraftState() {
   if (error) {
     console.error('❌ Failed to load draft state:', error);
   } else if (data?.state) {
-    draftState = data.state;
+    draftState = {
+      ...{
+        bans: [null, null],
+        picks: Array(8).fill(null),
+        passives: Array(8).fill(0).map(() => [null, null, null]),
+        weapons: Array(8).fill(0).map(() => [null, null, null]),
+        teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
+        playerCards: Array(8).fill('')
+      },
+      ...data.state
+    };
     drawDraft();
     console.log('✅ Draft state loaded');
   }
 }
+
 
 async function saveDraftState() {
   // 🚫 Prevent saving if draftState is missing or empty
