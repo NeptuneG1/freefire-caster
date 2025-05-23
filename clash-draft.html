@@ -69,12 +69,19 @@
     }
     
     .team-label {
+      background: transparent;
+      border: none;
       color: #ff7733;
       font-weight: bold;
       font-size: 18px;
       margin-bottom: 10px;
+      text-align: center;
     }
-    
+    .team-label:focus {
+      outline: none;
+      border-bottom: 1px dashed #ffbd59;
+    }
+
     .team-row {
       display: flex;
       gap: 10px;
@@ -421,11 +428,11 @@
   </div>
   <div class="draft-wrapper">
     <div class="team-container">
-      <div class="team-label">TEAM LEFT</div>
+      <input class="team-label" id="teamNameLeft" value="TEAM LEFT" onchange="updateTeamName(0)">
       <div class="team-row" id="teamLeft"></div>
     </div>
     <div class="team-container">
-      <div class="team-label">TEAM RIGHT</div>
+      <input class="team-label" id="teamNameRight" value="TEAM RIGHT" onchange="updateTeamName(1)">
       <div class="team-row" id="teamRight"></div>
           </div>
   </div>
@@ -450,12 +457,17 @@
   </div>
 
 <script>
-let characters=[], weapons=[], draftState={
-  bans:[null,null],
-  picks:Array(8).fill(null),
-  passives:Array(8).fill(0).map(()=>[null,null,null]),
-  weapons:Array(8).fill(0).map(()=>[null,null,null])
-}, currentSlot=null;
+let characters = [], weapons = [], currentSlot = null;
+
+let draftState = {
+  bans: [null, null],
+  picks: Array(8).fill(null),
+  passives: Array(8).fill(0).map(() => [null, null, null]),
+  weapons: Array(8).fill(0).map(() => [null, null, null]),
+  teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
+  playerCards: Array(8).fill('') // Player name per slot
+};
+
 
 document.addEventListener('DOMContentLoaded', async () => {
   characters = await (await fetch('https://neptuneg1.github.io/freefire-caster/character.json')).json();
@@ -482,6 +494,10 @@ function drawDraft(){
   for(let i=0;i<4;i++)l.appendChild(makeSlot('pick',i));
   for(let i=7;i>=4;i--)r.appendChild(makeSlot('pick',i));
   r.appendChild(makeSlot('ban',1));
+  
+  document.getElementById('teamNameLeft').value = draftState.teamNames[0];
+  document.getElementById('teamNameRight').value = draftState.teamNames[1];
+
   updateSummary();
 }
 
@@ -497,6 +513,25 @@ function makeSlot(type,index){
   else{const h=draftState.picks[index];if(h){img.src=h.image_url;nameDiv.innerText=h.name;}
   m.onclick=()=>{currentSlot={type,index};openModal('Select Active Skill');};}
   c.appendChild(m); c.appendChild(nameDiv);
+  
+  if (type === 'pick') {
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = 'Player Name';
+  input.value = draftState.playerCards[index] || '';
+  input.style.width = '90px';
+  input.style.fontSize = '10px';
+  input.style.marginTop = '4px';
+  input.style.background = '#1f1f1f';
+  input.style.border = '1px solid #555';
+  input.style.color = '#ccc';
+  input.style.textAlign = 'center';
+  input.onchange = () => {
+    draftState.playerCards[index] = input.value;
+    saveDraftState();
+  };
+  c.appendChild(input);
+}
 
   if(type==='pick'){
     const passives=draftState.passives[index];
@@ -519,6 +554,12 @@ function makeSlot(type,index){
 
   return c;
 }
+
+  function updateTeamName(teamIndex) {
+    const input = document.getElementById(teamIndex === 0 ? 'teamNameLeft' : 'teamNameRight');
+    draftState.teamNames[teamIndex] = input.value;
+    saveDraftState();
+  }
 
   function openModal(title) {
   document.getElementById('modalTitle').innerText = title;
