@@ -426,6 +426,23 @@
     <a href="dashboard.html">← Back to Dashboard</a>
     <button class="logout-btn" onclick="logout()">Logout</button>
   </div>
+  
+  <div style="text-align: center; margin-top: 10px;">
+    <label style="color:#ccc;">Game Number:</label>
+    <select id="gameNumberSelect" style="padding: 5px; margin-left: 5px;">
+      <option value="1">Game 1</option>
+      <option value="2">Game 2</option>
+      <option value="3">Game 3</option>
+      <option value="4">Game 4</option>
+      <option value="5">Game 5</option>
+      <option value="6">Game 6</option>
+      <option value="7">Game 7</option>
+    </select>
+    <button onclick="saveDraftRecord()">Save Draft</button>
+    <button onclick="loadDraftRecord()">Load Draft</button>
+    <button onclick="updateDraftRecord()">Update Draft</button>
+  </div>
+
   <div class="draft-wrapper">
     <div class="team-container">
       <input class="team-label" id="teamNameLeft" value="TEAM LEFT" onchange="updateTeamName(0)">
@@ -892,6 +909,107 @@ async function saveDraftState() {
     console.error('❌ Failed to save draft state:', error);
   } else {
     console.log('✅ Draft state saved');
+  }
+}
+
+async function saveDraftRecord() {
+  const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
+  const { error } = await client.from('draft_records').insert({
+    game_number: gameNumber,
+    team_left: draftState.teamNames[0],
+    team_right: draftState.teamNames[1],
+    state: draftState
+  });
+
+  if (error) {
+    console.error("❌ Failed to save draft record:", error);
+    alert("Save failed.");
+  } else {
+    console.log("✅ Draft record saved.");
+    alert("Draft saved for Game " + gameNumber);
+  }
+}
+
+async function loadDraftRecord() {
+  const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
+  const { data, error } = await client
+    .from('draft_records')
+    .select('state')
+    .eq('game_number', gameNumber)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error || !data) {
+    console.error("❌ Failed to load draft record:", error);
+    alert("No saved draft for Game " + gameNumber);
+  } else {
+    draftState = {
+      ...{
+        bans: [null, null],
+        picks: Array(8).fill(null),
+        passives: Array(8).fill(0).map(() => [null, null, null]),
+        weapons: Array(8).fill(0).map(() => [null, null, null]),
+        teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
+        playerCards: Array(8).fill('')
+      },
+      ...data.state
+    };
+    drawDraft();
+    console.log("✅ Draft record loaded.");
+  }
+}
+
+async function saveOrUpdateDraft() {
+  const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
+  const teamLeft = draftState.teamNames[0];
+  const teamRight = draftState.teamNames[1];
+  const matchDate = new Date().toISOString().split('T')[0]; // format YYYY-MM-DD
+
+  const { data, error: fetchError } = await client
+    .from('draft_records')
+    .select('id')
+    .eq('game_number', gameNumber)
+    .eq('team_left', teamLeft)
+    .eq('team_right', teamRight)
+    .eq('match_date', matchDate)
+    .single();
+
+  if (fetchError && fetchError.code !== 'PGRST116') {
+    alert("❌ Error checking existing draft.");
+    console.error(fetchError);
+    return;
+  }
+
+  if (!data) {
+    // INSERT new draft
+    const { error: insertError } = await client.from('draft_records').insert({
+      game_number: gameNumber,
+      team_left: teamLeft,
+      team_right: teamRight,
+      match_date: matchDate,
+      state: draftState
+    });
+
+    if (insertError) {
+      alert("❌ Failed to save draft.");
+      console.error(insertError);
+    } else {
+      alert("✅ Draft saved.");
+    }
+
+  } else {
+    // UPDATE existing draft
+    const { error: updateError } = await client.from('draft_records')
+      .update({ state: draftState, updated_at: new Date().toISOString() })
+      .eq('id', data.id);
+
+    if (updateError) {
+      alert("❌ Failed to update draft.");
+      console.error(updateError);
+    } else {
+      alert("✅ Draft updated.");
+    }
   }
 }
 
