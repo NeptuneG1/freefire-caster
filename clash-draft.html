@@ -734,6 +734,39 @@ function makeSlot(type,index){
     armoryFilter.addEventListener('change', () => renderWeapons(armoryFilter.value));
 
   } else {
+
+    // Add "Clear" option for ban, pick, and passive
+    const clearCard = document.createElement('div');
+    clearCard.className = 'hero-grid-item';
+    clearCard.style.border = '1px dashed #555';
+    
+    const clearImg = document.createElement('img');
+    clearImg.src = 'https://imgur.com/AdvPwAO.png';
+    clearImg.alt = 'Clear';
+    clearImg.style.width = '60px';
+    clearImg.style.height = '60px';
+    clearImg.style.opacity = '0.3';
+    clearImg.style.objectFit = 'contain';
+    clearImg.style.marginBottom = '6px';
+    
+    const clearLabel = document.createElement('div');
+    clearLabel.textContent = 'Clear';
+    clearLabel.style.fontSize = '10px';
+    clearLabel.style.color = '#bbb';
+    clearLabel.style.textAlign = 'center';
+    
+    clearCard.appendChild(clearImg);
+    clearCard.appendChild(clearLabel);
+    clearCard.onclick = () => {
+      if (currentSlot.type === 'ban') draftState.bans[currentSlot.index] = null;
+      if (currentSlot.type === 'pick') draftState.picks[currentSlot.index] = null;
+      if (currentSlot.type === 'passive') draftState.passives[currentSlot.pickIndex][currentSlot.passiveIndex] = null;
+      closeModal();
+      drawDraft();
+      saveDraftState();
+    };
+    grid.appendChild(clearCard);
+
     // for bans, picks, passives
     const used = new Set();
     draftState.bans.forEach(h => h && used.add(h.name));
