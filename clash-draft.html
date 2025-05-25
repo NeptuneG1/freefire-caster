@@ -1183,7 +1183,7 @@ async function loadAllDraftRecords() {
 async function loadSpecificDraft(id) {
   const { data, error } = await client
     .from('draft_records')
-    .select('state, team_left_score, team_right_score, map')
+    .select('state, match_date, game_number, team_left_score, team_right_score, map')
     .eq('id', id)
     .single();
 
@@ -1202,7 +1202,9 @@ async function loadSpecificDraft(id) {
       playerCards: Array(8).fill(''),
       teamLeftScore: 0,
       teamRightScore: 0,
-      map: 'Bermuda'
+      map: 'Bermuda',
+      matchDate: '',
+      gameNumber: 1
     },
     ...data.state
   };
@@ -1210,7 +1212,12 @@ async function loadSpecificDraft(id) {
   draftState.teamLeftScore = data.team_left_score ?? 0;
   draftState.teamRightScore = data.team_right_score ?? 0;
   draftState.map = data.map ?? 'Bermuda';
+  draftState.matchDate = data.match_date;
+  draftState.gameNumber = data.game_number;
 
+  // Update the form fields visually
+  document.getElementById('matchDate').value = draftState.matchDate;
+  document.getElementById('gameNumberSelect').value = draftState.gameNumber;
   document.getElementById('teamLeftScore').value = draftState.teamLeftScore;
   document.getElementById('teamRightScore').value = draftState.teamRightScore;
   document.getElementById('mapSelect').value = draftState.map;
@@ -1218,6 +1225,7 @@ async function loadSpecificDraft(id) {
   drawDraft();
   console.log("✅ Specific draft loaded.");
 }
+
 
 </script>
 </body>
