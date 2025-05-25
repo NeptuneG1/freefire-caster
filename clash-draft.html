@@ -1044,43 +1044,59 @@ async function loadDraftState() {
 }
 
   async function loadDraftRecord() {
-  const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
-  const matchDate = document.getElementById('matchDate').value;
-  const teamLeft = draftState.teamNames[0];
-  const teamRight = draftState.teamNames[1];
-
-  if (!matchDate) {
-    alert("⚠️ Please select a match date.");
-    return;
+    const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
+    const matchDate = document.getElementById('matchDate').value;
+    const teamLeft = draftState.teamNames[0];
+    const teamRight = draftState.teamNames[1];
+  
+    if (!matchDate) {
+      alert("⚠️ Please select a match date.");
+      return;
+    }
+  
+    const { data, error } = await client
+      .from('draft_records')
+      .select('state, team_left_score, team_right_score, map')
+      .eq('game_number', gameNumber)
+      .eq('match_date', matchDate)
+      .eq('team_left', teamLeft)
+      .eq('team_right', teamRight)
+      .single();
+  
+    if (error || !data) {
+      console.error("❌ Failed to load draft record:", error);
+      alert(`No saved draft for Game ${gameNumber} on ${matchDate}`);
+    } else {
+      draftState = {
+        ...{
+          bans: [null, null],
+          picks: Array(8).fill(null),
+          passives: Array(8).fill(0).map(() => [null, null, null]),
+          weapons: Array(8).fill(0).map(() => [null, null, null]),
+          teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
+          playerCards: Array(8).fill(''),
+          teamLeftScore: 0,
+          teamRightScore: 0,
+          map: 'Bermuda'
+        },
+        ...data.state
+      };
+  
+      // Update additional fields from outer columns
+      draftState.teamLeftScore = data.team_left_score ?? 0;
+      draftState.teamRightScore = data.team_right_score ?? 0;
+      draftState.map = data.map ?? 'Bermuda';
+  
+      // Update form inputs to reflect the loaded data
+      document.getElementById('teamLeftScore').value = draftState.teamLeftScore;
+      document.getElementById('teamRightScore').value = draftState.teamRightScore;
+      document.getElementById('mapSelect').value = draftState.map;
+  
+      drawDraft();
+      console.log("✅ Draft record loaded.");
+    }
   }
 
-  const { data, error } = await client
-    .from('draft_records')
-    .select('state, team_left_score, team_right_score, map')
-    .eq('game_number', gameNumber)
-    .eq('match_date', matchDate)
-    .eq('team_left', teamLeft)
-    .eq('team_right', teamRight)
-    .single();
-
-  if (error || !data) {
-    console.error("❌ Failed to load draft record:", error);
-    alert(`No saved draft for Game ${gameNumber} on ${matchDate}`);
-  } else {
-    draftState = {
-      ...{
-        bans: [null, null],
-        picks: Array(8).fill(null),
-        passives: Array(8).fill(0).map(() => [null, null, null]),
-        weapons: Array(8).fill(0).map(() => [null, null, null]),
-        teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
-        playerCards: Array(8).fill(''),
-        teamLeftScore: 0,
-        teamRightScore: 0,
-        map: 'Bermuda'
-      },
-      ...data.state
-    };
 
     // Override scores and map from columns (not nested state)
     draftState.teamLeftScore = data.team_left_score ?? 0;
