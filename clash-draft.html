@@ -480,6 +480,14 @@
       <option value="6">Game 6</option>
       <option value="7">Game 7</option>
     </select>
+    <select id="mapSelect">
+      <option value="Bermuda">Bermuda</option>
+      <option value="Kalahari">Kalahari</option>
+      <option value="Purgatory">Purgatory</option>
+      <option value="Alpine">Alpine</option>
+      <option value="NexTerra">NexTerra</option>
+      <option value="Solara">Solara</option>
+    </select>
     <button onclick="saveOrUpdateDraft()">Save/Update</button>
     <button onclick="loadDraftRecord()">Load</button>
   </div>
@@ -490,10 +498,14 @@
     <div class="team-container">
       <input class="team-label" id="teamNameLeft" value="TEAM LEFT" onchange="updateTeamName(0)" />
       <div class="team-row" id="teamLeft"></div>
+      <label for="leftScore">Left Score:</label>
+      <input type="number" id="leftScore" min="0" style="width: 60px;" />
     </div>
     <div class="team-container">
       <input class="team-label" id="teamNameRight" value="TEAM RIGHT" onchange="updateTeamName(1)" />
       <div class="team-row" id="teamRight"></div>
+      <label for="rightScore">Right Score:</label>
+      <input type="number" id="rightScore" min="0" style="width: 60px;" />
     </div>
   </div>
 
@@ -540,9 +552,11 @@ let draftState = {
   teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
   playerCards: Array(8).fill(''),
   matchDate: '',
-  gameNumber: 1 
+  gameNumber: 1,
+  teamLeftScore: 0,
+  teamRightScore: 0,
+  map: 'Bermuda'
 };
-
 
 document.addEventListener('DOMContentLoaded', async () => {
   characters = await (await fetch('https://neptuneg1.github.io/freefire-caster/character.json')).json();
@@ -954,8 +968,16 @@ function resetDraft() {
     passives: Array(8).fill(0).map(() => [null, null, null]),
     weapons: Array(8).fill(0).map(() => [null, null, null]),
     teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
-    playerCards: Array(8).fill('')
+    playerCards: Array(8).fill(''),
+    matchDate: '',
+    gameNumber: 1,
+    teamLeftScore: 0,
+    teamRightScore: 0,
+    map: 'Bermuda'
   };
+  document.getElementById('teamLeftScore').value = 0;
+  document.getElementById('teamRightScore').value = 0;
+  document.getElementById('mapSelect').value = 'Bermuda';
   drawDraft();
   saveDraftState();
 }
@@ -968,6 +990,9 @@ function getWeaponArmory(weaponName) {
 async function saveDraftState() {
   draftState.matchDate = document.getElementById('matchDate')?.value || '';
   draftState.gameNumber = parseInt(document.getElementById('gameNumberSelect')?.value || '1', 10);
+  draftState.teamLeftScore = parseInt(document.getElementById('teamLeftScore')?.value || '0', 10);
+  draftState.teamRightScore = parseInt(document.getElementById('teamRightScore')?.value || '0', 10);
+  draftState.map = document.getElementById('mapSelect')?.value || 'Bermuda';
 
   if (!draftState || Object.keys(draftState).length === 0) {
     console.warn('⚠️ Draft state is empty. Skipping save.');
@@ -985,7 +1010,6 @@ async function saveDraftState() {
     console.log('✅ Draft state saved');
   }
 }
-
 
 async function loadDraftState() {
   const { data, error } = await client.from('draft').select('state').eq('id', 1).single();
@@ -1009,107 +1033,124 @@ async function loadDraftState() {
 }
 
   async function loadDraftRecord() {
-    const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
-    const matchDate = document.getElementById('matchDate').value;
-    const teamLeft = draftState.teamNames[0];
-    const teamRight = draftState.teamNames[1];
-  
-    if (!matchDate) {
-      alert("⚠️ Please select a match date.");
-      return;
-    }
-  
-    const { data, error } = await client
-      .from('draft_records')
-      .select('state')
-      .eq('game_number', gameNumber)
-      .eq('match_date', matchDate)
-      .eq('team_left', teamLeft)
-      .eq('team_right', teamRight)
-      .single();
-  
-    if (error || !data) {
-      console.error("❌ Failed to load draft record:", error);
-      alert(`No saved draft for Game ${gameNumber} on ${matchDate}`);
-    } else {
-      draftState = {
-        ...{
-          bans: [null, null],
-          picks: Array(8).fill(null),
-          passives: Array(8).fill(0).map(() => [null, null, null]),
-          weapons: Array(8).fill(0).map(() => [null, null, null]),
-          teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
-          playerCards: Array(8).fill('')
-        },
-        ...data.state
-      };
-      drawDraft();
-      console.log("✅ Draft record loaded.");
-    }
-  };
+  const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
+  const matchDate = document.getElementById('matchDate').value;
+  const teamLeft = draftState.teamNames[0];
+  const teamRight = draftState.teamNames[1];
+
+  if (!matchDate) {
+    alert("⚠️ Please select a match date.");
+    return;
+  }
+
+  const { data, error } = await client
+    .from('draft_records')
+    .select('state, team_left_score, team_right_score, map')
+    .eq('game_number', gameNumber)
+    .eq('match_date', matchDate)
+    .eq('team_left', teamLeft)
+    .eq('team_right', teamRight)
+    .single();
+
+  if (error || !data) {
+    console.error("❌ Failed to load draft record:", error);
+    alert(`No saved draft for Game ${gameNumber} on ${matchDate}`);
+  } else {
+    draftState = {
+      ...{
+        bans: [null, null],
+        picks: Array(8).fill(null),
+        passives: Array(8).fill(0).map(() => [null, null, null]),
+        weapons: Array(8).fill(0).map(() => [null, null, null]),
+        teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
+        playerCards: Array(8).fill(''),
+        teamLeftScore: 0,
+        teamRightScore: 0,
+        map: 'Bermuda'
+      },
+      ...data.state
+    };
+
+    // Override scores and map from columns (not nested state)
+    draftState.teamLeftScore = data.team_left_score ?? 0;
+    draftState.teamRightScore = data.team_right_score ?? 0;
+    draftState.map = data.map ?? 'Bermuda';
+
+    document.getElementById('teamLeftScore').value = draftState.teamLeftScore;
+    document.getElementById('teamRightScore').value = draftState.teamRightScore;
+    document.getElementById('mapSelect').value = draftState.map;
+
+    drawDraft();
+    console.log("✅ Draft record loaded.");
+  }
+};
 
   async function saveOrUpdateDraft() {
-    const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
-    const teamLeft = draftState.teamNames[0];
-    const teamRight = draftState.teamNames[1];
-    const matchDate = document.getElementById('matchDate').value;
-  
-    if (!matchDate) {
-      alert("⚠️ Please select a match date.");
-      return;
-    }
-  
-    const { data, error: fetchError } = await client
-      .from('draft_records')
-      .select('id')
-      .eq('game_number', gameNumber)
-      .eq('team_left', teamLeft)
-      .eq('team_right', teamRight)
-      .eq('match_date', matchDate)
-      .single();
-  
-    if (fetchError && fetchError.code !== 'PGRST116') {
-      alert("❌ Error checking existing draft.");
-      console.error(fetchError);
-      return;
-    }
-  
-    if (!data) {
-      // INSERT new draft
-      const { error: insertError } = await client.from('draft_records').insert({
-        game_number: gameNumber,
-        team_left: teamLeft,
-        team_right: teamRight,
-        match_date: matchDate,
-        state: draftState
-      });
-  
-      if (insertError) {
-        alert("❌ Failed to save draft.");
-        console.error(insertError);
-      } else {
-        alert("✅ Draft saved.");
-      }
-  
-    } else {
-      // UPDATE existing draft
-      const { error: updateError } = await client.from('draft_records')
-        .update({ state: draftState, updated_at: new Date().toISOString() })
-        .eq('id', data.id);
-  
-      if (updateError) {
-        alert("❌ Failed to update draft.");
-        console.error(updateError);
-      } else {
-        alert("✅ Draft updated.");
-      }
-    }
+  const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
+  const teamLeft = draftState.teamNames[0];
+  const teamRight = draftState.teamNames[1];
+  const matchDate = document.getElementById('matchDate').value;
+  const teamLeftScore = parseInt(document.getElementById('teamLeftScore').value || '0', 10);
+  const teamRightScore = parseInt(document.getElementById('teamRightScore').value || '0', 10);
+  const map = document.getElementById('mapSelect').value;
+
+  if (!matchDate) {
+    alert("⚠️ Please select a match date.");
+    return;
+  }
+
+  const { data, error: fetchError } = await client
+    .from('draft_records')
+    .select('id')
+    .eq('game_number', gameNumber)
+    .eq('team_left', teamLeft)
+    .eq('team_right', teamRight)
+    .eq('match_date', matchDate)
+    .single();
+
+  if (fetchError && fetchError.code !== 'PGRST116') {
+    alert("❌ Error checking existing draft.");
+    console.error(fetchError);
+    return;
+  }
+
+  const payload = {
+    game_number: gameNumber,
+    team_left: teamLeft,
+    team_right: teamRight,
+    match_date: matchDate,
+    team_left_score: teamLeftScore,
+    team_right_score: teamRightScore,
+    map: map,
+    state: draftState,
+    updated_at: new Date().toISOString()
   };
+
+  if (!data) {
+    const { error: insertError } = await client.from('draft_records').insert(payload);
+    if (insertError) {
+      alert("❌ Failed to save draft.");
+      console.error(insertError);
+    } else {
+      alert("✅ Draft saved.");
+    }
+  } else {
+    const { error: updateError } = await client.from('draft_records')
+      .update(payload)
+      .eq('id', data.id);
+    if (updateError) {
+      alert("❌ Failed to update draft.");
+      console.error(updateError);
+    } else {
+      alert("✅ Draft updated.");
+    }
+  }
+};
 
 async function loadAllDraftRecords() {
   const { data, error } = await client
     .from('draft_records')
-    .select('id, match_date, game_number, team_left, team_right')
+    .select('id, match_date, game_number, team_left, team_right, team_left_score, team_right_score, map')
     .order('match_date', { ascending: false })
     .order('id', { ascending: false });
 
@@ -1127,10 +1168,10 @@ async function loadAllDraftRecords() {
       <td style="padding: 6px;">${record.match_date}</td>
       <td style="padding: 6px;">Game ${record.game_number}</td>
       <td style="padding: 6px;">${record.team_left}</td>
-      <td style="padding: 6px;">${record.team_left_score}</td>
+      <td style="padding: 6px;">${record.team_left_score ?? '-'}</td>
       <td style="padding: 6px;">${record.team_right}</td>
-      <td style="padding: 6px;">${record.team_right_score}</td>
-      <td style="padding: 6px;">${record.map}</td>
+      <td style="padding: 6px;">${record.team_right_score ?? '-'}</td>
+      <td style="padding: 6px;">${record.map ?? '-'}</td>
       <td style="padding: 6px;">
         <button onclick="loadSpecificDraft(${record.id})">Load</button>
       </td>
@@ -1142,7 +1183,7 @@ async function loadAllDraftRecords() {
 async function loadSpecificDraft(id) {
   const { data, error } = await client
     .from('draft_records')
-    .select('state')
+    .select('state, team_left_score, team_right_score, map')
     .eq('id', id)
     .single();
 
@@ -1158,10 +1199,22 @@ async function loadSpecificDraft(id) {
       passives: Array(8).fill(0).map(() => [null, null, null]),
       weapons: Array(8).fill(0).map(() => [null, null, null]),
       teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
-      playerCards: Array(8).fill('')
+      playerCards: Array(8).fill(''),
+      teamLeftScore: 0,
+      teamRightScore: 0,
+      map: 'Bermuda'
     },
     ...data.state
   };
+
+  draftState.teamLeftScore = data.team_left_score ?? 0;
+  draftState.teamRightScore = data.team_right_score ?? 0;
+  draftState.map = data.map ?? 'Bermuda';
+
+  document.getElementById('teamLeftScore').value = draftState.teamLeftScore;
+  document.getElementById('teamRightScore').value = draftState.teamRightScore;
+  document.getElementById('mapSelect').value = draftState.map;
+
   drawDraft();
   console.log("✅ Specific draft loaded.");
 }
