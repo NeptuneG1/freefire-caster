@@ -463,6 +463,13 @@
 
     <h1>Clash Squad Draft</h1>
   </header>
+
+  <div style="text-align: center; margin-top: 20px;">
+    <label for="teamFilter">Filter by Team:</label>
+    <select id="teamFilter" onchange="loadAllDraftRecords()">
+      <option value="">All Teams</option>
+    </select>
+  </div>
   
   <details style="margin: 20px auto; width: 90%; max-width: 1200px;">
     <summary style="font-size: 18px; font-weight: bold; color: #ffbd59; cursor: pointer; padding: 10px 0; text-align: center;">Draft History</summary>
@@ -1160,45 +1167,64 @@ async function loadDraftState() {
 };
 
 async function loadAllDraftRecords() {
-  const { data, error } = await client
-    .from('draft_records')
-    .select('id, match_date, game_number, team_left, team_right, team_left_score, team_right_score, map')
-    .order('match_date', { ascending: false })
-    .order('id', { ascending: false });
-
-  if (error) {
-    console.error("❌ Failed to fetch draft records:", error);
-    return;
+    const { data, error } = await client
+      .from('draft_records')
+      .select('id, match_date, game_number, team_left, team_right, team_left_score, team_right_score, map')
+      .order('match_date', { ascending: false })
+      .order('id', { ascending: false });
+  
+    if (error) {
+      console.error("❌ Failed to fetch draft records:", error);
+      return;
+    }
+  
+    const teamFilter = document.getElementById('teamFilter').value.toLowerCase();
+    const table = document.getElementById('recordBody');
+    table.innerHTML = '';
+  
+    const allTeams = new Set();
+  
+    data.forEach(record => {
+      allTeams.add(record.team_left);
+      allTeams.add(record.team_right);
+  
+      if (teamFilter && 
+          !record.team_left.toLowerCase().includes(teamFilter) &&
+          !record.team_right.toLowerCase().includes(teamFilter)) {
+        return; // Skip if it doesn't match filter
+      }
+  
+      const isLeftWinner = record.team_left_score === 6;
+      const isRightWinner = record.team_right_score === 6;
+  
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td style="padding: 6px;">${record.match_date}</td>
+        <td style="padding: 6px;">Game ${record.game_number}</td>
+        <td style="padding: 6px;">${record.team_left} ${isLeftWinner ? '🏆' : ''}</td>
+        <td style="padding: 6px;">${record.team_left_score ?? '-'}</td>
+        <td style="padding: 6px;">${record.team_right} ${isRightWinner ? '🏆' : ''}</td>
+        <td style="padding: 6px;">${record.team_right_score ?? '-'}</td>
+        <td style="padding: 6px;">${record.map ?? '-'}</td>
+        <td style="padding: 6px;">
+          <button onclick="loadSpecificDraft(${record.id})">Load</button>
+        </td>
+      `;
+      table.appendChild(row);
+    });
+  
+    // Populate filter dropdown once
+    const filterDropdown = document.getElementById('teamFilter');
+    if (filterDropdown.options.length <= 1) {
+      Array.from(allTeams).sort().forEach(team => {
+        const option = document.createElement('option');
+        option.value = team;
+        option.textContent = team;
+        filterDropdown.appendChild(option);
+      });
+    }
   }
 
-  const table = document.getElementById('recordBody');
-  table.innerHTML = '';
-
-  data.forEach(record => {
-    const isLeftWinner = record.team_left_score === 6;
-    const isRightWinner = record.team_right_score === 6;
-  
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td style="padding: 6px;">${record.match_date}</td>
-      <td style="padding: 6px;">Game ${record.game_number}</td>
-      <td style="padding: 6px;">
-        ${record.team_left} ${isLeftWinner ? '🏆' : ''}
-      </td>
-      <td style="padding: 6px;">${record.team_left_score ?? '-'}</td>
-      <td style="padding: 6px;">
-        ${record.team_right} ${isRightWinner ? '🏆' : ''}
-      </td>
-      <td style="padding: 6px;">${record.team_right_score ?? '-'}</td>
-      <td style="padding: 6px;">${record.map ?? '-'}</td>
-      <td style="padding: 6px;">
-        <button onclick="loadSpecificDraft(${record.id})">Load</button>
-      </td>
-    `;
-    table.appendChild(row);
-  });
-
-}
 
 async function loadSpecificDraft(id) {
   const { data, error } = await client
