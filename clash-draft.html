@@ -1304,10 +1304,9 @@ function renderDraftCardSummaries(data) {
 
   const teamMap = {};
 
-  // Group by team
+  // Group records by team
   data.forEach(record => {
-    const teams = [record.team_left, record.team_right];
-    teams.forEach(team => {
+    [record.team_left, record.team_right].forEach(team => {
       if (!teamMap[team]) teamMap[team] = [];
       teamMap[team].push(record);
     });
@@ -1315,24 +1314,23 @@ function renderDraftCardSummaries(data) {
 
   const filterSelect = document.getElementById('teamFilter');
   const selectedTeams = Array.from(filterSelect.selectedOptions).map(opt => opt.value.toLowerCase());
-  const isMulti = filterSelect.multiple;
 
   Object.keys(teamMap).forEach(team => {
     if (selectedTeams.length && !selectedTeams.includes(team.toLowerCase())) return;
 
-    const card = document.createElement('div');
-    card.style.background = '#1c1c1c';
-    card.style.border = '1px solid #444';
-    card.style.borderRadius = '8px';
-    card.style.padding = '10px';
-    card.style.width = '280px';
-    card.style.color = '#eee';
+    const teamCard = document.createElement('div');
+    teamCard.style.background = '#1c1c1c';
+    teamCard.style.border = '1px solid #444';
+    teamCard.style.borderRadius = '8px';
+    teamCard.style.padding = '10px';
+    teamCard.style.width = '280px';
+    teamCard.style.color = '#eee';
 
     const title = document.createElement('h3');
     title.innerText = team;
     title.style.color = '#ff7733';
     title.style.marginBottom = '10px';
-    card.appendChild(title);
+    teamCard.appendChild(title);
 
     teamMap[team].forEach(r => {
       const meta = document.createElement('div');
@@ -1344,35 +1342,37 @@ function renderDraftCardSummaries(data) {
         📅 ${r.match_date} | 🎮 Game ${r.game_number} | 🗺️ ${r.map}<br>
         🆚 ${r.team_left} ${r.team_left_score ?? '-'} - ${r.team_right_score ?? '-'} ${r.team_right}
       `;
-    
-      // Add player cards with hero icons
+
+      // Hero summary cards
       const draft = r.state;
-      if (draft && draft.picks) {
+      if (draft?.picks && draft?.playerCards) {
         const pickIndexes = (team === r.team_left) ? [0, 1, 2, 3] : [7, 6, 5, 4];
         const playerGrid = document.createElement('div');
         playerGrid.style.display = 'flex';
         playerGrid.style.gap = '6px';
         playerGrid.style.marginTop = '6px';
+
         pickIndexes.forEach(i => {
           const hero = draft.picks[i];
-          const name = draft.playerCards?.[i] || `P${(i % 4) + 1}`;
-          const card = document.createElement('div');
-          card.style.width = '50px';
-          card.style.textAlign = 'center';
-          card.innerHTML = `
+          const playerName = draft.playerCards[i] || `P${(i % 4) + 1}`;
+          const heroCard = document.createElement('div');
+          heroCard.style.width = '50px';
+          heroCard.style.textAlign = 'center';
+          heroCard.innerHTML = `
             <img src="${hero?.image_url || 'https://imgur.com/AdvPwAO.png'}" style="width:40px;height:40px;border-radius:4px;"><br>
             <div style="font-size:10px;">${hero?.name || 'None'}</div>
-            <div style="font-size:10px;color:#bbb;">${name}</div>
+            <div style="font-size:10px;color:#bbb;">${playerName}</div>
           `;
-          playerGrid.appendChild(card);
+          playerGrid.appendChild(heroCard);
         });
+
         meta.appendChild(playerGrid);
       }
-    
-      card.appendChild(meta);
+
+      teamCard.appendChild(meta);
     });
 
-    container.appendChild(card);
+    container.appendChild(teamCard);
   });
 }
 
