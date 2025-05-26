@@ -1342,56 +1342,77 @@ function renderDraftCardSummaries(data) {
         📅 ${r.match_date} | 🎮 Game ${r.game_number} | 🗺️ ${r.map}<br>
         🆚 ${r.team_left} ${r.team_left_score ?? '-'} - ${r.team_right_score ?? '-'} ${r.team_right}
       `;
-
-      // Hero summary cards
+      card.appendChild(meta);
+    
       const draft = r.state;
-      if (draft?.picks && draft?.playerCards) {
+      if (draft && draft.picks) {
         const pickIndexes = (team === r.team_left) ? [0, 1, 2, 3] : [7, 6, 5, 4];
         const playerGrid = document.createElement('div');
         playerGrid.style.display = 'flex';
-        playerGrid.style.gap = '6px';
-        playerGrid.style.marginTop = '6px';
-
+        playerGrid.style.gap = '8px';
+        playerGrid.style.marginBottom = '12px';
+        playerGrid.style.flexWrap = 'wrap';
+    
         pickIndexes.forEach(i => {
           const hero = draft.picks[i];
           const playerName = draft.playerCards?.[i] || `P${(i % 4) + 1}`;
           const passives = draft.passives?.[i] || [];
-        
-          const heroCard = document.createElement('div');
-          heroCard.style.width = '60px';
-          heroCard.style.textAlign = 'center';
-          heroCard.style.border = '1px solid #333';
-          heroCard.style.borderRadius = '6px';
-          heroCard.style.padding = '4px';
-          heroCard.style.background = '#222';
-        
+    
+          const pCard = document.createElement('div');
+          pCard.style.width = '60px';
+          pCard.style.textAlign = 'center';
+          pCard.style.fontSize = '10px';
+          pCard.style.color = '#ccc';
+          pCard.style.border = '1px solid #444';
+          pCard.style.borderRadius = '6px';
+          pCard.style.padding = '4px';
+    
           const heroImg = hero?.image_url || 'https://imgur.com/AdvPwAO.png';
-          heroCard.innerHTML = `
+          const heroName = hero?.name || 'None';
+          const heroSkill = hero?.skill || '';
+    
+          pCard.innerHTML = `
             <img src="${heroImg}" style="width:40px;height:40px;border-radius:4px;"><br>
-            <div style="font-size:10px; color:#fff;">${hero?.name || 'None'}</div>
-            <div style="font-size:10px; color:#bbb;">${playerName}</div>
-            <div style="font-size:10px; color:#6cf;">${hero?.skill || ''}</div>
+            <div style="color:#fff; font-weight:bold;">${heroName}</div>
+            <div style="color:#bbb;">${playerName}</div>
+            <div style="color:#6cf;">${heroSkill}</div>
           `;
-        
-          // Add passive skills (names only)
-          passives.forEach(p => {
-            if (p) {
-              const ps = document.createElement('div');
-              ps.style.fontSize = '9px';
-              ps.style.color = '#aaa';
-              ps.textContent = `+ ${p.name}`;
-              heroCard.appendChild(ps);
+    
+          // Add passives below
+          passives.forEach(ps => {
+            if (ps) {
+              const psLine = document.createElement('div');
+              psLine.style.display = 'flex';
+              psLine.style.alignItems = 'center';
+              psLine.style.gap = '2px';
+              psLine.style.justifyContent = 'center';
+              psLine.style.fontSize = '9px';
+              psLine.style.color = '#aaa';
+    
+              if (ps.image_url) {
+                const img = document.createElement('img');
+                img.src = ps.image_url;
+                img.style.width = '12px';
+                img.style.height = '12px';
+                img.style.borderRadius = '2px';
+                psLine.appendChild(img);
+              }
+    
+              const label = document.createElement('span');
+              label.textContent = ps.name;
+              psLine.appendChild(label);
+    
+              pCard.appendChild(psLine);
             }
           });
-        
-          playerGrid.appendChild(heroCard);
+    
+          playerGrid.appendChild(pCard);
         });
-
-        meta.appendChild(playerGrid);
+    
+        card.appendChild(playerGrid);
       }
-
-      teamCard.appendChild(meta);
     });
+
 
     container.appendChild(teamCard);
   });
