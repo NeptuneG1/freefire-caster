@@ -1204,35 +1204,41 @@ async function loadAllDraftRecords() {
 
   const allTeams = new Set();
 
-  data.forEach(record => {
-    allTeams.add(record.team_left);
-    allTeams.add(record.team_right);
+  const matchedRecords = [];
 
-    const matchTeam =
-      selectedTeams.length === 0 ||
-      selectedTeams.includes(record.team_left.toLowerCase()) ||
-      selectedTeams.includes(record.team_right.toLowerCase());
+data.forEach(record => {
+  allTeams.add(record.team_left);
+  allTeams.add(record.team_right);
 
-    if (!matchTeam) return;
+  const matchTeam =
+    selectedTeams.length === 0 ||
+    selectedTeams.includes(record.team_left.toLowerCase()) ||
+    selectedTeams.includes(record.team_right.toLowerCase());
 
-    const isLeftWinner = record.team_left_score === 6;
-    const isRightWinner = record.team_right_score === 6;
+  if (!matchTeam) return;
 
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td style="padding: 6px;">${record.match_date}</td>
-      <td style="padding: 6px;">Game ${record.game_number}</td>
-      <td style="padding: 6px;">${record.team_left} ${isLeftWinner ? '🏆' : ''}</td>
-      <td style="padding: 6px;">${record.team_left_score ?? '-'}</td>
-      <td style="padding: 6px;">${record.team_right} ${isRightWinner ? '🏆' : ''}</td>
-      <td style="padding: 6px;">${record.team_right_score ?? '-'}</td>
-      <td style="padding: 6px;">${record.map ?? '-'}</td>
-      <td style="padding: 6px;">
-        <button onclick="loadSpecificDraft(${record.id})">Load</button>
-      </td>
-    `;
-    table.appendChild(row);
-  });
+  matchedRecords.push(record); // Store filtered records
+
+  const isLeftWinner = record.team_left_score === 6;
+  const isRightWinner = record.team_right_score === 6;
+
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td style="padding: 6px;">${record.match_date}</td>
+    <td style="padding: 6px;">Game ${record.game_number}</td>
+    <td style="padding: 6px;">${record.team_left} ${isLeftWinner ? '🏆' : ''}</td>
+    <td style="padding: 6px;">${record.team_left_score ?? '-'}</td>
+    <td style="padding: 6px;">${record.team_right} ${isRightWinner ? '🏆' : ''}</td>
+    <td style="padding: 6px;">${record.team_right_score ?? '-'}</td>
+    <td style="padding: 6px;">${record.map ?? '-'}</td>
+    <td style="padding: 6px;">
+      <button onclick="loadSpecificDraft(${record.id})">Load</button>
+    </td>
+  `;
+  table.appendChild(row);
+});
+
+renderDraftCardSummaries(matchedRecords);
 
   // Populate filter options if empty
   if (filterSelect.options.length <= 1) {
