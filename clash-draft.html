@@ -1344,6 +1344,31 @@ function renderDraftCardSummaries(data) {
         📅 ${r.match_date} | 🎮 Game ${r.game_number} | 🗺️ ${r.map}<br>
         🆚 ${r.team_left} ${r.team_left_score ?? '-'} - ${r.team_right_score ?? '-'} ${r.team_right}
       `;
+    
+      // Add player cards with hero icons
+      const draft = r.state;
+      if (draft && draft.picks) {
+        const pickIndexes = (team === r.team_left) ? [0, 1, 2, 3] : [7, 6, 5, 4];
+        const playerGrid = document.createElement('div');
+        playerGrid.style.display = 'flex';
+        playerGrid.style.gap = '6px';
+        playerGrid.style.marginTop = '6px';
+        pickIndexes.forEach(i => {
+          const hero = draft.picks[i];
+          const name = draft.playerCards?.[i] || `P${(i % 4) + 1}`;
+          const card = document.createElement('div');
+          card.style.width = '50px';
+          card.style.textAlign = 'center';
+          card.innerHTML = `
+            <img src="${hero?.image_url || 'https://imgur.com/AdvPwAO.png'}" style="width:40px;height:40px;border-radius:4px;"><br>
+            <div style="font-size:10px;">${hero?.name || 'None'}</div>
+            <div style="font-size:10px;color:#bbb;">${name}</div>
+          `;
+          playerGrid.appendChild(card);
+        });
+        meta.appendChild(playerGrid);
+      }
+    
       card.appendChild(meta);
     });
 
