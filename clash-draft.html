@@ -466,14 +466,14 @@
   
   <details style="margin: 20px auto; width: 90%; max-width: 1200px;">
     <summary style="font-size: 18px; font-weight: bold; color: #ffbd59; cursor: pointer; padding: 10px 0; text-align: center;">Draft History</summary>
-    
+
     <div style="text-align: center; margin-top: 20px;">
-      <label for="teamFilter">Filter by Team:</label>
-      <select id="teamFilter" onchange="loadAllDraftRecords()">
+      <label for="teamFilter">Filter by Team:</label><br/>
+      <select id="teamFilter" multiple size="5" style="width: 200px; margin-top: 6px;" onchange="loadAllDraftRecords()">
         <option value="">All Teams</option>
       </select>
     </div>
-    
+
     <div style="display: flex; flex-direction: column; align-items: center; margin-top: 10px;">
       <table id="recordTable" style="width: 100%; color: #fff; text-align: center; border-collapse: collapse;">
         <thead style="background: #222;">
@@ -1179,7 +1179,8 @@ async function loadAllDraftRecords() {
       return;
     }
   
-    const teamFilter = document.getElementById('teamFilter').value.toLowerCase();
+    const filterSelect = document.getElementById('teamFilter');
+    const selectedTeams = Array.from(filterSelect.selectedOptions).map(opt => opt.value.toLowerCase());
     const table = document.getElementById('recordBody');
     table.innerHTML = '';
   
@@ -1189,11 +1190,11 @@ async function loadAllDraftRecords() {
       allTeams.add(record.team_left);
       allTeams.add(record.team_right);
   
-      if (teamFilter && 
-          !record.team_left.toLowerCase().includes(teamFilter) &&
-          !record.team_right.toLowerCase().includes(teamFilter)) {
-        return; // Skip if it doesn't match filter
-      }
+      const matchTeam = selectedTeams.length === 0 ||
+        selectedTeams.includes(record.team_left.toLowerCase()) ||
+        selectedTeams.includes(record.team_right.toLowerCase());
+  
+      if (!matchTeam) return;
   
       const isLeftWinner = record.team_left_score === 6;
       const isRightWinner = record.team_right_score === 6;
@@ -1214,18 +1215,16 @@ async function loadAllDraftRecords() {
       table.appendChild(row);
     });
   
-    // Populate filter dropdown once
-    const filterDropdown = document.getElementById('teamFilter');
-    if (filterDropdown.options.length <= 1) {
+    // Populate filter options once
+    if (filterSelect.options.length <= 1) {
       Array.from(allTeams).sort().forEach(team => {
         const option = document.createElement('option');
         option.value = team;
         option.textContent = team;
-        filterDropdown.appendChild(option);
+        filterSelect.appendChild(option);
       });
     }
   }
-
 
 async function loadSpecificDraft(id) {
   const { data, error } = await client
