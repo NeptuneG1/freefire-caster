@@ -1342,8 +1342,8 @@ function renderDraftCardSummaries(data) {
         📅 ${r.match_date} | 🎮 Game ${r.game_number} | 🗺️ ${r.map}<br>
         🆚 ${r.team_left} ${r.team_left_score ?? '-'} - ${r.team_right_score ?? '-'} ${r.team_right}
       `;
-      card.appendChild(meta);
-    
+      teamCard.appendChild(meta); // ✅ FIXED HERE
+
       const draft = r.state;
       if (draft && draft.picks) {
         const pickIndexes = (team === r.team_left) ? [0, 1, 2, 3] : [7, 6, 5, 4];
@@ -1352,12 +1352,12 @@ function renderDraftCardSummaries(data) {
         playerGrid.style.gap = '8px';
         playerGrid.style.marginBottom = '12px';
         playerGrid.style.flexWrap = 'wrap';
-    
+
         pickIndexes.forEach(i => {
           const hero = draft.picks[i];
           const playerName = draft.playerCards?.[i] || `P${(i % 4) + 1}`;
           const passives = draft.passives?.[i] || [];
-    
+
           const pCard = document.createElement('div');
           pCard.style.width = '60px';
           pCard.style.textAlign = 'center';
@@ -1366,18 +1366,18 @@ function renderDraftCardSummaries(data) {
           pCard.style.border = '1px solid #444';
           pCard.style.borderRadius = '6px';
           pCard.style.padding = '4px';
-    
+
           const heroImg = hero?.image_url || 'https://imgur.com/AdvPwAO.png';
           const heroName = hero?.name || 'None';
           const heroSkill = hero?.skill || '';
-    
+
           pCard.innerHTML = `
             <img src="${heroImg}" style="width:40px;height:40px;border-radius:4px;"><br>
             <div style="color:#fff; font-weight:bold;">${heroName}</div>
             <div style="color:#bbb;">${playerName}</div>
             <div style="color:#6cf;">${heroSkill}</div>
           `;
-    
+
           // Add passives below
           passives.forEach(ps => {
             if (ps) {
@@ -1388,7 +1388,7 @@ function renderDraftCardSummaries(data) {
               psLine.style.justifyContent = 'center';
               psLine.style.fontSize = '9px';
               psLine.style.color = '#aaa';
-    
+
               if (ps.image_url) {
                 const img = document.createElement('img');
                 img.src = ps.image_url;
@@ -1397,26 +1397,26 @@ function renderDraftCardSummaries(data) {
                 img.style.borderRadius = '2px';
                 psLine.appendChild(img);
               }
-    
+
               const label = document.createElement('span');
               label.textContent = ps.name;
               psLine.appendChild(label);
-    
+
               pCard.appendChild(psLine);
             }
           });
-    
+
           playerGrid.appendChild(pCard);
         });
-    
-        card.appendChild(playerGrid);
+
+        teamCard.appendChild(playerGrid); // ✅ FIXED HERE
       }
     });
-
 
     container.appendChild(teamCard);
   });
 }
+
 
 </script>
 </body>
