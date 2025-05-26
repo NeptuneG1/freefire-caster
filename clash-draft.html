@@ -468,8 +468,13 @@
     <summary style="font-size: 18px; font-weight: bold; color: #ffbd59; cursor: pointer; padding: 10px 0; text-align: center;">Draft History</summary>
 
     <div style="text-align: center; margin-top: 20px;">
-      <label for="teamFilter">Filter by Team (Hold CTRL to select MULTIPLE teams):</label><br/>
-      <select id="teamFilter" multiple size="5" style="width: 200px; margin-top: 6px;" onchange="loadAllDraftRecords()">
+      <label>
+        <input type="checkbox" id="multiToggle" onchange="toggleTeamFilterMode()" />
+        Enable multiple selection
+      </label>
+      <br />
+      <select id="teamFilter" size="5" style="width: 200px; margin-top: 6px;" onchange="loadAllDraftRecords()">
+        <!-- options populated dynamically -->
       </select>
     </div>
 
@@ -1166,64 +1171,74 @@ async function loadDraftState() {
   }
 };
 
+function toggleTeamFilterMode() {
+  const filter = document.getElementById('teamFilter');
+  const isMulti = document.getElementById('multiToggle').checked;
+  filter.multiple = isMulti;
+  filter.selectedIndex = -1;
+}
+
 async function loadAllDraftRecords() {
-    const { data, error } = await client
-      .from('draft_records')
-      .select('id, match_date, game_number, team_left, team_right, team_left_score, team_right_score, map')
-      .order('match_date', { ascending: false })
-      .order('id', { ascending: false });
-  
-    if (error) {
-      console.error("❌ Failed to fetch draft records:", error);
-      return;
-    }
-  
-    const filterSelect = document.getElementById('teamFilter');
-    const selectedTeams = Array.from(filterSelect.selectedOptions).map(opt => opt.value.toLowerCase());
-    const table = document.getElementById('recordBody');
-    table.innerHTML = '';
-  
-    const allTeams = new Set();
-  
-    data.forEach(record => {
-      allTeams.add(record.team_left);
-      allTeams.add(record.team_right);
-  
-      const matchTeam = selectedTeams.length === 0 ||
-        selectedTeams.includes(record.team_left.toLowerCase()) ||
-        selectedTeams.includes(record.team_right.toLowerCase());
-  
-      if (!matchTeam) return;
-  
-      const isLeftWinner = record.team_left_score === 6;
-      const isRightWinner = record.team_right_score === 6;
-  
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td style="padding: 6px;">${record.match_date}</td>
-        <td style="padding: 6px;">Game ${record.game_number}</td>
-        <td style="padding: 6px;">${record.team_left} ${isLeftWinner ? '🏆' : ''}</td>
-        <td style="padding: 6px;">${record.team_left_score ?? '-'}</td>
-        <td style="padding: 6px;">${record.team_right} ${isRightWinner ? '🏆' : ''}</td>
-        <td style="padding: 6px;">${record.team_right_score ?? '-'}</td>
-        <td style="padding: 6px;">${record.map ?? '-'}</td>
-        <td style="padding: 6px;">
-          <button onclick="loadSpecificDraft(${record.id})">Load</button>
-        </td>
-      `;
-      table.appendChild(row);
-    });
-  
-    // Populate filter options once
-    if (filterSelect.options.length <= 1) {
-      Array.from(allTeams).sort().forEach(team => {
-        const option = document.createElement('option');
-        option.value = team;
-        option.textContent = team;
-        filterSelect.appendChild(option);
-      });
-    }
+  const { data, error } = await client
+    .from('draft_records')
+    .select('id, match_date, game_number, team_left, team_right, team_left_score, team_right_score, map')
+    .order('match_date', { ascending: false })
+    .order('id', { ascending: false });
+
+  if (error) {
+    console.error("❌ Failed to fetch draft records:", error);
+    return;
   }
+
+  const filterSelect = document.getElementById('teamFilter');
+  const isMulti = filterSelect.multiple;
+  const selectedTeams = Array.from(filterSelect.selectedOptions).map(opt => opt.value.toLowerCase());
+
+  const table = document.getElementById('recordBody');
+  table.innerHTML = '';
+
+  const allTeams = new Set();
+
+  data.forEach(record => {
+    allTeams.add(record.team_left);
+    allTeams.add(record.team_right);
+
+    const matchTeam =
+      selectedTeams.length === 0 ||
+      selectedTeams.includes(record.team_left.toLowerCase()) ||
+      selectedTeams.includes(record.team_right.toLowerCase());
+
+    if (!matchTeam) return;
+
+    const isLeftWinner = record.team_left_score === 6;
+    const isRightWinner = record.team_right_score === 6;
+
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td style="padding: 6px;">${record.match_date}</td>
+      <td style="padding: 6px;">Game ${record.game_number}</td>
+      <td style="padding: 6px;">${record.team_left} ${isLeftWinner ? '🏆' : ''}</td>
+      <td style="padding: 6px;">${record.team_left_score ?? '-'}</td>
+      <td style="padding: 6px;">${record.team_right} ${isRightWinner ? '🏆' : ''}</td>
+      <td style="padding: 6px;">${record.team_right_score ?? '-'}</td>
+      <td style="padding: 6px;">${record.map ?? '-'}</td>
+      <td style="padding: 6px;">
+        <button onclick="loadSpecificDraft(${record.id})">Load</button>
+      </td>
+    `;
+    table.appendChild(row);
+  });
+
+  // Populate filter options if empty
+  if (filterSelect.options.length <= 1) {
+    Array.from(allTeams).sort().forEach(team => {
+      const option = document.createElement('option');
+      option.value = team;
+      option.textContent = team;
+      filterSelect.appendChild(option);
+    });
+  }
+}
 
 async function loadSpecificDraft(id) {
   const { data, error } = await client
