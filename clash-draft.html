@@ -1354,15 +1354,36 @@ function renderDraftCardSummaries(data) {
 
         pickIndexes.forEach(i => {
           const hero = draft.picks[i];
-          const playerName = draft.playerCards[i] || `P${(i % 4) + 1}`;
+          const playerName = draft.playerCards?.[i] || `P${(i % 4) + 1}`;
+          const passives = draft.passives?.[i] || [];
+        
           const heroCard = document.createElement('div');
-          heroCard.style.width = '50px';
+          heroCard.style.width = '60px';
           heroCard.style.textAlign = 'center';
+          heroCard.style.border = '1px solid #333';
+          heroCard.style.borderRadius = '6px';
+          heroCard.style.padding = '4px';
+          heroCard.style.background = '#222';
+        
+          const heroImg = hero?.image_url || 'https://imgur.com/AdvPwAO.png';
           heroCard.innerHTML = `
-            <img src="${hero?.image_url || 'https://imgur.com/AdvPwAO.png'}" style="width:40px;height:40px;border-radius:4px;"><br>
-            <div style="font-size:10px;">${hero?.name || 'None'}</div>
-            <div style="font-size:10px;color:#bbb;">${playerName}</div>
+            <img src="${heroImg}" style="width:40px;height:40px;border-radius:4px;"><br>
+            <div style="font-size:10px; color:#fff;">${hero?.name || 'None'}</div>
+            <div style="font-size:10px; color:#bbb;">${playerName}</div>
+            <div style="font-size:10px; color:#6cf;">${hero?.skill || ''}</div>
           `;
+        
+          // Add passive skills (names only)
+          passives.forEach(p => {
+            if (p) {
+              const ps = document.createElement('div');
+              ps.style.fontSize = '9px';
+              ps.style.color = '#aaa';
+              ps.textContent = `+ ${p.name}`;
+              heroCard.appendChild(ps);
+            }
+          });
+        
           playerGrid.appendChild(heroCard);
         });
 
