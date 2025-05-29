@@ -1256,6 +1256,7 @@ data.forEach(record => {
 });
 
 renderDraftCardSummaries(matchedRecords);
+renderSkillUsageStats(matchedRecords);
 
   // Populate filter options if empty
   if (filterSelect.options.length <= 1) {
@@ -1267,7 +1268,7 @@ renderDraftCardSummaries(matchedRecords);
     });
   }
     renderDraftCardSummaries(matchedRecords);
-    renderSkillUsageStats(matchedRecords.map(r => r.state));
+    renderSkillUsageStats(matchedRecords);
 }
 
 async function loadSpecificDraft(id) {
@@ -1316,148 +1317,32 @@ async function loadSpecificDraft(id) {
   console.log("✅ Specific draft loaded.");
 }
 
-function renderDraftCardSummaries(data) {
-  const container = document.getElementById('teamDraftCards');
-  container.innerHTML = '';
-
-  const teamMap = {};
-
-  // Group records by team
-  data.forEach(record => {
-    [record.team_left, record.team_right].forEach(team => {
-      if (!teamMap[team]) teamMap[team] = [];
-      teamMap[team].push(record);
-    });
-  });
-
-  const filterSelect = document.getElementById('teamFilter');
-  const selectedTeams = Array.from(filterSelect.selectedOptions).map(opt => opt.value.toLowerCase());
-
-  Object.keys(teamMap).forEach(team => {
-    if (selectedTeams.length && !selectedTeams.includes(team.toLowerCase())) return;
-
-    const teamCard = document.createElement('div');
-    teamCard.style.background = '#1c1c1c';
-    teamCard.style.border = '1px solid #444';
-    teamCard.style.borderRadius = '8px';
-    teamCard.style.padding = '10px';
-    teamCard.style.width = '280px';
-    teamCard.style.color = '#eee';
-
-    const title = document.createElement('h3');
-    title.innerText = team;
-    title.style.color = '#ff7733';
-    title.style.marginBottom = '10px';
-    teamCard.appendChild(title);
-
-    teamMap[team].forEach(r => {
-      const meta = document.createElement('div');
-      meta.style.fontSize = '12px';
-      meta.style.marginBottom = '6px';
-      meta.style.borderBottom = '1px solid #333';
-      meta.style.paddingBottom = '4px';
-      meta.innerHTML = `
-        📅 ${r.match_date} | 🎮 Game ${r.game_number} | 🗺️ ${r.map}<br>
-        🆚 ${r.team_left} ${r.team_left_score ?? '-'} - ${r.team_right_score ?? '-'} ${r.team_right}
-      `;
-      teamCard.appendChild(meta); // ✅ FIXED HERE
-
-      const draft = r.state;
-      if (draft && draft.picks) {
-        const pickIndexes = (team === r.team_left) ? [0, 1, 2, 3] : [7, 6, 5, 4];
-        const playerGrid = document.createElement('div');
-        playerGrid.style.display = 'flex';
-        playerGrid.style.gap = '8px';
-        playerGrid.style.marginBottom = '12px';
-        playerGrid.style.flexWrap = 'wrap';
-
-        pickIndexes.forEach(i => {
-          const hero = draft.picks[i];
-          const playerName = draft.playerCards?.[i] || `P${(i % 4) + 1}`;
-          const passives = draft.passives?.[i] || [];
-
-          const pCard = document.createElement('div');
-          pCard.style.width = '60px';
-          pCard.style.textAlign = 'center';
-          pCard.style.fontSize = '10px';
-          pCard.style.color = '#ccc';
-          pCard.style.border = '1px solid #444';
-          pCard.style.borderRadius = '6px';
-          pCard.style.padding = '4px';
-
-          const heroImg = hero?.image_url || 'https://imgur.com/AdvPwAO.png';
-          const heroName = hero?.name || 'None';
-          const heroSkill = hero?.skill || '';
-
-          pCard.innerHTML = `
-            <img src="${heroImg}" style="width:40px;height:40px;border-radius:4px;"><br>
-            <div style="color:#fff; font-weight:bold;">${heroName}</div>
-            <div style="color:#bbb;">${playerName}</div>
-            <div style="color:#6cf;">${heroSkill}</div>
-          `;
-
-          // Add passives below
-          passives.forEach(ps => {
-            if (ps) {
-              const psLine = document.createElement('div');
-              psLine.style.display = 'flex';
-              psLine.style.alignItems = 'center';
-              psLine.style.gap = '2px';
-              psLine.style.justifyContent = 'center';
-              psLine.style.fontSize = '9px';
-              psLine.style.color = '#aaa';
-
-              if (ps.image_url) {
-                const img = document.createElement('img');
-                img.src = ps.image_url;
-                img.style.width = '12px';
-                img.style.height = '12px';
-                img.style.borderRadius = '2px';
-                psLine.appendChild(img);
-              }
-
-              const label = document.createElement('span');
-              label.textContent = ps.name;
-              psLine.appendChild(label);
-
-              pCard.appendChild(psLine);
-            }
-          });
-
-          playerGrid.appendChild(pCard);
-        });
-
-        teamCard.appendChild(playerGrid); // ✅ FIXED HERE
-      }
-    });
-
-    container.appendChild(teamCard);
-  });
-}
-
-function renderSkillUsageStats(drafts) {
-  const total = drafts.length;
+function renderSkillUsageStats(records) {
+  const total = records.length;
   const banCounts = {}, pickCounts = {}, passiveCounts = {};
   const allNames = new Set();
 
-  drafts.forEach(draft => {
-    (draft?.bans || []).forEach(b => {
-      if (b?.name) {
+  records.forEach(record => {
+    const draft = record.state;
+    if (!draft) return;
+
+    (draft.bans || []).forEach(b => {
+      if (b && b.name) {
         banCounts[b.name] = (banCounts[b.name] || 0) + 1;
         allNames.add(b.name);
       }
     });
 
-    (draft?.picks || []).forEach(p => {
-      if (p?.name) {
+    (draft.picks || []).forEach(p => {
+      if (p && p.name) {
         pickCounts[p.name] = (pickCounts[p.name] || 0) + 1;
         allNames.add(p.name);
       }
     });
 
-    (draft?.passives || []).forEach(row => {
+    (draft.passives || []).forEach(row => {
       row.forEach(p => {
-        if (p?.name) {
+        if (p && p.name) {
           passiveCounts[p.name] = (passiveCounts[p.name] || 0) + 1;
           allNames.add(p.name);
         }
@@ -1484,6 +1369,7 @@ function renderSkillUsageStats(drafts) {
     tbody.appendChild(tr);
   });
 }
+
 
 </script>
 </body>
