@@ -222,11 +222,17 @@
     <label>Name:
       <input type="text" id="filterName" placeholder="Search by name" />
     </label>
+  
+    <button id="toggleView">🔳 Grid View</button>
     <label>
       <input type="checkbox" id="filterCSOnly" />
       CS Only
     </label>
-    <button id="toggleView">🔳 Grid View</button>
+    <label>Armory:
+        <select id="filterArmory">
+          <option value="">All</option>
+        </select>
+      </label>
   </div>
 
   <div class="back-button">
@@ -303,15 +309,18 @@
     }
   
     function updateGrid() {
+      const armory = document.getElementById('filterArmory').value;
       const type = document.getElementById('filterType').value;
       const nameSearch = document.getElementById('filterName').value.toLowerCase();
       const csOnly = document.getElementById('filterCSOnly').checked;
       const container = document.getElementById('weaponGrid');
   
       let filtered = allWeapons.filter(w => {
+          const armoryNames = (w.armory || "").split(',').map(s => s.trim().toLowerCase());
           return (!type || w.type === type) &&
                  (!nameSearch || w.name.toLowerCase().includes(nameSearch)) &&
-                 (!csOnly || (w.clash_squad && w.clash_squad.toLowerCase() === 'cs'));
+                 (!csOnly || (w.clash_squad && w.clash_squad.toLowerCase() === 'cs')) &&
+                 (!armory || armoryNames.includes(armory.toLowerCase()));
         });
 
       filtered.sort((a, b) => a.name.localeCompare(b.name));
@@ -338,17 +347,39 @@
     });
   
     fetch('https://neptuneg1.github.io/freefire-caster/weapon.json')
-      .then(res => res.json())
-      .then(data => {
-        allWeapons = data;
-        updateGrid();
-        document.getElementById('filterType').addEventListener('change', updateGrid);
-        document.getElementById('filterName').addEventListener('input', updateGrid);
-        document.getElementById('filterCSOnly').addEventListener('change', updateGrid);
-      })
-      .catch(() => {
-        document.getElementById('weaponGrid').innerHTML = '<p>Error loading weapon data.</p>';
-      });
+        .then(res => res.json())
+        .then(data => {
+          allWeapons = data;
+      
+          // ✅ Extract and populate unique Armory names
+          const armorySet = new Set();
+      
+          data.forEach(w => {
+            if (w.armory) {
+              w.armory.split(',').map(name => name.trim()).forEach(name => {
+                if (name) armorySet.add(name);
+              });
+            }
+          });
+      
+          const armorySelect = document.getElementById('filterArmory');
+          [...armorySet].sort().forEach(name => {
+            const option = document.createElement('option');
+            option.value = name;
+            option.textContent = name;
+            armorySelect.appendChild(option);
+          });
+      
+          updateGrid();
+      
+          document.getElementById('filterType').addEventListener('change', updateGrid);
+          document.getElementById('filterName').addEventListener('input', updateGrid);
+          document.getElementById('filterCSOnly').addEventListener('change', updateGrid);
+          document.getElementById('filterArmory').addEventListener('change', updateGrid);
+        })
+        .catch(() => {
+          document.getElementById('weaponGrid').innerHTML = '<p>Error loading weapon data.</p>';
+        });
   </script>
 </body>
 </html>
