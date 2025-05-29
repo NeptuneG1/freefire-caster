@@ -222,6 +222,10 @@
     <label>Name:
       <input type="text" id="filterName" placeholder="Search by name" />
     </label>
+    <label>
+      <input type="checkbox" id="filterCSOnly" />
+      CS Only
+    </label>
     <button id="toggleView">🔳 Grid View</button>
   </div>
 
@@ -301,13 +305,15 @@
     function updateGrid() {
       const type = document.getElementById('filterType').value;
       const nameSearch = document.getElementById('filterName').value.toLowerCase();
+      const csOnly = document.getElementById('filterCSOnly').checked;
       const container = document.getElementById('weaponGrid');
   
       let filtered = allWeapons.filter(w => {
-        return (!type || w.type === type) &&
-               (!nameSearch || w.name.toLowerCase().includes(nameSearch));
-      });
-  
+          return (!type || w.type === type) &&
+                 (!nameSearch || w.name.toLowerCase().includes(nameSearch)) &&
+                 (!csOnly || (w.clash_squad && w.clash_squad.toLowerCase() === 'cs'));
+        });
+
       filtered.sort((a, b) => a.name.localeCompare(b.name));
   
       container.innerHTML = filtered.length
@@ -338,6 +344,7 @@
         updateGrid();
         document.getElementById('filterType').addEventListener('change', updateGrid);
         document.getElementById('filterName').addEventListener('input', updateGrid);
+        document.getElementById('filterCSOnly').addEventListener('change', updateGrid);
       })
       .catch(() => {
         document.getElementById('weaponGrid').innerHTML = '<p>Error loading weapon data.</p>';
