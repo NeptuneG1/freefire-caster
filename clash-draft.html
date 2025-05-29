@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -569,22 +568,6 @@
     <h2 style="text-align:center; color:#ffbd59;">Match Summary by Team</h2>
     <div id="teamDraftCards" style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;"></div>
   </div>
-
-  <div id="skillStats" style="margin: 40px auto; width: 90%; max-width: 800px;">
-    <h2 style="text-align:center; color:#ffbd59;">Character Skill Usage Rates</h2>
-    <table id="skillStatsTable" style="width:100%; border-collapse: collapse; color:#eee; font-size: 13px;">
-      <thead style="background:#222;">
-        <tr>
-          <th style="padding:8px; border:1px solid #333;">Character</th>
-          <th style="padding:8px; border:1px solid #333;">Ban Rate</th>
-          <th style="padding:8px; border:1px solid #333;">Pick Rate</th>
-          <th style="padding:8px; border:1px solid #333;">Passive Rate</th>
-        </tr>
-      </thead>
-      <tbody id="skillStatsBody" style="background:#111;"></tbody>
-    </table>
-  </div>
-
   
 <script>
 let characters = [], weapons = [], currentSlot = null;
@@ -1256,7 +1239,6 @@ data.forEach(record => {
 });
 
 renderDraftCardSummaries(matchedRecords);
-renderSkillUsageStats(matchedRecords);
 
   // Populate filter options if empty
   if (filterSelect.options.length <= 1) {
@@ -1268,7 +1250,6 @@ renderSkillUsageStats(matchedRecords);
     });
   }
     renderDraftCardSummaries(matchedRecords);
-    renderSkillUsageStats(matchedRecords);
 }
 
 async function loadSpecificDraft(id) {
@@ -1317,56 +1298,122 @@ async function loadSpecificDraft(id) {
   console.log("✅ Specific draft loaded.");
 }
 
-function renderSkillUsageStats(records) {
-  const total = records.length;
-  const banCounts = {}, pickCounts = {}, passiveCounts = {};
-  const allNames = new Set();
+function renderDraftCardSummaries(data) {
+  const container = document.getElementById('teamDraftCards');
+  container.innerHTML = '';
 
-  records.forEach(record => {
-    const draft = record.state;
-    if (!draft) return;
+  const teamMap = {};
 
-    (draft.bans || []).forEach(b => {
-      if (b && b.name) {
-        banCounts[b.name] = (banCounts[b.name] || 0) + 1;
-        allNames.add(b.name);
-      }
-    });
-
-    (draft.picks || []).forEach(p => {
-      if (p && p.name) {
-        pickCounts[p.name] = (pickCounts[p.name] || 0) + 1;
-        allNames.add(p.name);
-      }
-    });
-
-    (draft.passives || []).forEach(row => {
-      row.forEach(p => {
-        if (p && p.name) {
-          passiveCounts[p.name] = (passiveCounts[p.name] || 0) + 1;
-          allNames.add(p.name);
-        }
-      });
+  // Group records by team
+  data.forEach(record => {
+    [record.team_left, record.team_right].forEach(team => {
+      if (!teamMap[team]) teamMap[team] = [];
+      teamMap[team].push(record);
     });
   });
 
-  const tbody = document.getElementById('skillStatsBody');
-  tbody.innerHTML = '';
+  const filterSelect = document.getElementById('teamFilter');
+  const selectedTeams = Array.from(filterSelect.selectedOptions).map(opt => opt.value.toLowerCase());
 
-  if (!allNames.size) {
-    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:8px;">No data available.</td></tr>`;
-    return;
-  }
+  Object.keys(teamMap).forEach(team => {
+    if (selectedTeams.length && !selectedTeams.includes(team.toLowerCase())) return;
 
-  [...allNames].sort().forEach(name => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td style="padding:6px; border:1px solid #333;">${name}</td>
-      <td style="padding:6px; border:1px solid #333;">${((banCounts[name] || 0) / total * 100).toFixed(1)}%</td>
-      <td style="padding:6px; border:1px solid #333;">${((pickCounts[name] || 0) / total * 100).toFixed(1)}%</td>
-      <td style="padding:6px; border:1px solid #333;">${((passiveCounts[name] || 0) / total * 100).toFixed(1)}%</td>
-    `;
-    tbody.appendChild(tr);
+    const teamCard = document.createElement('div');
+    teamCard.style.background = '#1c1c1c';
+    teamCard.style.border = '1px solid #444';
+    teamCard.style.borderRadius = '8px';
+    teamCard.style.padding = '10px';
+    teamCard.style.width = '280px';
+    teamCard.style.color = '#eee';
+
+    const title = document.createElement('h3');
+    title.innerText = team;
+    title.style.color = '#ff7733';
+    title.style.marginBottom = '10px';
+    teamCard.appendChild(title);
+
+    teamMap[team].forEach(r => {
+      const meta = document.createElement('div');
+      meta.style.fontSize = '12px';
+      meta.style.marginBottom = '6px';
+      meta.style.borderBottom = '1px solid #333';
+      meta.style.paddingBottom = '4px';
+      meta.innerHTML = `
+        📅 ${r.match_date} | 🎮 Game ${r.game_number} | 🗺️ ${r.map}<br>
+        🆚 ${r.team_left} ${r.team_left_score ?? '-'} - ${r.team_right_score ?? '-'} ${r.team_right}
+      `;
+      teamCard.appendChild(meta); // ✅ FIXED HERE
+
+      const draft = r.state;
+      if (draft && draft.picks) {
+        const pickIndexes = (team === r.team_left) ? [0, 1, 2, 3] : [7, 6, 5, 4];
+        const playerGrid = document.createElement('div');
+        playerGrid.style.display = 'flex';
+        playerGrid.style.gap = '8px';
+        playerGrid.style.marginBottom = '12px';
+        playerGrid.style.flexWrap = 'wrap';
+
+        pickIndexes.forEach(i => {
+          const hero = draft.picks[i];
+          const playerName = draft.playerCards?.[i] || `P${(i % 4) + 1}`;
+          const passives = draft.passives?.[i] || [];
+
+          const pCard = document.createElement('div');
+          pCard.style.width = '60px';
+          pCard.style.textAlign = 'center';
+          pCard.style.fontSize = '10px';
+          pCard.style.color = '#ccc';
+          pCard.style.border = '1px solid #444';
+          pCard.style.borderRadius = '6px';
+          pCard.style.padding = '4px';
+
+          const heroImg = hero?.image_url || 'https://imgur.com/AdvPwAO.png';
+          const heroName = hero?.name || 'None';
+          const heroSkill = hero?.skill || '';
+
+          pCard.innerHTML = `
+            <img src="${heroImg}" style="width:40px;height:40px;border-radius:4px;"><br>
+            <div style="color:#fff; font-weight:bold;">${heroName}</div>
+            <div style="color:#bbb;">${playerName}</div>
+            <div style="color:#6cf;">${heroSkill}</div>
+          `;
+
+          // Add passives below
+          passives.forEach(ps => {
+            if (ps) {
+              const psLine = document.createElement('div');
+              psLine.style.display = 'flex';
+              psLine.style.alignItems = 'center';
+              psLine.style.gap = '2px';
+              psLine.style.justifyContent = 'center';
+              psLine.style.fontSize = '9px';
+              psLine.style.color = '#aaa';
+
+              if (ps.image_url) {
+                const img = document.createElement('img');
+                img.src = ps.image_url;
+                img.style.width = '12px';
+                img.style.height = '12px';
+                img.style.borderRadius = '2px';
+                psLine.appendChild(img);
+              }
+
+              const label = document.createElement('span');
+              label.textContent = ps.name;
+              psLine.appendChild(label);
+
+              pCard.appendChild(psLine);
+            }
+          });
+
+          playerGrid.appendChild(pCard);
+        });
+
+        teamCard.appendChild(playerGrid); // ✅ FIXED HERE
+      }
+    });
+
+    container.appendChild(teamCard);
   });
 }
 
