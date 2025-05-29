@@ -1267,8 +1267,7 @@ renderDraftCardSummaries(matchedRecords);
     });
   }
     renderDraftCardSummaries(matchedRecords);
-    renderSkillUsageStats(matchedRecords);
-
+    renderSkillUsageStats(matchedRecords.map(r => r.state));
 }
 
 async function loadSpecificDraft(id) {
@@ -1436,27 +1435,27 @@ function renderDraftCardSummaries(data) {
   });
 }
 
-function renderSkillUsageStats(records) {
-  const total = records.length;
+function renderSkillUsageStats(drafts) {
+  const total = drafts.length;
   const banCounts = {}, pickCounts = {}, passiveCounts = {};
   const allNames = new Set();
 
-  records.forEach(({ state }) => {
-    (state?.bans || []).forEach(b => {
+  drafts.forEach(draft => {
+    (draft?.bans || []).forEach(b => {
       if (b?.name) {
         banCounts[b.name] = (banCounts[b.name] || 0) + 1;
         allNames.add(b.name);
       }
     });
 
-    (state?.picks || []).forEach(p => {
+    (draft?.picks || []).forEach(p => {
       if (p?.name) {
         pickCounts[p.name] = (pickCounts[p.name] || 0) + 1;
         allNames.add(p.name);
       }
     });
 
-    (state?.passives || []).forEach(row => {
+    (draft?.passives || []).forEach(row => {
       row.forEach(p => {
         if (p?.name) {
           passiveCounts[p.name] = (passiveCounts[p.name] || 0) + 1;
@@ -1469,6 +1468,11 @@ function renderSkillUsageStats(records) {
   const tbody = document.getElementById('skillStatsBody');
   tbody.innerHTML = '';
 
+  if (!allNames.size) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:8px;">No data available.</td></tr>`;
+    return;
+  }
+
   [...allNames].sort().forEach(name => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -1480,7 +1484,6 @@ function renderSkillUsageStats(records) {
     tbody.appendChild(tr);
   });
 }
-
 
 </script>
 </body>
