@@ -343,25 +343,32 @@
                  (!armory || armoryNames.includes(armory.toLowerCase()));
         });
 
-      const typeOrder = [
-        'Pistol',
-        'Shotgun',
-        'SMG',
-        'Assault Rifle',
-        'Marksman Rifle',
-        'Sniper Rifle',
-        'Light Machine Gun',
-        'Launcher',
-        'Melee',
-        'Throwable'
-      ];
-      
-      filtered.sort((a, b) => {
-        const indexA = typeOrder.indexOf(a.type) !== -1 ? typeOrder.indexOf(a.type) : typeOrder.length;
-        const indexB = typeOrder.indexOf(b.type) !== -1 ? typeOrder.indexOf(b.type) : typeOrder.length;
-        return indexA - indexB || a.name.localeCompare(b.name);
-      });
-
+      if (csOnly) {
+        // Sort by price (ascending)
+        filtered.sort((a, b) => {
+          const priceA = parseInt(a.price || 0, 10);
+          const priceB = parseInt(b.price || 0, 10);
+          return priceA - priceB;
+        });
+      } else {
+        // Sort by custom type order, then by name
+        const typeOrder = [
+          'Pistol',
+          'Shotgun',
+          'SMG',
+          'Assault Rifle',
+          'Marksman Rifle',
+          'Sniper Rifle',
+          'Light Machine Gun',
+          'Launcher'
+        ];
+        
+        filtered.sort((a, b) => {
+          const indexA = typeOrder.indexOf(a.type) !== -1 ? typeOrder.indexOf(a.type) : typeOrder.length;
+          const indexB = typeOrder.indexOf(b.type) !== -1 ? typeOrder.indexOf(b.type) : typeOrder.length;
+          return indexA - indexB || a.name.localeCompare(b.name);
+        });
+      }
   
       container.innerHTML = filtered.length
         ? filtered.map((w, i) => renderWeaponCard(w, i)).join('')
