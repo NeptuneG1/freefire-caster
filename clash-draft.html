@@ -1115,66 +1115,71 @@ async function loadDraftState() {
   };
 
   async function saveOrUpdateDraft() {
-  const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
-  const teamLeft = draftState.teamNames[0];
-  const teamRight = draftState.teamNames[1];
-  const matchDate = document.getElementById('matchDate').value;
-  const teamLeftScore = parseInt(document.getElementById('teamLeftScore').value || '0', 10);
-  const teamRightScore = parseInt(document.getElementById('teamRightScore').value || '0', 10);
-  const map = document.getElementById('mapSelect').value;
-
-  if (!matchDate) {
-    alert("⚠️ Please select a match date.");
-    return;
-  }
-
-  const { data, error: fetchError } = await client
-    .from('draft_records')
-    .select('id')
-    .eq('game_number', gameNumber)
-    .eq('team_left', teamLeft)
-    .eq('team_right', teamRight)
-    .eq('match_date', matchDate)
-    .single();
-
-  if (fetchError && fetchError.code !== 'PGRST116') {
-    alert("❌ Error checking existing draft.");
-    console.error(fetchError);
-    return;
-  }
-
-  const payload = {
-    game_number: gameNumber,
-    team_left: teamLeft,
-    team_right: teamRight,
-    match_date: matchDate,
-    team_left_score: teamLeftScore,
-    team_right_score: teamRightScore,
-    map: map,
-    state: draftState,
-    updated_at: new Date().toISOString()
+    const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
+    const teamLeft = draftState.teamNames[0];
+    const teamRight = draftState.teamNames[1];
+    const matchDate = document.getElementById('matchDate').value;
+    const teamLeftScore = parseInt(document.getElementById('teamLeftScore').value || '0', 10);
+    const teamRightScore = parseInt(document.getElementById('teamRightScore').value || '0', 10);
+    const map = document.getElementById('mapSelect').value;
+  
+    if (!matchDate) {
+      alert("⚠️ Please select a match date.");
+      return;
+    }
+  
+    console.log("🔍 Checking for existing draft...");
+    const { data, error: fetchError } = await client
+      .from('draft_records')
+      .select('id')
+      .eq('game_number', gameNumber)
+      .eq('team_left', teamLeft)
+      .eq('team_right', teamRight)
+      .eq('match_date', matchDate)
+      .single();
+  
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      alert("❌ Error checking existing draft: " + (fetchError.message || 'Unknown error'));
+      console.error(fetchError);
+      return;
+    }
+  
+    const payload = {
+      game_number: gameNumber,
+      team_left: teamLeft,
+      team_right: teamRight,
+      match_date: matchDate,
+      team_left_score: teamLeftScore,
+      team_right_score: teamRightScore,
+      map: map,
+      state: draftState,
+      updated_at: new Date().toISOString()
+    };
+  
+    console.log("📦 Payload:", payload);
+  
+    if (!data) {
+      console.log("📝 Inserting new draft record...");
+      const { error: insertError } = await client.from('draft_records').insert(payload);
+      if (insertError) {
+        alert("❌ Failed to save draft:\n" + insertError.message);
+        console.error("Insert Error:", insertError);
+      } else {
+        alert("✅ Draft saved.");
+      }
+    } else {
+      console.log("🔁 Updating existing draft record (id =", data.id, ")...");
+      const { error: updateError } = await client.from('draft_records')
+        .update(payload)
+        .eq('id', data.id);
+      if (updateError) {
+        alert("❌ Failed to update draft:\n" + updateError.message);
+        console.error("Update Error:", updateError);
+      } else {
+        alert("✅ Draft updated.");
+      }
+    }
   };
-
-  if (!data) {
-    const { error: insertError } = await client.from('draft_records').insert(payload);
-    if (insertError) {
-      alert("❌ Failed to save draft.");
-      console.error(insertError);
-    } else {
-      alert("✅ Draft saved.");
-    }
-  } else {
-    const { error: updateError } = await client.from('draft_records')
-      .update(payload)
-      .eq('id', data.id);
-    if (updateError) {
-      alert("❌ Failed to update draft.");
-      console.error(updateError);
-    } else {
-      alert("✅ Draft updated.");
-    }
-  }
-};
 
 function toggleTeamFilterMode() {
   const filter = document.getElementById('teamFilter');
