@@ -818,6 +818,12 @@ async function loadAllDraftRecords() {
     filterSelect.innerHTML = '';
     teamCountSelect.innerHTML = '';
 
+  // 🔹 Add "All teams" at the top of the counts dropdown
+  const allOpt = document.createElement('option');
+  allOpt.value = '__ALL__';
+  allOpt.textContent = 'All teams';
+  teamCountSelect.appendChild(allOpt);
+
     Array.from(allTeams).sort().forEach(team => {
       const option1 = document.createElement('option');
       option1.value = team;
@@ -829,6 +835,10 @@ async function loadAllDraftRecords() {
       option2.textContent = team;
       teamCountSelect.appendChild(option2);
     });
+
+      // Default selection for the counts dropdown
+    if (!teamCountSelect.value) {
+    teamCountSelect.value = '__ALL__';
   }
 }
 
@@ -1007,8 +1017,11 @@ async function computeTeamPickBanCounts() {
     .from('draft_records')
     .select('team_left, team_right, match_date, state')
     .gte('match_date', from)
-    .lte('match_date', to)
-    .or(`team_left.eq.${team},team_right.eq.${team}`);
+    .lte('match_date', to);
+
+    if (team !== '__ALL__') {
+    query = query.or(`team_left.eq.${team},team_right.eq.${team}`);
+  }
 
   const { data, error } = await query;
 
@@ -1024,16 +1037,41 @@ async function computeTeamPickBanCounts() {
   const pickCounts = new Map(); // skillName -> count
   const banCounts = new Map();
 
-  data.forEach(r => {
+ data.forEach(r => {
     const s = r.state || {};
     const picks = s.picks || [];
     const bans = s.bans || [];
 
-    const isLeft = r.team_left === team;
-    const isRight = r.team_right === team;
-    if (!isLeft && !isRight) return;
+    // If specific team: only count that side. If ALL: count both sides.
+    if (team === '__ALL__') {
+      totalMatches += 1;
 
-    totalMatches += 1;
+      // Count picks from both sides (all 8 indices)
+      [0,1,2,3,4,5,6,7].forEach(i => {
+        const hero = picks[i];
+        const name = hero?.name;
+        if (name) {
+          pickCounts.set(name, (pickCounts.get(name) || 0) + 1);
+          totalPicks += 1;
+        }
+      });
+
+      // Count both bans if present
+      [0,1].forEach(bi => {
+        const b = bans[bi];
+        const bName = b?.name;
+        if (bName) {
+          banCounts.set(bName, (banCounts.get(bName) || 0) + 1);
+          totalBans += 1;
+        }
+      });
+    } else {
+      // Specific team path
+      const isLeft = r.team_left === team;
+      const isRight = r.team_right === team;
+      if (!isLeft && !isRight) return;
+
+      totalMatches += 1;
 
     // Count picks (four indices depending on side)
     const idx = isLeft ? [0,1,2,3] : [4,5,6,7];
@@ -1059,9 +1097,12 @@ async function computeTeamPickBanCounts() {
   document.getElementById('teamPBMeta').textContent =
     `Team: ${team} • Range: ${from} → ${to} • Matches: ${totalMatches}`;
 
-  document.getElementById('teamPBTotals').innerHTML =
-    `<div><b>Total Picks:</b> ${totalPicks}</div>
-     <div><b>Total Bans:</b> ${totalBans}</div>`;
+  const totalsEl = document.getElementById('teamPBTotals');
+  totalsEl.innerHTML =
+    (totalMatches === 0)
+      ? 'No matches in range.'
+      : `<div><b>Total Picks:</b> ${totalPicks}</div>
+         <div><b>Total Bans:</b> ${totalBans}</div>`;
 
   // Render breakdown tables
   const pickBody = document.getElementById('teamPickBreakdown');
