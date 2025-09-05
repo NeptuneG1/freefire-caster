@@ -44,6 +44,21 @@
       background:#141414;border:1px solid #2a2a2a;border-radius:10px;
       padding:6px 8px;min-width:220px;max-width:260px
     }
+    
+    /* Passive icon + name rows inside the vertical stack */
+    .pStackRow{display:flex;align-items:center;gap:6px}
+    .pStackRow img{
+      width:16px;height:16px;object-fit:cover;border-radius:3px;
+      border:1px solid #333;background:#0f0f0f
+    }
+    .pStackRow span{
+      font-size:.78rem;color:#bbb;max-width:130px;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+    }
+    
+    /* (optional) give the card a bit more space for names */
+    .pCard{min-width:300px}
+    
     .pAct{
       width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid #333;background:#0f0f0f
     }
@@ -350,25 +365,32 @@ function applyRowFilters(allRows){
 }
 
 /* Build the player card HTML with images */
-function playerCardHTML(player, heroName, heroImg, trio){
-  const passHTML = (trio || []).slice(0,3).map(ps => {
-    const src = ps?.img || PLACEHOLDER;
-    return `<img src="${src}" alt="" loading="lazy">`;
-  }).join('');
-  const img = heroImg || PLACEHOLDER;
-  const hero = heroName || '—';
-  const p = player || '';
-  return `
-    <div class="pCard">
-      <img class="pAct" src="${img}" alt="${hero}" loading="lazy">
-      <div class="pStack">${passHTML}</div>
-      <div class="pInfo">
-        <div class="pName">${p}</div>
-        <div class="pHero">${hero}</div>
+  function playerCardHTML(player, heroName, heroImg, trio){
+    // Only render real passives (hide placeholders)
+    const passHTML = (trio || [])
+      .filter(ps => ps && ps.name)
+      .map(ps => `
+        <div class="pStackRow">
+          <img src="${ps.img || PLACEHOLDER}" alt="${ps.name}" loading="lazy">
+          <span>${ps.name}</span>
+        </div>
+      `).join('');
+  
+    const img  = heroImg || PLACEHOLDER;
+    const hero = heroName || '—';
+    const p    = player || '';
+  
+    return `
+      <div class="pCard">
+        <img class="pAct" src="${img}" alt="${hero}" loading="lazy">
+        <div class="pStack">${passHTML}</div>
+        <div class="pInfo">
+          <div class="pName">${p}</div>
+          <div class="pHero">${hero}</div>
+        </div>
       </div>
-    </div>
-  `;
-}
+    `;
+  }
 
 function renderRows(rows){
   const body = el('rowsBody');
