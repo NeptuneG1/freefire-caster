@@ -31,427 +31,78 @@
 
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto&display=swap" rel="stylesheet">
   <style>
-    body {
-      margin: 0;
-      font-family: 'Roboto', sans-serif;
-      background: #0e0e0e;
-      color: #f5f5f5;
-    }
-    
-    header {
-      background: #1f1f1f;
-      padding: 20px;
-      text-align: center;
-      border-bottom: 3px solid #ffbd59;
-    }
-    
-    h1 {
-      font-family: 'Orbitron', sans-serif;
-      color: #ffbd59;
-      margin: 0;
-      font-size: 2rem;
-    }
-    
-    .user-controls {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    
-    .user-controls #user-info {
-      font-size: 14px;
-      color: #ccc;
-    }
-    
-    .user-controls .logout-btn {
-      background: #ffbd59;
-      color: #1c1c1c;
-      font-weight: bold;
-      padding: 6px 12px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    
-    .user-controls .logout-btn:hover {
-      background: #e0a84f;
-    }
+    body { margin: 0; font-family: 'Roboto', sans-serif; background: #0e0e0e; color: #f5f5f5; }
+    header { background: #1f1f1f; padding: 20px; text-align: center; border-bottom: 3px solid #ffbd59; }
+    h1 { font-family: 'Orbitron', sans-serif; color: #ffbd59; margin: 0; font-size: 2rem; }
+    .user-controls { position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 10px; }
+    .user-controls #user-info { font-size: 14px; color: #ccc; }
+    .user-controls .logout-btn { background: #ffbd59; color: #1c1c1c; font-weight: bold; padding: 6px 12px; border: none; border-radius: 5px; cursor: pointer; }
+    .user-controls .logout-btn:hover { background: #e0a84f; }
 
-    .draft-wrapper {
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      gap: 50px;
-      margin-top: 20px;
-      flex-wrap: nowrap;
-    }
-    
-    .team-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    
-    .team-label {
-      background: transparent;
-      border: none;
-      color: #ff7733;
-      font-weight: bold;
-      font-size: 18px;
-      margin-bottom: 10px;
-      text-align: center;
-    }
-    .team-label:focus {
-      outline: none;
-      border-bottom: 1px dashed #ffbd59;
-    }
+    .draft-wrapper { display: flex; justify-content: center; align-items: flex-start; gap: 50px; margin-top: 20px; flex-wrap: nowrap; }
+    .team-container { display: flex; flex-direction: column; align-items: center; }
+    .team-label { background: transparent; border: none; color: #ff7733; font-weight: bold; font-size: 18px; margin-bottom: 10px; text-align: center; }
+    .team-label:focus { outline: none; border-bottom: 1px dashed #ffbd59; }
+    .team-row { display: flex; gap: 10px; }
+    .slot { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .ban-slot, .pick-slot { width: 100px; height: 150px; background: #2a2a2a; border: 2px solid #444; border-radius: 8px; display: flex; justify-content: center; align-items: center; cursor: pointer; position: relative; }
+    .ban-slot { border-color: #ff5a5a; }
+    .ban-slot.disabled, .pick-slot.disabled { opacity: 0.4; pointer-events: none; }
+    .passive-slots, .weapon-slots { display: flex; gap: 3px; justify-content: center; flex-wrap: wrap; }
+    .passive-slot { width: 25px; height: 50px; background: #3a3a3a; border: 1px solid #555; border-radius: 4px; cursor: pointer; background-size: cover; background-position: center; }
+    .weapon-slot { width: 100px; height: 40px; background: #868686; border: 2px solid #444; border-radius: 6px; cursor: pointer; display: flex; justify-content: center; align-items: center; position: relative; }
+    .weapon-slot img { max-height: 100%; max-width: 100%; }
+    .slot-name { font-size: 12px; color: #ccc; text-align: center; }
+    .passive-name, .weapon-name { font-size: 10px; color: #ccc; text-align: center; max-width: 40px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
-    .team-row {
-      display: flex;
-      gap: 10px;
-    }
-    
-    .slot {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-    }
-    
-    .ban-slot, .pick-slot {
-      width: 100px;
-      height: 150px;
-      background: #2a2a2a;
-      border: 2px solid #444;
-      border-radius: 8px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      cursor: pointer;
-      position: relative;
-    }
-    
-    .ban-slot {
-      border-color: #ff5a5a;
-    }
-    
-    .ban-slot.disabled, .pick-slot.disabled {
-      opacity: 0.4;
-      pointer-events: none;
-    }
-    
-    .passive-slots, .weapon-slots {
-      display: flex;
-      gap: 3px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-    
-    .passive-slot {
-      width: 25px;
-      height: 50px;
-      background: #3a3a3a;
-      border: 1px solid #555;
-      border-radius: 4px;
-      cursor: pointer;
-      background-size: cover;
-      background-position: center;
-    }
-    
-    .weapon-slot {
-      width: 100px;
-      height: 40px;
-      background: #868686;
-      border: 2px solid #444;
-      border-radius: 6px;
-      cursor: pointer;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      position: relative;
-    }
-    
-    .weapon-slot img {
-      max-height: 100%;
-      max-width: 100%;
-    }
-    
-    .slot-name {
-      font-size: 12px;
-      color: #ccc;
-      text-align: center;
-    }
-    
-    .passive-name, .weapon-name {
-      font-size: 10px;
-      color: #ccc;
-      text-align: center;
-      max-width: 40px;
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-    }
-    
-    /* Modal base */
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 9999;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      background: #1f1f1f;
-      overflow: auto;
-    }
-    
-    .modal-content {
-      background: #1f1f1f;
-      margin: 5% auto;
-      padding: 15px;
-      border: 2px solid #ff7733;
-      border-radius: 8px;
-      width: 90%;
-      max-width: 900px;
-      max-height: 95vh;
-      overflow-y: auto;
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    
-    /* Modal header */
-    #heroModal h3 {
-      margin-top: 0;
-      font-size: 20px;
-      color: #ff7733;
-    }
-    
-    /* Weapon filter dropdown */
-    .weapon-filter-wrapper {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-    
-    .weapon-filter-wrapper select {
-      background-color: #2a2a2a;
-      color: #ffbd59;
-      border: 2px solid #444;
-      border-radius: 6px;
-      padding: 4px 8px;
-      font-size: 12px;
-      font-weight: bold;
-      cursor: pointer;
-      appearance: none;
-    }
-    
-    .weapon-filter-wrapper select:focus {
-      outline: none;
-      border-color: #ff7733;
-    }
-    
-    /* Weapon grid */
-    .weapon-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-      gap: 10px;
-      justify-items: center;
-      width: 100%;
-    }
-    #heroGrid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-      gap: 10px;
-      justify-items: center;
-      width: 100%;
-    }
-    /* Weapon card */
-    .hero-grid-item {
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 8px;
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      cursor: pointer;
-      transition: transform 0.2s ease;
-    }
-    
-    .hero-grid-item:hover {
-      transform: scale(1.05);
-      border-color: #ff7733;
-    }
-    
-    /* Weapon image */
-    .hero-grid-item img {
-      width: 80px;
-      height: 80px;
-      object-fit: contain;
-      margin-bottom: 6px;
-    }
-    
-    /* Weapon name */
-    .hero-grid-item div {
-      font-size: 10px;
-      text-align: center;
-      color: #ddd;
-      max-width: 60px;
-      word-wrap: break-word;
-    }
-    
-    /* Close button */
-    .close-btn {
-      position: absolute;
-      top: 10px;
-      right: 15px;
-      color: #ff7733;
-      font-size: 18px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    
-    /* Disabled state */
-    .disabled {
-      opacity: 0.3;
-      pointer-events: none;
-    }
-    
-    /* Banned overlay */
-    .banned-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(255, 0, 0, 0.4);
-      color: white;
-      font-weight: bold;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      border-radius: 6px;
-      font-size: 12px;
-    }
-    
-    /* Buttons + summaries */
-    .reset-btn {
-      margin: 20px auto;
-      display: block;
-      background: #ff7733;
-      color: #fff;
-      border: none;
-      padding: 10px 18px;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 16px;
-    }
-    
-    .summary-wrapper {
-      display: flex;
-      justify-content: center;
-      gap: 50px;
-      margin-top: 10px;
-      font-size: 12px;
-      color: #ddd;
-      max-width: 100%;
-      overflow-x: auto;
-    }
-    
-    .summary-wrapper > div {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      gap: 10px;
-    }
-    
-    .summary-row {
-      display: flex;
-      flex-direction: row;
-      gap: 6px;
-      justify-content: center;
-      align-items: stretch;
-    }
-    
-    .summary-card {
-      background: #2a2a2a;
-      border: 2px solid #444;
-      border-radius: 8px;
-      padding: 8px;
-      width: 100px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      font-size: 10px;
-      text-align: center;
-    }
-    
-    .summary-ban {
-      min-width: 430px;
-      max-width: 430px;
-      background: #2a2a2a;
-      border: 2px solid #ff5a5a;
-      border-radius: 8px;
-      padding: 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      font-size: 10px;
-      text-align: center;
-    }
-    
-    .summary-ban-row {
-      display: flex;
-      flex-direction: row;
-      gap: 6px;
-      justify-content: center;
-      align-items: stretch;
-    }
-    
-    .top-controls {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      align-items: center;
-      gap: 8px;
-      margin-top: 15px;
-      font-size: 14px;
-    }
-    
-    .top-controls a,
-    .top-controls button,
-    .top-controls select,
-    .top-controls label {
-      background: #ffbd59;
-      color: #1c1c1c;
-      padding: 6px 10px;
-      border: none;
-      border-radius: 5px;
-      font-weight: bold;
-      cursor: pointer;
-      text-decoration: none;
-    }
-    
-    .top-controls select {
-      padding: 4px 8px;
-      font-weight: bold;
-      background: #2a2a2a;
-      color: #ffbd59;
-      border: 1px solid #555;
-    }
-    
-    .top-controls button:hover,
-    .top-controls a:hover {
-      background: #e0a84f;
-    }
+    .modal { display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background: #1f1f1f; overflow: auto; }
+    .modal-content { background: #1f1f1f; margin: 5% auto; padding: 15px; border: 2px solid #ff7733; border-radius: 8px; width: 90%; max-width: 900px; max-height: 95vh; overflow-y: auto; position: relative; display: flex; flex-direction: column; align-items: center; }
+    #heroModal h3 { margin-top: 0; font-size: 20px; color: #ff7733; }
 
+    .weapon-filter-wrapper { display: flex; justify-content: center; align-items: center; margin-bottom: 8px; }
+    .weapon-filter-wrapper select { background-color: #2a2a2a; color: #ffbd59; border: 2px solid #444; border-radius: 6px; padding: 4px 8px; font-size: 12px; font-weight: bold; cursor: pointer; appearance: none; }
+    .weapon-filter-wrapper select:focus { outline: none; border-color: #ff7733; }
+    .weapon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; justify-items: center; width: 100%; }
+    #heroGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 10px; justify-items: center; width: 100%; }
+
+    .hero-grid-item { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: transform 0.2s ease; }
+    .hero-grid-item:hover { transform: scale(1.05); border-color: #ff7733; }
+    .hero-grid-item img { width: 80px; height: 80px; object-fit: contain; margin-bottom: 6px; }
+    .hero-grid-item div { font-size: 10px; text-align: center; color: #ddd; max-width: 60px; word-wrap: break-word; }
+
+    .close-btn { position: absolute; top: 10px; right: 15px; color: #ff7733; font-size: 18px; font-weight: bold; cursor: pointer; }
+
+    .disabled { opacity: 0.3; pointer-events: none; }
+    .banned-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 0, 0, 0.4); color: white; font-weight: bold; display: flex; justify-content: center; align-items: center; border-radius: 6px; font-size: 12px; }
+
+    .reset-btn { margin: 20px auto; display: block; background: #ff7733; color: #fff; border: none; padding: 10px 18px; border-radius: 5px; cursor: pointer; font-size: 16px; }
+
+    .summary-wrapper { display: flex; justify-content: center; gap: 50px; margin-top: 10px; font-size: 12px; color: #ddd; max-width: 100%; overflow-x: auto; }
+    .summary-wrapper > div { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 10px; }
+    .summary-row { display: flex; flex-direction: row; gap: 6px; justify-content: center; align-items: stretch; }
+    .summary-card { background: #2a2a2a; border: 2px solid #444; border-radius: 8px; padding: 8px; width: 100px; display: flex; flex-direction: column; gap: 4px; font-size: 10px; text-align: center; }
+    .summary-ban { min-width: 430px; max-width: 430px; background: #2a2a2a; border: 2px solid #ff5a5a; border-radius: 8px; padding: 8px; display: flex; flex-direction: column; gap: 4px; font-size: 10px; text-align: center; }
+    .summary-ban-row { display: flex; flex-direction: row; gap: 6px; justify-content: center; align-items: stretch; }
+
+    .top-controls { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; margin-top: 15px; font-size: 14px; }
+    .top-controls a, .top-controls button, .top-controls select, .top-controls label { background: #ffbd59; color: #1c1c1c; padding: 6px 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; text-decoration: none; }
+    .top-controls select { padding: 4px 8px; font-weight: bold; background: #2a2a2a; color: #ffbd59; border: 1px solid #555; }
+    .top-controls button:hover, .top-controls a:hover { background: #e0a84f; }
+
+    /* Team pick/ban counts section */
+    #teamPBCounts { width: 90%; max-width: 1200px; margin: 40px auto; }
+    #teamPBCounts h2 { text-align: center; color: #ffbd59; }
+    .counts-controls { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+    .counts-controls input[type="date"], .counts-controls select { background: #2a2a2a; color: #ffbd59; border: 1px solid #555; border-radius: 6px; padding: 6px 8px; }
+    .counts-controls button { background: #ff7733; color: #fff; border: none; border-radius: 6px; padding: 8px 12px; cursor: pointer; font-weight: bold; }
+    .counts-controls button:hover { background: #e36b2e; }
+    .counts-summary { text-align: center; margin-top: 8px; color: #ddd; }
+    .counts-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(280px,1fr)); gap: 14px; margin-top: 12px; }
+    .counts-card { background: #1c1c1c; border: 1px solid #444; border-radius: 8px; padding: 10px; }
+    .counts-card h3 { margin: 0 0 8px 0; color: #ff7733; }
+    table.counts-table { width: 100%; border-collapse: collapse; }
+    table.counts-table th, table.counts-table td { border-bottom: 1px solid #333; padding: 6px; text-align: left; font-size: 13px; }
+    table.counts-table th { background: #181818; }
   </style>
 </head>
 <body>
@@ -472,9 +123,17 @@
         <input type="checkbox" id="multiToggle" onchange="toggleTeamFilterMode()" />
         Enable multiple selection
       </label>
+
+      <!-- NEW: Tournament filter for history -->
+      <div style="margin-top:10px;">
+        <label style="display:block;margin-bottom:4px;">Tournament</label>
+        <select id="tournamentFilter" style="width:200px;" onchange="loadAllDraftRecords()">
+          <!-- options populated by JS -->
+        </select>
+      </div>
+
       <br />
       <select id="teamFilter" size="5" style="width: 200px; margin-top: 6px;" onchange="loadAllDraftRecords()">
-        <!-- options populated dynamically -->
       </select>
     </div>
 
@@ -489,6 +148,7 @@
             <th style="padding: 8px;">Team Right</th>
             <th style="padding: 8px;">Team Right Score</th>
             <th style="padding: 8px;">Map</th>
+            <th style="padding: 8px;">Tournament</th><!-- NEW -->
             <th style="padding: 8px;">Actions</th>
           </tr>
         </thead>
@@ -568,6 +228,44 @@
     <h2 style="text-align:center; color:#ffbd59;">Match Summary by Team</h2>
     <div id="teamDraftCards" style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;"></div>
   </div>
+
+  <!-- Team pick/ban counts -->
+  <div id="teamPBCounts">
+    <h2>Team Pick/Ban Counts (by Date Range)</h2>
+    <div class="counts-controls">
+      <label>Team
+        <select id="teamCountSelect" style="min-width:220px;"></select>
+      </label>
+      <!-- NEW: Tournament filter for counts -->
+      <label>Tournament
+        <select id="countTournamentSelect" style="min-width:220px;"></select>
+      </label>
+      <label>From <input type="date" id="countFrom"></label>
+      <label>To <input type="date" id="countTo"></label>
+      <button onclick="computeTeamPickBanCounts()">Compute</button>
+    </div>
+    <div class="counts-summary" id="teamPBMeta"></div>
+    <div class="counts-grid">
+      <div class="counts-card">
+        <h3>Totals</h3>
+        <div id="teamPBTotals">—</div>
+      </div>
+      <div class="counts-card">
+        <h3>Pick Breakdown</h3>
+        <table class="counts-table">
+          <thead><tr><th>Skill</th><th>Count</th></tr></thead>
+          <tbody id="teamPickBreakdown"></tbody>
+        </table>
+      </div>
+      <div class="counts-card">
+        <h3>Ban Breakdown</h3>
+        <table class="counts-table">
+          <thead><tr><th>Skill</th><th>Count</th></tr></thead>
+          <tbody id="teamBanBreakdown"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
   
 <script>
 let characters = [], weapons = [], currentSlot = null;
@@ -590,7 +288,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   characters = await (await fetch('https://neptuneg1.github.io/freefire-caster/character.json')).json();
   weapons = await (await fetch('https://neptuneg1.github.io/freefire-caster/weapon.json')).json();
 
-  document.getElementById('matchDate').valueAsDate = new Date();
+  const today = new Date();
+  document.getElementById('matchDate').valueAsDate = today;
+  // Defaults for team PB counts
+  document.getElementById('countTo').valueAsDate = today;
+  const from = new Date(2025, 7, 28); // months are 0-indexed: 7 = August
+  document.getElementById('countFrom').valueAsDate = from;
   
   await loadDraftState();
 
@@ -604,6 +307,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   })
   .subscribe();
+
   loadAllDraftRecords();
 });
 
@@ -635,141 +339,87 @@ function makeSlot(type,index){
   c.appendChild(m); c.appendChild(nameDiv);
   
   if (type === 'pick') {
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.placeholder = 'Player Name';
-  input.value = draftState.playerCards[index] || '';
-  input.style.width = '90px';
-  input.style.fontSize = '10px';
-  input.style.marginTop = '4px';
-  input.style.background = '#1f1f1f';
-  input.style.border = '1px solid #555';
-  input.style.color = '#ccc';
-  input.style.textAlign = 'center';
-  input.onchange = () => {
-    draftState.playerCards[index] = input.value;
-    saveDraftState();
-  };
-  c.appendChild(input);
-}
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'Player Name';
+    input.value = draftState.playerCards[index] || '';
+    input.style.width = '90px';
+    input.style.fontSize = '10px';
+    input.style.marginTop = '4px';
+    input.style.background = '#1f1f1f';
+    input.style.border = '1px solid #555';
+    input.style.color = '#ccc';
+    input.style.textAlign = 'center';
+    input.onchange = () => { draftState.playerCards[index] = input.value; saveDraftState(); };
+    c.appendChild(input);
+  }
 
   if(type==='pick'){
     const passives=draftState.passives[index];
     const pDiv=document.createElement('div'); pDiv.className='passive-slots';
     passives.forEach((ps,i)=>{const p=document.createElement('div'); p.className='passive-slot';
-    const pn=document.createElement('div');pn.className='passive-name';
-    if(ps){p.style.backgroundImage=`url(${ps.image_url})`;pn.innerText=ps.name;}
-    p.onclick=()=>{currentSlot={type:'passive',pickIndex:index,passiveIndex:i};openModal('Select Passive Skill');};
-    const box=document.createElement('div');box.style.display='flex';box.style.flexDirection='column';
-    box.style.alignItems='center';box.appendChild(p);box.appendChild(pn);pDiv.appendChild(box);});
+      const pn=document.createElement('div');pn.className='passive-name';
+      if(ps){p.style.backgroundImage=`url(${ps.image_url})`;pn.innerText=ps.name;}
+      p.onclick=()=>{currentSlot={type:'passive',pickIndex:index,passiveIndex:i};openModal('Select Passive Skill');};
+      const box=document.createElement('div');box.style.display='flex';box.style.flexDirection='column';
+      box.style.alignItems='center';box.appendChild(p);box.appendChild(pn);pDiv.appendChild(box);});
     c.appendChild(pDiv);
 
     const wDiv=document.createElement('div'); wDiv.className='weapon-slots';
     draftState.weapons[index].forEach((w,i)=>{const wSlot=document.createElement('div'); wSlot.className='weapon-slot'; if(i===0)wSlot.style.border='2px solid #ffbd59';
-    const wn=document.createElement('div');wn.className='weapon-name';
-    if(w){const wImg=document.createElement('img');wImg.src=w.image_url;wSlot.appendChild(wImg);wn.innerText=w.name;}
-    wSlot.onclick=()=>{currentSlot={type:'weapon',pickIndex:index,weaponIndex:i};openModal('Select Weapon');};
-    const box=document.createElement('div');box.style.display='flex';box.style.flexDirection='column';box.style.alignItems='center';
-    box.appendChild(wSlot);box.appendChild(wn);wDiv.appendChild(box);}); c.appendChild(wDiv);}
+      const wn=document.createElement('div');wn.className='weapon-name';
+      if(w){const wImg=document.createElement('img');wImg.src=w.image_url;wSlot.appendChild(wImg);wn.innerText=w.name;}
+      wSlot.onclick=()=>{currentSlot={type:'weapon',pickIndex:index,weaponIndex:i};openModal('Select Weapon');};
+      const box=document.createElement('div');box.style.display='flex';box.style.flexDirection='column';box.style.alignItems='center';
+      box.appendChild(wSlot);box.appendChild(wn);wDiv.appendChild(box);}); c.appendChild(wDiv);
+  }
 
   return c;
 }
 
-  function updateTeamName(teamIndex) {
-    const input = document.getElementById(teamIndex === 0 ? 'teamNameLeft' : 'teamNameRight');
-    draftState.teamNames[teamIndex] = input.value;
-    saveDraftState();
-  }
+function updateTeamName(teamIndex) {
+  const input = document.getElementById(teamIndex === 0 ? 'teamNameLeft' : 'teamNameRight');
+  draftState.teamNames[teamIndex] = input.value; saveDraftState();
+}
 
-  function openModal(title) {
+function openModal(title) {
   document.getElementById('modalTitle').innerText = title;
   const grid = document.getElementById('heroGrid');
   grid.innerHTML = '';
 
   if (currentSlot.type === 'weapon') {
-    // Add Armory filter dropdown
     const filterWrapper = document.createElement('div');
     filterWrapper.className = 'weapon-filter-wrapper';
 
     const armoryFilter = document.createElement('select');
     const armoryOptions = ['All', 'Andrew', 'Kelly', 'Laura', 'Mocco', 'Hayato', 'Tatsuya'];
-    armoryOptions.forEach(name => {
-      const option = document.createElement('option');
-      option.value = name.toLowerCase();
-      option.textContent = name;
-      armoryFilter.appendChild(option);
-    });
+    armoryOptions.forEach(name => { const option = document.createElement('option'); option.value = name.toLowerCase(); option.textContent = name; armoryFilter.appendChild(option); });
     filterWrapper.appendChild(armoryFilter);
     grid.appendChild(filterWrapper);
 
     function renderWeapons(filter) {
-      // Clear existing cards except filter dropdown
       Array.from(grid.children).forEach((child, index) => { if (index !== 0) child.remove(); });
 
-      // Add "Clear" option just for weapon UI
       const clearCard = document.createElement('div');
       clearCard.className = 'hero-grid-item';
       clearCard.style.border = '1px dashed #555';
-      
       const clearImg = document.createElement('img');
-      clearImg.src = 'https://imgur.com/AdvPwAO.png'; // Optional: transparent icon
+      clearImg.src = 'https://imgur.com/AdvPwAO.png';
       clearImg.alt = 'Clear';
-      clearImg.style.width = '60px';
-      clearImg.style.height = '60px';
-      clearImg.style.opacity = '0.3';
-      clearImg.style.objectFit = 'contain';
-      clearImg.style.marginBottom = '6px';
-      
-      const clearLabel = document.createElement('div');
-      clearLabel.textContent = 'Clear';
-      clearLabel.style.fontSize = '10px';
-      clearLabel.style.color = '#bbb';
-      clearLabel.style.textAlign = 'center';
-      
-      clearCard.appendChild(clearImg);
-      clearCard.appendChild(clearLabel);
-      clearCard.onclick = () => {
-        draftState.weapons[currentSlot.pickIndex][currentSlot.weaponIndex] = null;
-        closeModal();
-        drawDraft();
-        saveDraftState();
-      };
-      
+      clearImg.style.width = '60px'; clearImg.style.height = '60px'; clearImg.style.opacity = '0.3'; clearImg.style.objectFit = 'contain'; clearImg.style.marginBottom = '6px';
+      const clearLabel = document.createElement('div'); clearLabel.textContent = 'Clear'; clearLabel.style.fontSize = '10px'; clearLabel.style.color = '#bbb'; clearLabel.style.textAlign = 'center';
+      clearCard.appendChild(clearImg); clearCard.appendChild(clearLabel);
+      clearCard.onclick = () => { draftState.weapons[currentSlot.pickIndex][currentSlot.weaponIndex] = null; closeModal(); drawDraft(); saveDraftState(); };
       grid.appendChild(clearCard);
 
-    
       weapons.forEach(item => {
-        if (!item.armory) return; // ✅ Skip if no armory
+        if (!item.armory) return;
         if (filter !== 'all' && !item.armory.toLowerCase().includes(filter)) return;
-    
-        const card = document.createElement('div');
-        card.className = 'hero-grid-item';
-    
-        const img = document.createElement('img');
-        img.src = item.image_url;
-        img.alt = item.name;
-        img.style.width = '80px';
-        img.style.height = '80px';
-        img.style.objectFit = 'contain';
-        img.style.marginBottom = '6px';
-    
-        const name = document.createElement('div');
-        name.textContent = item.name;
-        name.style.fontSize = '10px';
-        name.style.color = '#ddd';
-        name.style.textAlign = 'center';
-        name.style.maxWidth = '60px';
-        name.style.overflowWrap = 'break-word';
-    
-        card.appendChild(img);
-        card.appendChild(name);
-        card.onclick = () => {
-          draftState.weapons[currentSlot.pickIndex][currentSlot.weaponIndex] = item;
-          closeModal();
-          drawDraft();
-          saveDraftState();
-        };
-    
+        const card = document.createElement('div'); card.className = 'hero-grid-item';
+        const img = document.createElement('img'); img.src = item.image_url; img.alt = item.name; img.style.width = '80px'; img.style.height = '80px'; img.style.objectFit = 'contain'; img.style.marginBottom = '6px';
+        const name = document.createElement('div'); name.textContent = item.name; name.style.fontSize = '10px'; name.style.color = '#ddd'; name.style.textAlign = 'center'; name.style.maxWidth = '60px'; name.style.overflowWrap = 'break-word';
+        card.appendChild(img); card.appendChild(name);
+        card.onclick = () => { draftState.weapons[currentSlot.pickIndex][currentSlot.weaponIndex] = item; closeModal(); drawDraft(); saveDraftState(); };
         grid.appendChild(card);
       });
     }
@@ -778,59 +428,29 @@ function makeSlot(type,index){
     armoryFilter.addEventListener('change', () => renderWeapons(armoryFilter.value));
 
   } else {
-
-    // Add "Clear" option for ban, pick, and passive
     const clearCard = document.createElement('div');
     clearCard.className = 'hero-grid-item';
     clearCard.style.border = '1px dashed #555';
-    
-    const clearImg = document.createElement('img');
-    clearImg.src = 'https://imgur.com/AdvPwAO.png';
-    clearImg.alt = 'Clear';
-    clearImg.style.width = '60px';
-    clearImg.style.height = '60px';
-    clearImg.style.opacity = '0.3';
-    clearImg.style.objectFit = 'contain';
-    clearImg.style.marginBottom = '6px';
-    
-    const clearLabel = document.createElement('div');
-    clearLabel.textContent = 'Clear';
-    clearLabel.style.fontSize = '10px';
-    clearLabel.style.color = '#bbb';
-    clearLabel.style.textAlign = 'center';
-    
-    clearCard.appendChild(clearImg);
-    clearCard.appendChild(clearLabel);
+    const clearImg = document.createElement('img'); clearImg.src = 'https://imgur.com/AdvPwAO.png'; clearImg.alt = 'Clear'; clearImg.style.width = '60px'; clearImg.style.height = '60px'; clearImg.style.opacity = '0.3'; clearImg.style.objectFit = 'contain'; clearImg.style.marginBottom = '6px';
+    const clearLabel = document.createElement('div'); clearLabel.textContent = 'Clear'; clearLabel.style.fontSize = '10px'; clearLabel.style.color = '#bbb'; clearLabel.style.textAlign = 'center';
+    clearCard.appendChild(clearImg); clearCard.appendChild(clearLabel);
     clearCard.onclick = () => {
       if (currentSlot.type === 'ban') draftState.bans[currentSlot.index] = null;
       if (currentSlot.type === 'pick') draftState.picks[currentSlot.index] = null;
       if (currentSlot.type === 'passive') draftState.passives[currentSlot.pickIndex][currentSlot.passiveIndex] = null;
-      closeModal();
-      drawDraft();
-      saveDraftState();
+      closeModal(); drawDraft(); saveDraftState();
     };
     grid.appendChild(clearCard);
 
-    // for bans, picks, passives
     const used = new Set();
     draftState.bans.forEach(h => h && used.add(h.name));
     draftState.picks.forEach(h => h && used.add(h.name));
 
-    let list = characters.filter(h =>
-      (currentSlot.type === 'passive') ? h.skill_type === 'Passive' : h.skill_type === 'Active'
-    );
+    let list = characters.filter(h => (currentSlot.type === 'passive') ? h.skill_type === 'Passive' : h.skill_type === 'Active');
 
     list.forEach(item => {
-      const box = document.createElement('div');
-      box.className = 'hero-grid-item';
-
-      const img = document.createElement('img');
-      img.src = item.image_url;
-      img.title = item.name;
-      img.style.width = '80px';
-      img.style.height = '80px';
-      img.style.objectFit = 'contain';
-      img.style.marginBottom = '6px';
+      const box = document.createElement('div'); box.className = 'hero-grid-item';
+      const img = document.createElement('img'); img.src = item.image_url; img.title = item.name; img.style.width = '80px'; img.style.height = '80px'; img.style.objectFit = 'contain'; img.style.marginBottom = '6px';
 
       if ((currentSlot.type === 'ban' || currentSlot.type === 'pick') && used.has(item.name)) {
         img.classList.add('disabled');
@@ -839,36 +459,23 @@ function makeSlot(type,index){
           if (currentSlot.type === 'ban') draftState.bans[currentSlot.index] = item;
           if (currentSlot.type === 'pick') draftState.picks[currentSlot.index] = item;
           if (currentSlot.type === 'passive') draftState.passives[currentSlot.pickIndex][currentSlot.passiveIndex] = item;
-          closeModal();
-          drawDraft();
-          saveDraftState();
+          closeModal(); drawDraft(); saveDraftState();
         };
       }
 
-      const label = document.createElement('div');
-      label.textContent = item.name;
-      label.style.fontSize = '10px';
-      label.style.color = '#ddd';
-      label.style.textAlign = 'center';
-      label.style.maxWidth = '60px';
-      label.style.overflowWrap = 'break-word';
-
-      box.appendChild(img);
-      box.appendChild(label);
-      grid.appendChild(box);
+      const label = document.createElement('div'); label.textContent = item.name; label.style.fontSize = '10px'; label.style.color = '#ddd'; label.style.textAlign = 'center'; label.style.maxWidth = '60px'; label.style.overflowWrap = 'break-word';
+      box.appendChild(img); box.appendChild(label); grid.appendChild(box);
     });
   }
 
   document.getElementById('heroModal').style.display = 'block';
 }
 
-
 function closeModal(){document.getElementById('heroModal').style.display='none';}
 function updateSummary() {
   const left = document.getElementById('summaryLeft');
   const right = document.getElementById('summaryRight');
-  left.innerHTML = "";
-  right.innerHTML = "";
+  left.innerHTML = ""; right.innerHTML = "";
 
   const makeCard = (title, content) => `
     <div class="summary-card">
@@ -877,31 +484,23 @@ function updateSummary() {
   `;
 
   function buildTeamSummary(startIndex, banIndex) {
-  let html = "";
-
-  // Row 0: BAN
-  const ban = draftState.bans[banIndex];
-  html += `<div class="summary-row summary-ban-row">
-    <div class="summary-ban"><strong>BAN</strong><br>${ban ? `${ban.name}<br>${ban.description || ''}` : "None"}</div>
-  </div>`;
-
-  // Row 1: ACTIVES
-  html += `<div class="summary-row">`;
-  for (let i = startIndex; i < startIndex + 4; i++) {
-    const hero = draftState.picks[i];
-    html += makeCard(
-      `Player ${i - startIndex + 1}`,
-      hero
-        ? `${hero.name}<br>Skill: ${hero.skill}<br>${hero.description || ''}`
-        : "None"
-    );
-  }
-  html += `</div>`;
-
-  // Row 2: WEAPONS
-  html += `<div class="summary-row">`;
-  for (let i = startIndex; i < startIndex + 4; i++) {
-    let wContent = "";
+    let html = "";
+    const ban = draftState.bans[banIndex];
+    html += `<div class="summary-row summary-ban-row">
+      <div class="summary-ban"><strong>BAN</strong><br>${ban ? `${ban.name}<br>${ban.description || ''}` : "None"}</div>
+    </div>`;
+    html += `<div class="summary-row">`;
+    for (let i = startIndex; i < startIndex + 4; i++) {
+      const hero = draftState.picks[i];
+      html += makeCard(
+        `Player ${i - startIndex + 1}`,
+        hero ? `${hero.name}<br>Skill: ${hero.skill}<br>${hero.description || ''}` : "None"
+      );
+    }
+    html += `</div>`;
+    html += `<div class="summary-row">`;
+    for (let i = startIndex; i < startIndex + 4; i++) {
+      let wContent = "";
       draftState.weapons[i].forEach(w => {
         if (w) {
           wContent += `${w.name}<br>Dmg:${w.damage} RoF:${w.rate_of_fire}<br>Rng:${w.range} Mag:${w.magazine_size}<br>`;
@@ -913,46 +512,35 @@ function updateSummary() {
       html += makeCard("Weapons", wContent || "None");
     }
     html += `</div>`;
-
-  // Row 3: PASSIVES
-  html += `<div class="summary-row">`;
-  for (let i = startIndex; i < startIndex + 4; i++) {
-    let pContent = "";
-    draftState.passives[i].forEach(ps => {
-      if (ps)
-        pContent += `${ps.name}<br>Skill: ${ps.skill}<br>${ps.description || ''}<br><br>`;
-    });
-    html += makeCard("Passives", pContent || "None");
+    html += `<div class="summary-row">`;
+    for (let i = startIndex; i < startIndex + 4; i++) {
+      let pContent = "";
+      draftState.passives[i].forEach(ps => {
+        if (ps)
+          pContent += `${ps.name}<br>Skill: ${ps.skill}<br>${ps.description || ''}<br><br>`;
+      });
+      html += makeCard("Passives", pContent || "None");
+    }
+    html += `</div>`;
+    return html;
   }
-  html += `</div>`;
-
-  return html;
-}
 
   function buildTeamSummaryRight(startIndex, banIndex) {
     let html = "";
-
-    // Row 0: BAN full width
     const ban = draftState.bans[banIndex];
     html += `<div class="summary-row summary-ban-row">
       <div class="summary-ban"><strong>BAN</strong><br>${ban ? `${ban.name}<br>${ban.description || ''}` : "None"}</div>
     </div>`;
-
-    // Row 1: ACTIVES (reversed order display, P1-P4 label correct)
     html += `<div class="summary-row">`;
     for (let offset = 3; offset >= 0; offset--) {
       const i = startIndex + offset;
       const hero = draftState.picks[i];
       html += makeCard(
         `Player ${4 - offset}`,
-        hero
-          ? `${hero.name}<br>Skill: ${hero.skill}<br>${hero.description || ''}`
-          : "None"
+        hero ? `${hero.name}<br>Skill: ${hero.skill}<br>${hero.description || ''}` : "None"
       );
     }
     html += `</div>`;
-
-    // Row 2: WEAPONS
     html += `<div class="summary-row">`;
     for (let offset = 3; offset >= 0; offset--) {
       const i = startIndex + offset;
@@ -968,8 +556,6 @@ function updateSummary() {
       html += makeCard("Weapons", wContent || "None");
     }
     html += `</div>`;
-
-    // Row 3: PASSIVES
     html += `<div class="summary-row">`;
     for (let offset = 3; offset >= 0; offset--) {
       const i = startIndex + offset;
@@ -981,7 +567,6 @@ function updateSummary() {
       html += makeCard("Passives", pContent || "None");
     }
     html += `</div>`;
-
     return html;
   }
 
@@ -1060,138 +645,139 @@ async function loadDraftState() {
   }
 }
 
-  async function loadDraftRecord() {
-    const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
-    const matchDate = document.getElementById('matchDate').value;
-    const teamLeft = draftState.teamNames[0];
-    const teamRight = draftState.teamNames[1];
-  
-    if (!matchDate) {
-      alert("⚠️ Please select a match date.");
-      return;
-    }
-  
-    const { data, error } = await client
-      .from('draft_records')
-      .select('state, team_left_score, team_right_score, map')
-      .eq('game_number', gameNumber)
-      .eq('match_date', matchDate)
-      .eq('team_left', teamLeft)
-      .eq('team_right', teamRight)
-      .single();
-  
-    if (error || !data) {
-      console.error("❌ Failed to load draft record:", error);
-      alert(`No saved draft for Game ${gameNumber} on ${matchDate}`);
-    } else {
-      draftState = {
-        ...{
-          bans: [null, null],
-          picks: Array(8).fill(null),
-          passives: Array(8).fill(0).map(() => [null, null, null]),
-          weapons: Array(8).fill(0).map(() => [null, null, null]),
-          teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
-          playerCards: Array(8).fill(''),
-          teamLeftScore: 0,
-          teamRightScore: 0,
-          map: 'Bermuda'
-        },
-        ...data.state
-      };
-  
-      // Update additional fields from outer columns
-      draftState.teamLeftScore = data.team_left_score ?? 0;
-      draftState.teamRightScore = data.team_right_score ?? 0;
-      draftState.map = data.map ?? 'Bermuda';
-  
-      // Update form inputs to reflect the loaded data
-      document.getElementById('teamLeftScore').value = draftState.teamLeftScore;
-      document.getElementById('teamRightScore').value = draftState.teamRightScore;
-      document.getElementById('mapSelect').value = draftState.map;
-  
-      drawDraft();
-      console.log("✅ Draft record loaded.");
-    }
+async function loadDraftRecord() {
+  const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
+  const matchDate = document.getElementById('matchDate').value;
+  const teamLeft = draftState.teamNames[0];
+  const teamRight = draftState.teamNames[1];
+
+  if (!matchDate) {
+    alert("⚠️ Please select a match date.");
+    return;
+  }
+
+  const { data, error } = await client
+    .from('draft_records')
+    .select('state, team_left_score, team_right_score, map')
+    .eq('game_number', gameNumber)
+    .eq('match_date', matchDate)
+    .eq('team_left', teamLeft)
+    .eq('team_right', teamRight)
+    .single();
+
+  if (error || !data) {
+    console.error("❌ Failed to load draft record:", error);
+    alert(`No saved draft for Game ${gameNumber} on ${matchDate}`);
+  } else {
+    draftState = {
+      ...{
+        bans: [null, null],
+        picks: Array(8).fill(null),
+        passives: Array(8).fill(0).map(() => [null, null, null]),
+        weapons: Array(8).fill(0).map(() => [null, null, null]),
+        teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
+        playerCards: Array(8).fill(''),
+        teamLeftScore: 0,
+        teamRightScore: 0,
+        map: 'Bermuda'
+      },
+      ...data.state
+    };
+
+    draftState.teamLeftScore = data.team_left_score ?? 0;
+    draftState.teamRightScore = data.team_right_score ?? 0;
+    draftState.map = data.map ?? 'Bermuda';
+
+    document.getElementById('teamLeftScore').value = draftState.teamLeftScore;
+    document.getElementById('teamRightScore').value = draftState.teamRightScore;
+    document.getElementById('mapSelect').value = draftState.map;
+
+    drawDraft();
+    console.log("✅ Draft record loaded.");
+  }
+};
+
+async function saveOrUpdateDraft() {
+  const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
+  const teamLeft = draftState.teamNames[0];
+  const teamRight = draftState.teamNames[1];
+  const matchDate = document.getElementById('matchDate').value;
+  const teamLeftScore = parseInt(document.getElementById('teamLeftScore').value || '0', 10);
+  const teamRightScore = parseInt(document.getElementById('teamRightScore').value || '0', 10);
+  const map = document.getElementById('mapSelect').value;
+
+  if (!matchDate) {
+    alert("⚠️ Please select a match date.");
+    return;
+  }
+
+  console.log("🔍 Checking for existing draft...");
+  const { data, error: fetchError } = await client
+    .from('draft_records')
+    .select('id')
+    .eq('game_number', gameNumber)
+    .eq('team_left', teamLeft)
+    .eq('team_right', teamRight)
+    .eq('match_date', matchDate)
+    .single();
+
+  if (fetchError && fetchError.code !== 'PGRST116') {
+    alert("❌ Error checking existing draft: " + (fetchError.message || 'Unknown error'));
+    console.error(fetchError);
+    return;
+  }
+
+  const payload = {
+    game_number: gameNumber,
+    team_left: teamLeft,
+    team_right: teamRight,
+    match_date: matchDate,
+    team_left_score: teamLeftScore,
+    team_right_score: teamRightScore,
+    map: map,
+    state: draftState,
+    updated_at: new Date().toISOString()
+    // NOTE: if you want to save tournament_name from here, add it to payload and UI.
   };
 
-  async function saveOrUpdateDraft() {
-    const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
-    const teamLeft = draftState.teamNames[0];
-    const teamRight = draftState.teamNames[1];
-    const matchDate = document.getElementById('matchDate').value;
-    const teamLeftScore = parseInt(document.getElementById('teamLeftScore').value || '0', 10);
-    const teamRightScore = parseInt(document.getElementById('teamRightScore').value || '0', 10);
-    const map = document.getElementById('mapSelect').value;
-  
-    if (!matchDate) {
-      alert("⚠️ Please select a match date.");
-      return;
-    }
-  
-    console.log("🔍 Checking for existing draft...");
-    const { data, error: fetchError } = await client
-      .from('draft_records')
-      .select('id')
-      .eq('game_number', gameNumber)
-      .eq('team_left', teamLeft)
-      .eq('team_right', teamRight)
-      .eq('match_date', matchDate)
-      .single();
-  
-    if (fetchError && fetchError.code !== 'PGRST116') {
-      alert("❌ Error checking existing draft: " + (fetchError.message || 'Unknown error'));
-      console.error(fetchError);
-      return;
-    }
-  
-    const payload = {
-      game_number: gameNumber,
-      team_left: teamLeft,
-      team_right: teamRight,
-      match_date: matchDate,
-      team_left_score: teamLeftScore,
-      team_right_score: teamRightScore,
-      map: map,
-      state: draftState,
-      updated_at: new Date().toISOString()
-    };
-  
-    console.log("📦 Payload:", payload);
-  
-    if (!data) {
-      console.log("📝 Inserting new draft record...");
-      const { error: insertError } = await client.from('draft_records').insert(payload);
-      if (insertError) {
-        alert("❌ Failed to save draft:\n" + insertError.message);
-        console.error("Insert Error:", insertError);
-      } else {
-        alert("✅ Draft saved.");
-      }
+  console.log("📦 Payload:", payload);
+
+  if (!data) {
+    console.log("📝 Inserting new draft record...");
+    const { error: insertError } = await client.from('draft_records').insert(payload);
+    if (insertError) {
+      alert("❌ Failed to save draft:\n" + insertError.message);
+      console.error("Insert Error:", insertError);
     } else {
-      console.log("🔁 Updating existing draft record (id =", data.id, ")...");
-      const { error: updateError } = await client.from('draft_records')
-        .update(payload)
-        .eq('id', data.id);
-      if (updateError) {
-        alert("❌ Failed to update draft:\n" + updateError.message);
-        console.error("Update Error:", updateError);
-      } else {
-        alert("✅ Draft updated.");
-      }
+      alert("✅ Draft saved.");
     }
-  };
+  } else {
+    console.log("🔁 Updating existing draft record (id =", data.id, ")...");
+    const { error: updateError } = await client.from('draft_records')
+      .update(payload)
+      .eq('id', data.id);
+    if (updateError) {
+      alert("❌ Failed to update draft:\n" + updateError.message);
+      console.error("Update Error:", updateError);
+    } else {
+      alert("✅ Draft updated.");
+    }
+  }
+};
 
 function toggleTeamFilterMode() {
   const filter = document.getElementById('teamFilter');
+  const selected = Array.from(filter.selectedOptions).map(o => o.value);
   const isMulti = document.getElementById('multiToggle').checked;
   filter.multiple = isMulti;
-  filter.selectedIndex = -1;
+  // reapply previous selections where possible
+  Array.from(filter.options).forEach(o => { o.selected = selected.includes(o.value); });
 }
 
 async function loadAllDraftRecords() {
   const { data, error } = await client
     .from('draft_records')
-    .select('id, match_date, game_number, team_left, team_right, team_left_score, team_right_score, map')
+    .select('id, match_date, game_number, team_left, team_right, team_left_score, team_right_score, map, tournament_name')
     .order('match_date', { ascending: false })
     .order('id', { ascending: false });
 
@@ -1201,60 +787,119 @@ async function loadAllDraftRecords() {
   }
 
   const filterSelect = document.getElementById('teamFilter');
-  const isMulti = filterSelect.multiple;
+  const teamCountSelect = document.getElementById('teamCountSelect');
+  const tournamentFilter = document.getElementById('tournamentFilter');
+  const countTournamentSelect = document.getElementById('countTournamentSelect');
+
+  // preserve selections
   const selectedTeams = Array.from(filterSelect.selectedOptions).map(opt => opt.value.toLowerCase());
+  const prevTournamentHistory = tournamentFilter.value || '__ALL__';
+  const prevTournamentCounts  = countTournamentSelect.value || '__ALL__';
 
   const table = document.getElementById('recordBody');
   table.innerHTML = '';
 
   const allTeams = new Set();
-
+  const allTournaments = new Set();
   const matchedRecords = [];
 
-data.forEach(record => {
-  allTeams.add(record.team_left);
-  allTeams.add(record.team_right);
+  // Build sets
+  data.forEach(record => {
+    allTeams.add(record.team_left);
+    allTeams.add(record.team_right);
+    if (record.tournament_name) allTournaments.add(record.tournament_name);
+  });
 
-  const matchTeam =
-    selectedTeams.length === 0 ||
-    selectedTeams.includes(record.team_left.toLowerCase()) ||
-    selectedTeams.includes(record.team_right.toLowerCase());
+  // Populate team filters (history + counts)
+  // History team filter supports multi-select
+  const prevSelectedTeams = new Set(selectedTeams);
+  const prevTeamCount = teamCountSelect.value || '__ALL__';
 
-  if (!matchTeam) return;
+  // Rebuild history team filter
+  filterSelect.innerHTML = '';
+  Array.from(allTeams).sort().forEach(team => {
+    const option1 = document.createElement('option');
+    option1.value = team;
+    option1.textContent = team;
+    if (prevSelectedTeams.has(team.toLowerCase())) option1.selected = true;
+    filterSelect.appendChild(option1);
+  });
 
-  matchedRecords.push(record); // Store filtered records
+  // Rebuild counts team dropdown
+  teamCountSelect.innerHTML = '';
+  const allOpt = document.createElement('option');
+  allOpt.value = '__ALL__';
+  allOpt.textContent = 'All teams';
+  teamCountSelect.appendChild(allOpt);
+  Array.from(allTeams).sort().forEach(team => {
+    const option2 = document.createElement('option');
+    option2.value = team;
+    option2.textContent = team;
+    teamCountSelect.appendChild(option2);
+  });
+  teamCountSelect.value = prevTeamCount || '__ALL__';
 
-  const isLeftWinner = record.team_left_score === 6;
-  const isRightWinner = record.team_right_score === 6;
+  // Populate tournament selects (history + counts)
+  const tournamentsSorted = ['__ALL__', ...Array.from(allTournaments).sort()];
 
-  const row = document.createElement('tr');
-  row.innerHTML = `
-    <td style="padding: 6px;">${record.match_date}</td>
-    <td style="padding: 6px;">Game ${record.game_number}</td>
-    <td style="padding: 6px; text-align: left;">${record.team_left} ${isLeftWinner ? '🏆' : ''}</td>
-    <td style="padding: 6px;">${record.team_left_score ?? '-'}</td>
-    <td style="padding: 6px; text-align: left;">${record.team_right} ${isRightWinner ? '🏆' : ''}</td>
-    <td style="padding: 6px;">${record.team_right_score ?? '-'}</td>
-    <td style="padding: 6px;">${record.map ?? '-'}</td>
-    <td style="padding: 6px;">
-      <button onclick="loadSpecificDraft(${record.id})">Load</button>
-    </td>
-  `;
-  table.appendChild(row);
-});
+  // History tournament
+  tournamentFilter.innerHTML = '';
+  tournamentsSorted.forEach(tn => {
+    const o = document.createElement('option');
+    o.value = tn;
+    o.textContent = (tn === '__ALL__') ? 'All tournaments' : tn;
+    tournamentFilter.appendChild(o);
+  });
+  tournamentFilter.value = prevTournamentHistory || '__ALL__';
 
-renderDraftCardSummaries(matchedRecords);
+  // Counts tournament
+  countTournamentSelect.innerHTML = '';
+  tournamentsSorted.forEach(tn => {
+    const o2 = document.createElement('option');
+    o2.value = tn;
+    o2.textContent = (tn === '__ALL__') ? 'All tournaments' : tn;
+    countTournamentSelect.appendChild(o2);
+  });
+  countTournamentSelect.value = prevTournamentCounts || '__ALL__';
 
-  // Populate filter options if empty
-  if (filterSelect.options.length <= 1) {
-    Array.from(allTeams).sort().forEach(team => {
-      const option = document.createElement('option');
-      option.value = team;
-      option.textContent = team;
-      filterSelect.appendChild(option);
-    });
-  }
-    renderDraftCardSummaries(matchedRecords);
+  // Apply filters
+  const selectedTournament = tournamentFilter.value || '__ALL__';
+
+  data.forEach(record => {
+    const matchTeam =
+      selectedTeams.length === 0 ||
+      selectedTeams.includes(record.team_left.toLowerCase()) ||
+      selectedTeams.includes(record.team_right.toLowerCase());
+
+    const matchTournament =
+      selectedTournament === '__ALL__' ||
+      record.tournament_name === selectedTournament;
+
+    if (!matchTeam || !matchTournament) return;
+
+    matchedRecords.push(record);
+
+    const isLeftWinner = record.team_left_score === 6;
+    const isRightWinner = record.team_right_score === 6;
+
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td style="padding: 6px;">${record.match_date}</td>
+      <td style="padding: 6px;">Game ${record.game_number}</td>
+      <td style="padding: 6px; text-align: left;">${record.team_left} ${isLeftWinner ? '🏆' : ''}</td>
+      <td style="padding: 6px;">${record.team_left_score ?? '-'}</td>
+      <td style="padding: 6px; text-align: left;">${record.team_right} ${isRightWinner ? '🏆' : ''}</td>
+      <td style="padding: 6px;">${record.team_right_score ?? '-'}</td>
+      <td style="padding: 6px;">${record.map ?? '-'}</td>
+      <td style="padding: 6px;">${record.tournament_name ?? '-'}</td>
+      <td style="padding: 6px;">
+        <button onclick="loadSpecificDraft(${record.id})">Load</button>
+      </td>
+    `;
+    table.appendChild(row);
+  });
+
+  renderDraftCardSummaries(matchedRecords);
 }
 
 async function loadSpecificDraft(id) {
@@ -1292,7 +937,6 @@ async function loadSpecificDraft(id) {
   draftState.matchDate = data.match_date;
   draftState.gameNumber = data.game_number;
 
-  // Update the form fields visually
   document.getElementById('matchDate').value = draftState.matchDate;
   document.getElementById('gameNumberSelect').value = draftState.gameNumber;
   document.getElementById('teamLeftScore').value = draftState.teamLeftScore;
@@ -1308,8 +952,6 @@ function renderDraftCardSummaries(data) {
   container.innerHTML = '';
 
   const teamMap = {};
-
-  // Group records by team
   data.forEach(record => {
     [record.team_left, record.team_right].forEach(team => {
       if (!teamMap[team]) teamMap[team] = [];
@@ -1345,9 +987,10 @@ function renderDraftCardSummaries(data) {
       meta.style.paddingBottom = '4px';
       meta.innerHTML = `
         📅 ${r.match_date} | 🎮 Game ${r.game_number} | 🗺️ ${r.map}<br>
+        🏆 ${r.tournament_name ?? '—'}<br>
         🆚 ${r.team_left} ${r.team_left_score ?? '-'} - ${r.team_right_score ?? '-'} ${r.team_right}
       `;
-      teamCard.appendChild(meta); // ✅ FIXED HERE
+      teamCard.appendChild(meta);
 
       const draft = r.state;
       if (draft && draft.picks) {
@@ -1383,7 +1026,6 @@ function renderDraftCardSummaries(data) {
             <div style="color:#6cf;">${heroSkill}</div>
           `;
 
-          // Add passives below
           passives.forEach(ps => {
             if (ps) {
               const psLine = document.createElement('div');
@@ -1414,7 +1056,7 @@ function renderDraftCardSummaries(data) {
           playerGrid.appendChild(pCard);
         });
 
-        teamCard.appendChild(playerGrid); // ✅ FIXED HERE
+        teamCard.appendChild(playerGrid);
       }
     });
 
@@ -1422,7 +1064,140 @@ function renderDraftCardSummaries(data) {
   });
 }
 
+/* ===== Team pick/ban counts logic ===== */
+async function computeTeamPickBanCounts() {
+  const team = document.getElementById('teamCountSelect').value;
+  const tourn = (document.getElementById('countTournamentSelect')?.value) || '__ALL__';
+  const from = document.getElementById('countFrom').value;
+  const to = document.getElementById('countTo').value;
 
+  if (!team) { alert('Please choose a team.'); return; }
+  if (!from || !to) { alert('Please set a From and To date.'); return; }
+
+  // Fetch only the necessary columns including the full state
+  let query = client
+    .from('draft_records')
+    .select('team_left, team_right, match_date, state, tournament_name')
+    .gte('match_date', from)
+    .lte('match_date', to);
+
+  if (team !== '__ALL__') {
+    query = query.or(`team_left.eq.${team},team_right.eq.${team}`);
+  }
+  if (tourn !== '__ALL__') {
+    query = query.eq('tournament_name', tourn);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('❌ Failed to fetch for counts:', error);
+    alert('Failed to fetch records for the selected range.');
+    return;
+  }
+
+  let totalMatches = 0;
+  let totalPicks = 0;
+  let totalBans = 0;
+  const pickCounts = new Map(); // skillName -> count
+  const banCounts = new Map();
+
+  data.forEach(r => {
+    const s = r.state || {};
+    const picks = s.picks || [];
+    const bans = s.bans || [];
+
+    if (team === '__ALL__') {
+      totalMatches += 1;
+
+      // Count picks from both sides (all 8 indices)
+      [0,1,2,3,4,5,6,7].forEach(i => {
+        const hero = picks[i];
+        const name = hero?.name;
+        if (name) {
+          pickCounts.set(name, (pickCounts.get(name) || 0) + 1);
+          totalPicks += 1;
+        }
+      });
+
+      // Count both bans if present
+      [0,1].forEach(bi => {
+        const b = bans[bi];
+        const bName = b?.name;
+        if (bName) {
+          banCounts.set(bName, (banCounts.get(bName) || 0) + 1);
+          totalBans += 1;
+        }
+      });
+    } else {
+      // Specific team path
+      const isLeft = r.team_left === team;
+      const isRight = r.team_right === team;
+      if (!isLeft && !isRight) return;
+
+      totalMatches += 1;
+
+      // Count picks (four indices depending on side)
+      const idx = isLeft ? [0,1,2,3] : [4,5,6,7];
+      idx.forEach(i => {
+        const hero = picks[i];
+        const skillName = hero?.name || null;
+        if (skillName) {
+          pickCounts.set(skillName, (pickCounts.get(skillName) || 0) + 1);
+          totalPicks += 1;
+        }
+      });
+
+      // Count bans (left team uses bans[0], right team uses bans[1])
+      const banHero = bans[isLeft ? 0 : 1];
+      const banName = banHero?.name || null;
+      if (banName) {
+        banCounts.set(banName, (banCounts.get(banName) || 0) + 1);
+        totalBans += 1;
+      }
+    }
+  });
+
+  const teamLabel = (team === '__ALL__') ? 'All teams' : team;
+  const tournLabel = (tourn === '__ALL__') ? 'All tournaments' : tourn;
+
+  // Update meta and totals
+  document.getElementById('teamPBMeta').textContent =
+    `Team: ${teamLabel} • Tournament: ${tournLabel} • Range: ${from} → ${to} • Matches: ${totalMatches}`;
+
+  const totalsEl = document.getElementById('teamPBTotals');
+  totalsEl.innerHTML =
+    (totalMatches === 0)
+      ? 'No matches in range.'
+      : `<div><b>Total Picks:</b> ${totalPicks}</div>
+         <div><b>Total Bans:</b> ${totalBans}</div>`;
+
+  // Render breakdown tables
+  const pickBody = document.getElementById('teamPickBreakdown');
+  const banBody = document.getElementById('teamBanBreakdown');
+  pickBody.innerHTML = '';
+  banBody.innerHTML = '';
+
+  [...pickCounts.entries()]
+    .sort((a,b) => b[1] - a[1])
+    .forEach(([name, count]) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${name}</td><td>${count}</td>`;
+      pickBody.appendChild(tr);
+    });
+
+  [...banCounts.entries()]
+    .sort((a,b) => b[1] - a[1])
+    .forEach(([name, count]) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${name}</td><td>${count}</td>`;
+      banBody.appendChild(tr);
+    });
+
+  if (totalMatches === 0) {
+    document.getElementById('teamPBTotals').innerHTML = 'No matches in range.';
+  }
+}
 </script>
 </body>
 </html>
