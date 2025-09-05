@@ -36,8 +36,24 @@
     .wl{font-weight:700;padding:2px 8px;border-radius:999px;display:inline-block}
     .wl.W{background:#193e2b;color:var(--good);border:1px solid #245b3e}
     .wl.L{background:#401e1e;color:var(--bad);border:1px solid #6b2c2c}
-    .tag{display:inline-block;border:1px solid #3b3b3b;border-radius:6px;padding:2px 6px;margin:1px 4px 1px 0;background:#151515;color:#ddd;font-size:.85rem}
-    .tight{line-height:1.25}
+
+    /* Player mini-cards with images in Per-Match rows */
+    .playersWrap{display:flex;flex-wrap:wrap;gap:8px}
+    .pCard{
+      display:inline-flex;align-items:center;gap:8px;
+      background:#141414;border:1px solid #2a2a2a;border-radius:10px;
+      padding:6px 8px;min-width:220px;max-width:260px
+    }
+    .pAct{
+      width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid #333;background:#0f0f0f
+    }
+    .pStack{display:flex;flex-direction:column;gap:3px}
+    .pStack img{
+      width:16px;height:16px;object-fit:cover;border-radius:3px;border:1px solid #333;background:#0f0f0f
+    }
+    .pInfo{display:flex;flex-direction:column;line-height:1.2}
+    .pName{font-weight:700;font-size:.92rem}
+    .pHero{font-size:.86rem;color:#d8d8d8}
 
     .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
     .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px}
@@ -47,7 +63,7 @@
     .sum-table{width:100%;border-collapse:collapse;font-size:.92rem}
     .sum-table th,.sum-table td{border-bottom:1px solid #2a2a2a;padding:6px 6px}
     .right{text-align:right}
-    .nowrap{white-space:nowrap}
+    .tight{line-height:1.25}
     .caption{margin:4px 0 10px 0}
   </style>
 </head>
@@ -111,8 +127,7 @@
             <th>Score</th>
             <th>Result</th>
             <th>Ban</th>
-            <th>Actives (with Player)</th>
-            <th>Passives (by Player)</th>
+            <th>Players (Active + 3×Passive)</th>
           </tr>
         </thead>
         <tbody id="rowsBody"></tbody>
@@ -195,6 +210,7 @@ document.getElementById('logoutBtn').onclick = async () => {
 };
 
 /* ========= Utilities ========= */
+const PLACEHOLDER = 'https://imgur.com/AdvPwAO.png';
 const fmtPct = (num) => isFinite(num) ? (num*100).toFixed(1) + '%' : '—';
 const pct = (num, den) => den ? fmtPct(num/den) : '—';
 const safe = (v, d='') => (v===null||v===undefined)?d:v;
@@ -219,7 +235,6 @@ const el = (id) => document.getElementById(id);
   el('fTo').value = ymd(today);
   el('fMap').value = '__ALL__';
   el('fWL').value = '__ALL__';
-  // team list filled after first fetch
 })();
 
 /* ========= Fetch & build ========= */
@@ -238,7 +253,6 @@ async function fetchRecords(){
 
   if (map !== '__ALL__') q = q.eq('map', map);
   if (team && team !== '__ALL__') {
-    // include if team appears on either side
     q = q.or(`team_left.eq.${team},team_right.eq.${team}`);
   }
 
@@ -265,7 +279,7 @@ function populateTeamDropdown(records){
   dd.value = prior || '__ALL__';
 }
 
-/* Build per-team rows from a record */
+/* Build per-team rows from a record; include image URLs */
 function explodeRecordToRows(rec){
   const s = rec.state || {};
   const picks = s.picks || [];
@@ -276,7 +290,6 @@ function explodeRecordToRows(rec){
   const leftWin = (rec.team_left_score ?? 0) > (rec.team_right_score ?? 0);
   const rightWin = (rec.team_right_score ?? 0) > (rec.team_left_score ?? 0);
 
-  // helpers to collect a side
   function sideRow(side){
     const isLeft = side==='L';
     const team   = isLeft ? rec.team_left : rec.team_right;
@@ -284,21 +297,27 @@ function explodeRecordToRows(rec){
     const tScore = isLeft ? rec.team_left_score : rec.team_right_score;
     const oScore = isLeft ? rec.team_right_score : rec.team_left_score;
     const res    = (isLeft ? leftWin : rightWin) ? 'W' : 'L';
-    const ban    = (bans[ isLeft ? 0 : 1 ])?.name || '';
+    const banObj = bans[ isLeft ? 0 : 1 ];
+    const ban    = banObj?.name || '';
+    const banImg = banObj?.image_url || '';
 
-    // indices for players P1..P4 for this side
     const idx = isLeft ? [0,1,2,3] : [7,6,5,4];
 
     const actives = idx.map((i, k) => {
       const player = (names[i] && String(names[i]).trim()) ? names[i].trim() : `P${k+1}`;
-      const hero   = safe(picks[i]?.name,'');
-      return { player, hero };
+      const heroObj= picks[i] || null;
+      return { player, hero: heroObj?.name || '', heroImg: heroObj?.image_url || PLACEHOLDER };
     });
 
     const passiveLines = idx.map((i, k) => {
       const player = (names[i] && String(names[i]).trim()) ? names[i].trim() : `P${k+1}`;
-      const trio = (passives[i] || []).map(ps => ps?.name).filter(Boolean);
-      return { player, names: trio };
+      const trioObjs = (passives[i] || []).filter(Boolean).map(ps => ({
+        name: ps?.name || '',
+        img : ps?.image_url || PLACEHOLDER
+      }));
+      // Ensure up to 3 spots (pad with blanks for consistent stack)
+      while (trioObjs.length < 3) trioObjs.push({name:'', img: PLACEHOLDER});
+      return { player, trio: trioObjs.slice(0,3) };
     });
 
     return {
@@ -311,8 +330,9 @@ function explodeRecordToRows(rec){
       opp_score: oScore ?? 0,
       result: res,
       banName: ban,
-      actives,          // [{player, hero}]
-      passives: passiveLines // [{player, names:[...]}]
+      banImg,
+      actives,          // [{player, hero, heroImg}]
+      passives: passiveLines // [{player, trio:[{name,img}×3]}]
     };
   }
 
@@ -324,13 +344,30 @@ function applyRowFilters(allRows){
   const team = el('fTeam').value || '__ALL__';
   let rows = allRows.slice();
 
-  if (team !== '__ALL__') {
-    rows = rows.filter(r => r.team === team);
-  }
-  if (wl !== '__ALL__') {
-    rows = rows.filter(r => r.result === wl);
-  }
+  if (team !== '__ALL__') rows = rows.filter(r => r.team === team);
+  if (wl !== '__ALL__') rows = rows.filter(r => r.result === wl);
   return rows;
+}
+
+/* Build the player card HTML with images */
+function playerCardHTML(player, heroName, heroImg, trio){
+  const passHTML = (trio || []).slice(0,3).map(ps => {
+    const src = ps?.img || PLACEHOLDER;
+    return `<img src="${src}" alt="" loading="lazy">`;
+  }).join('');
+  const img = heroImg || PLACEHOLDER;
+  const hero = heroName || '—';
+  const p = player || '';
+  return `
+    <div class="pCard">
+      <img class="pAct" src="${img}" alt="${hero}" loading="lazy">
+      <div class="pStack">${passHTML}</div>
+      <div class="pInfo">
+        <div class="pName">${p}</div>
+        <div class="pHero">${hero}</div>
+      </div>
+    </div>
+  `;
 }
 
 function renderRows(rows){
@@ -338,7 +375,7 @@ function renderRows(rows){
   body.innerHTML = '';
   if (!rows.length){
     const tr=document.createElement('tr');
-    const td=document.createElement('td'); td.colSpan=10; td.className='muted'; td.textContent='No rows for your selection.';
+    const td=document.createElement('td'); td.colSpan=9; td.className='muted'; td.textContent='No rows for your selection.';
     tr.appendChild(td); body.appendChild(tr); return;
   }
 
@@ -352,33 +389,36 @@ function renderRows(rows){
     const tdOpp  = `<td>${r.opponent}</td>`;
     const tdScore= `<td>${r.team_score} - ${r.opp_score}</td>`;
     const tdRes  = `<td><span class="wl ${r.result}">${r.result}</span></td>`;
-    const tdBan  = `<td>${r.banName || '—'}</td>`;
 
-    const activeStr = r.actives.map(a => a.hero ? `<span class="tag">${a.player}: ${a.hero}</span>` : '').join(' ');
-    const passiveStr= r.passives.map(p => {
-      const list = (p.names && p.names.length) ? p.names.join(', ') : '—';
-      return `<div class="tag nowrap">${p.player}: ${list}</div>`;
-    }).join(' ');
+    const banImg = r.banImg || PLACEHOLDER;
+    const banTxt = r.banName || '—';
+    const tdBan  = `<td><div style="display:flex;align-items:center;gap:6px;">
+                      <img src="${banImg}" alt="${banTxt}" style="width:28px;height:28px;border-radius:6px;border:1px solid #333;background:#0f0f0f" loading="lazy">
+                      <span>${banTxt}</span>
+                    </div></td>`;
 
-    const tdAct = `<td>${activeStr || '—'}</td>`;
-    const tdPas = `<td>${passiveStr || '—'}</td>`;
+    // Build player cards, aligning actives with their matching passives by player
+    const byPlayer = r.actives.map(a => {
+      const p = r.passives.find(pp => pp.player === a.player) || { trio: [] };
+      return playerCardHTML(a.player, a.hero, a.heroImg, p.trio);
+    }).join('');
 
-    tr.innerHTML = tdDate + tdGame + tdMap + tdTeam + tdOpp + tdScore + tdRes + tdBan + tdAct + tdPas;
+    const tdPlayers = `<td><div class="playersWrap">${byPlayer}</div></td>`;
+
+    tr.innerHTML = tdDate + tdGame + tdMap + tdTeam + tdOpp + tdScore + tdRes + tdBan + tdPlayers;
     body.appendChild(tr);
   });
 }
 
+/* ===== Summary (unchanged logic, still sortable per player/team) ===== */
 function buildBuckets(groupBy, kind){
-  // buckets: key -> { name, matches, wins, skills: Map(skill -> {occ, appear, appearWins}) }
   const buckets = new Map();
   CURRENT_ROWS.forEach(r => {
-    // Which groups?
     let keys = [];
     if (groupBy === 'team'){
       keys = [r.team];
-    } else { // player
-      keys = r.actives.map(a => a.player); // players present even if hero empty
-      keys = uniq(keys).filter(Boolean);
+    } else {
+      keys = uniq(r.actives.map(a => a.player)).filter(Boolean);
     }
     keys.forEach(key => {
       if (!buckets.has(key)){
@@ -388,36 +428,31 @@ function buildBuckets(groupBy, kind){
       B.matches += 1;
       if (r.result === 'W') B.wins += 1;
 
-      // collect subject appearances in this row
       if (kind === 'active'){
         r.actives.forEach(a => {
-          if (groupBy==='player' && a.player !== key) return; // only that player's picks
+          if (groupBy==='player' && a.player !== key) return;
           const name = a.hero;
           if (!name) return;
           const S = B.skills.get(name) || { occ:0, appear:0, appearWins:0 };
-          S.occ += 1;     // raw count events
-          S.appear += 1;  // per-row increments same as occ here
-          if (r.result === 'W') S.appearWins += 1;
+          S.occ += 1; S.appear += 1; if (r.result === 'W') S.appearWins += 1;
           B.skills.set(name, S);
         });
       } else if (kind === 'passive'){
         r.passives.forEach(p => {
           if (groupBy==='player' && p.player !== key) return;
-          (p.names || []).forEach(nm => {
-            const S = B.skills.get(nm) || { occ:0, appear:0, appearWins:0 };
-            S.occ += 1;
-            S.appear += 1;
-            if (r.result === 'W') S.appearWins += 1;
-            B.skills.set(nm, S);
+          (p.trio || []).forEach(nm => {
+            const name = nm?.name || '';
+            if (!name) return;
+            const S = B.skills.get(name) || { occ:0, appear:0, appearWins:0 };
+            S.occ += 1; S.appear += 1; if (r.result === 'W') S.appearWins += 1;
+            B.skills.set(name, S);
           });
         });
-      } else { // ban
+      } else {
         const nm = r.banName;
         if (!nm) return;
         const S = B.skills.get(nm) || { occ:0, appear:0, appearWins:0 };
-        S.occ += 1;
-        S.appear += 1;
-        if (r.result === 'W') S.appearWins += 1;
+        S.occ += 1; S.appear += 1; if (r.result === 'W') S.appearWins += 1;
         B.skills.set(nm, S);
       }
     });
@@ -440,13 +475,11 @@ function renderSummary(buckets, groupBy, kind){
     return;
   }
 
-  // read sort choices
-  const cardSort  = el('sumCardSort').value;   // subjectAppear|subjectRate|subjectWinrate|matches|wins|winpct|name
-  const cardDir   = el('sumCardDir').value;    // asc|desc
-  const skillSort = el('sumSkillSort').value;  // appearRate|count|winrate|name
-  const skillDir  = el('sumSkillDir').value;   // asc|desc
+  const cardSort  = el('sumCardSort').value;
+  const cardDir   = el('sumCardDir').value;
+  const skillSort = el('sumSkillSort').value;
+  const skillDir  = el('sumSkillDir').value;
 
-  // add subject totals to each bucket to enable subject sorting
   const ordered = [...buckets.values()].map(b => {
     const subj = [...b.skills.values()].reduce((acc, s) => {
       acc.appear     += (s.appear || 0);
@@ -460,7 +493,6 @@ function renderSummary(buckets, groupBy, kind){
     return b;
   });
 
-  // card comparator
   const cardCmp = (a, b) => {
     let A,B;
     if (cardSort==='name'){ A=a.name?.toLowerCase()||''; B=b.name?.toLowerCase()||''; }
@@ -479,7 +511,6 @@ function renderSummary(buckets, groupBy, kind){
 
   const cards = [];
   ordered.forEach(b => {
-    // build + sort skills
     let skills = [...b.skills.entries()].map(([name, s]) => {
       const appearRate = b.matches ? (s.appear / b.matches) : 0;
       const winRate    = s.appear ? (s.appearWins / s.appear) : 0;
@@ -499,9 +530,6 @@ function renderSummary(buckets, groupBy, kind){
       return 0;
     };
     skills.sort(skillCmp);
-
-    const headLine = `Matches: ${b.matches} • Wins: ${b.wins} (${pct(b.wins,b.matches)})`;
-    const subjLine = `${(kind==='ban'?'Bans':'Picks')} — Appear: ${b._subj.appear} • Rate: ${pct(b._subj.appear,b.matches)} • Win: ${pct(b._subj.appearWins,b._subj.appear)}`;
 
     const table = skills.length
       ? `<table class="sum-table">
@@ -527,7 +555,6 @@ function renderSummary(buckets, groupBy, kind){
           <div class="kpi">${(kind==='ban'?'Bans':'Picks')} <strong>${b._subj.appear}</strong> <span class="muted">(${pct(b._subj.appear,b.matches)})</span></div>
           <div class="kpi">When Appeared: <strong>${pct(b._subj.appearWins,b._subj.appear)}</strong></div>
         </div>
-        <div class="muted" style="margin-bottom:6px">${subjLine}</div>
         ${table}
       </div>
     `);
@@ -540,20 +567,17 @@ function renderSummary(buckets, groupBy, kind){
 async function refresh(){
   RAW_RECORDS = await fetchRecords();
 
-  // filter meta + populate teams
   populateTeamDropdown(RAW_RECORDS);
 
   const teamSel = el('fTeam').value || '__ALL__';
   el('filterMeta').textContent =
     `Loaded ${RAW_RECORDS.length} matches • Team: ${teamSel==='__ALL__'?'All teams':teamSel} • Map: ${el('fMap').value}`;
 
-  // explode into per-team rows
   const exploded = RAW_RECORDS.flatMap(explodeRecordToRows);
   CURRENT_ROWS = applyRowFilters(exploded);
 
   renderRows(CURRENT_ROWS);
 
-  // summary defaults
   const groupBy = el('sumGroupBy').value;
   const kind    = el('sumKind').value;
   const buckets = buildBuckets(groupBy, kind);
