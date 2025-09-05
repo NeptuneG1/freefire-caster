@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Clash Squad — Skills per Match (with Images)</title>
+  <title>Clash Squad — Skills per Match + Summary</title>
 
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -58,14 +58,14 @@
     a.btn { text-decoration: none; display: inline-block; }
     main { width: 95%; max-width: 1400px; margin: 18px auto 60px; }
 
+    .toolbar { margin: 12px 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .toolbar .count { color: var(--muted); font-size: 13px; }
+
     .filters { background: var(--panel); border: 1px solid var(--b); border-radius: 10px; padding: 12px; display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 10px; }
     .filters label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--muted); }
     .filters input[type="date"], .filters select { background: #2a2a2a; color: var(--gold); border: 1px solid var(--b); border-radius: 6px; padding: 8px; }
     .filters .row { grid-column: 1/-1; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     .filters .pill { padding: 6px 8px; border: 1px dashed var(--b); border-radius: 6px; font-size: 12px; color: var(--muted); }
-
-    .toolbar { margin: 12px 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-    .toolbar .count { color: var(--muted); font-size: 13px; }
 
     .table-wrap { background: var(--panel); border: 1px solid var(--b); border-radius: 10px; overflow: hidden; }
     table { width: 100%; border-collapse: collapse; }
@@ -76,21 +76,36 @@
     .win { background: #1d3f2a; color: #39d27d; border: 1px solid #2d6b47; }
     .loss { background: #3f1d1d; color: #ff8c8c; border: 1px solid #6b2d2d; }
     .ban { background: #2a2a2a; color: #f3cccc; border: 1px solid #533; }
+    .ban-img { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #333; background:#222; object-fit: cover; }
 
     .players { display: grid; grid-template-columns: repeat(4, minmax(140px,1fr)); gap: 8px; }
     .pbox { padding: 8px; background: #151515; border: 1px solid #2a2a2a; border-radius: 8px; }
     .pbox .p { color: var(--muted-2); font-size: 11px; margin-bottom: 4px; }
     .pbox .a { font-size: 12.5px; color: #fff; font-weight: 600; display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-    .pbox .pn { color: #cfd8dc; font-size: 11.5px; margin: 2px 0 6px; }  /* <-- added */
+    .pbox .pn { color: #cfd8dc; font-size: 11.5px; margin: 2px 0 6px; }
     .hero-img { width: 42px; height: 42px; border-radius: 6px; object-fit: cover; background: #222; border: 1px solid #333; }
-    .ban-img { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #333; background:#222; object-fit: cover; }
     .passive-list { display: flex; flex-wrap: wrap; gap: 6px; }
     .passive-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 6px; border: 1px solid #2a2a2a; border-radius: 999px; background: #101010; color: #bbb; }
     .passive-chip img { width: 14px; height: 14px; border-radius: 3px; object-fit: cover; background:#222; border: 1px solid #333; }
 
     .caps { text-transform: uppercase; letter-spacing: .4px; font-weight: 700; color: var(--muted); font-size: 11px; }
-
     .empty { text-align: center; padding: 30px; color: var(--muted); }
+
+    /* ===== Summary section ===== */
+    .sum-wrap { margin-top: 20px; }
+    .sum-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+    .sum-head h2 { margin: 0; color: var(--gold); }
+    .sum-controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .sum-controls select { background: #2a2a2a; color: var(--gold); border: 1px solid var(--b); border-radius: 6px; padding: 8px; }
+    .sum-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(320px,1fr)); gap: 12px; margin-top: 12px; }
+    .sum-card { background: var(--panel); border: 1px solid var(--b); border-radius: 10px; padding: 10px; }
+    .sum-card h3 { margin: 0 0 8px 0; color: var(--accent); }
+    .sum-table { width: 100%; border-collapse: collapse; }
+    .sum-table th, .sum-table td { border-bottom: 1px solid #2a2a2a; padding: 6px; font-size: 12.5px; }
+    .sum-table th { background: #181818; position: sticky; top: 0; }
+    .skill-cell { display: inline-flex; align-items: center; gap: 8px; }
+    .skill-cell img { width: 20px; height: 20px; border-radius: 4px; border: 1px solid #333; background:#222; object-fit: cover; }
+    .muted { color: var(--muted); font-size: 12px; }
   </style>
 </head>
 <body>
@@ -108,6 +123,7 @@
       <span class="count" id="rowCount">—</span>
     </div>
 
+    <!-- Filters -->
     <section class="filters">
       <label>
         Team
@@ -154,6 +170,7 @@
       </div>
     </section>
 
+    <!-- Skills per Match table -->
     <div class="table-wrap" style="margin-top:14px;">
       <table id="skillsTable">
         <thead>
@@ -173,6 +190,33 @@
         </tbody>
       </table>
     </div>
+
+    <!-- ===== Summary Section ===== -->
+    <section class="sum-wrap">
+      <div class="sum-head">
+        <h2>Summary: Picks/Bans</h2>
+        <div class="sum-controls">
+          <label class="muted">Group by
+            <select id="sumGroupBy">
+              <option value="team">Team</option>
+              <option value="player">Player</option>
+            </select>
+          </label>
+          <label class="muted">Subject
+            <select id="sumKind">
+              <option value="active">Active skills</option>
+              <option value="passive">Passive skills</option>
+              <option value="ban">Bans</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div id="sumMeta" class="muted" style="margin-top:6px;"></div>
+      <div id="sumGrid" class="sum-grid" style="min-height:80px;">
+        <!-- cards render here -->
+      </div>
+    </section>
   </main>
 
   <script>
@@ -186,13 +230,17 @@
       const c = CHAR_INDEX.get(name);
       return c?.image_url || PLACEHOLDER;
     }
+    function pct(n, d) {
+      if (!d || d === 0) return '—';
+      return ((n / d) * 100).toFixed(1) + '%';
+    }
 
     // Build a row object (one per team per match)
     function buildRow(record, side) {
       const s = safe(record.state, {});
       const picks = safe(s.picks, []);
       const passives = safe(s.passives, []);
-      const playersArr = safe(s.playerCards, []);  // <-- pull names
+      const playersArr = safe(s.playerCards, []); // player names
       const bans = safe(s.bans, []);
 
       const isLeft = side === 'left';
@@ -212,7 +260,7 @@
       const players = idx.map((i, k) => {
         const activeName = safe(picks[i]?.name, 'None');
         const activeImg  = safe(picks[i]?.image_url, null) || byNameImg(activeName);
-        const playerName = (playersArr[i] && String(playersArr[i]).trim()) ? String(playersArr[i]).trim() : ''; // <-- name per slot
+        const playerName = (playersArr[i] && String(playersArr[i]).trim()) ? String(playersArr[i]).trim() : '';
 
         const psList = (passives[i] || []).filter(Boolean).map(x => ({
           name: x.name,
@@ -255,7 +303,7 @@
       return `
         <div class="pbox">
           <div class="p caps">${p.label}</div>
-          ${p.playerName ? `<div class="pn">${p.playerName}</div>` : ``}  <!-- <-- show name if available -->
+          ${p.playerName ? `<div class="pn">${p.playerName}</div>` : ``}
           <div class="a">
             <img class="hero-img" src="${p.activeImg || PLACEHOLDER}" alt="">
             <span>${p.activeName}</span>
@@ -287,13 +335,14 @@
 
     // -------- Data + filters --------
     let ALL_ROWS = [];
+    let CURRENT_ROWS = [];
     let SORT_KEY = null;
     let SORT_ASC = true;
 
     function setDefaultDates() {
       const to = new Date();
       const from = new Date(to);
-      from.setMonth(from.getMonth() - 3); // last 90 days by default
+      from.setMonth(from.getMonth() - 3); // last ~90 days by default
 
       const toEl = document.getElementById('toDate');
       const fromEl = document.getElementById('fromDate');
@@ -382,7 +431,9 @@
           return 0;
         });
       }
+      CURRENT_ROWS = rows;
       renderTable(rows);
+      recomputeSummary(); // <— update summary with filtered rows
     }
 
     function renderTable(rows) {
@@ -403,6 +454,216 @@
       document.getElementById('mapFilter').value = '__ALL__';
       setDefaultDates();
       loadData();
+    }
+
+    // ===== Summary computation =====
+    function recomputeSummary() {
+      const groupBy = document.getElementById('sumGroupBy').value; // team | player
+      const kind    = document.getElementById('sumKind').value;    // active | passive | ban
+      const rows    = CURRENT_ROWS;
+
+      // buckets: key -> { name, matches, wins, skills: Map(skill -> {occ, appear, appearWins, img}) }
+      const buckets = new Map();
+
+      rows.forEach(r => {
+        if (groupBy === 'team') {
+          aggregateForTeam(buckets, r, kind);
+        } else {
+          aggregateForPlayers(buckets, r, kind);
+        }
+      });
+
+      renderSummary(buckets, groupBy, kind);
+    }
+
+    function ensureBucket(map, key, name) {
+      if (!map.has(key)) map.set(key, { name, matches: 0, wins: 0, skills: new Map() });
+      return map.get(key);
+    }
+    function ensureSkill(skMap, skill, img) {
+      if (!skMap.has(skill)) skMap.set(skill, { occ: 0, appear: 0, appearWins: 0, img: img || byNameImg(skill) });
+      return skMap.get(skill);
+    }
+
+    // Team-level aggregation
+    function aggregateForTeam(buckets, r, kind) {
+      const key = r.team;
+      const b = ensureBucket(buckets, key, r.team);
+      // one team-row = one match appearance for the team
+      b.matches += 1;
+      if (r.result === 'Win') b.wins += 1;
+
+      const seen = new Set(); // track per-skill "appearance" within this team-row
+
+      if (kind === 'active') {
+        r.players.forEach(p => {
+          const sName = p.activeName || 'None';
+          if (!sName || sName === 'None') return;
+          const sk = ensureSkill(b.skills, sName, p.activeImg);
+          sk.occ += 1;
+          if (!seen.has(sName)) {
+            sk.appear += 1;
+            if (r.result === 'Win') sk.appearWins += 1;
+            seen.add(sName);
+          }
+        });
+      } else if (kind === 'passive') {
+        r.players.forEach(p => {
+          p.passives.forEach(ps => {
+            const sName = ps.name;
+            if (!sName) return;
+            const sk = ensureSkill(b.skills, sName, ps.image);
+            sk.occ += 1;
+            if (!seen.has(sName)) {
+              sk.appear += 1;
+              if (r.result === 'Win') sk.appearWins += 1;
+              seen.add(sName);
+            }
+          });
+        });
+      } else { // ban
+        const sName = r.banName;
+        if (sName && sName !== '—') {
+          const sk = ensureSkill(b.skills, sName, r.banImg);
+          sk.occ += 1; // team has exactly 1 ban slot per team-row
+          if (!seen.has(sName)) {
+            sk.appear += 1;
+            if (r.result === 'Win') sk.appearWins += 1;
+            seen.add(sName);
+          }
+        }
+      }
+    }
+
+    // Player-level aggregation
+    function aggregateForPlayers(buckets, r, kind) {
+      const playersProcessed = new Set(); // avoid counting same player twice in a row
+      r.players.forEach(p => {
+        const pname = (p.playerName || '').trim();
+        if (!pname) return;
+
+        const b = ensureBucket(buckets, pname, pname);
+
+        // count one "match" for the player per team-row
+        if (!playersProcessed.has(pname)) {
+          b.matches += 1;
+          if (r.result === 'Win') b.wins += 1;
+          playersProcessed.add(pname);
+        }
+
+        const seen = b._seenPerRow || new Set(); // track appearances per player per row
+        // To keep it simple, we still avoid double-appearance increments within this single row for this player
+        if (kind === 'active') {
+          const sName = p.activeName || 'None';
+          if (sName && sName !== 'None') {
+            const sk = ensureSkill(b.skills, sName, p.activeImg);
+            sk.occ += 1;
+            const apKey = 'A|' + sName + '|' + r.id;
+            if (!seen.has(apKey)) {
+              sk.appear += 1;
+              if (r.result === 'Win') sk.appearWins += 1;
+              seen.add(apKey);
+            }
+          }
+        } else if (kind === 'passive') {
+          p.passives.forEach(ps => {
+            const sName = ps.name;
+            if (!sName) return;
+            const sk = ensureSkill(b.skills, sName, ps.image);
+            sk.occ += 1;
+            const apKey = 'P|' + sName + '|' + r.id;
+            if (!seen.has(apKey)) {
+              sk.appear += 1;
+              if (r.result === 'Win') sk.appearWins += 1;
+              seen.add(apKey);
+            }
+          });
+        } else { // ban
+          const sName = r.banName;
+          if (sName && sName !== '—') {
+            const sk = ensureSkill(b.skills, sName, r.banImg);
+            sk.occ += 1; // counts ban in matches the player played
+            const apKey = 'B|' + sName + '|' + r.id;
+            if (!seen.has(apKey)) {
+              sk.appear += 1;
+              if (r.result === 'Win') sk.appearWins += 1;
+              seen.add(apKey);
+            }
+          }
+        }
+        b._seenPerRow = seen;
+      });
+    }
+
+    function renderSummary(buckets, groupBy, kind) {
+      const grid = document.getElementById('sumGrid');
+      const meta = document.getElementById('sumMeta');
+      const totalEntities = buckets.size;
+      const totalRows = CURRENT_ROWS.length;
+
+      const rateLabel = (kind === 'ban') ? 'Ban Rate' : 'Pick Rate';
+      meta.textContent = `${totalEntities} ${groupBy === 'team' ? 'team' : 'player'} group(s) • ${totalRows} team-row(s) in view`;
+
+      if (!totalEntities) {
+        grid.innerHTML = `<div class="sum-card"><div class="muted">No data for this selection.</div></div>`;
+        return;
+      }
+
+      const cards = [];
+      // sort entities by matches desc
+      const ordered = [...buckets.values()].sort((a,b) => b.matches - a.matches);
+
+      ordered.forEach(b => {
+        const rows = [];
+        // Header row
+        rows.push(`
+          <tr>
+            <th>Skill</th>
+            <th>Count</th>
+            <th>${rateLabel}</th>
+            <th>Win Rate</th>
+          </tr>
+        `);
+
+        // sort skills by appearance desc then count desc
+        const skills = [...b.skills.entries()]
+          .sort((a,b) => (b[1].appear - a[1].appear) || (b[1].occ - a[1].occ));
+
+        skills.forEach(([name, s]) => {
+          const pr = pct(s.appear, b.matches);
+          const wr = pct(s.appearWins, s.appear);
+          rows.push(`
+            <tr>
+              <td>
+                <span class="skill-cell">
+                  <img src="${s.img || byNameImg(name)}" alt="">
+                  ${name}
+                </span>
+              </td>
+              <td>${s.occ}</td>
+              <td>${pr}</td>
+              <td>${wr}</td>
+            </tr>
+          `);
+        });
+
+        // If no skills, show placeholder
+        const tableHTML = skills.length
+          ? `<table class="sum-table"><thead>${rows[0]}</thead><tbody>${rows.slice(1).join('')}</tbody></table>`
+          : `<div class="muted">No ${kind} data for this ${groupBy}.</div>`;
+
+        cards.push(`
+          <div class="sum-card">
+            <h3>${b.name}</h3>
+            <div class="muted" style="margin:-2px 0 8px 0;">
+              Matches: ${b.matches} • Wins: ${b.wins} (${pct(b.wins, b.matches)})
+            </div>
+            ${tableHTML}
+          </div>
+        `);
+      });
+
+      grid.innerHTML = cards.join('');
     }
 
     // -------- UI wiring --------
@@ -433,6 +694,9 @@
           applyFilters();
         });
       });
+
+      document.getElementById('sumGroupBy').addEventListener('change', recomputeSummary);
+      document.getElementById('sumKind').addEventListener('change', recomputeSummary);
     });
   </script>
 </body>
