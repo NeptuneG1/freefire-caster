@@ -37,29 +37,38 @@
     .wl.W{background:#193e2b;color:var(--good);border:1px solid #245b3e}
     .wl.L{background:#401e1e;color:var(--bad);border:1px solid #6b2c2c}
 
-    /* Player mini-cards with images in Per-Match rows */
+    /* Player mini-cards — compact, sideways passive chips */
     .playersWrap{display:flex;flex-wrap:wrap;gap:8px}
+    
     .pCard{
-      display:inline-flex;align-items:center;gap:8px;
-      background:#141414;border:1px solid #2a2a2a;border-radius:10px;
-      padding:6px 8px;min-width:300px;max-width:320px
+      display:flex; align-items:flex-start; gap:10px;
+      background:#141414; border:1px solid #2a2a2a; border-radius:10px;
+      padding:6px 8px; min-width:280px; max-width:360px
     }
+    
     .pAct{
-      width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid #333;background:#0f0f0f
+      width:44px; height:44px; object-fit:cover; border-radius:8px;
+      border:1px solid #333; background:#0f0f0f; flex:0 0 44px
     }
-    .pStack{display:flex;flex-direction:column;gap:3px}
-    .pStackRow{display:flex;align-items:center;gap:6px}
-    .pStackRow img{
-      width:16px;height:16px;object-fit:cover;border-radius:3px;
-      border:1px solid #333;background:#0f0f0f
+    
+    .pInfo{display:flex; flex-direction:column; gap:4px; line-height:1.22; min-width:0}
+    .pName{font-weight:700; font-size:.92rem}
+    .pHero{font-size:.86rem; color:#d8d8d8}
+    
+    .pPassRow{display:flex; gap:6px; flex-wrap:wrap; align-items:center}
+    .pPassChip{
+      display:inline-flex; align-items:center; gap:4px;
+      background:#111; border:1px solid #2a2a2a; border-radius:6px;
+      padding:2px 6px
     }
-    .pStackRow span{
-      font-size:.78rem;color:#bbb;max-width:130px;
-      white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+    .pPassChip img{
+      width:14px; height:14px; object-fit:cover; border-radius:3px;
+      border:1px solid #333; background:#0f0f0f
     }
-    .pInfo{display:flex;flex-direction:column;line-height:1.2}
-    .pName{font-weight:700;font-size:.92rem}
-    .pHero{font-size:.86rem;color:#d8d8d8}
+    .pPassChip span{
+      font-size:.76rem; color:#bbb; max-width:96px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis
+    }
 
     .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
     .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px}
@@ -429,31 +438,33 @@ function applyRowFilters(allRows){
 }
 
 /* Build the player card HTML with images + passive names */
-function playerCardHTML(player, heroName, heroImg, trio){
-  const passHTML = (trio || [])
-    .filter(ps => ps && ps.name)
-    .map(ps => `
-      <div class="pStackRow">
-        <img src="${ps.img || PLACEHOLDER}" alt="${ps.name}" loading="lazy">
-        <span>${ps.name}</span>
+  function playerCardHTML(player, heroName, heroImg, trio){
+    const chips = (trio || [])
+      .filter(ps => ps && ps.name)
+      .map(ps => `
+        <div class="pPassChip">
+          <img src="${ps.img || PLACEHOLDER}" alt="${ps.name}" loading="lazy">
+          <span>${ps.name}</span>
+        </div>
+      `).join('');
+  
+    const img  = heroImg || PLACEHOLDER;
+    const hero = heroName || '—';
+    const p    = player || '';
+  
+    return `
+      <div class="pCard">
+        <img class="pAct" src="${img}" alt="${hero}" loading="lazy">
+        <div class="pInfo">
+          <div class="pName">${p}</div>
+          <div class="pHero">${hero}</div>
+          <div class="pPassRow">
+            ${chips || '<span class="muted" style="font-size:.78rem">No passives</span>'}
+          </div>
+        </div>
       </div>
-    `).join('');
-
-  const img  = heroImg || PLACEHOLDER;
-  const hero = heroName || '—';
-  const p    = player || '';
-
-  return `
-    <div class="pCard">
-      <img class="pAct" src="${img}" alt="${hero}" loading="lazy">
-      <div class="pStack">${passHTML}</div>
-      <div class="pInfo">
-        <div class="pName">${p}</div>
-        <div class="pHero">${hero}</div>
-      </div>
-    </div>
-  `;
-}
+    `;
+  }
 
 function renderRows(rows){
   const body = el('rowsBody');
