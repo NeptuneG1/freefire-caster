@@ -88,6 +88,8 @@
     .top-controls a, .top-controls button, .top-controls select, .top-controls label { background: #ffbd59; color: #1c1c1c; padding: 6px 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; text-decoration: none; }
     .top-controls select { padding: 4px 8px; font-weight: bold; background: #2a2a2a; color: #ffbd59; border: 1px solid #555; }
     .top-controls button:hover, .top-controls a:hover { background: #e0a84f; }
+    /* NEW: style the tournament text input to match */
+    .top-controls input[type="text"] { padding: 6px 8px; background: #2a2a2a; color: #ffbd59; border: 1px solid #555; border-radius: 5px; font-weight: bold; }
 
     /* Team pick/ban counts section */
     #teamPBCounts { width: 90%; max-width: 1200px; margin: 40px auto; }
@@ -124,7 +126,7 @@
         Enable multiple selection
       </label>
 
-      <!-- NEW: Tournament filter for history -->
+      <!-- Tournament filter for history -->
       <div style="margin-top:10px;">
         <label style="display:block;margin-bottom:4px;">Tournament</label>
         <select id="tournamentFilter" style="width:200px;" onchange="loadAllDraftRecords()">
@@ -148,7 +150,7 @@
             <th style="padding: 8px;">Team Right</th>
             <th style="padding: 8px;">Team Right Score</th>
             <th style="padding: 8px;">Map</th>
-            <th style="padding: 8px;">Tournament</th><!-- NEW -->
+            <th style="padding: 8px;">Tournament</th>
             <th style="padding: 8px;">Actions</th>
           </tr>
         </thead>
@@ -173,6 +175,7 @@
       <option value="6">Game 6</option>
       <option value="7">Game 7</option>
     </select>
+
     <select id="mapSelect">
       <option value="Bermuda">Bermuda</option>
       <option value="Kalahari">Kalahari</option>
@@ -181,6 +184,12 @@
       <option value="Nexterra">Nexterra</option>
       <option value="Solara">Solara</option>
     </select>
+
+    <!-- NEW: Tournament entry field (with suggestions) -->
+    <label for="tournamentInput">Tournament:</label>
+    <input type="text" id="tournamentInput" placeholder="Enter tournament name" list="tournamentList" />
+    <datalist id="tournamentList"></datalist>
+
     <button onclick="saveOrUpdateDraft()">Save/Update</button>
     <button onclick="loadDraftRecord()">Load</button>
   </div>
@@ -236,7 +245,6 @@
       <label>Team
         <select id="teamCountSelect" style="min-width:220px;"></select>
       </label>
-      <!-- NEW: Tournament filter for counts -->
       <label>Tournament
         <select id="countTournamentSelect" style="min-width:220px;"></select>
       </label>
@@ -658,7 +666,7 @@ async function loadDraftRecord() {
 
   const { data, error } = await client
     .from('draft_records')
-    .select('state, team_left_score, team_right_score, map')
+    .select('state, team_left_score, team_right_score, map, tournament_name')
     .eq('game_number', gameNumber)
     .eq('match_date', matchDate)
     .eq('team_left', teamLeft)
@@ -692,6 +700,9 @@ async function loadDraftRecord() {
     document.getElementById('teamRightScore').value = draftState.teamRightScore;
     document.getElementById('mapSelect').value = draftState.map;
 
+    // NEW: set tournament field from record
+    document.getElementById('tournamentInput').value = data.tournament_name ?? '';
+
     drawDraft();
     console.log("✅ Draft record loaded.");
   }
@@ -705,6 +716,7 @@ async function saveOrUpdateDraft() {
   const teamLeftScore = parseInt(document.getElementById('teamLeftScore').value || '0', 10);
   const teamRightScore = parseInt(document.getElementById('teamRightScore').value || '0', 10);
   const map = document.getElementById('mapSelect').value;
+  const tournamentName = (document.getElementById('tournamentInput').value || '').trim(); // NEW
 
   if (!matchDate) {
     alert("⚠️ Please select a match date.");
@@ -736,8 +748,8 @@ async function saveOrUpdateDraft() {
     team_right_score: teamRightScore,
     map: map,
     state: draftState,
+    tournament_name: tournamentName || null, // NEW
     updated_at: new Date().toISOString()
-    // NOTE: if you want to save tournament_name from here, add it to payload and UI.
   };
 
   console.log("📦 Payload:", payload);
@@ -750,6 +762,7 @@ async function saveOrUpdateDraft() {
       console.error("Insert Error:", insertError);
     } else {
       alert("✅ Draft saved.");
+      loadAllDraftRecords(); // refresh lists & tournament suggestions
     }
   } else {
     console.log("🔁 Updating existing draft record (id =", data.id, ")...");
@@ -761,6 +774,7 @@ async function saveOrUpdateDraft() {
       console.error("Update Error:", updateError);
     } else {
       alert("✅ Draft updated.");
+      loadAllDraftRecords(); // refresh lists & tournament suggestions
     }
   }
 };
@@ -770,7 +784,6 @@ function toggleTeamFilterMode() {
   const selected = Array.from(filter.selectedOptions).map(o => o.value);
   const isMulti = document.getElementById('multiToggle').checked;
   filter.multiple = isMulti;
-  // reapply previous selections where possible
   Array.from(filter.options).forEach(o => { o.selected = selected.includes(o.value); });
 }
 
@@ -790,6 +803,7 @@ async function loadAllDraftRecords() {
   const teamCountSelect = document.getElementById('teamCountSelect');
   const tournamentFilter = document.getElementById('tournamentFilter');
   const countTournamentSelect = document.getElementById('countTournamentSelect');
+  const tournamentInputList = document.getElementById('tournamentList');
 
   // preserve selections
   const selectedTeams = Array.from(filterSelect.selectedOptions).map(opt => opt.value.toLowerCase());
@@ -811,11 +825,9 @@ async function loadAllDraftRecords() {
   });
 
   // Populate team filters (history + counts)
-  // History team filter supports multi-select
   const prevSelectedTeams = new Set(selectedTeams);
   const prevTeamCount = teamCountSelect.value || '__ALL__';
 
-  // Rebuild history team filter
   filterSelect.innerHTML = '';
   Array.from(allTeams).sort().forEach(team => {
     const option1 = document.createElement('option');
@@ -825,7 +837,6 @@ async function loadAllDraftRecords() {
     filterSelect.appendChild(option1);
   });
 
-  // Rebuild counts team dropdown
   teamCountSelect.innerHTML = '';
   const allOpt = document.createElement('option');
   allOpt.value = '__ALL__';
@@ -842,7 +853,6 @@ async function loadAllDraftRecords() {
   // Populate tournament selects (history + counts)
   const tournamentsSorted = ['__ALL__', ...Array.from(allTournaments).sort()];
 
-  // History tournament
   tournamentFilter.innerHTML = '';
   tournamentsSorted.forEach(tn => {
     const o = document.createElement('option');
@@ -852,7 +862,6 @@ async function loadAllDraftRecords() {
   });
   tournamentFilter.value = prevTournamentHistory || '__ALL__';
 
-  // Counts tournament
   countTournamentSelect.innerHTML = '';
   tournamentsSorted.forEach(tn => {
     const o2 = document.createElement('option');
@@ -861,6 +870,16 @@ async function loadAllDraftRecords() {
     countTournamentSelect.appendChild(o2);
   });
   countTournamentSelect.value = prevTournamentCounts || '__ALL__';
+
+  // Also populate the datalist for the input field (autocomplete)
+  if (tournamentInputList) {
+    tournamentInputList.innerHTML = '';
+    Array.from(allTournaments).sort().forEach(tn => {
+      const opt = document.createElement('option');
+      opt.value = tn;
+      tournamentInputList.appendChild(opt);
+    });
+  }
 
   // Apply filters
   const selectedTournament = tournamentFilter.value || '__ALL__';
@@ -905,7 +924,7 @@ async function loadAllDraftRecords() {
 async function loadSpecificDraft(id) {
   const { data, error } = await client
     .from('draft_records')
-    .select('state, match_date, game_number, team_left_score, team_right_score, map')
+    .select('state, match_date, game_number, team_left_score, team_right_score, map, tournament_name')
     .eq('id', id)
     .single();
 
@@ -942,6 +961,9 @@ async function loadSpecificDraft(id) {
   document.getElementById('teamLeftScore').value = draftState.teamLeftScore;
   document.getElementById('teamRightScore').value = draftState.teamRightScore;
   document.getElementById('mapSelect').value = draftState.map;
+
+  // NEW: set tournament field from record
+  document.getElementById('tournamentInput').value = data.tournament_name ?? '';
 
   drawDraft();
   console.log("✅ Specific draft loaded.");
@@ -1074,7 +1096,6 @@ async function computeTeamPickBanCounts() {
   if (!team) { alert('Please choose a team.'); return; }
   if (!from || !to) { alert('Please set a From and To date.'); return; }
 
-  // Fetch only the necessary columns including the full state
   let query = client
     .from('draft_records')
     .select('team_left, team_right, match_date, state, tournament_name')
@@ -1099,7 +1120,7 @@ async function computeTeamPickBanCounts() {
   let totalMatches = 0;
   let totalPicks = 0;
   let totalBans = 0;
-  const pickCounts = new Map(); // skillName -> count
+  const pickCounts = new Map();
   const banCounts = new Map();
 
   data.forEach(r => {
@@ -1110,7 +1131,6 @@ async function computeTeamPickBanCounts() {
     if (team === '__ALL__') {
       totalMatches += 1;
 
-      // Count picks from both sides (all 8 indices)
       [0,1,2,3,4,5,6,7].forEach(i => {
         const hero = picks[i];
         const name = hero?.name;
@@ -1120,7 +1140,6 @@ async function computeTeamPickBanCounts() {
         }
       });
 
-      // Count both bans if present
       [0,1].forEach(bi => {
         const b = bans[bi];
         const bName = b?.name;
@@ -1130,14 +1149,12 @@ async function computeTeamPickBanCounts() {
         }
       });
     } else {
-      // Specific team path
       const isLeft = r.team_left === team;
       const isRight = r.team_right === team;
       if (!isLeft && !isRight) return;
 
       totalMatches += 1;
 
-      // Count picks (four indices depending on side)
       const idx = isLeft ? [0,1,2,3] : [4,5,6,7];
       idx.forEach(i => {
         const hero = picks[i];
@@ -1148,7 +1165,6 @@ async function computeTeamPickBanCounts() {
         }
       });
 
-      // Count bans (left team uses bans[0], right team uses bans[1])
       const banHero = bans[isLeft ? 0 : 1];
       const banName = banHero?.name || null;
       if (banName) {
@@ -1161,7 +1177,6 @@ async function computeTeamPickBanCounts() {
   const teamLabel = (team === '__ALL__') ? 'All teams' : team;
   const tournLabel = (tourn === '__ALL__') ? 'All tournaments' : tourn;
 
-  // Update meta and totals
   document.getElementById('teamPBMeta').textContent =
     `Team: ${teamLabel} • Tournament: ${tournLabel} • Range: ${from} → ${to} • Matches: ${totalMatches}`;
 
@@ -1172,7 +1187,6 @@ async function computeTeamPickBanCounts() {
       : `<div><b>Total Picks:</b> ${totalPicks}</div>
          <div><b>Total Bans:</b> ${totalBans}</div>`;
 
-  // Render breakdown tables
   const pickBody = document.getElementById('teamPickBreakdown');
   const banBody = document.getElementById('teamBanBreakdown');
   pickBody.innerHTML = '';
