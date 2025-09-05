@@ -37,38 +37,46 @@
     .wl.W{background:#193e2b;color:var(--good);border:1px solid #245b3e}
     .wl.L{background:#401e1e;color:var(--bad);border:1px solid #6b2c2c}
 
-    /* Player mini-cards — compact, sideways passive chips */
-    .playersWrap{display:flex;flex-wrap:wrap;gap:8px}
+   /* Players laid out sideways (single row, scrollable) */
+    .playersWrap{
+      display:flex;
+      flex-wrap:nowrap;            /* <-- keep players in one horizontal row */
+      gap:10px;
+      overflow-x:auto;             /* <-- sideways scroll if wider than cell */
+      padding-bottom:6px;
+      scroll-snap-type:x proximity;
+    }
     
+    /* Compact player card */
     .pCard{
-      display:flex; align-items:flex-start; gap:10px;
+      flex:0 0 auto;               /* <-- don't wrap; behave like a chip */
+      display:flex; align-items:center; gap:10px;
       background:#141414; border:1px solid #2a2a2a; border-radius:10px;
-      padding:6px 8px; min-width:280px; max-width:360px
+      padding:6px 8px; min-width:280px; max-width:340px;
+      scroll-snap-align:start;
     }
     
     .pAct{
       width:44px; height:44px; object-fit:cover; border-radius:8px;
-      border:1px solid #333; background:#0f0f0f; flex:0 0 44px
+      border:1px solid #333; background:#0f0f0f; flex:0 0 44px;
     }
     
-    .pInfo{display:flex; flex-direction:column; gap:4px; line-height:1.22; min-width:0}
+    /* 3× passive — stacked vertically, tiny + name */
+    .pPassCol{display:flex; flex-direction:column; gap:3px}
+    .pPassRow{display:flex; align-items:center; gap:6px}
+    .pPassRow img{
+      width:14px; height:14px; object-fit:cover; border-radius:3px;
+      border:1px solid #333; background:#0f0f0f;
+    }
+    .pPassRow span{
+      font-size:.76rem; color:#bbb; max-width:120px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    
+    .pInfo{display:flex; flex-direction:column; gap:2px; min-width:0; line-height:1.2}
     .pName{font-weight:700; font-size:.92rem}
     .pHero{font-size:.86rem; color:#d8d8d8}
-    
-    .pPassRow{display:flex; gap:6px; flex-wrap:wrap; align-items:center}
-    .pPassChip{
-      display:inline-flex; align-items:center; gap:4px;
-      background:#111; border:1px solid #2a2a2a; border-radius:6px;
-      padding:2px 6px
-    }
-    .pPassChip img{
-      width:14px; height:14px; object-fit:cover; border-radius:3px;
-      border:1px solid #333; background:#0f0f0f
-    }
-    .pPassChip span{
-      font-size:.76rem; color:#bbb; max-width:96px;
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis
-    }
+
 
     .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
     .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px}
@@ -438,11 +446,11 @@ function applyRowFilters(allRows){
 }
 
 /* Build the player card HTML with images + passive names */
-  function playerCardHTML(player, heroName, heroImg, trio){
-    const chips = (trio || [])
+   function playerCardHTML(player, heroName, heroImg, trio){
+    const passRows = (trio || [])
       .filter(ps => ps && ps.name)
       .map(ps => `
-        <div class="pPassChip">
+        <div class="pPassRow">
           <img src="${ps.img || PLACEHOLDER}" alt="${ps.name}" loading="lazy">
           <span>${ps.name}</span>
         </div>
@@ -455,12 +463,12 @@ function applyRowFilters(allRows){
     return `
       <div class="pCard">
         <img class="pAct" src="${img}" alt="${hero}" loading="lazy">
+        <div class="pPassCol">
+          ${passRows || ''}
+        </div>
         <div class="pInfo">
           <div class="pName">${p}</div>
           <div class="pHero">${hero}</div>
-          <div class="pPassRow">
-            ${chips || '<span class="muted" style="font-size:.78rem">No passives</span>'}
-          </div>
         </div>
       </div>
     `;
