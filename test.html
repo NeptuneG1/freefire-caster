@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Clash Squad Draft</title>
+  <title>Clash Squad — Skills per Match</title>
+
+  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const client = supabase.createClient(
@@ -29,736 +31,369 @@
     }
   </script>
 
+  <!-- Fonts + Styles -->
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto&display=swap" rel="stylesheet">
   <style>
-    body {
-      margin: 0;
-      font-family: 'Roboto', sans-serif;
-      background: #0e0e0e;
-      color: #f5f5f5;
+    :root {
+      --bg: #0e0e0e;
+      --panel: #1c1c1c;
+      --panel-2: #1f1f1f;
+      --text: #f5f5f5;
+      --muted: #bbb;
+      --muted-2: #888;
+      --b: #444;
+      --gold: #ffbd59;
+      --accent: #ff7733;
+      --danger: #ff5a5a;
+      --row: #141414;
     }
-    
-    header {
-      background: #1f1f1f;
-      padding: 20px;
-      text-align: center;
-      border-bottom: 3px solid #ffbd59;
-    }
-    
-    h1 {
-      font-family: 'Orbitron', sans-serif;
-      color: #ffbd59;
-      margin: 0;
-      font-size: 2rem;
-    }
-    
-    .draft-wrapper {
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      gap: 50px;
-      margin-top: 20px;
-      flex-wrap: nowrap;
-    }
-    
-    .team-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    
-    .team-label {
-      color: #ff7733;
-      font-weight: bold;
-      font-size: 18px;
-      margin-bottom: 10px;
-    }
-    
-    .team-row {
-      display: flex;
-      gap: 10px;
-    }
-    
-    .slot {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-    }
-    
-    .ban-slot, .pick-slot {
-      width: 100px;
-      height: 150px;
-      background: #2a2a2a;
-      border: 2px solid #444;
-      border-radius: 8px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      cursor: pointer;
-      position: relative;
-    }
-    
-    .ban-slot {
-      border-color: #ff5a5a;
-    }
-    
-    .ban-slot.disabled, .pick-slot.disabled {
-      opacity: 0.4;
-      pointer-events: none;
-    }
-    
-    .passive-slots, .weapon-slots {
-      display: flex;
-      gap: 3px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-    
-    .passive-slot {
-      width: 30px;
-      height: 50px;
-      background: #3a3a3a;
-      border: 1px solid #555;
-      border-radius: 4px;
-      cursor: pointer;
-      background-size: cover;
-      background-position: center;
-    }
-    
-    .weapon-slot {
-      width: 100px;
-      height: 40px;
-      background: #868686;
-      border: 2px solid #444;
-      border-radius: 6px;
-      cursor: pointer;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      position: relative;
-    }
-    
-    .weapon-slot img {
-      max-height: 100%;
-      max-width: 100%;
-    }
-    
-    .slot-name {
-      font-size: 12px;
-      color: #ccc;
-      text-align: center;
-    }
-    
-    .passive-name, .weapon-name {
-      font-size: 10px;
-      color: #ccc;
-      text-align: center;
-      max-width: 40px;
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-    }
-    
-    /* Modal base */
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 9999;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      background: #1f1f1f;
-      overflow: auto;
-    }
-    
-    .modal-content {
-      background: #1f1f1f;
-      margin: 5% auto;
-      padding: 15px;
-      border: 2px solid #ff7733;
-      border-radius: 8px;
-      width: 90%;
-      max-width: 900px;
-      max-height: 95vh;
-      overflow-y: auto;
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    
-    /* Modal header */
-    #heroModal h3 {
-      margin-top: 0;
-      font-size: 20px;
-      color: #ff7733;
-    }
-    
-    /* Weapon filter dropdown */
-    .weapon-filter-wrapper {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-    
-    .weapon-filter-wrapper select {
-      background-color: #2a2a2a;
-      color: #ffbd59;
-      border: 2px solid #444;
-      border-radius: 6px;
-      padding: 4px 8px;
-      font-size: 12px;
-      font-weight: bold;
-      cursor: pointer;
-      appearance: none;
-    }
-    
-    .weapon-filter-wrapper select:focus {
-      outline: none;
-      border-color: #ff7733;
-    }
-    
-    /* Weapon grid */
-    .weapon-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-      gap: 10px;
-      justify-items: center;
-      width: 100%;
-    }
-    #heroGrid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-      gap: 10px;
-      justify-items: center;
-      width: 100%;
-    }
-    /* Weapon card */
-    .hero-grid-item {
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 8px;
-      padding: 6px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      cursor: pointer;
-      transition: transform 0.2s ease;
-    }
-    
-    .hero-grid-item:hover {
-      transform: scale(1.05);
-      border-color: #ff7733;
-    }
-    
-    /* Weapon image */
-    .hero-grid-item img {
-      width: 50px;
-      height: 50px;
-      object-fit: contain;
-      margin-bottom: 4px;
-    }
-    
-    /* Weapon name */
-    .hero-grid-item div {
-      font-size: 10px;
-      text-align: center;
-      color: #ddd;
-      max-width: 60px;
-      word-wrap: break-word;
-    }
-    
-    /* Close button */
-    .close-btn {
-      position: absolute;
-      top: 10px;
-      right: 15px;
-      color: #ff7733;
-      font-size: 18px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    
-    /* Disabled state */
-    .disabled {
-      opacity: 0.3;
-      pointer-events: none;
-    }
-    
-    /* Banned overlay */
-    .banned-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(255, 0, 0, 0.4);
-      color: white;
-      font-weight: bold;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      border-radius: 6px;
-      font-size: 12px;
-    }
-    
-    /* Buttons + summaries */
-    .reset-btn {
-      margin: 20px auto;
-      display: block;
-      background: #ff7733;
-      color: #fff;
-      border: none;
-      padding: 10px 18px;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 16px;
-    }
-    
-    .summary-wrapper {
-      display: flex;
-      justify-content: center;
-      gap: 50px;
-      margin-top: 10px;
-      font-size: 12px;
-      color: #ddd;
-      max-width: 100%;
-      overflow-x: auto;
-    }
-    
-    .summary-wrapper > div {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-    }
-    
-    .summary-row {
-      display: flex;
-      flex-direction: row;
-      gap: 6px;
-      justify-content: center;
-      align-items: stretch;
-    }
-    
-    .summary-card {
-      background: #2a2a2a;
-      border: 2px solid #444;
-      border-radius: 8px;
-      padding: 8px;
-      width: 100px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      font-size: 10px;
-      text-align: center;
-    }
-    
-    .summary-ban {
-      min-width: 430px;
-      max-width: 430px;
-      background: #2a2a2a;
-      border: 2px solid #ff5a5a;
-      border-radius: 8px;
-      padding: 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      font-size: 10px;
-      text-align: center;
-    }
-    
-    .summary-ban-row {
-      display: flex;
-      flex-direction: row;
-      gap: 6px;
-      justify-content: center;
-      align-items: stretch;
-    }
-    
-    .nav-buttons {
-      text-align: center;
-      margin-top: 20px;
-    }
-    
-    .nav-buttons a,
-    .logout-btn {
-      display: inline-block;
-      background: #ffbd59;
-      color: #1c1c1c;
-      padding: 10px 20px;
-      font-weight: bold;
-      border-radius: 6px;
-      text-decoration: none;
-      margin: 0 10px;
-      transition: background 0.2s;
-    }
-    
-    .nav-buttons a:hover,
-    .logout-btn:hover {
-      background: #e0a84f;
-    }
-    
-    .logout-btn {
-      cursor: pointer;
-      border: none;
-    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Roboto', sans-serif; background: var(--bg); color: var(--text); }
+    header { background: var(--panel-2); padding: 20px; text-align: center; border-bottom: 3px solid var(--gold); position: sticky; top: 0; z-index: 3; }
+    h1 { margin: 0; font-family: 'Orbitron', sans-serif; color: var(--gold); font-size: 1.8rem; }
+    .user-controls { position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 10px; }
+    .user-controls #user-info { font-size: 14px; color: #ccc; }
+    .btn { background: var(--gold); color: #1c1c1c; font-weight: bold; padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; }
+    .btn:hover { background: #e0a84f; }
+    a.btn { text-decoration: none; display: inline-block; }
+    main { width: 95%; max-width: 1400px; margin: 18px auto 60px; }
 
+    .filters { background: var(--panel); border: 1px solid var(--b); border-radius: 10px; padding: 12px; display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 10px; }
+    .filters label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--muted); }
+    .filters input[type="date"], .filters select { background: #2a2a2a; color: var(--gold); border: 1px solid var(--b); border-radius: 6px; padding: 8px; }
+    .filters .row { grid-column: 1/-1; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .filters .pill { padding: 6px 8px; border: 1px dashed var(--b); border-radius: 6px; font-size: 12px; color: var(--muted); }
+
+    .toolbar { margin: 12px 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .toolbar .count { color: var(--muted); font-size: 13px; }
+
+    .table-wrap { background: var(--panel); border: 1px solid var(--b); border-radius: 10px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th { position: sticky; top: 0; background: #181818; z-index: 1; }
+    th, td { padding: 10px 8px; border-bottom: 1px solid #2a2a2a; text-align: left; font-size: 12.5px; vertical-align: top; }
+    tbody tr:nth-child(odd) { background: var(--row); }
+    .badge { display: inline-block; padding: 2px 6px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+    .win { background: #1d3f2a; color: #39d27d; border: 1px solid #2d6b47; }
+    .loss { background: #3f1d1d; color: #ff8c8c; border: 1px solid #6b2d2d; }
+    .ban { background: #2a2a2a; color: #f3cccc; border: 1px solid #533; }
+    .act { color: #fff; font-weight: 600; }
+    .pass { color: var(--muted); }
+    .players { display: grid; grid-template-columns: repeat(4, minmax(140px,1fr)); gap: 8px; }
+    .pbox { padding: 6px; background: #151515; border: 1px solid #2a2a2a; border-radius: 8px; }
+    .pbox .p { color: var(--muted-2); font-size: 11px; }
+    .pbox .a { font-size: 12.5px; }
+    .pbox .s { font-size: 11.5px; }
+
+    .caps { text-transform: uppercase; letter-spacing: .4px; font-weight: 700; color: var(--muted); font-size: 11px; }
+    .muted { color: var(--muted); }
+
+    .empty { text-align: center; padding: 30px; color: var(--muted); }
   </style>
 </head>
 <body>
   <header>
-    <h1>Clash Squad Draft</h1>
-    <p id="user-info">Checking login...</p>
+    <div class="user-controls">
+      <span id="user-info">Checking login...</span>
+      <button class="btn" onclick="logout()">Logout</button>
+    </div>
+    <h1>Skills per Match</h1>
   </header>
-  <div class="nav-buttons">
-    <a href="dashboard.html">← Back to Dashboard</a>
-    <button class="logout-btn" onclick="logout()">Logout</button>
-  </div>
-  <div class="draft-wrapper">
-    <div class="team-container">
-      <div class="team-label">TEAM LEFT</div>
-      <div class="team-row" id="teamLeft"></div>
+
+  <main>
+    <div class="toolbar">
+      <a class="btn" href="dashboard.html">← Back to Dashboard</a>
+      <span class="count" id="rowCount">—</span>
     </div>
-    <div class="team-container">
-      <div class="team-label">TEAM RIGHT</div>
-      <div class="team-row" id="teamRight"></div>
-          </div>
-  </div>
 
-  <button class="reset-btn" onclick="resetDraft()">Reset All</button>
+    <section class="filters">
+      <label>
+        Team
+        <select id="teamFilter">
+          <option value="__ALL__">All teams</option>
+        </select>
+      </label>
 
-  <div class="summary-wrapper">
-    <div>
-      <div class="summary-team" id="summaryLeft"></div>
+      <label>
+        Result
+        <select id="resultFilter">
+          <option value="__ALL__">All</option>
+          <option value="Win">Win</option>
+          <option value="Loss">Loss</option>
+        </select>
+      </label>
+
+      <label>
+        Map
+        <select id="mapFilter">
+          <option value="__ALL__">All maps</option>
+          <option value="Bermuda">Bermuda</option>
+          <option value="Kalahari">Kalahari</option>
+          <option value="Purgatory">Purgatory</option>
+          <option value="Alpine">Alpine</option>
+          <option value="Nexterra">Nexterra</option>
+          <option value="Solara">Solara</option>
+        </select>
+      </label>
+
+      <label>
+        From date
+        <input type="date" id="fromDate">
+      </label>
+
+      <label>
+        To date
+        <input type="date" id="toDate">
+      </label>
+
+      <div class="row">
+        <button class="btn" id="applyBtn">Apply Filters</button>
+        <button class="btn" id="resetBtn" style="background:#2a2a2a;color:#fff;border:1px solid #444;">Reset</button>
+        <span class="pill">Tip: click a column header to sort (basic)</span>
+      </div>
+    </section>
+
+    <div class="table-wrap" style="margin-top:14px;">
+      <table id="skillsTable">
+        <thead>
+          <tr>
+            <th data-sort="date">Date</th>
+            <th data-sort="game">Game</th>
+            <th data-sort="map">Map</th>
+            <th data-sort="team">Team</th>
+            <th>Opponent</th>
+            <th data-sort="result">Result</th>
+            <th>Ban</th>
+            <th style="min-width:560px;">Players (Actives & Passives)</th>
+          </tr>
+        </thead>
+        <tbody id="skillsBody">
+          <tr><td class="empty" colspan="8">Loading…</td></tr>
+        </tbody>
+      </table>
     </div>
-    <div>
-      <div class="summary-team" id="summaryRight"></div>
-    </div>
-  </div>
+  </main>
 
-  <div class="modal" id="heroModal">
-    <div class="modal-content">
-      <span class="close-btn" onclick="closeModal()">X</span>
-      <h3 style="color:#ff7733;" id="modalTitle">Select</h3>
-      <div class="hero-grid" id="heroGrid"></div>
-    </div>
-  </div>
+  <script>
+    // -------- Helpers for extracting from state --------
+    function safe(obj, def = null) { return obj ?? def; }
 
-<script>
-let characters=[], weapons=[], draftState={
-  bans:[null,null],
-  picks:Array(8).fill(null),
-  passives:Array(8).fill(0).map(()=>[null,null,null]),
-  weapons:Array(8).fill(0).map(()=>[null,null,null])
-}, currentSlot=null;
+    // Build a row object (one per team per match)
+    function buildRow(record, side) {
+      // side: 'left' or 'right'
+      const s = safe(record.state, {});
+      const picks = safe(s.picks, []);
+      const passives = safe(s.passives, []);
+      const bans = safe(s.bans, []);
 
-document.addEventListener('DOMContentLoaded',async()=>{
-  characters=await(await fetch('https://neptuneg1.github.io/freefire-caster/character.json')).json();
-  weapons=await(await fetch('https://neptuneg1.github.io/freefire-caster/weapon.json')).json();
-  drawDraft();
-});
+      const isLeft = side === 'left';
+      const team = isLeft ? record.team_left : record.team_right;
+      const opp  = isLeft ? record.team_right : record.team_left;
+      const teamScore = isLeft ? (record.team_left_score ?? 0) : (record.team_right_score ?? 0);
+      const oppScore  = isLeft ? (record.team_right_score ?? 0) : (record.team_left_score ?? 0);
+      const result = teamScore > oppScore ? 'Win' : 'Loss';
+      const banName = safe(bans[isLeft ? 0 : 1]?.name, '—');
 
-function drawDraft(){
-  const l=document.getElementById('teamLeft'),r=document.getElementById('teamRight');
-  l.innerHTML=''; r.innerHTML='';
-  l.appendChild(makeSlot('ban',0));
-  for(let i=0;i<4;i++)l.appendChild(makeSlot('pick',i));
-  for(let i=7;i>=4;i--)r.appendChild(makeSlot('pick',i));
-  r.appendChild(makeSlot('ban',1));
-  updateSummary();
-}
+      // player indices
+      const idx = isLeft ? [0,1,2,3] : [4,5,6,7];
 
-function makeSlot(type,index){
-  const c=document.createElement('div'); c.className='slot';
-  const m=document.createElement('div'); m.className=type==='ban'?'ban-slot':'pick-slot';
-  const img=document.createElement('img'); img.src='https://imgur.com/AdvPwAO.png';
-  img.style.width='100%'; img.style.height='100%'; img.style.borderRadius='8px';
-  m.appendChild(img);
-  const nameDiv=document.createElement('div'); nameDiv.className='slot-name';
-  if(type==='ban'){const h=draftState.bans[index];if(h){img.src=h.image_url;nameDiv.innerText=h.name;m.classList.add('disabled');}
-  m.onclick=()=>{currentSlot={type,index};openModal('Select Hero to Ban');};}
-  else{const h=draftState.picks[index];if(h){img.src=h.image_url;nameDiv.innerText=h.name;}
-  m.onclick=()=>{currentSlot={type,index};openModal('Select Active Skill');};}
-  c.appendChild(m); c.appendChild(nameDiv);
-
-  if(type==='pick'){
-    const passives=draftState.passives[index];
-    const pDiv=document.createElement('div'); pDiv.className='passive-slots';
-    passives.forEach((ps,i)=>{const p=document.createElement('div'); p.className='passive-slot';
-    const pn=document.createElement('div');pn.className='passive-name';
-    if(ps){p.style.backgroundImage=`url(${ps.image_url})`;pn.innerText=ps.name;}
-    p.onclick=()=>{currentSlot={type:'passive',pickIndex:index,passiveIndex:i};openModal('Select Passive Skill');};
-    const box=document.createElement('div');box.style.display='flex';box.style.flexDirection='column';
-    box.style.alignItems='center';box.appendChild(p);box.appendChild(pn);pDiv.appendChild(box);});
-    c.appendChild(pDiv);
-
-    const wDiv=document.createElement('div'); wDiv.className='weapon-slots';
-    draftState.weapons[index].forEach((w,i)=>{const wSlot=document.createElement('div'); wSlot.className='weapon-slot';
-    const wn=document.createElement('div');wn.className='weapon-name';
-    if(w){const wImg=document.createElement('img');wImg.src=w.image_url;wSlot.appendChild(wImg);wn.innerText=w.name;}
-    wSlot.onclick=()=>{currentSlot={type:'weapon',pickIndex:index,weaponIndex:i};openModal('Select Weapon');};
-    const box=document.createElement('div');box.style.display='flex';box.style.flexDirection='column';box.style.alignItems='center';
-    box.appendChild(wSlot);box.appendChild(wn);wDiv.appendChild(box);}); c.appendChild(wDiv);}
-  return c;
-}
-
-  function openModal(title) {
-  document.getElementById('modalTitle').innerText = title;
-  const grid = document.getElementById('heroGrid');
-  grid.innerHTML = '';
-
-  if (currentSlot.type === 'weapon') {
-    // Add Armory filter dropdown
-    const filterWrapper = document.createElement('div');
-    filterWrapper.className = 'weapon-filter-wrapper';
-
-    const armoryFilter = document.createElement('select');
-    const armoryOptions = ['All', 'Andrew', 'Kelly', 'Laura', 'Mocco', 'Hayato', 'Tatsuya'];
-    armoryOptions.forEach(name => {
-      const option = document.createElement('option');
-      option.value = name.toLowerCase();
-      option.textContent = name;
-      armoryFilter.appendChild(option);
-    });
-    filterWrapper.appendChild(armoryFilter);
-    grid.appendChild(filterWrapper);
-
-    function renderWeapons(filter) {
-      // Clear existing cards except filter dropdown
-      Array.from(grid.children).forEach((child, index) => { if (index !== 0) child.remove(); });
-
-      weapons.forEach(item => {
-        if (filter !== 'all' && item.armory && !item.armory.toLowerCase().includes(filter)) return;
-
-        const card = document.createElement('div');
-        card.className = 'hero-grid-item';
-
-        const img = document.createElement('img');
-        img.src = item.image_url;
-        img.alt = item.name;
-        img.style.width = '50px';
-        img.style.height = '50px';
-        img.style.objectFit = 'contain';
-        img.style.marginBottom = '4px';
-
-        const name = document.createElement('div');
-        name.textContent = item.name;
-        name.style.fontSize = '10px';
-        name.style.color = '#ddd';
-        name.style.textAlign = 'center';
-        name.style.maxWidth = '60px';
-        name.style.overflowWrap = 'break-word';
-
-        card.appendChild(img);
-        card.appendChild(name);
-        card.onclick = () => {
-          draftState.weapons[currentSlot.pickIndex][currentSlot.weaponIndex] = item;
-          closeModal();
-          drawDraft();
+      const players = idx.map((i, k) => {
+        const active = safe(picks[i]?.name, 'None');
+        const ps = (passives[i] || []).filter(Boolean).map(x => x.name);
+        return {
+          label: `P${k+1}`,
+          active,
+          passives: ps
         };
-
-        grid.appendChild(card);
       });
+
+      return {
+        id: record.id,
+        date: record.match_date,
+        game: record.game_number,
+        map: record.map || '—',
+        team,
+        opponent: opp,
+        result,
+        ban: banName,
+        players
+      };
     }
 
-    renderWeapons('all');
-    armoryFilter.addEventListener('change', () => renderWeapons(armoryFilter.value));
+    function playerCellHTML(p) {
+      const pass = p.passives.length ? p.passives.join(' + ') : '—';
+      return `
+        <div class="pbox">
+          <div class="p caps">${p.label}</div>
+          <div class="a act">${p.active}</div>
+          <div class="s pass">${pass}</div>
+        </div>
+      `;
+    }
 
-  } else {
-    // for bans, picks, passives
-    const used = new Set();
-    draftState.bans.forEach(h => h && used.add(h.name));
-    draftState.picks.forEach(h => h && used.add(h.name));
+    function rowHTML(r) {
+      const badge = r.result === 'Win' ? 'win' : 'loss';
+      return `
+        <tr>
+          <td>${r.date}</td>
+          <td>G${r.game}</td>
+          <td>${r.map}</td>
+          <td><strong>${r.team}</strong></td>
+          <td>${r.opponent}</td>
+          <td><span class="badge ${badge}">${r.result}</span></td>
+          <td><span class="badge ban">${r.ban}</span></td>
+          <td>
+            <div class="players">
+              ${r.players.map(playerCellHTML).join('')}
+            </div>
+          </td>
+        </tr>
+      `;
+    }
 
-    let list = characters.filter(h =>
-      (currentSlot.type === 'passive') ? h.skill_type === 'Passive' : h.skill_type === 'Active'
-    );
+    // -------- Data + filters --------
+    let ALL_ROWS = [];
+    let SORT_KEY = null;
+    let SORT_ASC = true;
 
-    list.forEach(item => {
-      const box = document.createElement('div');
-      box.className = 'hero-grid-item';
+    function setDefaultDates() {
+      const to = new Date();
+      const from = new Date(to);
+      from.setMonth(from.getMonth() - 3); // last 90 days by default
 
-      const img = document.createElement('img');
-      img.src = item.image_url;
-      img.title = item.name;
-      img.style.width = '50px';
-      img.style.height = '50px';
-      img.style.objectFit = 'contain';
-      img.style.marginBottom = '4px';
+      const toEl = document.getElementById('toDate');
+      const fromEl = document.getElementById('fromDate');
 
-      if ((currentSlot.type === 'ban' || currentSlot.type === 'pick') && used.has(item.name)) {
-        img.classList.add('disabled');
-      } else {
-        img.onclick = () => {
-          if (currentSlot.type === 'ban') draftState.bans[currentSlot.index] = item;
-          if (currentSlot.type === 'pick') draftState.picks[currentSlot.index] = item;
-          if (currentSlot.type === 'passive') draftState.passives[currentSlot.pickIndex][currentSlot.passiveIndex] = item;
-          closeModal();
-          drawDraft();
-        };
+      const fmt = d => d.toISOString().slice(0,10);
+      toEl.value = fmt(to);
+      fromEl.value = fmt(from);
+    }
+
+    async function loadData() {
+      const from = document.getElementById('fromDate').value;
+      const to   = document.getElementById('toDate').value;
+
+      // Pull only what we need
+      let q = client
+        .from('draft_records')
+        .select('id, match_date, game_number, team_left, team_right, team_left_score, team_right_score, map, state')
+        .order('match_date', { ascending: false })
+        .order('id', { ascending: false });
+
+      if (from) q = q.gte('match_date', from);
+      if (to)   q = q.lte('match_date', to);
+
+      const { data, error } = await q;
+      if (error) {
+        console.error('Fetch error:', error);
+        document.getElementById('skillsBody').innerHTML =
+          `<tr><td class="empty" colspan="8">Failed to fetch data.</td></tr>`;
+        return;
       }
 
-      const label = document.createElement('div');
-      label.textContent = item.name;
-      label.style.fontSize = '10px';
-      label.style.color = '#ddd';
-      label.style.textAlign = 'center';
-      label.style.maxWidth = '60px';
-      label.style.overflowWrap = 'break-word';
+      // Build rows per team
+      const rows = [];
+      data.forEach(rec => {
+        rows.push(buildRow(rec, 'left'));
+        rows.push(buildRow(rec, 'right'));
+      });
 
-      box.appendChild(img);
-      box.appendChild(label);
-      grid.appendChild(box);
+      ALL_ROWS = rows;
+
+      // Build team dropdown from data (unique)
+      const teamSet = new Set();
+      rows.forEach(r => { if (r.team) teamSet.add(r.team); });
+      const teamSel = document.getElementById('teamFilter');
+      // clear (keep "All teams")
+      teamSel.innerHTML = `<option value="__ALL__">All teams</option>`;
+      [...teamSet].sort().forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t;
+        opt.textContent = t;
+        teamSel.appendChild(opt);
+      });
+
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const team   = document.getElementById('teamFilter').value;
+      const result = document.getElementById('resultFilter').value;
+      const map    = document.getElementById('mapFilter').value;
+
+      let rows = ALL_ROWS.slice();
+
+      if (team !== '__ALL__')   rows = rows.filter(r => r.team === team);
+      if (result !== '__ALL__') rows = rows.filter(r => r.result === result);
+      if (map !== '__ALL__')    rows = rows.filter(r => r.map === map);
+
+      // basic sorting
+      if (SORT_KEY) {
+        rows.sort((a,b) => {
+          const A = a[SORT_KEY];
+          const B = b[SORT_KEY];
+          if (A == null && B == null) return 0;
+          if (A == null) return 1;
+          if (B == null) return -1;
+          if (A < B) return SORT_ASC ? -1 : 1;
+          if (A > B) return SORT_ASC ? 1 : -1;
+          return 0;
+        });
+      }
+
+      renderTable(rows);
+    }
+
+    function renderTable(rows) {
+      const body = document.getElementById('skillsBody');
+      const count = document.getElementById('rowCount');
+      count.textContent = `${rows.length} team-rows`;
+
+      if (!rows.length) {
+        body.innerHTML = `<tr><td class="empty" colspan="8">No rows match your filters.</td></tr>`;
+        return;
+      }
+
+      body.innerHTML = rows.map(rowHTML).join('');
+    }
+
+    function resetFilters() {
+      document.getElementById('teamFilter').value = '__ALL__';
+      document.getElementById('resultFilter').value = '__ALL__';
+      document.getElementById('mapFilter').value = '__ALL__';
+      setDefaultDates();
+      loadData(); // reload (applies)
+    }
+
+    // -------- UI wiring --------
+    document.addEventListener('DOMContentLoaded', () => {
+      // default dates then initial load
+      setDefaultDates();
+      loadData();
+
+      document.getElementById('applyBtn').addEventListener('click', applyFilters);
+      document.getElementById('resetBtn').addEventListener('click', resetFilters);
+      document.getElementById('teamFilter').addEventListener('change', applyFilters);
+      document.getElementById('resultFilter').addEventListener('change', applyFilters);
+      document.getElementById('mapFilter').addEventListener('change', applyFilters);
+      document.getElementById('fromDate').addEventListener('change', loadData);
+      document.getElementById('toDate').addEventListener('change', loadData);
+
+      // simple header sorting
+      document.querySelectorAll('thead th[data-sort]').forEach(th => {
+        th.style.cursor = 'pointer';
+        th.title = 'Click to sort';
+        th.addEventListener('click', () => {
+          const key = th.getAttribute('data-sort');
+          if (SORT_KEY === key) {
+            SORT_ASC = !SORT_ASC;
+          } else {
+            SORT_KEY = key;
+            SORT_ASC = true;
+          }
+          applyFilters();
+        });
+      });
     });
-  }
-
-  document.getElementById('heroModal').style.display = 'block';
-}
-
-
-function closeModal(){document.getElementById('heroModal').style.display='none';}
-function updateSummary() {
-  const left = document.getElementById('summaryLeft');
-  const right = document.getElementById('summaryRight');
-  left.innerHTML = "";
-  right.innerHTML = "";
-
-  const makeCard = (title, content) => `
-    <div class="summary-card">
-      <strong>${title}</strong><br>${content}
-    </div>
-  `;
-
-  function buildTeamSummary(startIndex, banIndex) {
-  let html = "";
-
-  // Row 0: BAN
-  const ban = draftState.bans[banIndex];
-  html += `<div class="summary-row summary-ban-row">
-    <div class="summary-ban"><strong>BAN</strong><br>${ban ? `${ban.name}<br>${ban.description || ''}` : "None"}</div>
-  </div>`;
-
-  // Row 1: ACTIVES
-  html += `<div class="summary-row">`;
-  for (let i = startIndex; i < startIndex + 4; i++) {
-    const hero = draftState.picks[i];
-    html += makeCard(
-      `Player ${i - startIndex + 1}`,
-      hero
-        ? `${hero.name}<br>Skill: ${hero.skill}<br>${hero.description || ''}`
-        : "None"
-    );
-  }
-  html += `</div>`;
-
-  // Row 2: WEAPONS
-  html += `<div class="summary-row">`;
-  for (let i = startIndex; i < startIndex + 4; i++) {
-    let wContent = "";
-      draftState.weapons[i].forEach(w => {
-        if (w) {
-          wContent += `${w.name}<br>Dmg:${w.damage} RoF:${w.rate_of_fire}<br>Rng:${w.range} Mag:${w.magazine_size}<br>`;
-          const armory = getWeaponArmory(w.name);
-          if (armory) wContent += `Armory: ${armory}<br>`;
-          wContent += `<br>`;
-        }
-      });
-      html += makeCard("Weapons", wContent || "None");
-    }
-    html += `</div>`;
-
-  // Row 3: PASSIVES
-  html += `<div class="summary-row">`;
-  for (let i = startIndex; i < startIndex + 4; i++) {
-    let pContent = "";
-    draftState.passives[i].forEach(ps => {
-      if (ps)
-        pContent += `Skill: ${ps.name}<br>${ps.description || ''}<br><br>`;
-    });
-    html += makeCard("Passives", pContent || "None");
-  }
-  html += `</div>`;
-
-  return html;
-}
-
-  function buildTeamSummaryRight(startIndex, banIndex) {
-    let html = "";
-
-    // Row 0: BAN full width
-    const ban = draftState.bans[banIndex];
-    html += `<div class="summary-row summary-ban-row">
-      <div class="summary-ban"><strong>BAN</strong><br>${ban ? `${ban.name}<br>${ban.description || ''}` : "None"}</div>
-    </div>`;
-
-    // Row 1: ACTIVES (reversed order display, P1-P4 label correct)
-    html += `<div class="summary-row">`;
-    for (let offset = 3; offset >= 0; offset--) {
-      const i = startIndex + offset;
-      const hero = draftState.picks[i];
-      html += makeCard(
-        `Player ${4 - offset}`,
-        hero
-          ? `${hero.name}<br>Skill: ${hero.skill}<br>${hero.description || ''}`
-          : "None"
-      );
-    }
-    html += `</div>`;
-
-    // Row 2: WEAPONS
-    html += `<div class="summary-row">`;
-    for (let offset = 3; offset >= 0; offset--) {
-      const i = startIndex + offset;
-      let wContent = "";
-      draftState.weapons[i].forEach(w => {
-        if (w) {
-          wContent += `${w.name}<br>Dmg:${w.damage} RoF:${w.rate_of_fire}<br>Rng:${w.range} Mag:${w.magazine_size}<br>`;
-          const armory = getWeaponArmory(w.name);
-          if (armory) wContent += `Armory: ${armory}<br>`;
-          wContent += `<br>`;
-        }
-      });
-      html += makeCard("Weapons", wContent || "None");
-    }
-    html += `</div>`;
-
-    // Row 3: PASSIVES
-    html += `<div class="summary-row">`;
-    for (let offset = 3; offset >= 0; offset--) {
-      const i = startIndex + offset;
-      let pContent = "";
-      draftState.passives[i].forEach(ps => {
-        if (ps)
-          pContent += `Skill: ${ps.name}<br>${ps.description || ''}<br><br>`;
-      });
-      html += makeCard("Passives", pContent || "None");
-    }
-    html += `</div>`;
-
-    return html;
-  }
-
-  left.innerHTML = `<h3>TEAM LEFT</h3>${buildTeamSummary(0, 0)}`;
-  right.innerHTML = `<h3>TEAM RIGHT</h3>${buildTeamSummaryRight(4, 1)}`;
-}
-function resetDraft() {
-  draftState = {
-    bans: [null, null],
-    picks: Array(8).fill(null),
-    passives: Array(8).fill(0).map(() => [null, null, null]),
-    weapons: Array(8).fill(0).map(() => [null, null, null])
-  };
-  drawDraft();
-}
-function getWeaponArmory(weaponName) {
-  const weapon = weapons.find(w => w.name === weaponName);
-  return weapon && weapon.armory ? weapon.armory : "";
-}
-
-</script>
+  </script>
 </body>
 </html>
