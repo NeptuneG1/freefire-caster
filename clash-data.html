@@ -42,10 +42,12 @@
     .pCard{
       display:inline-flex;align-items:center;gap:8px;
       background:#141414;border:1px solid #2a2a2a;border-radius:10px;
-      padding:6px 8px;min-width:220px;max-width:260px
+      padding:6px 8px;min-width:300px;max-width:320px
     }
-    
-    /* Passive icon + name rows inside the vertical stack */
+    .pAct{
+      width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid #333;background:#0f0f0f
+    }
+    .pStack{display:flex;flex-direction:column;gap:3px}
     .pStackRow{display:flex;align-items:center;gap:6px}
     .pStackRow img{
       width:16px;height:16px;object-fit:cover;border-radius:3px;
@@ -54,17 +56,6 @@
     .pStackRow span{
       font-size:.78rem;color:#bbb;max-width:130px;
       white-space:nowrap;overflow:hidden;text-overflow:ellipsis
-    }
-    
-    /* (optional) give the card a bit more space for names */
-    .pCard{min-width:300px}
-    
-    .pAct{
-      width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid #333;background:#0f0f0f
-    }
-    .pStack{display:flex;flex-direction:column;gap:3px}
-    .pStack img{
-      width:16px;height:16px;object-fit:cover;border-radius:3px;border:1px solid #333;background:#0f0f0f
     }
     .pInfo{display:flex;flex-direction:column;line-height:1.2}
     .pName{font-weight:700;font-size:.92rem}
@@ -80,6 +71,32 @@
     .right{text-align:right}
     .tight{line-height:1.25}
     .caption{margin:4px 0 10px 0}
+
+    /* ===== Per-Skill Stats ===== */
+    #skillStats { width:90%; max-width:1200px; margin:40px auto; }
+    #skillStats h2 { text-align:center; color:#ffbd59; }
+    .skill-controls{
+      display:flex; gap:10px; justify-content:center; align-items:center;
+      flex-wrap:wrap; margin-bottom:10px;
+    }
+    .skill-controls select, .skill-controls button{
+      background:#2a2a2a; color:#ffbd59; border:1px solid #555; border-radius:6px; padding:6px 8px;
+      font-weight:700; cursor:pointer;
+    }
+    .skill-controls button{ background:#ff7733; color:#fff; border:none; }
+    .skill-controls button:hover{ background:#e36b2e; }
+    table.skill-table{ width:100%; border-collapse:collapse; }
+    table.skill-table th, table.skill-table td{
+      border-bottom:1px solid #333; padding:8px; text-align:left; font-size:13px;
+      vertical-align:middle;
+    }
+    table.skill-table th{ background:#181818; position:sticky; top:0; z-index:1; }
+    .skill-cell{ display:flex; align-items:center; gap:10px; }
+    .skill-cell img{
+      width:28px; height:28px; object-fit:cover; border-radius:6px; background:#111; border:1px solid #333;
+    }
+    .skill-name{ color:#eee; font-weight:600; }
+    .mono{ font-variant-numeric: tabular-nums; }
   </style>
 </head>
 <body>
@@ -200,6 +217,54 @@
       </div>
       <div class="caption muted" id="sumMeta">—</div>
       <div class="grid" id="sumGrid"></div>
+    </div>
+
+    <!-- ===== Per-Skill Stats (Active/Passive) ===== -->
+    <div id="skillStats" class="block">
+      <h2>Per-Skill Stats</h2>
+      <div class="skill-controls">
+        <label>Type
+          <select id="skillTypeSelect">
+            <option value="active" selected>Active</option>
+            <option value="passive">Passive</option>
+          </select>
+        </label>
+        <label>Sort by
+          <select id="skillSortBy">
+            <option value="picks" selected>Picks</option>
+            <option value="pickRate">Pick %</option>
+            <option value="bans">Bans</option>
+            <option value="banRate">Ban %</option>
+            <option value="wins">Wins</option>
+            <option value="winRate">Win %</option>
+            <option value="name">Name</option>
+          </select>
+        </label>
+        <label>Order
+          <select id="skillSortDir">
+            <option value="desc" selected>Desc</option>
+            <option value="asc">Asc</option>
+          </select>
+        </label>
+        <button onclick="computeSkillStats()">Compute</button>
+      </div>
+
+      <div id="skillStatsMeta" class="muted">—</div>
+
+      <table class="skill-table" style="margin-top:8px;">
+        <thead>
+          <tr>
+            <th>Skill</th>
+            <th>Picks</th>
+            <th>Pick&nbsp;%</th>
+            <th>Bans</th>
+            <th>Ban&nbsp;%</th>
+            <th>Wins</th>
+            <th>Win&nbsp;%</th>
+          </tr>
+        </thead>
+        <tbody id="skillStatsBody"></tbody>
+      </table>
     </div>
   </div>
 
@@ -330,7 +395,6 @@ function explodeRecordToRows(rec){
         name: ps?.name || '',
         img : ps?.image_url || PLACEHOLDER
       }));
-      // Ensure up to 3 spots (pad with blanks for consistent stack)
       while (trioObjs.length < 3) trioObjs.push({name:'', img: PLACEHOLDER});
       return { player, trio: trioObjs.slice(0,3) };
     });
@@ -364,33 +428,32 @@ function applyRowFilters(allRows){
   return rows;
 }
 
-/* Build the player card HTML with images */
-  function playerCardHTML(player, heroName, heroImg, trio){
-    // Only render real passives (hide placeholders)
-    const passHTML = (trio || [])
-      .filter(ps => ps && ps.name)
-      .map(ps => `
-        <div class="pStackRow">
-          <img src="${ps.img || PLACEHOLDER}" alt="${ps.name}" loading="lazy">
-          <span>${ps.name}</span>
-        </div>
-      `).join('');
-  
-    const img  = heroImg || PLACEHOLDER;
-    const hero = heroName || '—';
-    const p    = player || '';
-  
-    return `
-      <div class="pCard">
-        <img class="pAct" src="${img}" alt="${hero}" loading="lazy">
-        <div class="pStack">${passHTML}</div>
-        <div class="pInfo">
-          <div class="pName">${p}</div>
-          <div class="pHero">${hero}</div>
-        </div>
+/* Build the player card HTML with images + passive names */
+function playerCardHTML(player, heroName, heroImg, trio){
+  const passHTML = (trio || [])
+    .filter(ps => ps && ps.name)
+    .map(ps => `
+      <div class="pStackRow">
+        <img src="${ps.img || PLACEHOLDER}" alt="${ps.name}" loading="lazy">
+        <span>${ps.name}</span>
       </div>
-    `;
-  }
+    `).join('');
+
+  const img  = heroImg || PLACEHOLDER;
+  const hero = heroName || '—';
+  const p    = player || '';
+
+  return `
+    <div class="pCard">
+      <img class="pAct" src="${img}" alt="${hero}" loading="lazy">
+      <div class="pStack">${passHTML}</div>
+      <div class="pInfo">
+        <div class="pName">${p}</div>
+        <div class="pHero">${hero}</div>
+      </div>
+    </div>
+  `;
+}
 
 function renderRows(rows){
   const body = el('rowsBody');
@@ -419,7 +482,6 @@ function renderRows(rows){
                       <span>${banTxt}</span>
                     </div></td>`;
 
-    // Build player cards, aligning actives with their matching passives by player
     const byPlayer = r.actives.map(a => {
       const p = r.passives.find(pp => pp.player === a.player) || { trio: [] };
       return playerCardHTML(a.player, a.hero, a.heroImg, p.trio);
@@ -432,7 +494,7 @@ function renderRows(rows){
   });
 }
 
-/* ===== Summary (unchanged logic, still sortable per player/team) ===== */
+/* ===== Summary (sortable per team/player) ===== */
 function buildBuckets(groupBy, kind){
   const buckets = new Map();
   CURRENT_ROWS.forEach(r => {
@@ -604,6 +666,9 @@ async function refresh(){
   const kind    = el('sumKind').value;
   const buckets = buildBuckets(groupBy, kind);
   renderSummary(buckets, groupBy, kind);
+
+  // Also refresh the Per-Skill table to match the current top filters
+  computeSkillStats();
 }
 
 /* ========= Events ========= */
@@ -617,6 +682,203 @@ el('applyBtn').onclick = refresh;
 
 /* ========= First load ========= */
 refresh();
+
+/* ===== Per-Skill Stats (Active/Passive) ===== */
+async function computeSkillStats() {
+  const type = document.getElementById('skillTypeSelect').value;  // 'active' | 'passive'
+  // Reuse top filters:
+  const team = (document.getElementById('fTeam').value || '__ALL__');
+  const from = document.getElementById('fFrom').value;
+  const to   = document.getElementById('fTo').value;
+
+  if (!from || !to) {
+    alert('Please set a From and To date for Skill Stats.');
+    return;
+  }
+
+  // Pull everything we need in one go
+  let q = client
+    .from('draft_records')
+    .select('team_left, team_right, team_left_score, team_right_score, match_date, map, state')
+    .gte('match_date', from)
+    .lte('match_date', to);
+
+  if (team !== '__ALL__') {
+    q = q.or(`team_left.eq.${team},team_right.eq.${team}`);
+  }
+
+  const { data, error } = await q;
+  if (error) {
+    console.error('❌ Skill stats fetch error:', error);
+    alert('Failed to fetch records for Skill Stats.');
+    return;
+  }
+
+  // Slot availability per match (denominators)
+  const sidesPerMatch = (team === '__ALL__') ? 2 : 1;
+  const activeSlotsPerMatch  = 4 * sidesPerMatch;   // 4 actives per side
+  const passiveSlotsPerMatch = 12 * sidesPerMatch;  // 4 players * 3 passives per side
+  const banSlotsPerMatch     = 1 * sidesPerMatch;   // 1 ban per side
+
+  const matches = data.length;
+
+  const pickDen = (type === 'active') ? (matches * activeSlotsPerMatch)
+                                      : (matches * passiveSlotsPerMatch);
+  const banDen  = (type === 'active') ? (matches * banSlotsPerMatch) : 0;
+
+  // Accumulators per skill
+  const skills = new Map(); // name -> {name,img,picks,bans,wins}
+
+  const addSkill = (name, img) => {
+    if (!name) return null;
+    if (!skills.has(name)) skills.set(name, { name, img: img || PLACEHOLDER, picks: 0, bans: 0, wins: 0 });
+    return skills.get(name);
+  };
+
+  // Helpers for side traversal
+  const forSide = (r, side, fn) => {
+    if (team !== '__ALL__') {
+      const sideTeam = (side === 'L') ? r.team_left : r.team_right;
+      if (sideTeam !== team) return;
+    }
+    fn();
+  };
+
+  data.forEach(r => {
+    const s = r.state || {};
+    const picks = s.picks || [];
+    const bans  = s.bans  || [];
+    const pass  = s.passives || [];
+
+    const lScore = r.team_left_score ?? 0;
+    const rScore = r.team_right_score ?? 0;
+    const lWin = lScore > rScore;
+    const rWin = rScore > lScore;
+
+    if (type === 'active') {
+      // Active picks (4 indices per side)
+      forSide(r, 'L', () => {
+        [0,1,2,3].forEach(i => {
+          const hero = picks[i];
+          if (!hero || !hero.name) return;
+          const sk = addSkill(hero.name, hero.image_url);
+          if (!sk) return;
+          sk.picks += 1;
+          if (lWin) sk.wins += 1;
+        });
+        const ban = bans[0];
+        if (ban && ban.name) {
+          const sk = addSkill(ban.name, ban.image_url);
+          if (sk) sk.bans += 1;
+        }
+      });
+
+      forSide(r, 'R', () => {
+        [4,5,6,7].forEach(i => {
+          const hero = picks[i];
+          if (!hero || !hero.name) return;
+          const sk = addSkill(hero.name, hero.image_url);
+          if (!sk) return;
+          sk.picks += 1;
+          if (rWin) sk.wins += 1;
+        });
+        const ban = bans[1];
+        if (ban && ban.name) {
+          const sk = addSkill(ban.name, ban.image_url);
+          if (sk) sk.bans += 1;
+        }
+      });
+    } else {
+      // Passive picks (3 passives per player slot)
+      forSide(r, 'L', () => {
+        [0,1,2,3].forEach(i => {
+          const trio = pass[i] || [];
+          trio.forEach(ps => {
+            if (!ps || !ps.name) return;
+            const sk = addSkill(ps.name, ps.image_url);
+            if (!sk) return;
+            sk.picks += 1;
+            if (lWin) sk.wins += 1;
+          });
+        });
+      });
+      forSide(r, 'R', () => {
+        [4,5,6,7].forEach(i => {
+          const trio = pass[i] || [];
+          trio.forEach(ps => {
+            if (!ps || !ps.name) return;
+            const sk = addSkill(ps.name, ps.image_url);
+            if (!sk) return;
+            sk.picks += 1;
+            if (rWin) sk.wins += 1;
+          });
+        });
+      });
+    }
+  });
+
+  // Build rows with rates
+  const rows = Array.from(skills.values()).map(sk => {
+    const pickRate = pickDen ? (sk.picks / pickDen) : 0;
+    const banRate  = (type === 'active' && banDen) ? (sk.bans / banDen) : null;
+    const winRate  = sk.picks ? (sk.wins / sk.picks) : null;
+    return { ...sk, pickRate, banRate, winRate };
+  });
+
+  // Sort
+  const sortBy = document.getElementById('skillSortBy').value;
+  const dir    = document.getElementById('skillSortDir').value;
+  const cmp = (a, b) => {
+    const sign = (dir === 'asc') ? 1 : -1;
+    const num = k => (isNaN(k) || k === null) ? -Infinity : +k;
+    switch (sortBy) {
+      case 'name':    return sign * a.name.localeCompare(b.name);
+      case 'picks':   return sign * (a.picks - b.picks);
+      case 'pickRate':return sign * (num(a.pickRate) - num(b.pickRate));
+      case 'bans':    return sign * (a.bans - b.bans);
+      case 'banRate': return sign * (num(a.banRate) - num(b.banRate));
+      case 'wins':    return sign * (a.wins - b.wins);
+      case 'winRate': return sign * (num(a.winRate) - num(b.winRate));
+      default:        return 0;
+    }
+  };
+  rows.sort(cmp);
+
+  // Render
+  const tbody = document.getElementById('skillStatsBody');
+  tbody.innerHTML = '';
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <div class="skill-cell">
+          <img src="${r.img || PLACEHOLDER}" alt="${r.name}" loading="lazy">
+          <span class="skill-name">${r.name}</span>
+        </div>
+      </td>
+      <td class="mono">${r.picks}</td>
+      <td class="mono">${pct(r.picks, pickDen)}</td>
+      <td class="mono">${(type === 'active') ? r.bans : '—'}</td>
+      <td class="mono">${(type === 'active') ? pct(r.bans, banDen) : '—'}</td>
+      <td class="mono">${r.wins}</td>
+      <td class="mono">${(r.winRate === null) ? '—' : (r.winRate * 100).toFixed(1) + '%'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  const teamLabel = (team === '__ALL__') ? 'All teams' : team;
+  const typeLabel = (type === 'active') ? 'Active' : 'Passive';
+  document.getElementById('skillStatsMeta').textContent =
+    `${teamLabel} • ${typeLabel} • Matches: ${matches} • Slots: ` +
+    `${(type==='active') ? pickDen + ' active' : pickDen + ' passive'}` +
+    `${(type==='active') ? ` • Ban slots: ${banDen}` : ''}`;
+}
+
+/* Auto-recompute when type/sort changes */
+['skillTypeSelect','skillSortBy','skillSortDir'].forEach(id=>{
+  const node = document.getElementById(id);
+  if (node) node.addEventListener('change', () => computeSkillStats());
+});
 </script>
 </body>
 </html>
