@@ -81,7 +81,7 @@
     .pbox { padding: 8px; background: #151515; border: 1px solid #2a2a2a; border-radius: 8px; }
     .pbox .p { color: var(--muted-2); font-size: 11px; margin-bottom: 4px; }
     .pbox .a { font-size: 12.5px; color: #fff; font-weight: 600; display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-    .pbox .s { font-size: 11.5px; }
+    .pbox .pn { color: #cfd8dc; font-size: 11.5px; margin: 2px 0 6px; }  /* <-- added */
     .hero-img { width: 42px; height: 42px; border-radius: 6px; object-fit: cover; background: #222; border: 1px solid #333; }
     .ban-img { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #333; background:#222; object-fit: cover; }
     .passive-list { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -165,7 +165,7 @@
             <th>Opponent</th>
             <th data-sort="result">Result</th>
             <th>Ban</th>
-            <th style="min-width:560px;">Players (Actives & Passives)</th>
+            <th style="min-width:560px;">Players (Actives, Passives & Names)</th>
           </tr>
         </thead>
         <tbody id="skillsBody">
@@ -192,6 +192,7 @@
       const s = safe(record.state, {});
       const picks = safe(s.picks, []);
       const passives = safe(s.passives, []);
+      const playersArr = safe(s.playerCards, []);  // <-- pull names
       const bans = safe(s.bans, []);
 
       const isLeft = side === 'left';
@@ -211,6 +212,7 @@
       const players = idx.map((i, k) => {
         const activeName = safe(picks[i]?.name, 'None');
         const activeImg  = safe(picks[i]?.image_url, null) || byNameImg(activeName);
+        const playerName = (playersArr[i] && String(playersArr[i]).trim()) ? String(playersArr[i]).trim() : ''; // <-- name per slot
 
         const psList = (passives[i] || []).filter(Boolean).map(x => ({
           name: x.name,
@@ -219,6 +221,7 @@
 
         return {
           label: `P${k+1}`,
+          playerName,
           activeName,
           activeImg,
           passives: psList
@@ -252,6 +255,7 @@
       return `
         <div class="pbox">
           <div class="p caps">${p.label}</div>
+          ${p.playerName ? `<div class="pn">${p.playerName}</div>` : ``}  <!-- <-- show name if available -->
           <div class="a">
             <img class="hero-img" src="${p.activeImg || PLACEHOLDER}" alt="">
             <span>${p.activeName}</span>
