@@ -88,6 +88,8 @@
     .top-controls a, .top-controls button, .top-controls select, .top-controls label { background: #ffbd59; color: #1c1c1c; padding: 6px 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; text-decoration: none; }
     .top-controls select { padding: 4px 8px; font-weight: bold; background: #2a2a2a; color: #ffbd59; border: 1px solid #555; }
     .top-controls button:hover, .top-controls a:hover { background: #e0a84f; }
+    /* NEW: style the tournament text input to match */
+    .top-controls input[type="text"] { padding: 6px 8px; background: #2a2a2a; color: #ffbd59; border: 1px solid #555; border-radius: 5px; font-weight: bold; }
 
     /* Team pick/ban counts section */
     #teamPBCounts { width: 90%; max-width: 1200px; margin: 40px auto; }
@@ -123,6 +125,15 @@
         <input type="checkbox" id="multiToggle" onchange="toggleTeamFilterMode()" />
         Enable multiple selection
       </label>
+
+      <!-- Tournament filter for history -->
+      <div style="margin-top:10px;">
+        <label style="display:block;margin-bottom:4px;">Tournament</label>
+        <select id="tournamentFilter" style="width:200px;" onchange="loadAllDraftRecords()">
+          <!-- options populated by JS -->
+        </select>
+      </div>
+
       <br />
       <select id="teamFilter" size="5" style="width: 200px; margin-top: 6px;" onchange="loadAllDraftRecords()">
       </select>
@@ -139,6 +150,7 @@
             <th style="padding: 8px;">Team Right</th>
             <th style="padding: 8px;">Team Right Score</th>
             <th style="padding: 8px;">Map</th>
+            <th style="padding: 8px;">Tournament</th>
             <th style="padding: 8px;">Actions</th>
           </tr>
         </thead>
@@ -163,6 +175,7 @@
       <option value="6">Game 6</option>
       <option value="7">Game 7</option>
     </select>
+
     <select id="mapSelect">
       <option value="Bermuda">Bermuda</option>
       <option value="Kalahari">Kalahari</option>
@@ -171,6 +184,12 @@
       <option value="Nexterra">Nexterra</option>
       <option value="Solara">Solara</option>
     </select>
+
+    <!-- NEW: Tournament entry field (with suggestions) -->
+    <label for="tournamentInput">Tournament:</label>
+    <input type="text" id="tournamentInput" placeholder="Enter tournament name" list="tournamentList" />
+    <datalist id="tournamentList"></datalist>
+
     <button onclick="saveOrUpdateDraft()">Save/Update</button>
     <button onclick="loadDraftRecord()">Load</button>
   </div>
@@ -226,6 +245,9 @@
       <label>Team
         <select id="teamCountSelect" style="min-width:220px;"></select>
       </label>
+      <label>Tournament
+        <select id="countTournamentSelect" style="min-width:220px;"></select>
+      </label>
       <label>From <input type="date" id="countFrom"></label>
       <label>To <input type="date" id="countTo"></label>
       <button onclick="computeTeamPickBanCounts()">Compute</button>
@@ -278,7 +300,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('matchDate').valueAsDate = today;
   // Defaults for team PB counts
   document.getElementById('countTo').valueAsDate = today;
-  const from = new Date(2025, 7, 28); // months are 0-indexed: 7 = August "const from = new Date(today); from.setMonth(from.getMonth() - 1);"
+  const from = new Date(2025, 7, 28); // months are 0-indexed: 7 = August
   document.getElementById('countFrom').valueAsDate = from;
   
   await loadDraftState();
@@ -644,7 +666,7 @@ async function loadDraftRecord() {
 
   const { data, error } = await client
     .from('draft_records')
-    .select('state, team_left_score, team_right_score, map')
+    .select('state, team_left_score, team_right_score, map, tournament_name')
     .eq('game_number', gameNumber)
     .eq('match_date', matchDate)
     .eq('team_left', teamLeft)
@@ -678,6 +700,9 @@ async function loadDraftRecord() {
     document.getElementById('teamRightScore').value = draftState.teamRightScore;
     document.getElementById('mapSelect').value = draftState.map;
 
+    // NEW: set tournament field from record
+    document.getElementById('tournamentInput').value = data.tournament_name ?? '';
+
     drawDraft();
     console.log("✅ Draft record loaded.");
   }
@@ -691,6 +716,7 @@ async function saveOrUpdateDraft() {
   const teamLeftScore = parseInt(document.getElementById('teamLeftScore').value || '0', 10);
   const teamRightScore = parseInt(document.getElementById('teamRightScore').value || '0', 10);
   const map = document.getElementById('mapSelect').value;
+  const tournamentName = (document.getElementById('tournamentInput').value || '').trim(); // NEW
 
   if (!matchDate) {
     alert("⚠️ Please select a match date.");
@@ -722,6 +748,7 @@ async function saveOrUpdateDraft() {
     team_right_score: teamRightScore,
     map: map,
     state: draftState,
+    tournament_name: tournamentName || null, // NEW
     updated_at: new Date().toISOString()
   };
 
@@ -735,6 +762,7 @@ async function saveOrUpdateDraft() {
       console.error("Insert Error:", insertError);
     } else {
       alert("✅ Draft saved.");
+      loadAllDraftRecords(); // refresh lists & tournament suggestions
     }
   } else {
     console.log("🔁 Updating existing draft record (id =", data.id, ")...");
@@ -746,21 +774,23 @@ async function saveOrUpdateDraft() {
       console.error("Update Error:", updateError);
     } else {
       alert("✅ Draft updated.");
+      loadAllDraftRecords(); // refresh lists & tournament suggestions
     }
   }
 };
 
 function toggleTeamFilterMode() {
   const filter = document.getElementById('teamFilter');
+  const selected = Array.from(filter.selectedOptions).map(o => o.value);
   const isMulti = document.getElementById('multiToggle').checked;
   filter.multiple = isMulti;
-  filter.selectedIndex = -1;
+  Array.from(filter.options).forEach(o => { o.selected = selected.includes(o.value); });
 }
 
 async function loadAllDraftRecords() {
   const { data, error } = await client
     .from('draft_records')
-    .select('id, match_date, game_number, team_left, team_right, team_left_score, team_right_score, map')
+    .select('id, match_date, game_number, team_left, team_right, team_left_score, team_right_score, map, tournament_name')
     .order('match_date', { ascending: false })
     .order('id', { ascending: false });
 
@@ -771,24 +801,100 @@ async function loadAllDraftRecords() {
 
   const filterSelect = document.getElementById('teamFilter');
   const teamCountSelect = document.getElementById('teamCountSelect');
+  const tournamentFilter = document.getElementById('tournamentFilter');
+  const countTournamentSelect = document.getElementById('countTournamentSelect');
+  const tournamentInputList = document.getElementById('tournamentList');
+
+  // preserve selections
   const selectedTeams = Array.from(filterSelect.selectedOptions).map(opt => opt.value.toLowerCase());
+  const prevTournamentHistory = tournamentFilter.value || '__ALL__';
+  const prevTournamentCounts  = countTournamentSelect.value || '__ALL__';
 
   const table = document.getElementById('recordBody');
   table.innerHTML = '';
 
   const allTeams = new Set();
+  const allTournaments = new Set();
   const matchedRecords = [];
 
+  // Build sets
   data.forEach(record => {
     allTeams.add(record.team_left);
     allTeams.add(record.team_right);
+    if (record.tournament_name) allTournaments.add(record.tournament_name);
+  });
 
+  // Populate team filters (history + counts)
+  const prevSelectedTeams = new Set(selectedTeams);
+  const prevTeamCount = teamCountSelect.value || '__ALL__';
+
+  filterSelect.innerHTML = '';
+  Array.from(allTeams).sort().forEach(team => {
+    const option1 = document.createElement('option');
+    option1.value = team;
+    option1.textContent = team;
+    if (prevSelectedTeams.has(team.toLowerCase())) option1.selected = true;
+    filterSelect.appendChild(option1);
+  });
+
+  teamCountSelect.innerHTML = '';
+  const allOpt = document.createElement('option');
+  allOpt.value = '__ALL__';
+  allOpt.textContent = 'All teams';
+  teamCountSelect.appendChild(allOpt);
+  Array.from(allTeams).sort().forEach(team => {
+    const option2 = document.createElement('option');
+    option2.value = team;
+    option2.textContent = team;
+    teamCountSelect.appendChild(option2);
+  });
+  teamCountSelect.value = prevTeamCount || '__ALL__';
+
+  // Populate tournament selects (history + counts)
+  const tournamentsSorted = ['__ALL__', ...Array.from(allTournaments).sort()];
+
+  tournamentFilter.innerHTML = '';
+  tournamentsSorted.forEach(tn => {
+    const o = document.createElement('option');
+    o.value = tn;
+    o.textContent = (tn === '__ALL__') ? 'All tournaments' : tn;
+    tournamentFilter.appendChild(o);
+  });
+  tournamentFilter.value = prevTournamentHistory || '__ALL__';
+
+  countTournamentSelect.innerHTML = '';
+  tournamentsSorted.forEach(tn => {
+    const o2 = document.createElement('option');
+    o2.value = tn;
+    o2.textContent = (tn === '__ALL__') ? 'All tournaments' : tn;
+    countTournamentSelect.appendChild(o2);
+  });
+  countTournamentSelect.value = prevTournamentCounts || '__ALL__';
+
+  // Also populate the datalist for the input field (autocomplete)
+  if (tournamentInputList) {
+    tournamentInputList.innerHTML = '';
+    Array.from(allTournaments).sort().forEach(tn => {
+      const opt = document.createElement('option');
+      opt.value = tn;
+      tournamentInputList.appendChild(opt);
+    });
+  }
+
+  // Apply filters
+  const selectedTournament = tournamentFilter.value || '__ALL__';
+
+  data.forEach(record => {
     const matchTeam =
       selectedTeams.length === 0 ||
       selectedTeams.includes(record.team_left.toLowerCase()) ||
       selectedTeams.includes(record.team_right.toLowerCase());
 
-    if (!matchTeam) return;
+    const matchTournament =
+      selectedTournament === '__ALL__' ||
+      record.tournament_name === selectedTournament;
+
+    if (!matchTeam || !matchTournament) return;
 
     matchedRecords.push(record);
 
@@ -804,6 +910,7 @@ async function loadAllDraftRecords() {
       <td style="padding: 6px; text-align: left;">${record.team_right} ${isRightWinner ? '🏆' : ''}</td>
       <td style="padding: 6px;">${record.team_right_score ?? '-'}</td>
       <td style="padding: 6px;">${record.map ?? '-'}</td>
+      <td style="padding: 6px;">${record.tournament_name ?? '-'}</td>
       <td style="padding: 6px;">
         <button onclick="loadSpecificDraft(${record.id})">Load</button>
       </td>
@@ -812,42 +919,12 @@ async function loadAllDraftRecords() {
   });
 
   renderDraftCardSummaries(matchedRecords);
-
-  // Populate filter options (and the new teamCountSelect) if empty
-  if (filterSelect.options.length <= 1 || teamCountSelect.options.length === 0) {
-    // Clear first
-    filterSelect.innerHTML = '';
-    teamCountSelect.innerHTML = '';
-
-    // "All teams" for counts dropdown
-    const allOpt = document.createElement('option');
-    allOpt.value = '__ALL__';
-    allOpt.textContent = 'All teams';
-    teamCountSelect.appendChild(allOpt);
-
-    Array.from(allTeams).sort().forEach(team => {
-      const option1 = document.createElement('option');
-      option1.value = team;
-      option1.textContent = team;
-      filterSelect.appendChild(option1);
-
-      const option2 = document.createElement('option');
-      option2.value = team;
-      option2.textContent = team;
-      teamCountSelect.appendChild(option2);
-    });
-
-    // Default selection for the counts dropdown
-    if (!teamCountSelect.value) {
-      teamCountSelect.value = '__ALL__';
-    }
-  }
-}  /* <-- FIX: close loadAllDraftRecords() properly */
+}
 
 async function loadSpecificDraft(id) {
   const { data, error } = await client
     .from('draft_records')
-    .select('state, match_date, game_number, team_left_score, team_right_score, map')
+    .select('state, match_date, game_number, team_left_score, team_right_score, map, tournament_name')
     .eq('id', id)
     .single();
 
@@ -884,6 +961,9 @@ async function loadSpecificDraft(id) {
   document.getElementById('teamLeftScore').value = draftState.teamLeftScore;
   document.getElementById('teamRightScore').value = draftState.teamRightScore;
   document.getElementById('mapSelect').value = draftState.map;
+
+  // NEW: set tournament field from record
+  document.getElementById('tournamentInput').value = data.tournament_name ?? '';
 
   drawDraft();
   console.log("✅ Specific draft loaded.");
@@ -929,6 +1009,7 @@ function renderDraftCardSummaries(data) {
       meta.style.paddingBottom = '4px';
       meta.innerHTML = `
         📅 ${r.match_date} | 🎮 Game ${r.game_number} | 🗺️ ${r.map}<br>
+        🏆 ${r.tournament_name ?? '—'}<br>
         🆚 ${r.team_left} ${r.team_left_score ?? '-'} - ${r.team_right_score ?? '-'} ${r.team_right}
       `;
       teamCard.appendChild(meta);
@@ -1008,21 +1089,24 @@ function renderDraftCardSummaries(data) {
 /* ===== Team pick/ban counts logic ===== */
 async function computeTeamPickBanCounts() {
   const team = document.getElementById('teamCountSelect').value;
+  const tourn = (document.getElementById('countTournamentSelect')?.value) || '__ALL__';
   const from = document.getElementById('countFrom').value;
   const to = document.getElementById('countTo').value;
 
   if (!team) { alert('Please choose a team.'); return; }
   if (!from || !to) { alert('Please set a From and To date.'); return; }
 
-  // Fetch only the necessary columns including the full state
   let query = client
     .from('draft_records')
-    .select('team_left, team_right, match_date, state')
+    .select('team_left, team_right, match_date, state, tournament_name')
     .gte('match_date', from)
     .lte('match_date', to);
 
   if (team !== '__ALL__') {
     query = query.or(`team_left.eq.${team},team_right.eq.${team}`);
+  }
+  if (tourn !== '__ALL__') {
+    query = query.eq('tournament_name', tourn);
   }
 
   const { data, error } = await query;
@@ -1036,7 +1120,7 @@ async function computeTeamPickBanCounts() {
   let totalMatches = 0;
   let totalPicks = 0;
   let totalBans = 0;
-  const pickCounts = new Map(); // skillName -> count
+  const pickCounts = new Map();
   const banCounts = new Map();
 
   data.forEach(r => {
@@ -1047,7 +1131,6 @@ async function computeTeamPickBanCounts() {
     if (team === '__ALL__') {
       totalMatches += 1;
 
-      // Count picks from both sides (all 8 indices)
       [0,1,2,3,4,5,6,7].forEach(i => {
         const hero = picks[i];
         const name = hero?.name;
@@ -1057,7 +1140,6 @@ async function computeTeamPickBanCounts() {
         }
       });
 
-      // Count both bans if present
       [0,1].forEach(bi => {
         const b = bans[bi];
         const bName = b?.name;
@@ -1067,14 +1149,12 @@ async function computeTeamPickBanCounts() {
         }
       });
     } else {
-      // Specific team path
       const isLeft = r.team_left === team;
       const isRight = r.team_right === team;
       if (!isLeft && !isRight) return;
 
       totalMatches += 1;
 
-      // Count picks (four indices depending on side)
       const idx = isLeft ? [0,1,2,3] : [4,5,6,7];
       idx.forEach(i => {
         const hero = picks[i];
@@ -1085,7 +1165,6 @@ async function computeTeamPickBanCounts() {
         }
       });
 
-      // Count bans (left team uses bans[0], right team uses bans[1])
       const banHero = bans[isLeft ? 0 : 1];
       const banName = banHero?.name || null;
       if (banName) {
@@ -1093,13 +1172,13 @@ async function computeTeamPickBanCounts() {
         totalBans += 1;
       }
     }
-  }); /* <-- FIX: close forEach properly */
+  });
 
   const teamLabel = (team === '__ALL__') ? 'All teams' : team;
+  const tournLabel = (tourn === '__ALL__') ? 'All tournaments' : tourn;
 
-  // Update meta and totals
   document.getElementById('teamPBMeta').textContent =
-    `Team: ${teamLabel} • Range: ${from} → ${to} • Matches: ${totalMatches}`;
+    `Team: ${teamLabel} • Tournament: ${tournLabel} • Range: ${from} → ${to} • Matches: ${totalMatches}`;
 
   const totalsEl = document.getElementById('teamPBTotals');
   totalsEl.innerHTML =
@@ -1108,7 +1187,6 @@ async function computeTeamPickBanCounts() {
       : `<div><b>Total Picks:</b> ${totalPicks}</div>
          <div><b>Total Bans:</b> ${totalBans}</div>`;
 
-  // Render breakdown tables
   const pickBody = document.getElementById('teamPickBreakdown');
   const banBody = document.getElementById('teamBanBreakdown');
   pickBody.innerHTML = '';
