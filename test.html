@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Clash Squad — Skills per Match + Summary</title>
+  <title>Clash Squad — Skills per Match + Summary (Sortable)</title>
 
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -72,6 +72,8 @@
     thead th { position: sticky; top: 0; background: #181818; z-index: 1; }
     th, td { padding: 10px 8px; border-bottom: 1px solid #2a2a2a; text-align: left; font-size: 12.5px; vertical-align: top; }
     tbody tr:nth-child(odd) { background: var(--row); }
+    thead th[data-sort] { cursor: pointer; }
+    thead th[data-sort]:after { content: ' ⇅'; color: #555; font-weight: normal; }
     .badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 6px; border-radius: 999px; font-size: 11px; font-weight: 700; }
     .win { background: #1d3f2a; color: #39d27d; border: 1px solid #2d6b47; }
     .loss { background: #3f1d1d; color: #ff8c8c; border: 1px solid #6b2d2d; }
@@ -209,6 +211,35 @@
               <option value="ban">Bans</option>
             </select>
           </label>
+          <!-- NEW: Sorting controls -->
+          <label class="muted">Card order
+            <select id="sumCardSort">
+              <option value="matches">Matches</option>
+              <option value="wins">Wins</option>
+              <option value="winpct">Win %</option>
+              <option value="name">A→Z</option>
+            </select>
+          </label>
+          <label class="muted">Card dir
+            <select id="sumCardDir">
+              <option value="desc">Desc</option>
+              <option value="asc">Asc</option>
+            </select>
+          </label>
+          <label class="muted">Skills order
+            <select id="sumSkillSort">
+              <option value="appearRate">Rate</option>
+              <option value="count">Count</option>
+              <option value="winrate">Win %</option>
+              <option value="name">A→Z</option>
+            </select>
+          </label>
+          <label class="muted">Skills dir
+            <select id="sumSkillDir">
+              <option value="desc">Desc</option>
+              <option value="asc">Asc</option>
+            </select>
+          </label>
         </div>
       </div>
 
@@ -221,7 +252,7 @@
 
   <script>
     const PLACEHOLDER = 'https://imgur.com/AdvPwAO.png';
-    let CHAR_INDEX = new Map(); // name -> { image_url, ... }
+    let CHAR_INDEX = new Map(); // name -> character meta (for fallback image)
 
     // -------- Helpers --------
     function safe(obj, def = null) { return obj ?? def; }
@@ -342,7 +373,7 @@
     function setDefaultDates() {
       const to = new Date();
       const from = new Date(to);
-      from.setMonth(from.getMonth() - 3); // last ~90 days by default
+      from.setMonth(from.getMonth() - 3); // default ~90 days
 
       const toEl = document.getElementById('toDate');
       const fromEl = document.getElementById('fromDate');
@@ -433,7 +464,7 @@
       }
       CURRENT_ROWS = rows;
       renderTable(rows);
-      recomputeSummary(); // <— update summary with filtered rows
+      recomputeSummary(); // update summary with filtered rows
     }
 
     function renderTable(rows) {
@@ -456,7 +487,7 @@
       loadData();
     }
 
-    // ===== Summary computation =====
+    // ===== Summary computation + sorting =====
     function recomputeSummary() {
       const groupBy = document.getElementById('sumGroupBy').value; // team | player
       const kind    = document.getElementById('sumKind').value;    // active | passive | ban
@@ -489,11 +520,10 @@
     function aggregateForTeam(buckets, r, kind) {
       const key = r.team;
       const b = ensureBucket(buckets, key, r.team);
-      // one team-row = one match appearance for the team
       b.matches += 1;
       if (r.result === 'Win') b.wins += 1;
 
-      const seen = new Set(); // track per-skill "appearance" within this team-row
+      const seen = new Set();
 
       if (kind === 'active') {
         r.players.forEach(p => {
@@ -525,7 +555,7 @@
         const sName = r.banName;
         if (sName && sName !== '—') {
           const sk = ensureSkill(b.skills, sName, r.banImg);
-          sk.occ += 1; // team has exactly 1 ban slot per team-row
+          sk.occ += 1;
           if (!seen.has(sName)) {
             sk.appear += 1;
             if (r.result === 'Win') sk.appearWins += 1;
@@ -537,22 +567,20 @@
 
     // Player-level aggregation
     function aggregateForPlayers(buckets, r, kind) {
-      const playersProcessed = new Set(); // avoid counting same player twice in a row
+      const playersProcessed = new Set();
       r.players.forEach(p => {
         const pname = (p.playerName || '').trim();
         if (!pname) return;
 
         const b = ensureBucket(buckets, pname, pname);
 
-        // count one "match" for the player per team-row
         if (!playersProcessed.has(pname)) {
           b.matches += 1;
           if (r.result === 'Win') b.wins += 1;
           playersProcessed.add(pname);
         }
 
-        const seen = b._seenPerRow || new Set(); // track appearances per player per row
-        // To keep it simple, we still avoid double-appearance increments within this single row for this player
+        const seen = b._seenPerRow || new Set();
         if (kind === 'active') {
           const sName = p.activeName || 'None';
           if (sName && sName !== 'None') {
@@ -582,7 +610,7 @@
           const sName = r.banName;
           if (sName && sName !== '—') {
             const sk = ensureSkill(b.skills, sName, r.banImg);
-            sk.occ += 1; // counts ban in matches the player played
+            sk.occ += 1;
             const apKey = 'B|' + sName + '|' + r.id;
             if (!seen.has(apKey)) {
               sk.appear += 1;
@@ -609,13 +637,46 @@
         return;
       }
 
+      // ---- NEW: read sort selections ----
+      const cardSort = document.getElementById('sumCardSort').value;   // matches|wins|winpct|name
+      const cardDir  = document.getElementById('sumCardDir').value;    // asc|desc
+      const skillSort = document.getElementById('sumSkillSort').value; // appearRate|count|winrate|name
+      const skillDir  = document.getElementById('sumSkillDir').value;  // asc|desc
+
       const cards = [];
-      // sort entities by matches desc
-      const ordered = [...buckets.values()].sort((a,b) => b.matches - a.matches);
+      // convert map -> array for sorting cards
+      let ordered = [...buckets.values()];
+
+      // Card comparator
+      const cardCmp = (a, b) => {
+        let A, B;
+        if (cardSort === 'name') {
+          A = a.name?.toLowerCase() || '';
+          B = b.name?.toLowerCase() || '';
+        } else if (cardSort === 'matches') {
+          A = a.matches; B = b.matches;
+        } else if (cardSort === 'wins') {
+          A = a.wins; B = b.wins;
+        } else { // winpct
+          A = a.matches ? a.wins / a.matches : -1;
+          B = b.matches ? b.wins / b.matches : -1;
+        }
+        if (A < B) return cardDir === 'asc' ? -1 : 1;
+        if (A > B) return cardDir === 'asc' ? 1 : -1;
+        // tie-breakers
+        if (cardSort !== 'name') {
+          const nA = a.name?.toLowerCase() || '';
+          const nB = b.name?.toLowerCase() || '';
+          if (nA < nB) return -1;
+          if (nA > nB) return 1;
+        }
+        return 0;
+      };
+      ordered.sort(cardCmp);
 
       ordered.forEach(b => {
+        // Build rows for skills, with skill sorting
         const rows = [];
-        // Header row
         rows.push(`
           <tr>
             <th>Skill</th>
@@ -625,19 +686,44 @@
           </tr>
         `);
 
-        // sort skills by appearance desc then count desc
-        const skills = [...b.skills.entries()]
-          .sort((a,b) => (b[1].appear - a[1].appear) || (b[1].occ - a[1].occ));
+        // make array of skills to sort
+        let skills = [...b.skills.entries()].map(([name, s]) => {
+          const appearRate = b.matches ? (s.appear / b.matches) : 0;               // 0..1
+          const winRate    = s.appear ? (s.appearWins / s.appear) : 0;             // 0..1
+          return { name, ...s, appearRate, winRate };
+        });
 
-        skills.forEach(([name, s]) => {
+        const skillCmp = (x, y) => {
+          let A, B;
+          if (skillSort === 'name') {
+            A = x.name.toLowerCase(); B = y.name.toLowerCase();
+          } else if (skillSort === 'count') {
+            A = x.occ; B = y.occ;
+          } else if (skillSort === 'winrate') {
+            A = x.winRate; B = y.winRate;
+          } else { // appearRate
+            A = x.appearRate; B = y.appearRate;
+          }
+          if (A < B) return skillDir === 'asc' ? -1 : 1;
+          if (A > B) return skillDir === 'asc' ? 1 : -1;
+          // tie-breakers
+          if (skillSort !== 'name') {
+            if (x.name.toLowerCase() < y.name.toLowerCase()) return -1;
+            if (x.name.toLowerCase() > y.name.toLowerCase()) return 1;
+          }
+          return 0;
+        };
+        skills.sort(skillCmp);
+
+        skills.forEach(s => {
           const pr = pct(s.appear, b.matches);
           const wr = pct(s.appearWins, s.appear);
           rows.push(`
             <tr>
               <td>
                 <span class="skill-cell">
-                  <img src="${s.img || byNameImg(name)}" alt="">
-                  ${name}
+                  <img src="${s.img || byNameImg(s.name)}" alt="">
+                  ${s.name}
                 </span>
               </td>
               <td>${s.occ}</td>
@@ -647,7 +733,6 @@
           `);
         });
 
-        // If no skills, show placeholder
         const tableHTML = skills.length
           ? `<table class="sum-table"><thead>${rows[0]}</thead><tbody>${rows.slice(1).join('')}</tbody></table>`
           : `<div class="muted">No ${kind} data for this ${groupBy}.</div>`;
@@ -680,11 +765,11 @@
       document.getElementById('fromDate').addEventListener('change', loadData);
       document.getElementById('toDate').addEventListener('change', loadData);
 
+      // Sortable headers for the main table
       document.querySelectorAll('thead th[data-sort]').forEach(th => {
-        th.style.cursor = 'pointer';
         th.title = 'Click to sort';
         th.addEventListener('click', () => {
-          const key = th.getAttribute('data-sort');
+          const key = th.getAttribute('data-sort'); // date|game|map|team|result
           if (SORT_KEY === key) {
             SORT_ASC = !SORT_ASC;
           } else {
@@ -695,8 +780,9 @@
         });
       });
 
-      document.getElementById('sumGroupBy').addEventListener('change', recomputeSummary);
-      document.getElementById('sumKind').addEventListener('change', recomputeSummary);
+      // Summary sorting controls
+      ['sumGroupBy','sumKind','sumCardSort','sumCardDir','sumSkillSort','sumSkillDir']
+        .forEach(id => document.getElementById(id).addEventListener('change', recomputeSummary));
     });
   </script>
 </body>
