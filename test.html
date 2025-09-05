@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Clash Squad — Skills per Match</title>
+  <title>Clash Squad — Skills per Match (with Images)</title>
 
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -72,20 +72,23 @@
     thead th { position: sticky; top: 0; background: #181818; z-index: 1; }
     th, td { padding: 10px 8px; border-bottom: 1px solid #2a2a2a; text-align: left; font-size: 12.5px; vertical-align: top; }
     tbody tr:nth-child(odd) { background: var(--row); }
-    .badge { display: inline-block; padding: 2px 6px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 6px; border-radius: 999px; font-size: 11px; font-weight: 700; }
     .win { background: #1d3f2a; color: #39d27d; border: 1px solid #2d6b47; }
     .loss { background: #3f1d1d; color: #ff8c8c; border: 1px solid #6b2d2d; }
     .ban { background: #2a2a2a; color: #f3cccc; border: 1px solid #533; }
-    .act { color: #fff; font-weight: 600; }
-    .pass { color: var(--muted); }
+
     .players { display: grid; grid-template-columns: repeat(4, minmax(140px,1fr)); gap: 8px; }
-    .pbox { padding: 6px; background: #151515; border: 1px solid #2a2a2a; border-radius: 8px; }
-    .pbox .p { color: var(--muted-2); font-size: 11px; }
-    .pbox .a { font-size: 12.5px; }
+    .pbox { padding: 8px; background: #151515; border: 1px solid #2a2a2a; border-radius: 8px; }
+    .pbox .p { color: var(--muted-2); font-size: 11px; margin-bottom: 4px; }
+    .pbox .a { font-size: 12.5px; color: #fff; font-weight: 600; display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
     .pbox .s { font-size: 11.5px; }
+    .hero-img { width: 42px; height: 42px; border-radius: 6px; object-fit: cover; background: #222; border: 1px solid #333; }
+    .ban-img { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #333; background:#222; object-fit: cover; }
+    .passive-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .passive-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 6px; border: 1px solid #2a2a2a; border-radius: 999px; background: #101010; color: #bbb; }
+    .passive-chip img { width: 14px; height: 14px; border-radius: 3px; object-fit: cover; background:#222; border: 1px solid #333; }
 
     .caps { text-transform: uppercase; letter-spacing: .4px; font-weight: 700; color: var(--muted); font-size: 11px; }
-    .muted { color: var(--muted); }
 
     .empty { text-align: center; padding: 30px; color: var(--muted); }
   </style>
@@ -148,7 +151,6 @@
       <div class="row">
         <button class="btn" id="applyBtn">Apply Filters</button>
         <button class="btn" id="resetBtn" style="background:#2a2a2a;color:#fff;border:1px solid #444;">Reset</button>
-        <span class="pill">Tip: click a column header to sort (basic)</span>
       </div>
     </section>
 
@@ -174,12 +176,19 @@
   </main>
 
   <script>
-    // -------- Helpers for extracting from state --------
+    const PLACEHOLDER = 'https://imgur.com/AdvPwAO.png';
+    let CHAR_INDEX = new Map(); // name -> { image_url, ... }
+
+    // -------- Helpers --------
     function safe(obj, def = null) { return obj ?? def; }
+    function byNameImg(name) {
+      if (!name) return PLACEHOLDER;
+      const c = CHAR_INDEX.get(name);
+      return c?.image_url || PLACEHOLDER;
+    }
 
     // Build a row object (one per team per match)
     function buildRow(record, side) {
-      // side: 'left' or 'right'
       const s = safe(record.state, {});
       const picks = safe(s.picks, []);
       const passives = safe(s.passives, []);
@@ -191,18 +200,28 @@
       const teamScore = isLeft ? (record.team_left_score ?? 0) : (record.team_right_score ?? 0);
       const oppScore  = isLeft ? (record.team_right_score ?? 0) : (record.team_left_score ?? 0);
       const result = teamScore > oppScore ? 'Win' : 'Loss';
-      const banName = safe(bans[isLeft ? 0 : 1]?.name, '—');
+
+      const banObj = bans[isLeft ? 0 : 1] || null;
+      const banName = safe(banObj?.name, '—');
+      const banImg  = safe(banObj?.image_url, null) || byNameImg(banName);
 
       // player indices
       const idx = isLeft ? [0,1,2,3] : [4,5,6,7];
 
       const players = idx.map((i, k) => {
-        const active = safe(picks[i]?.name, 'None');
-        const ps = (passives[i] || []).filter(Boolean).map(x => x.name);
+        const activeName = safe(picks[i]?.name, 'None');
+        const activeImg  = safe(picks[i]?.image_url, null) || byNameImg(activeName);
+
+        const psList = (passives[i] || []).filter(Boolean).map(x => ({
+          name: x.name,
+          image: x.image_url || byNameImg(x.name)
+        }));
+
         return {
           label: `P${k+1}`,
-          active,
-          passives: ps
+          activeName,
+          activeImg,
+          passives: psList
         };
       });
 
@@ -214,18 +233,30 @@
         team,
         opponent: opp,
         result,
-        ban: banName,
+        banName,
+        banImg,
         players
       };
     }
 
     function playerCellHTML(p) {
-      const pass = p.passives.length ? p.passives.join(' + ') : '—';
+      const passHTML = p.passives.length
+        ? `<div class="passive-list">${p.passives.map(ps => `
+             <span class="passive-chip">
+               <img src="${ps.image || PLACEHOLDER}" alt="">
+               ${ps.name}
+             </span>`).join('')}
+           </div>`
+        : `<div class="passive-list" style="color:#666;">—</div>`;
+
       return `
         <div class="pbox">
           <div class="p caps">${p.label}</div>
-          <div class="a act">${p.active}</div>
-          <div class="s pass">${pass}</div>
+          <div class="a">
+            <img class="hero-img" src="${p.activeImg || PLACEHOLDER}" alt="">
+            <span>${p.activeName}</span>
+          </div>
+          ${passHTML}
         </div>
       `;
     }
@@ -240,7 +271,7 @@
           <td><strong>${r.team}</strong></td>
           <td>${r.opponent}</td>
           <td><span class="badge ${badge}">${r.result}</span></td>
-          <td><span class="badge ban">${r.ban}</span></td>
+          <td><span class="badge ban"><img class="ban-img" src="${r.banImg || PLACEHOLDER}" alt=""> ${r.banName}</span></td>
           <td>
             <div class="players">
               ${r.players.map(playerCellHTML).join('')}
@@ -268,11 +299,21 @@
       fromEl.value = fmt(from);
     }
 
+    async function loadCharacters() {
+      try {
+        const resp = await fetch('https://neptuneg1.github.io/freefire-caster/character.json');
+        const list = await resp.json();
+        CHAR_INDEX = new Map(list.map(c => [c.name, c]));
+      } catch (e) {
+        console.warn('Could not load character index for fallback images:', e);
+        CHAR_INDEX = new Map();
+      }
+    }
+
     async function loadData() {
       const from = document.getElementById('fromDate').value;
       const to   = document.getElementById('toDate').value;
 
-      // Pull only what we need
       let q = client
         .from('draft_records')
         .select('id, match_date, game_number, team_left, team_right, team_left_score, team_right_score, map, state')
@@ -283,14 +324,14 @@
       if (to)   q = q.lte('match_date', to);
 
       const { data, error } = await q;
+      const body = document.getElementById('skillsBody');
+
       if (error) {
         console.error('Fetch error:', error);
-        document.getElementById('skillsBody').innerHTML =
-          `<tr><td class="empty" colspan="8">Failed to fetch data.</td></tr>`;
+        body.innerHTML = `<tr><td class="empty" colspan="8">Failed to fetch data.</td></tr>`;
         return;
       }
 
-      // Build rows per team
       const rows = [];
       data.forEach(rec => {
         rows.push(buildRow(rec, 'left'));
@@ -303,7 +344,6 @@
       const teamSet = new Set();
       rows.forEach(r => { if (r.team) teamSet.add(r.team); });
       const teamSel = document.getElementById('teamFilter');
-      // clear (keep "All teams")
       teamSel.innerHTML = `<option value="__ALL__">All teams</option>`;
       [...teamSet].sort().forEach(t => {
         const opt = document.createElement('option');
@@ -326,7 +366,6 @@
       if (result !== '__ALL__') rows = rows.filter(r => r.result === result);
       if (map !== '__ALL__')    rows = rows.filter(r => r.map === map);
 
-      // basic sorting
       if (SORT_KEY) {
         rows.sort((a,b) => {
           const A = a[SORT_KEY];
@@ -339,7 +378,6 @@
           return 0;
         });
       }
-
       renderTable(rows);
     }
 
@@ -352,7 +390,6 @@
         body.innerHTML = `<tr><td class="empty" colspan="8">No rows match your filters.</td></tr>`;
         return;
       }
-
       body.innerHTML = rows.map(rowHTML).join('');
     }
 
@@ -361,14 +398,14 @@
       document.getElementById('resultFilter').value = '__ALL__';
       document.getElementById('mapFilter').value = '__ALL__';
       setDefaultDates();
-      loadData(); // reload (applies)
+      loadData();
     }
 
     // -------- UI wiring --------
-    document.addEventListener('DOMContentLoaded', () => {
-      // default dates then initial load
+    document.addEventListener('DOMContentLoaded', async () => {
       setDefaultDates();
-      loadData();
+      await loadCharacters();   // for fallback images if state is missing URLs
+      await loadData();
 
       document.getElementById('applyBtn').addEventListener('click', applyFilters);
       document.getElementById('resetBtn').addEventListener('click', resetFilters);
@@ -378,7 +415,6 @@
       document.getElementById('fromDate').addEventListener('change', loadData);
       document.getElementById('toDate').addEventListener('change', loadData);
 
-      // simple header sorting
       document.querySelectorAll('thead th[data-sort]').forEach(th => {
         th.style.cursor = 'pointer';
         th.title = 'Click to sort';
