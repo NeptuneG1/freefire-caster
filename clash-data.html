@@ -18,9 +18,10 @@
     h1{margin:0;font-size:1.25rem;letter-spacing:.3px;color:var(--brand)}
     .user-controls{position:absolute;right:16px;top:12px;display:flex;gap:10px;align-items:center}
     .chip{font-size:.85rem;color:#ddd}
-    .btn{background:var(--brand);color:#1b1b1b;border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer}
+    .btn{background:var(--brand);color:#1b1b1b;border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
     .btn:hover{background:#e6a74f}
     .shell{max-width:1200px;margin:22px auto;padding:0 12px}
+    .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
 
     .block{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:16px}
     .block h2{margin:0 0 10px 0;color:var(--brand)}
@@ -37,32 +38,26 @@
     .wl.W{background:#193e2b;color:var(--good);border:1px solid #245b3e}
     .wl.L{background:#401e1e;color:var(--bad);border:1px solid #6b2c2c}
 
-   /* Players laid out as a 2x2 grid (4 players total) */
+    /* Players laid out as a 2x2 grid (4 players total) */
     .playersWrap{
       display:grid;
-      grid-template-columns: repeat(2, minmax(240px, 1fr)); /* 2 columns */
+      grid-template-columns: repeat(2, minmax(240px, 1fr));
       grid-auto-rows: auto;
       gap:10px;
-      overflow:visible;            /* no sideways scroll anymore */
+      overflow:visible;
       padding-bottom:0;
     }
-    
-    /* Player card fills its grid cell */
     .pCard{
       display:flex; align-items:center; gap:10px;
       background:#141414; border:1px solid #2a2a2a; border-radius:10px;
       padding:6px 8px;
-      width:100%;                 /* fill the grid cell */
-      min-width:0;                /* allow shrinking inside table cells */
+      width:100%;
+      min-width:0;
     }
-    
-    /* Active (big left image) */
     .pAct{
       width:44px; height:44px; object-fit:cover; border-radius:8px;
       border:1px solid #333; background:#0f0f0f; flex:0 0 44px;
     }
-    
-    /* 3× passive — stacked vertically, tiny + name */
     .pPassCol{display:flex; flex-direction:column; gap:3px}
     .pPassRow{display:flex; align-items:center; gap:6px}
     .pPassRow img{
@@ -73,8 +68,6 @@
       font-size:.76rem; color:#bbb; max-width:120px;
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
-    
-    /* Player text */
     .pInfo{display:flex; flex-direction:column; gap:2px; min-width:0; line-height:1.2}
     .pName{font-weight:700; font-size:.92rem}
     .pHero{font-size:.86rem; color:#d8d8d8}
@@ -116,10 +109,9 @@
     .skill-name{ color:#eee; font-weight:600; }
     .mono{ font-variant-numeric: tabular-nums; }
 
-      @media (max-width: 900px){
+    @media (max-width: 900px){
       .playersWrap{ grid-template-columns: 1fr; }
     }
-        
   </style>
 </head>
 <body>
@@ -132,6 +124,11 @@
   </header>
 
   <div class="shell">
+    <!-- Back to dashboard -->
+    <div class="bar">
+      <a href="dashboard.html" class="btn">← Back to Dashboard</a>
+    </div>
+
     <!-- FILTERS -->
     <div class="block">
       <h2>Filters</h2>
@@ -155,6 +152,10 @@
         </label>
         <label>Team
           <select id="fTeam"></select>
+        </label>
+        <!-- NEW: Tournament filter -->
+        <label>Tournament
+          <select id="fTourn"></select>
         </label>
         <label>Outcome
           <select id="fWL">
@@ -316,7 +317,6 @@ document.getElementById('logoutBtn').onclick = async () => {
 const PLACEHOLDER = 'https://imgur.com/AdvPwAO.png';
 const fmtPct = (num) => isFinite(num) ? (num*100).toFixed(1) + '%' : '—';
 const pct = (num, den) => den ? fmtPct(num/den) : '—';
-const safe = (v, d='') => (v===null||v===undefined)?d:v;
 const uniq = (arr) => [...new Set(arr)];
 function ymd(d){
   const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0');
@@ -324,8 +324,8 @@ function ymd(d){
 }
 
 /* ========= State ========= */
-let RAW_RECORDS = [];   // raw draft_records rows (filtered by date/map/team on fetch)
-let CURRENT_ROWS = [];  // flattened team-per-match rows after win/loss filter
+let RAW_RECORDS = [];
+let CURRENT_ROWS = [];
 
 /* ========= DOM ========= */
 const el = (id) => document.getElementById(id);
@@ -338,6 +338,9 @@ const el = (id) => document.getElementById(id);
   el('fTo').value = ymd(today);
   el('fMap').value = '__ALL__';
   el('fWL').value = '__ALL__';
+  // Initialize tournament dropdown shell
+  const t = el('fTourn');
+  if (t) t.innerHTML = `<option value="__ALL__">All tournaments</option>`;
 })();
 
 /* ========= Fetch & build ========= */
@@ -346,18 +349,18 @@ async function fetchRecords(){
   const to   = el('fTo').value;
   const map  = el('fMap').value;
   const team = el('fTeam').value || '__ALL__';
+  const tourn= el('fTourn').value || '__ALL__';
 
   let q = client
     .from('draft_records')
-    .select('id, match_date, game_number, team_left, team_right, team_left_score, team_right_score, map, state')
+    .select('id, match_date, game_number, team_left, team_right, team_left_score, team_right_score, map, tournament_name, state')
     .gte('match_date', from).lte('match_date', to)
     .order('match_date', { ascending:false })
     .order('id', { ascending:false });
 
   if (map !== '__ALL__') q = q.eq('map', map);
-  if (team && team !== '__ALL__') {
-    q = q.or(`team_left.eq.${team},team_right.eq.${team}`);
-  }
+  if (team && team !== '__ALL__') q = q.or(`team_left.eq.${team},team_right.eq.${team}`);
+  if (tourn && tourn !== '__ALL__') q = q.eq('tournament_name', tourn);
 
   const { data, error } = await q;
   if (error) {
@@ -372,17 +375,31 @@ function populateTeamDropdown(records){
   const teams = new Set();
   records.forEach(r => { teams.add(r.team_left); teams.add(r.team_right); });
   const dd = el('fTeam');
-  const prior = dd.value;
+  const prior = dd.value || '__ALL__';
   dd.innerHTML = '';
   const all = document.createElement('option'); all.value='__ALL__'; all.textContent='All teams';
   dd.appendChild(all);
   [...teams].sort().forEach(t => {
     const o=document.createElement('option'); o.value=t; o.textContent=t; dd.appendChild(o);
   });
-  dd.value = prior || '__ALL__';
+  dd.value = prior;
 }
 
-/* Build per-team rows from a record; include image URLs */
+function populateTournamentDropdown(records){
+  const tourns = new Set();
+  records.forEach(r => { if (r.tournament_name) tourns.add(r.tournament_name); });
+  const dd = el('fTourn');
+  const prior = dd.value || '__ALL__';
+  dd.innerHTML = '';
+  const all = document.createElement('option'); all.value='__ALL__'; all.textContent='All tournaments';
+  dd.appendChild(all);
+  [...tourns].sort().forEach(tn => {
+    const o=document.createElement('option'); o.value=tn; o.textContent=tn; dd.appendChild(o);
+  });
+  dd.value = prior;
+}
+
+/* Build per-team rows from a record */
 function explodeRecordToRows(rec){
   const s = rec.state || {};
   const picks = s.picks || [];
@@ -433,8 +450,8 @@ function explodeRecordToRows(rec){
       result: res,
       banName: ban,
       banImg,
-      actives,          // [{player, hero, heroImg}]
-      passives: passiveLines // [{player, trio:[{name,img}×3]}]
+      actives,
+      passives: passiveLines
     };
   }
 
@@ -451,34 +468,34 @@ function applyRowFilters(allRows){
   return rows;
 }
 
-/* Build the player card HTML with images + passive names */
-   function playerCardHTML(player, heroName, heroImg, trio){
-    const passRows = (trio || [])
-      .filter(ps => ps && ps.name)
-      .map(ps => `
-        <div class="pPassRow">
-          <img src="${ps.img || PLACEHOLDER}" alt="${ps.name}" loading="lazy">
-          <span>${ps.name}</span>
-        </div>
-      `).join('');
-  
-    const img  = heroImg || PLACEHOLDER;
-    const hero = heroName || '—';
-    const p    = player || '';
-  
-    return `
-      <div class="pCard">
-        <img class="pAct" src="${img}" alt="${hero}" loading="lazy">
-        <div class="pPassCol">
-          ${passRows || ''}
-        </div>
-        <div class="pInfo">
-          <div class="pName">${p}</div>
-          <div class="pHero">${hero}</div>
-        </div>
+/* Player card HTML */
+function playerCardHTML(player, heroName, heroImg, trio){
+  const passRows = (trio || [])
+    .filter(ps => ps && ps.name)
+    .map(ps => `
+      <div class="pPassRow">
+        <img src="${ps.img || PLACEHOLDER}" alt="${ps.name}" loading="lazy">
+        <span>${ps.name}</span>
       </div>
-    `;
-  }
+    `).join('');
+
+  const img  = heroImg || PLACEHOLDER;
+  const hero = heroName || '—';
+  const p    = player || '';
+
+  return `
+    <div class="pCard">
+      <img class="pAct" src="${img}" alt="${hero}" loading="lazy">
+      <div class="pPassCol">
+        ${passRows || ''}
+      </div>
+      <div class="pInfo">
+        <div class="pName">${p}</div>
+        <div class="pHero">${hero}</div>
+      </div>
+    </div>
+  `;
+}
 
 function renderRows(rows){
   const body = el('rowsBody');
@@ -519,7 +536,7 @@ function renderRows(rows){
   });
 }
 
-/* ===== Summary (sortable per team/player) ===== */
+/* ===== Summary ===== */
 function buildBuckets(groupBy, kind){
   const buckets = new Map();
   CURRENT_ROWS.forEach(r => {
@@ -676,11 +693,14 @@ function renderSummary(buckets, groupBy, kind){
 async function refresh(){
   RAW_RECORDS = await fetchRecords();
 
+  // Populate dropdowns from the currently fetched slice
   populateTeamDropdown(RAW_RECORDS);
+  populateTournamentDropdown(RAW_RECORDS);
 
-  const teamSel = el('fTeam').value || '__ALL__';
+  const teamSel  = el('fTeam').value || '__ALL__';
+  const tournSel = el('fTourn').value || '__ALL__';
   el('filterMeta').textContent =
-    `Loaded ${RAW_RECORDS.length} matches • Team: ${teamSel==='__ALL__'?'All teams':teamSel} • Map: ${el('fMap').value}`;
+    `Loaded ${RAW_RECORDS.length} matches • Team: ${teamSel==='__ALL__'?'All teams':teamSel} • Map: ${el('fMap').value} • Tournament: ${tournSel==='__ALL__'?'All':tournSel}`;
 
   const exploded = RAW_RECORDS.flatMap(explodeRecordToRows);
   CURRENT_ROWS = applyRowFilters(exploded);
@@ -710,27 +730,25 @@ refresh();
 
 /* ===== Per-Skill Stats (Active/Passive) ===== */
 async function computeSkillStats() {
-  const type = document.getElementById('skillTypeSelect').value;  // 'active' | 'passive'
-  // Reuse top filters:
-  const team = (document.getElementById('fTeam').value || '__ALL__');
-  const from = document.getElementById('fFrom').value;
-  const to   = document.getElementById('fTo').value;
+  const type  = document.getElementById('skillTypeSelect').value;
+  const team  = (document.getElementById('fTeam').value || '__ALL__');
+  const from  = document.getElementById('fFrom').value;
+  const to    = document.getElementById('fTo').value;
+  const tourn = (document.getElementById('fTourn').value || '__ALL__');
 
   if (!from || !to) {
     alert('Please set a From and To date for Skill Stats.');
     return;
   }
 
-  // Pull everything we need in one go
   let q = client
     .from('draft_records')
-    .select('team_left, team_right, team_left_score, team_right_score, match_date, map, state')
+    .select('team_left, team_right, team_left_score, team_right_score, match_date, map, tournament_name, state')
     .gte('match_date', from)
     .lte('match_date', to);
 
-  if (team !== '__ALL__') {
-    q = q.or(`team_left.eq.${team},team_right.eq.${team}`);
-  }
+  if (team !== '__ALL__')  q = q.or(`team_left.eq.${team},team_right.eq.${team}`);
+  if (tourn !== '__ALL__') q = q.eq('tournament_name', tourn);
 
   const { data, error } = await q;
   if (error) {
@@ -739,11 +757,10 @@ async function computeSkillStats() {
     return;
   }
 
-  // Slot availability per match (denominators)
   const sidesPerMatch = (team === '__ALL__') ? 2 : 1;
-  const activeSlotsPerMatch  = 4 * sidesPerMatch;   // 4 actives per side
-  const passiveSlotsPerMatch = 12 * sidesPerMatch;  // 4 players * 3 passives per side
-  const banSlotsPerMatch     = 1 * sidesPerMatch;   // 1 ban per side
+  const activeSlotsPerMatch  = 4 * sidesPerMatch;
+  const passiveSlotsPerMatch = 12 * sidesPerMatch;
+  const banSlotsPerMatch     = 1 * sidesPerMatch;
 
   const matches = data.length;
 
@@ -751,16 +768,12 @@ async function computeSkillStats() {
                                       : (matches * passiveSlotsPerMatch);
   const banDen  = (type === 'active') ? (matches * banSlotsPerMatch) : 0;
 
-  // Accumulators per skill
   const skills = new Map(); // name -> {name,img,picks,bans,wins}
-
   const addSkill = (name, img) => {
     if (!name) return null;
     if (!skills.has(name)) skills.set(name, { name, img: img || PLACEHOLDER, picks: 0, bans: 0, wins: 0 });
     return skills.get(name);
   };
-
-  // Helpers for side traversal
   const forSide = (r, side, fn) => {
     if (team !== '__ALL__') {
       const sideTeam = (side === 'L') ? r.team_left : r.team_right;
@@ -781,7 +794,6 @@ async function computeSkillStats() {
     const rWin = rScore > lScore;
 
     if (type === 'active') {
-      // Active picks (4 indices per side)
       forSide(r, 'L', () => {
         [0,1,2,3].forEach(i => {
           const hero = picks[i];
@@ -814,7 +826,6 @@ async function computeSkillStats() {
         }
       });
     } else {
-      // Passive picks (3 passives per player slot)
       forSide(r, 'L', () => {
         [0,1,2,3].forEach(i => {
           const trio = pass[i] || [];
@@ -842,7 +853,6 @@ async function computeSkillStats() {
     }
   });
 
-  // Build rows with rates
   const rows = Array.from(skills.values()).map(sk => {
     const pickRate = pickDen ? (sk.picks / pickDen) : 0;
     const banRate  = (type === 'active' && banDen) ? (sk.bans / banDen) : null;
@@ -850,7 +860,6 @@ async function computeSkillStats() {
     return { ...sk, pickRate, banRate, winRate };
   });
 
-  // Sort
   const sortBy = document.getElementById('skillSortBy').value;
   const dir    = document.getElementById('skillSortDir').value;
   const cmp = (a, b) => {
@@ -869,7 +878,6 @@ async function computeSkillStats() {
   };
   rows.sort(cmp);
 
-  // Render
   const tbody = document.getElementById('skillStatsBody');
   tbody.innerHTML = '';
   rows.forEach(r => {
@@ -891,10 +899,11 @@ async function computeSkillStats() {
     tbody.appendChild(tr);
   });
 
-  const teamLabel = (team === '__ALL__') ? 'All teams' : team;
-  const typeLabel = (type === 'active') ? 'Active' : 'Passive';
+  const teamLabel  = (team === '__ALL__') ? 'All teams' : team;
+  const typeLabel  = (type === 'active') ? 'Active' : 'Passive';
+  const tournLabel = (tourn === '__ALL__') ? 'All tournaments' : tourn;
   document.getElementById('skillStatsMeta').textContent =
-    `${teamLabel} • ${typeLabel} • Matches: ${matches} • Slots: ` +
+    `${teamLabel} • ${tournLabel} • ${typeLabel} • Matches: ${matches} • Slots: ` +
     `${(type==='active') ? pickDen + ' active' : pickDen + ' passive'}` +
     `${(type==='active') ? ` • Ban slots: ${banDen}` : ''}`;
 }
