@@ -445,6 +445,7 @@ let RAW_RECORDS = [];
 let CURRENT_ROWS = [];
 let PAGE_SIZE = 25;
 let PAGE = 1;
+let FIRST_LOAD_TOURN = true;
 
 /* ========= DOM ========= */
 const el = (id) => document.getElementById(id);
@@ -512,18 +513,44 @@ function populateTeamDropdown(records){
 }
 
 function populateTournamentDropdown(records){
-  const tourns = new Set();
-  records.forEach(r => { if (r.tournament_name) tourns.add(r.tournament_name); });
+  // collect unique tournaments + find the most recent by match_date
   const dd = el('fTourn');
   const prior = dd.value || '__ALL__';
-  dd.innerHTML = '';
-  const all = document.createElement('option'); all.value='__ALL__'; all.textContent='All tournaments';
-  dd.appendChild(all);
-  [...tourns].sort().forEach(tn => {
-    const o=document.createElement('option'); o.value=tn; o.textContent=tn; dd.appendChild(o);
+
+  const tourns = new Set();
+  let latest = null; // { name, date }
+  records.forEach(r => {
+    const tn = r.tournament_name;
+    if (!tn) return;
+    tourns.add(tn);
+    if (!latest || (r.match_date > latest.date)) {
+      latest = { name: tn, date: r.match_date };
+    }
   });
-  dd.value = prior;
+
+  dd.innerHTML = '';
+  const all = document.createElement('option'); 
+  all.value='__ALL__'; 
+  all.textContent='All tournaments';
+  dd.appendChild(all);
+
+  [...tourns].sort().forEach(tn => {
+    const o = document.createElement('option'); 
+    o.value = tn; 
+    o.textContent = tn; 
+    dd.appendChild(o);
+  });
+
+  // On FIRST load only, if we have a latest tournament, default to it
+  // (unless the user already had a specific selection from a previous session)
+  if (FIRST_LOAD_TOURN && latest && (prior === '__ALL__' || !prior)) {
+    dd.value = latest.name;
+    FIRST_LOAD_TOURN = false; // prevent future auto-switches
+  } else {
+    dd.value = prior;
+  }
 }
+
 
 /* Build per-team rows from a record */
 function explodeRecordToRows(rec){
@@ -1050,8 +1077,15 @@ document.querySelectorAll('.tab').forEach(btn=>{
 async function refresh(){
   RAW_RECORDS = await fetchRecords();
 
+  const beforeT = el('fTourn').value || '__ALL__';
   populateTeamDropdown(RAW_RECORDS);
   populateTournamentDropdown(RAW_RECORDS);
+  const afterT = el('fTourn').value || '__ALL__';
+
+  // If the tournament changed due to auto-select on first load, fetch again with the new filter
+  if (beforeT !== afterT) {
+    RAW_RECORDS = await fetchRecords();
+  }
 
   const teamSel  = el('fTeam').value || '__ALL__';
   const tournSel = el('fTourn').value || '__ALL__';
@@ -1071,6 +1105,7 @@ async function refresh(){
   if (active==='sec-skillsbymap'){ renderSkillsByMap(); }
   if (active==='sec-perskill'){ computeSkillStats(); }
 }
+
 
 /* ========= Events ========= */
 el('applyBtn').onclick = refresh;
