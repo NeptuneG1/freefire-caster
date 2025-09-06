@@ -133,6 +133,10 @@
     body.passive-hidden .pPassRow span{visibility:hidden}
     body.passive-hidden .pCard:hover .pPassRow span{visibility:visible}
 
+    /* combo drilldown */
+    .combo-row{ cursor:pointer; }
+    .combo-detail td{ background:#141414; }
+
     @media (max-width: 900px){
       .playersWrap{ grid-template-columns: 1fr; }
     }
@@ -1094,38 +1098,79 @@ function renderSkillsByMap(){
 
 /* ========= NEW: Active Combos ========= */
 function buildActiveCombos(rows){
-  // key: sorted combo "A|B|C|D"
-  const combos = new Map();
-  rows.forEach(r => {
-    const heroes = r.actives.map(a => a.hero).filter(Boolean);
-    if (heroes.length !== 4) return; // need full 4-actives
-    const imgsMap = new Map();
-    r.actives.forEach(a => { if (a.hero) imgsMap.set(a.hero, a.heroImg || PLACEHOLDER); });
-
-    const sorted = [...heroes].sort((a,b)=>a.localeCompare(b));
-    const key = sorted.join('|');
-
-    if (!combos.has(key)){
-      combos.set(key, {
-        key,
-        heroes: sorted,
-        heroImgs: Object.fromEntries(sorted.map(h => [h, imgsMap.get(h) || PLACEHOLDER])),
-        picks: 0,
-        wins: 0,
-        teams: new Set(),
-        maps: new Map() // mapName -> count
+    // key: sorted combo "A|B|C|D"
+    const combos = new Map();
+    rows.forEach(r => {
+      const heroes = r.actives.map(a => a.hero).filter(Boolean);
+      if (heroes.length !== 4) return; // need full 4-actives
+  
+      const imgsMap = new Map();
+      r.actives.forEach(a => { if (a.hero) imgsMap.set(a.hero, a.heroImg || PLACEHOLDER); });
+  
+      const sorted = [...heroes].sort((a,b)=>a.localeCompare(b));
+      const key = sorted.join('|');
+  
+      if (!combos.has(key)){
+        combos.set(key, {
+          key,
+          heroes: sorted,
+          heroImgs: Object.fromEntries(sorted.map(h => [h, imgsMap.get(h) || PLACEHOLDER])),
+          picks: 0,
+          wins: 0,
+          teams: new Set(),
+          maps: new Map(),      // mapName -> count
+          matches: []           // exact matches for drilldown
+        });
+      }
+      const C = combos.get(key);
+      C.picks += 1;
+      if (r.result === 'W') C.wins += 1;
+      C.teams.add(r.team);
+      const m = r.map || '—';
+      C.maps.set(m, (C.maps.get(m)||0) + 1);
+      // keep the exact match
+      C.matches.push({
+        rec_id: r.rec_id,
+        date: r.match_date,
+        game: r.game_number,
+        map: r.map,
+        team: r.team,
+        opp: r.opponent,
+        ts: r.team_score,
+        os: r.opp_score,
+        res: r.result
       });
-    }
-    const C = combos.get(key);
-    C.picks += 1;
-    if (r.result === 'W') C.wins += 1;
-    C.teams.add(r.team);
-    const m = r.map || '—';
-    C.maps.set(m, (C.maps.get(m)||0) + 1);
-  });
-  return combos;
-}
+    });
+    return combos;
+  }
 
+function pillsFromSet(setLike, maxShow=6){
+  const arr = [...setLike].sort();
+  const shown = arr.slice(0, maxShow).map(t => `<span class="pill" title="${t}">${t}</span>`).join('');
+  const more = arr.length>maxShow ? `<span class="pill" title="${arr.join(', ')}">+${arr.length-maxShow} more</span>` : '';
+  return shown + more;
+}
+function pillsFromMapCount(mapCount, maxShow=6){
+  const arr = [...mapCount.entries()].sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0]));
+  const shown = arr.slice(0, maxShow).map(([name,c]) => `<span class="pill" title="${name} ×${c}">${name} <small>×${c}</small></span>`).join('');
+  const more = arr.length>maxShow ? `<span class="pill" title="${arr.map(([n,c])=>`${n}×${c}`).join(', ')}">+${arr.length-maxShow} more</span>` : '';
+  return shown + more;
+}
+function comboIdFromKey(key){
+  return 'combo_' + key.replace(/[^a-z0-9]+/gi,'_').replace(/^_+|_+$/g,'').toLowerCase();
+}
+function matchLineHTML(m){
+  const score = `${m.ts}-${m.os}`;
+  return `
+    <li>
+      <strong>${m.team}</strong> vs ${m.opp}
+      • <em>${m.map}</em> • Game ${m.game}
+      • <span class="wl ${m.res}">${m.res}</span>
+      • ${score}
+      <span class="muted">(${m.date})</span>
+    </li>`;
+}
+  
 function pillsFromSet(setLike, maxShow=6){
   const arr = [...setLike].sort();
   const shown = arr.slice(0, maxShow).map(t => `<span class="pill" title="${t}">${t}</span>`).join('');
@@ -1155,8 +1200,7 @@ function renderActiveCombos(){
     if (sortBy==='name') return sgn * a.heroes.join(',').localeCompare(b.heroes.join(','));
     if (sortBy==='wins') return sgn * (a.wins - b.wins);
     if (sortBy==='winpct') return sgn * (a.winpct - b.winpct);
-    // default picks
-    return sgn * (a.picks - b.picks);
+    return sgn * (a.picks - b.picks); // default: picks
   });
 
   const tbody = el('comboBody'); tbody.innerHTML='';
@@ -1165,27 +1209,61 @@ function renderActiveCombos(){
     const td = document.createElement('td');
     td.colSpan = 6; td.className='muted'; td.textContent = 'No combos for your selection.';
     tr.appendChild(td); tbody.appendChild(tr);
-  } else {
-    rows.forEach(c=>{
-      const icons = c.heroes.map(h=>`<img src="${(c.heroImgs[h]||PLACEHOLDER)}" alt="${h}" title="${h}" loading="lazy">`).join('');
-      const names = `<div class="muted" style="margin-top:4px">${c.heroes.join(' · ')}</div>`;
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>
-          <div class="comboIcons">${icons}</div>
-          ${names}
-        </td>
-        <td class="mono">${c.picks}</td>
-        <td class="mono">${c.wins}</td>
-        <td class="mono">${fmtPct(c.winpct)}</td>
-        <td>${pillsFromSet(c.teams)}</td>
-        <td>${pillsFromMapCount(c.maps)}</td>
-      `;
-      tbody.appendChild(tr);
-    });
+    el('comboMeta').textContent = `0 combo(s) • Using current filters`;
+    return;
   }
+
+  rows.forEach(c=>{
+    const icons = c.heroes.map(h=>`<img src="${(c.heroImgs[h]||PLACEHOLDER)}" alt="${h}" title="${h}" loading="lazy">`).join('');
+    const names = `<div class="muted" style="margin-top:4px">${c.heroes.join(' · ')}</div>`;
+    const id = comboIdFromKey(c.key);
+
+    // main row (clickable)
+    const tr = document.createElement('tr');
+    tr.className = 'combo-row';
+    tr.dataset.target = id;
+    tr.innerHTML = `
+      <td>
+        <div class="comboIcons">${icons}</div>
+        ${names}
+      </td>
+      <td class="mono">${c.picks}</td>
+      <td class="mono">${c.wins}</td>
+      <td class="mono">${fmtPct(c.winpct)}</td>
+      <td>${pillsFromSet(c.teams)}</td>
+      <td>${pillsFromMapCount(c.maps)}</td>
+    `;
+    tbody.appendChild(tr);
+
+    // detail row (hidden initially)
+    const dr = document.createElement('tr');
+    dr.className = 'combo-detail';
+    dr.id = id;
+    dr.style.display = 'none';
+    const detail = `
+      <td colspan="6">
+        <div class="muted" style="margin-bottom:6px;">${c.matches.length} match(es) with this combo</div>
+        <ul style="margin:0; padding-left:18px; line-height:1.35;">
+          ${c.matches.map(matchLineHTML).join('')}
+        </ul>
+      </td>`;
+    dr.innerHTML = detail;
+    tbody.appendChild(dr);
+  });
+
+  // toggle handler
+  tbody.querySelectorAll('tr.combo-row').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      const id = row.dataset.target;
+      const drow = document.getElementById(id);
+      if (!drow) return;
+      drow.style.display = (drow.style.display === 'none' ? '' : 'none');
+    });
+  });
+
   el('comboMeta').textContent = `${rows.length} combo(s) • Using current filters`;
 }
+
 ['comboMin','comboSort','comboDir'].forEach(id => {
   el(id).addEventListener('change', renderActiveCombos);
 });
