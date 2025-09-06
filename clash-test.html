@@ -208,8 +208,8 @@
         <button data-tab="teammap" class="tab">Team × Map</button>
         <button data-tab="skillsbymap" class="tab">Skills by Map</button>
         <button data-tab="combos" class="tab">Active Combos</button>
-        <button data-tab="pairs" class="tab">Active Pairs</button><!-- NEW -->
-        <button data-tab="banimpact" class="tab">Ban Impact</button><!-- NEW -->
+        <button data-tab="pairs" class="tab">Active Pairs</button>
+        <button data-tab="banimpact" class="tab">Ban Impact</button>
         <button data-tab="perskill" class="tab">Per-Skill</button>
       </div>
     </div>
@@ -411,7 +411,7 @@
       </table>
     </div>
 
-    <!-- ACTIVE PAIRS (NEW) -->
+    <!-- ACTIVE PAIRS -->
     <div id="sec-pairs" class="block js-section">
       <h2>Active Pair Synergy</h2>
       <div class="controls">
@@ -450,7 +450,7 @@
       </table>
     </div>
 
-    <!-- BAN IMPACT (NEW) -->
+    <!-- BAN IMPACT -->
     <div id="sec-banimpact" class="block js-section">
       <h2>Ban Impact</h2>
       <div class="controls">
@@ -568,6 +568,12 @@ function ymd(d){
   const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0');
   return `${y}-${m}-${da}`;
 }
+// Safely parse the `state` column whether it's JSONB or text
+function parseState(val){
+  if (!val) return {};
+  if (typeof val === 'object') return val;
+  try { return JSON.parse(val); } catch(e){ console.warn('Bad state JSON:', e, val); return {}; }
+}
 
 /* ========= State ========= */
 let RAW_RECORDS = [];
@@ -602,7 +608,10 @@ el('hidePassiveToggle')?.addEventListener('change', (e)=>{
 /* ========= Fetch & build ========= */
 async function fetchRecords(){
   const from = el('fFrom').value;
-  const to   = el('fTo').value;
+  const toRaw = el('fTo').value;
+  // inclusive end-of-day if the column is timestamp
+  const to = toRaw && /^\d{4}-\d{2}-\d{2}$/.test(toRaw) ? `${toRaw} 23:59:59` : toRaw;
+
   const map  = el('fMap').value;
   const team = el('fTeam').value || '__ALL__';
   const tourn= el('fTourn').value || '__ALL__';
@@ -610,13 +619,15 @@ async function fetchRecords(){
   let q = client
     .from('draft_records')
     .select('id, match_date, game_number, team_left, team_right, team_left_score, team_right_score, map, tournament_name, state')
-    .gte('match_date', from).lte('match_date', to)
-    .order('match_date', { ascending:false })
-    .order('id', { ascending:false });
+    .gte('match_date', from);
 
+  if (to) q = q.lte('match_date', to);
   if (map !== '__ALL__') q = q.eq('map', map);
   if (team && team !== '__ALL__') q = q.or(`team_left.eq.${team},team_right.eq.${team}`);
   if (tourn && tourn !== '__ALL__') q = q.eq('tournament_name', tourn);
+
+  // sort after filters
+  q = q.order('match_date', { ascending:false }).order('id', { ascending:false });
 
   const { data, error } = await q;
   if (error) {
@@ -635,7 +646,7 @@ function populateTeamDropdown(records){
   dd.innerHTML = '';
   const all = document.createElement('option'); all.value='__ALL__'; all.textContent='All teams';
   dd.appendChild(all);
-  [...teams].sort().forEach(t => {
+  [...teams].filter(Boolean).sort().forEach(t => {
     const o=document.createElement('option'); o.value=t; o.textContent=t; dd.appendChild(o);
   });
   dd.value = prior;
@@ -651,7 +662,7 @@ function populateTournamentDropdown(records){
     const tn = r.tournament_name;
     if (!tn) return;
     tourns.add(tn);
-    if (!latest || (r.match_date > latest.date)) {
+    if (!latest || (String(r.match_date) > String(latest.date))) {
       latest = { name: tn, date: r.match_date };
     }
   });
@@ -677,15 +688,15 @@ function populateTournamentDropdown(records){
   }
 }
 
-/* Build per-team rows from a record */
+/* Build per-team rows from a record (SAFE state parsing) */
 function explodeRecordToRows(rec){
-  const s = rec.state || {};
-  const picks = s.picks || [];
-  const passives = s.passives || [];
-  const bans = s.bans || [];
-  const names = s.playerCards || [];
+  const s = parseState(rec.state);
+  const picks    = Array.isArray(s.picks)       ? s.picks       : [];
+  const passives = Array.isArray(s.passives)    ? s.passives    : [];
+  const bans     = Array.isArray(s.bans)        ? s.bans        : [];
+  const names    = Array.isArray(s.playerCards) ? s.playerCards : [];
 
-  const leftWin = (rec.team_left_score ?? 0) > (rec.team_right_score ?? 0);
+  const leftWin  = (rec.team_left_score ?? 0) > (rec.team_right_score ?? 0);
   const rightWin = (rec.team_right_score ?? 0) > (rec.team_left_score ?? 0);
 
   function sideRow(side){
@@ -703,13 +714,14 @@ function explodeRecordToRows(rec){
 
     const actives = idx.map((i, k) => {
       const player = (names[i] && String(names[i]).trim()) ? names[i].trim() : `P${k+1}`;
-      const heroObj= picks[i] || null;
+      const heroObj= (picks[i] && typeof picks[i] === 'object') ? picks[i] : null;
       return { player, hero: heroObj?.name || '', heroImg: heroObj?.image_url || PLACEHOLDER };
     });
 
     const passiveLines = idx.map((i, k) => {
       const player = (names[i] && String(names[i]).trim()) ? names[i].trim() : `P${k+1}`;
-      const trioObjs = (passives[i] || []).filter(Boolean).map(ps => ({
+      const trioRaw = Array.isArray(passives[i]) ? passives[i] : [];
+      const trioObjs = trioRaw.filter(Boolean).map(ps => ({
         name: ps?.name || '',
         img : ps?.image_url || PLACEHOLDER
       }));
@@ -879,7 +891,6 @@ function renderSummary(buckets, groupBy, kind){
   const meta = el('sumMeta');
   const totalEntities = buckets.size;
   const totalRows = CURRENT_ROWS.length;
-  const rateLabel = (kind === 'ban') ? 'Ban Rate' : 'Pick Rate';
   meta.textContent = `${totalEntities} ${groupBy === 'team' ? 'team' : 'player'} group(s) • ${totalRows} team-row(s) in view`;
 
   if (!totalEntities){
@@ -1027,8 +1038,8 @@ function renderTeamMapWinRate(){
   el(id).addEventListener('change', ()=> renderTeamMapWinRate());
 });
 
-/* ========= Skills Summary by Map (standalone renderer) ========= */
-function renderCardsToGrid(buckets, groupBy, kind, cfg, gridEl, totalRows){
+/* ========= Skills Summary by Map ========= */
+function renderCardsToGrid(buckets, groupBy, kind, cfg, gridEl){
   const totalEntities = buckets.size;
   const rateLabel = (kind === 'ban') ? 'Ban Rate' : 'Pick Rate';
   if (!totalEntities){
@@ -1143,7 +1154,7 @@ function renderSkillsByMap(){
     const buckets = buildBucketsFromRows(mapRows, groupBy, kind);
     const inner = document.createElement('div');
     container.appendChild(inner);
-    renderCardsToGrid(buckets, groupBy, kind, cfg, inner, mapRows.length);
+    renderCardsToGrid(buckets, groupBy, kind, cfg, inner);
   } else {
     maps.forEach(m=>{
       const details = document.createElement('details');
@@ -1164,7 +1175,7 @@ function renderSkillsByMap(){
         if (details.open && !inner.hasChildNodes()){
           const mapRows = rows.filter(r=>r.map===m);
           const buckets = buildBucketsFromRows(mapRows, groupBy, kind);
-          renderCardsToGrid(buckets, groupBy, kind, cfg, inner, mapRows.length);
+          renderCardsToGrid(buckets, groupBy, kind, cfg, inner);
         }
       }, { once:true });
     });
@@ -1184,7 +1195,7 @@ function pillsFromSet(setLike, maxShow=6){
 function pillsFromMapCount(mapCount, maxShow=6){
   const arr = [...mapCount.entries()].sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0]));
   const shown = arr.slice(0, maxShow).map(([name,c]) => `<span class="pill" title="${name} ×${c}">${name} <small>×${c}</small></span>`).join('');
-  const more = arr.length>maxShow ? `<span class="pill" title="${arr.map(([n,c])=>\`\${n}×\${c}\`).join(', ')}">+${arr.length-maxShow} more</span>` : '';
+  const more = arr.length>maxShow ? `<span class="pill" title="${arr.map(([n,c])=>`${n}×${c}`).join(', ')}">+${arr.length-maxShow} more</span>` : '';
   return shown + more;
 }
 
@@ -1329,7 +1340,7 @@ function renderActiveCombos(){
   el(id).addEventListener('change', renderActiveCombos);
 });
 
-/* ========= Active Pairs (NEW) ========= */
+/* ========= Active Pairs ========= */
 function buildActivePairs(rows){
   const pairs = new Map();
   rows.forEach(r=>{
@@ -1419,7 +1430,7 @@ function renderActivePairs(){
 }
 ['pairMin','pairSort','pairDir'].forEach(id=> el(id)?.addEventListener('change', renderActivePairs));
 
-/* ========= Ban Impact (NEW) ========= */
+/* ========= Ban Impact ========= */
 function getRowsIgnoringWL(){
   // Build rows from RAW_RECORDS but ignore fWL filter to avoid outcome bias
   const allRows = RAW_RECORDS.flatMap(explodeRecordToRows);
@@ -1453,7 +1464,7 @@ function renderBanImpact(){
     }
   });
 
-  // For each skill key, baseline across rows where this side did NOT ban that skill
+  // Baseline across rows where this side did NOT ban that skill
   const rowsBySkill = Object.fromEntries([...skills.keys()].map(k=>[k, {n:0,w:0}]));
   rows.forEach(r=>{
     const resW = (r.result==='W') ? 1 : 0;
@@ -1522,8 +1533,8 @@ const TAB_TO_SECTION = {
   teammap: 'sec-teammap',
   skillsbymap: 'sec-skillsbymap',
   combos: 'sec-combos',
-  pairs: 'sec-pairs',            // NEW
-  banimpact: 'sec-banimpact',    // NEW
+  pairs: 'sec-pairs',
+  banimpact: 'sec-banimpact',
   perskill: 'sec-perskill'
 };
 document.querySelectorAll('.tab').forEach(btn=>{
@@ -1575,8 +1586,8 @@ async function refresh(){
   if (active==='sec-teammap'){ renderTeamMapWinRate(); }
   if (active==='sec-skillsbymap'){ renderSkillsByMap(); }
   if (active==='sec-combos'){ renderActiveCombos(); }
-  if (active==='sec-pairs'){ renderActivePairs(); }         // NEW
-  if (active==='sec-banimpact'){ renderBanImpact(); }       // NEW
+  if (active==='sec-pairs'){ renderActivePairs(); }
+  if (active==='sec-banimpact'){ renderBanImpact(); }
   if (active==='sec-perskill'){ computeSkillStats(); }
 }
 
@@ -1598,8 +1609,10 @@ async function computeSkillStats() {
   const type  = document.getElementById('skillTypeSelect').value;
   const team  = (document.getElementById('fTeam').value || '__ALL__');
   const from  = document.getElementById('fFrom').value;
-  const to    = document.getElementById('fTo').value;
+  const toRaw = document.getElementById('fTo').value;
+  const to    = toRaw && /^\d{4}-\d{2}-\d{2}$/.test(toRaw) ? `${toRaw} 23:59:59` : toRaw; // inclusive EOD
   const tourn = (document.getElementById('fTourn').value || '__ALL__');
+  const map   = (document.getElementById('fMap').value || '__ALL__');
 
   if (!from || !to) {
     alert('Please set a From and To date for Skill Stats.');
@@ -1614,6 +1627,7 @@ async function computeSkillStats() {
 
   if (team !== '__ALL__')  q = q.or(`team_left.eq.${team},team_right.eq.${team}`);
   if (tourn !== '__ALL__') q = q.eq('tournament_name', tourn);
+  if (map !== '__ALL__')   q = q.eq('map', map);
 
   const { data, error } = await q;
   if (error) {
@@ -1648,10 +1662,13 @@ async function computeSkillStats() {
   };
 
   data.forEach(r => {
-    const s = r.state || {};
-    const picks = s.picks || [];
-    const bans  = s.bans  || [];
-    const pass  = s.passives || [];
+    // SAFE parse for computeSkillStats
+    const sraw = r.state;
+    let s = {};
+    try { s = (typeof sraw === 'string') ? JSON.parse(sraw) : (sraw || {}); } catch(_) { s = {}; }
+    const picks = Array.isArray(s.picks) ? s.picks : [];
+    const bans  = Array.isArray(s.bans) ? s.bans : [];
+    const pass  = Array.isArray(s.passives) ? s.passives : [];
 
     const lScore = r.team_left_score ?? 0;
     const rScore = r.team_right_score ?? 0;
@@ -1767,8 +1784,9 @@ async function computeSkillStats() {
   const teamLabel  = (team === '__ALL__') ? 'All teams' : team;
   const typeLabel  = (type === 'active') ? 'Active' : 'Passive';
   const tournLabel = (tourn === '__ALL__') ? 'All tournaments' : tourn;
+  const mapLabel   = (map === '__ALL__') ? 'All maps' : map;
   document.getElementById('skillStatsMeta').textContent =
-    `${teamLabel} • ${tournLabel} • ${typeLabel} • Matches: ${matches} • Slots: ` +
+    `${teamLabel} • ${tournLabel} • ${mapLabel} • ${typeLabel} • Matches: ${matches} • Slots: ` +
     `${(type==='active') ? pickDen + ' active' : pickDen + ' passive'}` +
     `${(type==='active') ? ` • Ban slots: ${banDen}` : ''}`;
 }
