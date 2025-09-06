@@ -116,7 +116,7 @@
     .skill-name{ color:#eee; font-weight:600; }
     .mono{ font-variant-numeric: tabular-nums; }
 
-    /* Combos (new) */
+    /* Combos & Pairs */
     .comboIcons{display:flex; gap:6px; align-items:center; flex-wrap:wrap}
     .comboIcons img{width:28px; height:28px; border-radius:6px; border:1px solid #333; background:#111}
     .pill{display:inline-block; padding:2px 8px; border-radius:999px; background:#111; border:1px solid #2a2a2a; margin:2px; font-size:.85rem; color:#ddd}
@@ -207,7 +207,9 @@
         <button data-tab="summary" class="tab">Summary</button>
         <button data-tab="teammap" class="tab">Team × Map</button>
         <button data-tab="skillsbymap" class="tab">Skills by Map</button>
-        <button data-tab="combos" class="tab">Active Combos</button><!-- NEW -->
+        <button data-tab="combos" class="tab">Active Combos</button>
+        <button data-tab="pairs" class="tab">Active Pairs</button><!-- NEW -->
+        <button data-tab="banimpact" class="tab">Ban Impact</button><!-- NEW -->
         <button data-tab="perskill" class="tab">Per-Skill</button>
       </div>
     </div>
@@ -371,7 +373,7 @@
       <div id="ssWrap"></div>
     </div>
 
-    <!-- ACTIVE SKILL COMBOS (NEW) -->
+    <!-- ACTIVE SKILL COMBOS -->
     <div id="sec-combos" class="block js-section">
       <h2>Active Skill Combos</h2>
       <div class="controls">
@@ -406,6 +408,84 @@
           </tr>
         </thead>
         <tbody id="comboBody"></tbody>
+      </table>
+    </div>
+
+    <!-- ACTIVE PAIRS (NEW) -->
+    <div id="sec-pairs" class="block js-section">
+      <h2>Active Pair Synergy</h2>
+      <div class="controls">
+        <label>Min picks
+          <input type="number" id="pairMin" value="3" min="1" step="1"/>
+        </label>
+        <label>Sort by
+          <select id="pairSort">
+            <option value="picks" selected>Picks</option>
+            <option value="wins">Wins</option>
+            <option value="winpct">Win %</option>
+            <option value="teams">#Teams</option>
+            <option value="name">A→Z</option>
+          </select>
+        </label>
+        <label>Dir
+          <select id="pairDir">
+            <option value="desc" selected>Desc</option>
+            <option value="asc">Asc</option>
+          </select>
+        </label>
+      </div>
+      <div class="caption muted" id="pairMeta">—</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Pair (2× Active)</th>
+            <th>Picks</th>
+            <th>Wins</th>
+            <th>Win %</th>
+            <th>Teams Used</th>
+            <th>Maps Used</th>
+          </tr>
+        </thead>
+        <tbody id="pairBody"></tbody>
+      </table>
+    </div>
+
+    <!-- BAN IMPACT (NEW) -->
+    <div id="sec-banimpact" class="block js-section">
+      <h2>Ban Impact</h2>
+      <div class="controls">
+        <label>Min banned matches
+          <input type="number" id="biMin" value="3" min="1" step="1"/>
+        </label>
+        <label>Sort by
+          <select id="biSort">
+            <option value="delta" selected>Δ Win %</option>
+            <option value="banned">Banned Matches</option>
+            <option value="win_when_ban">Win % (banned)</option>
+            <option value="win_when_not">Win % (not banned)</option>
+            <option value="name">A→Z</option>
+          </select>
+        </label>
+        <label>Dir
+          <select id="biDir">
+            <option value="desc" selected>Desc</option>
+            <option value="asc">Asc</option>
+          </select>
+        </label>
+      </div>
+      <div class="caption muted" id="biMeta">—</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Skill</th>
+            <th>Banned&nbsp;Matches</th>
+            <th>Win&nbsp;% (banned)</th>
+            <th>Other&nbsp;Matches</th>
+            <th>Win&nbsp;% (not&nbsp;banned)</th>
+            <th>Δ Win&nbsp;%</th>
+          </tr>
+        </thead>
+        <tbody id="biBody"></tbody>
       </table>
     </div>
 
@@ -562,12 +642,11 @@ function populateTeamDropdown(records){
 }
 
 function populateTournamentDropdown(records){
-  // collect unique tournaments + find the most recent by match_date
   const dd = el('fTourn');
   const prior = dd.value || '__ALL__';
 
   const tourns = new Set();
-  let latest = null; // { name, date }
+  let latest = null;
   records.forEach(r => {
     const tn = r.tournament_name;
     if (!tn) return;
@@ -578,22 +657,21 @@ function populateTournamentDropdown(records){
   });
 
   dd.innerHTML = '';
-  const all = document.createElement('option'); 
-  all.value='__ALL__'; 
+  const all = document.createElement('option');
+  all.value='__ALL__';
   all.textContent='All tournaments';
   dd.appendChild(all);
 
   [...tourns].sort().forEach(tn => {
-    const o = document.createElement('option'); 
-    o.value = tn; 
-    o.textContent = tn; 
+    const o = document.createElement('option');
+    o.value = tn;
+    o.textContent = tn;
     dd.appendChild(o);
   });
 
-  // On FIRST load only, if we have a latest tournament, default to it
   if (FIRST_LOAD_TOURN && latest && (prior === '__ALL__' || !prior)) {
     dd.value = latest.name;
-    FIRST_LOAD_TOURN = false; // prevent future auto-switches
+    FIRST_LOAD_TOURN = false;
   } else {
     dd.value = prior;
   }
@@ -1096,54 +1174,7 @@ function renderSkillsByMap(){
   el(id).addEventListener('change', ()=> renderSkillsByMap());
 });
 
-/* ========= NEW: Active Combos ========= */
-function buildActiveCombos(rows){
-    // key: sorted combo "A|B|C|D"
-    const combos = new Map();
-    rows.forEach(r => {
-      const heroes = r.actives.map(a => a.hero).filter(Boolean);
-      if (heroes.length !== 4) return; // need full 4-actives
-  
-      const imgsMap = new Map();
-      r.actives.forEach(a => { if (a.hero) imgsMap.set(a.hero, a.heroImg || PLACEHOLDER); });
-  
-      const sorted = [...heroes].sort((a,b)=>a.localeCompare(b));
-      const key = sorted.join('|');
-  
-      if (!combos.has(key)){
-        combos.set(key, {
-          key,
-          heroes: sorted,
-          heroImgs: Object.fromEntries(sorted.map(h => [h, imgsMap.get(h) || PLACEHOLDER])),
-          picks: 0,
-          wins: 0,
-          teams: new Set(),
-          maps: new Map(),      // mapName -> count
-          matches: []           // exact matches for drilldown
-        });
-      }
-      const C = combos.get(key);
-      C.picks += 1;
-      if (r.result === 'W') C.wins += 1;
-      C.teams.add(r.team);
-      const m = r.map || '—';
-      C.maps.set(m, (C.maps.get(m)||0) + 1);
-      // keep the exact match
-      C.matches.push({
-        rec_id: r.rec_id,
-        date: r.match_date,
-        game: r.game_number,
-        map: r.map,
-        team: r.team,
-        opp: r.opponent,
-        ts: r.team_score,
-        os: r.opp_score,
-        res: r.result
-      });
-    });
-    return combos;
-  }
-
+/* ========= Helpers shared by combos/pairs ========= */
 function pillsFromSet(setLike, maxShow=6){
   const arr = [...setLike].sort();
   const shown = arr.slice(0, maxShow).map(t => `<span class="pill" title="${t}">${t}</span>`).join('');
@@ -1153,9 +1184,56 @@ function pillsFromSet(setLike, maxShow=6){
 function pillsFromMapCount(mapCount, maxShow=6){
   const arr = [...mapCount.entries()].sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0]));
   const shown = arr.slice(0, maxShow).map(([name,c]) => `<span class="pill" title="${name} ×${c}">${name} <small>×${c}</small></span>`).join('');
-  const more = arr.length>maxShow ? `<span class="pill" title="${arr.map(([n,c])=>`${n}×${c}`).join(', ')}">+${arr.length-maxShow} more</span>` : '';
+  const more = arr.length>maxShow ? `<span class="pill" title="${arr.map(([n,c])=>\`\${n}×\${c}\`).join(', ')}">+${arr.length-maxShow} more</span>` : '';
   return shown + more;
 }
+
+/* ========= Active Combos ========= */
+function buildActiveCombos(rows){
+  const combos = new Map(); // key: sorted combo "A|B|C|D"
+  rows.forEach(r => {
+    const heroes = r.actives.map(a => a.hero).filter(Boolean);
+    if (heroes.length !== 4) return;
+
+    const imgsMap = new Map();
+    r.actives.forEach(a => { if (a.hero) imgsMap.set(a.hero, a.heroImg || PLACEHOLDER); });
+
+    const sorted = [...heroes].sort((a,b)=>a.localeCompare(b));
+    const key = sorted.join('|');
+
+    if (!combos.has(key)){
+      combos.set(key, {
+        key,
+        heroes: sorted,
+        heroImgs: Object.fromEntries(sorted.map(h => [h, imgsMap.get(h) || PLACEHOLDER])),
+        picks: 0,
+        wins: 0,
+        teams: new Set(),
+        maps: new Map(),
+        matches: []
+      });
+    }
+    const C = combos.get(key);
+    C.picks += 1;
+    if (r.result === 'W') C.wins += 1;
+    C.teams.add(r.team);
+    const m = r.map || '—';
+    C.maps.set(m, (C.maps.get(m)||0) + 1);
+    C.matches.push({
+      rec_id: r.rec_id,
+      date: r.match_date,
+      game: r.game_number,
+      map: r.map,
+      team: r.team,
+      opp: r.opponent,
+      ts: r.team_score,
+      os: r.opp_score,
+      res: r.result
+    });
+  });
+  return combos;
+}
+
 function comboIdFromKey(key){
   return 'combo_' + key.replace(/[^a-z0-9]+/gi,'_').replace(/^_+|_+$/g,'').toLowerCase();
 }
@@ -1169,19 +1247,6 @@ function matchLineHTML(m){
       • ${score}
       <span class="muted">(${m.date})</span>
     </li>`;
-}
-  
-function pillsFromSet(setLike, maxShow=6){
-  const arr = [...setLike].sort();
-  const shown = arr.slice(0, maxShow).map(t => `<span class="pill" title="${t}">${t}</span>`).join('');
-  const more = arr.length>maxShow ? `<span class="pill" title="${arr.join(', ')}">+${arr.length-maxShow} more</span>` : '';
-  return shown + more;
-}
-function pillsFromMapCount(mapCount, maxShow=6){
-  const arr = [...mapCount.entries()].sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0]));
-  const shown = arr.slice(0, maxShow).map(([name,c]) => `<span class="pill" title="${name} ×${c}">${name} <small>×${c}</small></span>`).join('');
-  const more = arr.length>maxShow ? `<span class="pill" title="${arr.map(([n,c])=>`${n}×${c}`).join(', ')}">+${arr.length-maxShow} more</span>` : '';
-  return shown + more;
 }
 
 function renderActiveCombos(){
@@ -1200,7 +1265,7 @@ function renderActiveCombos(){
     if (sortBy==='name') return sgn * a.heroes.join(',').localeCompare(b.heroes.join(','));
     if (sortBy==='wins') return sgn * (a.wins - b.wins);
     if (sortBy==='winpct') return sgn * (a.winpct - b.winpct);
-    return sgn * (a.picks - b.picks); // default: picks
+    return sgn * (a.picks - b.picks);
   });
 
   const tbody = el('comboBody'); tbody.innerHTML='';
@@ -1218,7 +1283,6 @@ function renderActiveCombos(){
     const names = `<div class="muted" style="margin-top:4px">${c.heroes.join(' · ')}</div>`;
     const id = comboIdFromKey(c.key);
 
-    // main row (clickable)
     const tr = document.createElement('tr');
     tr.className = 'combo-row';
     tr.dataset.target = id;
@@ -1235,7 +1299,6 @@ function renderActiveCombos(){
     `;
     tbody.appendChild(tr);
 
-    // detail row (hidden initially)
     const dr = document.createElement('tr');
     dr.className = 'combo-detail';
     dr.id = id;
@@ -1251,7 +1314,6 @@ function renderActiveCombos(){
     tbody.appendChild(dr);
   });
 
-  // toggle handler
   tbody.querySelectorAll('tr.combo-row').forEach(row=>{
     row.addEventListener('click', ()=>{
       const id = row.dataset.target;
@@ -1263,10 +1325,195 @@ function renderActiveCombos(){
 
   el('comboMeta').textContent = `${rows.length} combo(s) • Using current filters`;
 }
-
 ['comboMin','comboSort','comboDir'].forEach(id => {
   el(id).addEventListener('change', renderActiveCombos);
 });
+
+/* ========= Active Pairs (NEW) ========= */
+function buildActivePairs(rows){
+  const pairs = new Map();
+  rows.forEach(r=>{
+    const names = r.actives.map(a=>a.hero).filter(Boolean);
+    if (names.length < 2) return;
+
+    const imgOf = new Map();
+    r.actives.forEach(a=>{ if (a.hero) imgOf.set(a.hero, a.heroImg || PLACEHOLDER); });
+
+    for (let i=0;i<names.length;i++){
+      for (let j=i+1;j<names.length;j++){
+        const [A,B] = [names[i], names[j]].sort((x,y)=>x.localeCompare(y));
+        const key = A + '|' + B;
+        if (!pairs.has(key)){
+          pairs.set(key, {
+            a:A, b:B,
+            imgs: { [A]: imgOf.get(A) || PLACEHOLDER, [B]: imgOf.get(B) || PLACEHOLDER },
+            picks:0, wins:0,
+            teams:new Set(),
+            maps:new Map(),
+            matches:[]
+          });
+        }
+        const P = pairs.get(key);
+        P.picks += 1;
+        if (r.result==='W') P.wins += 1;
+        P.teams.add(r.team);
+        const m = r.map || '—';
+        P.maps.set(m, (P.maps.get(m)||0)+1);
+        P.matches.push({
+          rec_id:r.rec_id, date:r.match_date, game:r.game_number, map:r.map,
+          team:r.team, opp:r.opponent, ts:r.team_score, os:r.opp_score, res:r.result
+        });
+      }
+    }
+  });
+  return pairs;
+}
+
+function renderActivePairs(){
+  const min  = Math.max(1, parseInt(el('pairMin').value||'1',10));
+  const sort = el('pairSort').value;
+  const dir  = el('pairDir').value;
+
+  const pairs = buildActivePairs(CURRENT_ROWS);
+  let rows = [...pairs.values()].filter(p=>p.picks >= min).map(p=>({
+    ...p, winpct: p.picks ? (p.wins/p.picks) : 0
+  }));
+
+  const sgn = (dir==='asc')?1:-1;
+  rows.sort((a,b)=>{
+    if (sort==='name')   return sgn * ( (a.a+a.b).localeCompare(b.a+b.b) );
+    if (sort==='wins')   return sgn * (a.wins - b.wins);
+    if (sort==='winpct') return sgn * (a.winpct - b.winpct);
+    if (sort==='teams')  return sgn * (a.teams.size - b.teams.size);
+    return sgn * (a.picks - b.picks);
+  });
+
+  const tbody = el('pairBody'); tbody.innerHTML='';
+  if (!rows.length){
+    const tr=document.createElement('tr'); const td=document.createElement('td');
+    td.colSpan=6; td.className='muted'; td.textContent='No pairs for your selection.'; tr.appendChild(td);
+    tbody.appendChild(tr); el('pairMeta').textContent = `0 pair(s) • Using current filters`; return;
+  }
+
+  rows.forEach(p=>{
+    const icons = `
+      <div class="comboIcons">
+        <img src="${p.imgs[p.a]}" alt="${p.a}" title="${p.a}" loading="lazy">
+        <img src="${p.imgs[p.b]}" alt="${p.b}" title="${p.b}" loading="lazy">
+      </div>
+      <div class="muted" style="margin-top:4px">${p.a} · ${p.b}</div>
+    `;
+    const tr=document.createElement('tr');
+    tr.innerHTML = `
+      <td>${icons}</td>
+      <td class="mono">${p.picks}</td>
+      <td class="mono">${p.wins}</td>
+      <td class="mono">${fmtPct(p.winpct)}</td>
+      <td>${pillsFromSet(p.teams)}</td>
+      <td>${pillsFromMapCount(p.maps)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  el('pairMeta').textContent = `${rows.length} pair(s) • Using current filters`;
+}
+['pairMin','pairSort','pairDir'].forEach(id=> el(id)?.addEventListener('change', renderActivePairs));
+
+/* ========= Ban Impact (NEW) ========= */
+function getRowsIgnoringWL(){
+  // Build rows from RAW_RECORDS but ignore fWL filter to avoid outcome bias
+  const allRows = RAW_RECORDS.flatMap(explodeRecordToRows);
+  const teamSel = el('fTeam').value || '__ALL__';
+  let rows = allRows;
+  if (teamSel !== '__ALL__') rows = rows.filter(r => r.team === teamSel);
+  const mapSel = el('fMap').value;
+  if (mapSel !== '__ALL__') rows = rows.filter(r => r.map === mapSel);
+  const tournSel = el('fTourn').value || '__ALL__';
+  if (tournSel !== '__ALL__') rows = rows.filter(r => {
+    const rec = RAW_RECORDS.find(x=>x.id===r.rec_id);
+    return rec?.tournament_name === tournSel;
+  });
+  return rows;
+}
+
+function renderBanImpact(){
+  const min  = Math.max(1, parseInt(el('biMin').value||'1',10));
+  const sort = el('biSort').value;
+  const dir  = el('biDir').value;
+
+  const rows = getRowsIgnoringWL(); // Outcome ignored here
+  const skills = new Map(); // name -> {ban:{n,w}, noban:{n,w}}
+
+  rows.forEach(r=>{
+    const banned = r.banName || '';
+    if (banned){
+      if (!skills.has(banned)) skills.set(banned, { name:banned, ban:{n:0,w:0}, noban:{n:0,w:0} });
+      const S = skills.get(banned);
+      S.ban.n += 1; if (r.result==='W') S.ban.w += 1;
+    }
+  });
+
+  // For each skill key, baseline across rows where this side did NOT ban that skill
+  const rowsBySkill = Object.fromEntries([...skills.keys()].map(k=>[k, {n:0,w:0}]));
+  rows.forEach(r=>{
+    const resW = (r.result==='W') ? 1 : 0;
+    for (const key in rowsBySkill){
+      if ((r.banName||'') !== key){
+        rowsBySkill[key].n += 1;
+        rowsBySkill[key].w += resW;
+      }
+    }
+  });
+  for (const [name, S] of skills.entries()){
+    S.noban = rowsBySkill[name] || {n:0,w:0};
+  }
+
+  let list = [...skills.values()].map(S=>{
+    const bannedN = S.ban.n, bannedW = S.ban.w;
+    const nobanN  = S.noban.n, nobanW = S.noban.w;
+    const winWhenBan = bannedN ? (bannedW/bannedN) : 0;
+    const winWhenNot = nobanN ? (nobanW/nobanN) : 0;
+    return {
+      name:S.name, bannedN, winWhenBan, nobanN, winWhenNot,
+      delta: winWhenBan - winWhenNot
+    };
+  }).filter(r=>r.bannedN >= min);
+
+  const sgn = (dir==='asc')?1:-1;
+  list.sort((a,b)=>{
+    if (sort==='name')         return sgn * a.name.localeCompare(b.name);
+    if (sort==='banned')       return sgn * (a.bannedN - b.bannedN);
+    if (sort==='win_when_ban') return sgn * (a.winWhenBan - b.winWhenBan);
+    if (sort==='win_when_not') return sgn * (a.winWhenNot - b.winWhenNot);
+    return sgn * (a.delta - b.delta);
+  });
+
+  const tbody = el('biBody'); tbody.innerHTML='';
+  if (!list.length){
+    const tr=document.createElement('tr'); const td=document.createElement('td');
+    td.colSpan=6; td.className='muted'; td.textContent='No ban data for your selection.'; tr.appendChild(td);
+    tbody.appendChild(tr);
+    el('biMeta').textContent = `0 skill(s) • Using current filters (Outcome forced to All)`;
+    return;
+  }
+
+  list.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML = `
+      <td>${r.name}</td>
+      <td class="mono">${r.bannedN}</td>
+      <td class="mono">${fmtPct(r.winWhenBan)}</td>
+      <td class="mono">${r.nobanN}</td>
+      <td class="mono">${fmtPct(r.winWhenNot)}</td>
+      <td class="mono" style="font-weight:700;">${fmtPct(r.delta)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  const teamLabel = (el('fTeam').value||'__ALL__')==='__ALL__' ? 'All teams' : el('fTeam').value;
+  el('biMeta').textContent = `${list.length} skill(s) • ${teamLabel} • Outcome forced to All`;
+}
+['biMin','biSort','biDir'].forEach(id=> el(id)?.addEventListener('change', renderBanImpact));
 
 /* ========= Tabs behavior ========= */
 const TAB_TO_SECTION = {
@@ -1274,7 +1521,9 @@ const TAB_TO_SECTION = {
   summary: 'sec-summary',
   teammap: 'sec-teammap',
   skillsbymap: 'sec-skillsbymap',
-  combos: 'sec-combos',           // NEW
+  combos: 'sec-combos',
+  pairs: 'sec-pairs',            // NEW
+  banimpact: 'sec-banimpact',    // NEW
   perskill: 'sec-perskill'
 };
 document.querySelectorAll('.tab').forEach(btn=>{
@@ -1289,7 +1538,9 @@ document.querySelectorAll('.tab').forEach(btn=>{
     if (target==='sec-summary')     { const b=buildBucketsFromRows(CURRENT_ROWS, el('sumGroupBy').value, el('sumKind').value); renderSummary(b, el('sumGroupBy').value, el('sumKind').value); }
     if (target==='sec-teammap')     { renderTeamMapWinRate(); }
     if (target==='sec-skillsbymap') { renderSkillsByMap(); }
-    if (target==='sec-combos')      { renderActiveCombos(); } // NEW
+    if (target==='sec-combos')      { renderActiveCombos(); }
+    if (target==='sec-pairs')       { renderActivePairs(); }
+    if (target==='sec-banimpact')   { renderBanImpact(); }
     if (target==='sec-perskill')    { computeSkillStats(); }
   });
 });
@@ -1303,7 +1554,6 @@ async function refresh(){
   populateTournamentDropdown(RAW_RECORDS);
   const afterT = el('fTourn').value || '__ALL__';
 
-  // If the tournament changed due to auto-select on first load, fetch again with the new filter
   if (beforeT !== afterT) {
     RAW_RECORDS = await fetchRecords();
   }
@@ -1324,7 +1574,9 @@ async function refresh(){
   }
   if (active==='sec-teammap'){ renderTeamMapWinRate(); }
   if (active==='sec-skillsbymap'){ renderSkillsByMap(); }
-  if (active==='sec-combos'){ renderActiveCombos(); } // NEW
+  if (active==='sec-combos'){ renderActiveCombos(); }
+  if (active==='sec-pairs'){ renderActivePairs(); }         // NEW
+  if (active==='sec-banimpact'){ renderBanImpact(); }       // NEW
   if (active==='sec-perskill'){ computeSkillStats(); }
 }
 
