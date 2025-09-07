@@ -27,8 +27,15 @@
     .block h2{margin:0 0 10px 0;color:var(--brand)}
     .controls{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 10px}
     .controls label{display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);padding:6px 8px;border-radius:8px}
-    .controls select,.controls input[type="date"],.controls input[type="text"]{background:#212121;color:#ffbd59;border:1px solid #3a3a3a;border-radius:6px;padding:6px 8px}
+    .controls select,.controls input[type="date"],.controls input[type="text"], .controls input[type="number"]{background:#212121;color:var(--brand);border:1px solid #3a3a3a;border-radius:6px;padding:6px 8px}
     .muted{color:var(--muted);font-size:.9rem}
+
+    /* Tabs */
+    .tabs{display:flex;gap:8px;margin:8px 0 12px}
+    .tab{background:#212121;color:#ddd;border:1px solid #333;border-radius:8px;padding:6px 10px;cursor:pointer}
+    .tab.active{background:var(--brand);color:#1b1b1b;border-color:var(--brand)}
+    .js-section{display:none}
+    .js-section.active{display:block}
 
     table{width:100%;border-collapse:collapse}
     th,td{border-bottom:1px solid var(--line);padding:8px;vertical-align:top}
@@ -38,7 +45,7 @@
     .wl.W{background:#193e2b;color:var(--good);border:1px solid #245b3e}
     .wl.L{background:#401e1e;color:var(--bad);border:1px solid #6b2c2c}
 
-    /* Players laid out as a 2x2 grid (4 players total) */
+    /* Players as 2x2 grid */
     .playersWrap{
       display:grid;
       grid-template-columns: repeat(2, minmax(240px, 1fr));
@@ -83,7 +90,7 @@
     .tight{line-height:1.25}
     .caption{margin:4px 0 10px 0}
 
-    /* ===== Per-Skill Stats ===== */
+    /* Per-Skill Table */
     #skillStats { width:90%; max-width:1200px; margin:40px auto; }
     #skillStats h2 { text-align:center; color:#ffbd59; }
     .skill-controls{
@@ -107,8 +114,28 @@
       width:28px; height:28px; object-fit:cover; border-radius:6px; background:#111; border:1px solid #333;
     }
     .skill-name{ color:#eee; font-weight:600; }
-
     .mono{ font-variant-numeric: tabular-nums; }
+
+    /* Combos & Pairs */
+    .comboIcons{display:flex; gap:6px; align-items:center; flex-wrap:wrap}
+    .comboIcons img{width:28px; height:28px; border-radius:6px; border:1px solid #333; background:#111}
+    .pill{display:inline-block; padding:2px 8px; border-radius:999px; background:#111; border:1px solid #2a2a2a; margin:2px; font-size:.85rem; color:#ddd}
+    .pill small{opacity:.8; font-size:.8em; margin-left:4px}
+
+    /* Compact / passive-name-hide modes */
+    body.compact .block{padding:10px}
+    body.compact .card{padding:8px}
+    body.compact table th, body.compact table td{padding:6px}
+    body.compact .pAct{width:32px;height:32px}
+    body.compact .pPassRow span{max-width:90px;font-size:.7rem}
+    body.compact .pName{font-size:.85rem}
+    body.compact .pHero{font-size:.78rem}
+    body.passive-hidden .pPassRow span{visibility:hidden}
+    body.passive-hidden .pCard:hover .pPassRow span{visibility:visible}
+
+    /* combo drilldown */
+    .combo-row{ cursor:pointer; }
+    .combo-detail td{ background:#141414; }
 
     @media (max-width: 900px){
       .playersWrap{ grid-template-columns: 1fr; }
@@ -125,9 +152,15 @@
   </header>
 
   <div class="shell">
-    <!-- Back to dashboard -->
+    <!-- Top bar -->
     <div class="bar">
       <a href="dashboard.html" class="btn">← Back to Dashboard</a>
+      <label class="muted" style="margin-left:auto">
+        <input type="checkbox" id="compactToggle"> Compact mode
+      </label>
+      <label class="muted">
+        <input type="checkbox" id="hidePassiveToggle"> Hide passive names until hover
+      </label>
     </div>
 
     <!-- FILTERS -->
@@ -154,7 +187,6 @@
         <label>Team
           <select id="fTeam"></select>
         </label>
-        <!-- NEW: Tournament filter -->
         <label>Tournament
           <select id="fTourn"></select>
         </label>
@@ -168,10 +200,22 @@
         <button class="btn" id="applyBtn">Apply</button>
       </div>
       <div class="muted" id="filterMeta">—</div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button data-tab="match" class="tab active">Matches</button>
+        <button data-tab="summary" class="tab">Summary</button>
+        <button data-tab="teammap" class="tab">Team × Map</button>
+        <button data-tab="skillsbymap" class="tab">Skills by Map</button>
+        <button data-tab="combos" class="tab">Active Combos</button>
+        <button data-tab="pairs" class="tab">Active Pairs</button>
+        <button data-tab="banimpact" class="tab">Ban Impact</button>
+        <button data-tab="perskill" class="tab">Per-Skill</button>
+      </div>
     </div>
 
-    <!-- MATCH LIST (per team per match) -->
-    <div class="block">
+    <!-- MATCH LIST -->
+    <div id="sec-match" class="block js-section active">
       <h2>Per-Match Team Rows</h2>
       <table>
         <thead>
@@ -189,10 +233,11 @@
         </thead>
         <tbody id="rowsBody"></tbody>
       </table>
+      <div id="rowsPager" class="bar" style="justify-content:space-between;"></div>
     </div>
 
-    <!-- SUMMARY (overall) -->
-    <div class="block">
+    <!-- SUMMARY -->
+    <div id="sec-summary" class="block js-section">
       <h2>Summary: Picks/Bans</h2>
       <div class="controls sum-controls">
         <label class="muted">Group by
@@ -208,7 +253,7 @@
             <option value="ban">Bans</option>
           </select>
         </label>
-        <label class="muted">Card order (per subject)
+        <label class="muted">Card order
           <select id="sumCardSort">
             <option value="subjectAppear" selected>Appearances</option>
             <option value="subjectRate">Appear Rate</option>
@@ -244,64 +289,55 @@
       <div class="grid" id="sumGrid"></div>
     </div>
 
-    <!-- NEW: Per Team × Map Win Rate -->
-    <div class="block">
+    <!-- TEAM × MAP WIN RATE -->
+    <div id="sec-teammap" class="block js-section">
       <h2>Per Team × Map Win Rate</h2>
       <div class="controls">
-        <label>Sort by
-          <select id="tmSortBy">
-            <option value="winpct" selected>Win %</option>
-            <option value="matches">Matches</option>
+        <label>Sort
+          <select id="tmSort">
+            <option value="matches" selected>Matches</option>
+            <option value="winpct">Win %</option>
             <option value="wins">Wins</option>
             <option value="team">Team</option>
             <option value="map">Map</option>
           </select>
         </label>
-        <label>Order
-          <select id="tmSortDir">
+        <label>Dir
+          <select id="tmDir">
             <option value="desc" selected>Desc</option>
             <option value="asc">Asc</option>
           </select>
         </label>
       </div>
       <div class="muted" id="tmMeta">—</div>
-      <table class="skill-table" style="margin-top:8px;">
+      <table>
         <thead>
           <tr>
-            <th>Team</th>
-            <th>Map</th>
-            <th class="mono right">Matches</th>
-            <th class="mono right">Wins</th>
-            <th class="mono right">Win&nbsp;%</th>
+            <th>Team</th><th>Map</th><th>Matches</th><th>Wins</th><th>Win %</th>
           </tr>
         </thead>
-        <tbody id="teamMapBody"></tbody>
+        <tbody id="tmBody"></tbody>
       </table>
     </div>
 
-    <!-- NEW: Skills Summary by Map -->
-    <div class="block">
+    <!-- SKILLS SUMMARY BY MAP -->
+    <div id="sec-skillsbymap" class="block js-section">
       <h2>Skills Summary by Map</h2>
       <div class="controls">
-        <label>Map
-          <select id="ssMap">
-            <option value="__ALL__" selected>All maps</option>
-          </select>
-        </label>
-        <label>Group by
+        <label class="muted">Group by
           <select id="ssGroupBy">
-            <option value="team">Team</option>
-            <option value="player" selected>Player</option>
+            <option value="team" selected>Team</option>
+            <option value="player">Player</option>
           </select>
         </label>
-        <label>Subject
+        <label class="muted">Subject
           <select id="ssKind">
             <option value="active" selected>Active</option>
             <option value="passive">Passive</option>
             <option value="ban">Ban</option>
           </select>
         </label>
-        <label>Card order
+        <label class="muted">Card order
           <select id="ssCardSort">
             <option value="subjectAppear" selected>Appearances</option>
             <option value="subjectRate">Appear Rate</option>
@@ -312,13 +348,13 @@
             <option value="name">A→Z</option>
           </select>
         </label>
-        <label>Order
+        <label class="muted">Card dir
           <select id="ssCardDir">
             <option value="desc" selected>Desc</option>
             <option value="asc">Asc</option>
           </select>
         </label>
-        <label>Skills order
+        <label class="muted">Skills order
           <select id="ssSkillSort">
             <option value="appearRate" selected>Rate</option>
             <option value="count">Count</option>
@@ -326,7 +362,7 @@
             <option value="name">A→Z</option>
           </select>
         </label>
-        <label>Skills dir
+        <label class="muted">Skills dir
           <select id="ssSkillDir">
             <option value="desc" selected>Desc</option>
             <option value="asc">Asc</option>
@@ -334,11 +370,139 @@
         </label>
       </div>
       <div class="caption muted" id="ssMeta">—</div>
-      <div id="ssContainer"></div>
+      <div id="ssWrap"></div>
     </div>
 
-    <!-- ===== Per-Skill Stats (Active/Passive) ===== -->
-    <div id="skillStats" class="block">
+    <!-- ACTIVE SKILL COMBOS -->
+    <div id="sec-combos" class="block js-section">
+      <h2>Active Skill Combos</h2>
+      <div class="controls">
+        <label>Min picks
+          <input type="number" id="comboMin" value="1" min="1" step="1" />
+        </label>
+        <label>Sort by
+          <select id="comboSort">
+            <option value="picks" selected>Picks</option>
+            <option value="wins">Wins</option>
+            <option value="winpct">Win %</option>
+            <option value="name">A→Z</option>
+          </select>
+        </label>
+        <label>Dir
+          <select id="comboDir">
+            <option value="desc" selected>Desc</option>
+            <option value="asc">Asc</option>
+          </select>
+        </label>
+      </div>
+      <div class="caption muted" id="comboMeta">—</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Combo (4× Active)</th>
+            <th>Picks</th>
+            <th>Wins</th>
+            <th>Win %</th>
+            <th>Teams Used</th>
+            <th>Maps Used</th>
+          </tr>
+        </thead>
+        <tbody id="comboBody"></tbody>
+      </table>
+    </div>
+
+    <!-- ACTIVE PAIRS -->
+    <div id="sec-pairs" class="block js-section">
+      <h2>Active Pair Synergy</h2>
+      <div class="controls">
+        <label>Min picks
+          <input type="number" id="pairMin" value="3" min="1" step="1"/>
+        </label>
+        <label>Sort by
+          <select id="pairSort">
+            <option value="picks" selected>Picks</option>
+            <option value="wins">Wins</option>
+            <option value="winpct">Win %</option>
+            <option value="teams">#Teams</option>
+            <option value="name">A→Z</option>
+          </select>
+        </label>
+        <label>Dir
+          <select id="pairDir">
+            <option value="desc" selected>Desc</option>
+            <option value="asc">Asc</option>
+          </select>
+        </label>
+      </div>
+      <div class="caption muted" id="pairMeta">—</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Pair (2× Active)</th>
+            <th>Picks</th>
+            <th>Wins</th>
+            <th>Win %</th>
+            <th>Teams Used</th>
+            <th>Maps Used</th>
+          </tr>
+        </thead>
+        <tbody id="pairBody"></tbody>
+      </table>
+    </div>
+
+    <!-- BAN IMPACT -->
+    <div id="sec-banimpact" class="block js-section">
+      <h2>Ban Impact</h2>
+      <div class="controls">
+        <label>Min banned matches
+          <input type="number" id="biMin" value="3" min="1" step="1"/>
+        </label>
+        <label>Sort by
+          <select id="biSort">
+            <option value="delta" selected>Δ Win %</option>
+            <option value="banned">Banned Matches</option>
+            <option value="win_when_ban">Win % (banned)</option>
+            <option value="win_when_not">Win % (not banned)</option>
+            <option value="name">A→Z</option>
+          </select>
+        </label>
+        <label>Dir
+          <select id="biDir">
+            <option value="desc" selected>Desc</option>
+            <option value="asc">Asc</option>
+          </select>
+        </label>
+      </div>
+      <div class="caption muted" id="biMeta">—</div>
+
+      <!-- LEGEND -->
+      <div class="caption muted" id="biLegend" style="line-height:1.35">
+        <strong>Legend — Ban Impact</strong>:
+        <b>Skill</b> = the skill your side banned;
+        <b>Banned Matches</b> = # of your team-rows that banned it;
+        <b>Win % (banned)</b> = wins_when_banned ÷ banned_matches;
+        <b>Other Matches</b> = your rows where you didn’t ban it;
+        <b>Win % (not banned)</b> = wins_when_not_banned ÷ other_matches;
+        <b>Δ Win %</b> = Win%(banned) − Win%(not banned) (↑ positive means ban helped).
+      </div>
+          
+      <table>
+        <thead>
+          <tr>
+            <th>Skill</th>
+            <th>Banned&nbsp;Matches</th>
+            <th>Win&nbsp;% (banned)</th>
+            <th>Other&nbsp;Matches</th>
+            <th>Win&nbsp;% (not&nbsp;banned)</th>
+            <th>Δ Win&nbsp;%</th>
+          </tr>
+        </thead>
+        <tbody id="biBody"></tbody>
+      </table>
+    </div>
+
+    <!-- PER-SKILL -->
+    <div id="sec-perskill" class="block js-section">
       <h2>Per-Skill Stats</h2>
       <div class="skill-controls">
         <label>Type
@@ -409,18 +573,26 @@ document.getElementById('logoutBtn').onclick = async () => {
 
 /* ========= Utilities ========= */
 const PLACEHOLDER = 'https://imgur.com/AdvPwAO.png';
-const fmtPct = (num) => (isFinite(num) ? (num*100).toFixed(1) + '%' : '—');
+const fmtPct = (num) => isFinite(num) ? (num*100).toFixed(1) + '%' : '—';
 const pct = (num, den) => den ? fmtPct(num/den) : '—';
 const uniq = (arr) => [...new Set(arr)];
 function ymd(d){
   const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0');
   return `${y}-${m}-${da}`;
 }
+// Safely parse the `state` column whether it's JSONB or text
+function parseState(val){
+  if (!val) return {};
+  if (typeof val === 'object') return val;
+  try { return JSON.parse(val); } catch(e){ console.warn('Bad state JSON:', e, val); return {}; }
+}
 
 /* ========= State ========= */
 let RAW_RECORDS = [];
 let CURRENT_ROWS = [];
-let TM_ROWS = []; // cached team×map rows
+let PAGE_SIZE = 25;
+let PAGE = 1;
+let FIRST_LOAD_TOURN = true;
 
 /* ========= DOM ========= */
 const el = (id) => document.getElementById(id);
@@ -433,15 +605,25 @@ const el = (id) => document.getElementById(id);
   el('fTo').value = ymd(today);
   el('fMap').value = '__ALL__';
   el('fWL').value = '__ALL__';
-  // Initialize tournament dropdown shell
   const t = el('fTourn');
   if (t) t.innerHTML = `<option value="__ALL__">All tournaments</option>`;
 })();
 
+/* ========= Mode toggles ========= */
+el('compactToggle')?.addEventListener('change', (e)=>{
+  document.body.classList.toggle('compact', e.target.checked);
+});
+el('hidePassiveToggle')?.addEventListener('change', (e)=>{
+  document.body.classList.toggle('passive-hidden', e.target.checked);
+});
+
 /* ========= Fetch & build ========= */
 async function fetchRecords(){
   const from = el('fFrom').value;
-  const to   = el('fTo').value;
+  const toRaw = el('fTo').value;
+  // inclusive end-of-day if the column is timestamp
+  const to = toRaw && /^\d{4}-\d{2}-\d{2}$/.test(toRaw) ? `${toRaw} 23:59:59` : toRaw;
+
   const map  = el('fMap').value;
   const team = el('fTeam').value || '__ALL__';
   const tourn= el('fTourn').value || '__ALL__';
@@ -449,13 +631,15 @@ async function fetchRecords(){
   let q = client
     .from('draft_records')
     .select('id, match_date, game_number, team_left, team_right, team_left_score, team_right_score, map, tournament_name, state')
-    .gte('match_date', from).lte('match_date', to)
-    .order('match_date', { ascending:false })
-    .order('id', { ascending:false });
+    .gte('match_date', from);
 
+  if (to) q = q.lte('match_date', to);
   if (map !== '__ALL__') q = q.eq('map', map);
   if (team && team !== '__ALL__') q = q.or(`team_left.eq.${team},team_right.eq.${team}`);
   if (tourn && tourn !== '__ALL__') q = q.eq('tournament_name', tourn);
+
+  // sort after filters
+  q = q.order('match_date', { ascending:false }).order('id', { ascending:false });
 
   const { data, error } = await q;
   if (error) {
@@ -474,46 +658,57 @@ function populateTeamDropdown(records){
   dd.innerHTML = '';
   const all = document.createElement('option'); all.value='__ALL__'; all.textContent='All teams';
   dd.appendChild(all);
-  [...teams].sort().forEach(t => {
+  [...teams].filter(Boolean).sort().forEach(t => {
     const o=document.createElement('option'); o.value=t; o.textContent=t; dd.appendChild(o);
   });
   dd.value = prior;
 }
 
 function populateTournamentDropdown(records){
-  const tourns = new Set();
-  records.forEach(r => { if (r.tournament_name) tourns.add(r.tournament_name); });
   const dd = el('fTourn');
   const prior = dd.value || '__ALL__';
+
+  const tourns = new Set();
+  let latest = null;
+  records.forEach(r => {
+    const tn = r.tournament_name;
+    if (!tn) return;
+    tourns.add(tn);
+    if (!latest || (String(r.match_date) > String(latest.date))) {
+      latest = { name: tn, date: r.match_date };
+    }
+  });
+
   dd.innerHTML = '';
-  const all = document.createElement('option'); all.value='__ALL__'; all.textContent='All tournaments';
+  const all = document.createElement('option');
+  all.value='__ALL__';
+  all.textContent='All tournaments';
   dd.appendChild(all);
+
   [...tourns].sort().forEach(tn => {
-    const o=document.createElement('option'); o.value=tn; o.textContent=tn; dd.appendChild(o);
+    const o = document.createElement('option');
+    o.value = tn;
+    o.textContent = tn;
+    dd.appendChild(o);
   });
-  dd.value = prior;
+
+  if (FIRST_LOAD_TOURN && latest && (prior === '__ALL__' || !prior)) {
+    dd.value = latest.name;
+    FIRST_LOAD_TOURN = false;
+  } else {
+    dd.value = prior;
+  }
 }
 
-function populateMapDropdownForSummary(records){
-  const maps = uniq(records.map(r => r.map).filter(Boolean)).sort();
-  const dd = el('ssMap');
-  const prior = dd.value || '__ALL__';
-  dd.innerHTML = '<option value="__ALL__">All maps</option>';
-  maps.forEach(m => {
-    const o=document.createElement('option'); o.value=m; o.textContent=m; dd.appendChild(o);
-  });
-  dd.value = prior;
-}
-
-/* Build per-team rows from a record */
+/* Build per-team rows from a record (SAFE state parsing) */
 function explodeRecordToRows(rec){
-  const s = rec.state || {};
-  const picks = s.picks || [];
-  const passives = s.passives || [];
-  const bans = s.bans || [];
-  const names = s.playerCards || [];
+  const s = parseState(rec.state);
+  const picks    = Array.isArray(s.picks)       ? s.picks       : [];
+  const passives = Array.isArray(s.passives)    ? s.passives    : [];
+  const bans     = Array.isArray(s.bans)        ? s.bans        : [];
+  const names    = Array.isArray(s.playerCards) ? s.playerCards : [];
 
-  const leftWin = (rec.team_left_score ?? 0) > (rec.team_right_score ?? 0);
+  const leftWin  = (rec.team_left_score ?? 0) > (rec.team_right_score ?? 0);
   const rightWin = (rec.team_right_score ?? 0) > (rec.team_left_score ?? 0);
 
   function sideRow(side){
@@ -531,13 +726,14 @@ function explodeRecordToRows(rec){
 
     const actives = idx.map((i, k) => {
       const player = (names[i] && String(names[i]).trim()) ? names[i].trim() : `P${k+1}`;
-      const heroObj= picks[i] || null;
+      const heroObj= (picks[i] && typeof picks[i] === 'object') ? picks[i] : null;
       return { player, hero: heroObj?.name || '', heroImg: heroObj?.image_url || PLACEHOLDER };
     });
 
     const passiveLines = idx.map((i, k) => {
       const player = (names[i] && String(names[i]).trim()) ? names[i].trim() : `P${k+1}`;
-      const trioObjs = (passives[i] || []).filter(Boolean).map(ps => ({
+      const trioRaw = Array.isArray(passives[i]) ? passives[i] : [];
+      const trioObjs = trioRaw.filter(Boolean).map(ps => ({
         name: ps?.name || '',
         img : ps?.image_url || PLACEHOLDER
       }));
@@ -642,16 +838,29 @@ function renderRows(rows){
   });
 }
 
-/* ===== Summary (overall) ===== */
-function buildBuckets(groupBy, kind){
+/* ========== Pagination for match rows ========== */
+function renderRowsPaged(rows){
+  const total = rows.length;
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  PAGE = Math.min(Math.max(1, PAGE), pages);
+  const start = (PAGE-1)*PAGE_SIZE;
+  const slice = rows.slice(start, start + PAGE_SIZE);
+  renderRows(slice);
+  el('rowsPager').innerHTML =
+    `<div class="muted">Page ${PAGE}/${pages} • ${total} rows</div>
+     <div style="display:flex;gap:6px;">
+       <button class="btn" ${PAGE<=1?'disabled':''} onclick="PAGE=1;renderRowsPaged(CURRENT_ROWS)">« First</button>
+       <button class="btn" ${PAGE<=1?'disabled':''} onclick="PAGE--;renderRowsPaged(CURRENT_ROWS)">‹ Prev</button>
+       <button class="btn" ${PAGE>=pages?'disabled':''} onclick="PAGE++;renderRowsPaged(CURRENT_ROWS)">Next ›</button>
+       <button class="btn" ${PAGE>=pages?'disabled':''} onclick="PAGE=${pages};renderRowsPaged(CURRENT_ROWS)">Last »</button>
+     </div>`;
+}
+
+/* ===== Summary (global) ===== */
+function buildBucketsFromRows(rows, groupBy, kind){
   const buckets = new Map();
-  CURRENT_ROWS.forEach(r => {
-    let keys = [];
-    if (groupBy === 'team'){
-      keys = [r.team];
-    } else {
-      keys = uniq(r.actives.map(a => a.player)).filter(Boolean);
-    }
+  rows.forEach(r => {
+    const keys = (groupBy === 'team') ? [r.team] : uniq(r.actives.map(a => a.player)).filter(Boolean);
     keys.forEach(key => {
       if (!buckets.has(key)){
         buckets.set(key, { name:key, matches:0, wins:0, skills:new Map() });
@@ -663,33 +872,29 @@ function buildBuckets(groupBy, kind){
       if (kind === 'active'){
         r.actives.forEach(a => {
           if (groupBy==='player' && a.player !== key) return;
-          const name = a.hero;
-          if (!name) return;
-          const S = B.skills.get(name) || { occ:0, appear:0, appearWins:0 };
+          const nm = a.hero; if (!nm) return;
+          const S = B.skills.get(nm) || { occ:0, appear:0, appearWins:0 };
           S.occ += 1; S.appear += 1; if (r.result === 'W') S.appearWins += 1;
-          B.skills.set(name, S);
+          B.skills.set(nm, S);
         });
       } else if (kind === 'passive'){
         r.passives.forEach(p => {
           if (groupBy==='player' && p.player !== key) return;
-          (p.trio || []).forEach(nm => {
-            const name = nm?.name || '';
-            if (!name) return;
-            const S = B.skills.get(name) || { occ:0, appear:0, appearWins:0 };
+          (p.trio || []).forEach(x => {
+            const nm = x?.name || ''; if (!nm) return;
+            const S = B.skills.get(nm) || { occ:0, appear:0, appearWins:0 };
             S.occ += 1; S.appear += 1; if (r.result === 'W') S.appearWins += 1;
-            B.skills.set(name, S);
+            B.skills.set(nm, S);
           });
         });
       } else {
-        const nm = r.banName;
-        if (!nm) return;
+        const nm = r.banName; if (!nm) return;
         const S = B.skills.get(nm) || { occ:0, appear:0, appearWins:0 };
         S.occ += 1; S.appear += 1; if (r.result === 'W') S.appearWins += 1;
         B.skills.set(nm, S);
       }
     });
   });
-
   return buckets;
 }
 
@@ -698,8 +903,6 @@ function renderSummary(buckets, groupBy, kind){
   const meta = el('sumMeta');
   const totalEntities = buckets.size;
   const totalRows = CURRENT_ROWS.length;
-
-  const rateLabel = (kind === 'ban') ? 'Ban Rate' : 'Pick Rate';
   meta.textContent = `${totalEntities} ${groupBy === 'team' ? 'team' : 'player'} group(s) • ${totalRows} team-row(s) in view`;
 
   if (!totalEntities){
@@ -763,7 +966,149 @@ function renderSummary(buckets, groupBy, kind){
     };
     skills.sort(skillCmp);
 
-    const rateLabel = (el('sumKind').value === 'ban') ? 'Ban Rate' : 'Pick Rate';
+    const table = skills.length
+      ? `<table class="sum-table">
+           <thead><tr><th>Skill</th><th class="right">Count</th><th class="right">${(kind==='ban')?'Ban Rate':'Pick Rate'}</th><th class="right">Win Rate</th></tr></thead>
+           <tbody>
+             ${skills.map(s => `
+               <tr>
+                 <td>${s.name}</td>
+                 <td class="right">${s.occ}</td>
+                 <td class="right">${pct(s.appear,b.matches)}</td>
+                 <td class="right">${pct(s.appearWins,s.appear)}</td>
+               </tr>`).join('')}
+           </tbody>
+         </table>`
+      : `<div class="muted">No ${kind} data.</div>`;
+
+    cards.push(`
+      <div class="card">
+        <h3>${b.name}</h3>
+        <div class="kpis">
+          <div class="kpi">Matches <strong>${b.matches}</strong></div>
+          <div class="kpi">Wins <strong>${b.wins}</strong> <span class="muted">(${pct(b.wins,b.matches)})</span></div>
+          <div class="kpi">${(kind==='ban'?'Bans':'Picks')} <strong>${b._subj.appear}</strong> <span class="muted">(${pct(b._subj.appear,b.matches)})</span></div>
+          <div class="kpi">When Appeared: <strong>${pct(b._subj.appearWins,b._subj.appear)}</strong></div>
+        </div>
+        ${table}
+      </div>
+    `);
+  });
+
+  grid.innerHTML = cards.join('');
+}
+
+/* ========= Team × Map Win Rate ========= */
+function renderTeamMapWinRate(){
+  const sortBy = el('tmSort').value;
+  const dir = el('tmDir').value;
+
+  const agg = new Map(); // key = team||map -> {team,map,matches,wins}
+  RAW_RECORDS.forEach(r=>{
+    const l = r.team_left, rt = r.team_right;
+    const m = r.map;
+    const ls = r.team_left_score ?? 0, rs = r.team_right_score ?? 0;
+
+    const k1 = l+'||'+m;
+    const k2 = rt+'||'+m;
+    if (!agg.has(k1)) agg.set(k1,{team:l,map:m,matches:0,wins:0});
+    if (!agg.has(k2)) agg.set(k2,{team:rt,map:m,matches:0,wins:0});
+    agg.get(k1).matches += 1;
+    agg.get(k2).matches += 1;
+    if (ls>rs) agg.get(k1).wins += 1;
+    if (rs>ls) agg.get(k2).wins += 1;
+  });
+
+  const rows = [...agg.values()].map(x => ({...x, winpct: x.matches? x.wins/x.matches : 0}));
+
+  const cmp = (a,b)=>{
+    const s = (dir==='asc')?1:-1;
+    if (sortBy==='winpct') return s*(a.winpct - b.winpct);
+    if (sortBy==='wins')   return s*(a.wins - b.wins);
+    if (sortBy==='matches')return s*(a.matches - b.matches);
+    if (sortBy==='team')   return s*a.team.localeCompare(b.team);
+    if (sortBy==='map')    return s*a.map.localeCompare(b.map);
+    return 0;
+  };
+  rows.sort(cmp);
+
+  const tbody = el('tmBody'); tbody.innerHTML='';
+  rows.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML = `
+      <td>${r.team}</td>
+      <td>${r.map}</td>
+      <td class="mono">${r.matches}</td>
+      <td class="mono">${r.wins}</td>
+      <td class="mono">${fmtPct(r.winpct)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  el('tmMeta').textContent = `${rows.length} team×map rows • From filters above`;
+}
+['tmSort','tmDir'].forEach(id=>{
+  el(id).addEventListener('change', ()=> renderTeamMapWinRate());
+});
+
+/* ========= Skills Summary by Map ========= */
+function renderCardsToGrid(buckets, groupBy, kind, cfg, gridEl){
+  const totalEntities = buckets.size;
+  const rateLabel = (kind === 'ban') ? 'Ban Rate' : 'Pick Rate';
+  if (!totalEntities){
+    gridEl.innerHTML = `<div class="card"><div class="muted">No data for this selection.</div></div>`;
+    return;
+  }
+  const ordered = [...buckets.values()].map(b => {
+    const subj = [...b.skills.values()].reduce((acc, s) => {
+      acc.appear     += (s.appear || 0);
+      acc.appearWins += (s.appearWins || 0);
+      acc.occ        += (s.occ || 0);
+      return acc;
+    }, { appear:0, appearWins:0, occ:0 });
+    subj.rate    = b.matches ? (subj.appear / b.matches) : 0;
+    subj.winrate = subj.appear ? (subj.appearWins / subj.appear) : 0;
+    b._subj = subj;
+    return b;
+  });
+
+  const cardCmp = (a, b) => {
+    let A,B;
+    if (cfg.cardSort==='name'){ A=a.name?.toLowerCase()||''; B=b.name?.toLowerCase()||''; }
+    else if (cfg.cardSort==='matches'){ A=a.matches; B=b.matches; }
+    else if (cfg.cardSort==='wins'){ A=a.wins; B=b.wins; }
+    else if (cfg.cardSort==='winpct'){ A=a.matches ? a.wins/a.matches : -1; B=b.matches ? b.wins/b.matches : -1; }
+    else if (cfg.cardSort==='subjectAppear'){ A=a._subj.appear; B=b._subj.appear; }
+    else if (cfg.cardSort==='subjectRate'){ A=a._subj.rate; B=b._subj.rate; }
+    else { A=a._subj.winrate; B=b._subj.winrate; }
+    if (A<B) return cfg.cardDir==='asc' ? -1 : 1;
+    if (A>B) return cfg.cardDir==='asc' ? 1 : -1;
+    const nA=a.name?.toLowerCase()||'', nB=b.name?.toLowerCase()||'';
+    if (nA<nB) return -1; if (nA>nB) return 1; return 0;
+  };
+  ordered.sort(cardCmp);
+
+  const cards = [];
+  ordered.forEach(b => {
+    let skills = [...b.skills.entries()].map(([name, s]) => {
+      const appearRate = b.matches ? (s.appear / b.matches) : 0;
+      const winRate    = s.appear ? (s.appearWins / s.appear) : 0;
+      return { name, ...s, appearRate, winRate };
+    });
+
+    const skillCmp = (x,y) => {
+      let A,B;
+      if (cfg.skillSort==='name'){ A=x.name.toLowerCase(); B=y.name.toLowerCase(); }
+      else if (cfg.skillSort==='count'){ A=x.occ; B=y.occ; }
+      else if (cfg.skillSort==='winrate'){ A=x.winRate; B=y.winRate; }
+      else { A=x.appearRate; B=y.appearRate; }
+      if (A<B) return cfg.skillDir==='asc' ? -1 : 1;
+      if (A>B) return cfg.skillDir==='asc' ? 1 : -1;
+      if (x.name.toLowerCase()<y.name.toLowerCase()) return -1;
+      if (x.name.toLowerCase()>y.name.toLowerCase()) return 1;
+      return 0;
+    };
+    skills.sort(skillCmp);
+
     const table = skills.length
       ? `<table class="sum-table">
            <thead><tr><th>Skill</th><th class="right">Count</th><th class="right">${rateLabel}</th><th class="right">Win Rate</th></tr></thead>
@@ -777,190 +1122,9 @@ function renderSummary(buckets, groupBy, kind){
                </tr>`).join('')}
            </tbody>
          </table>`
-      : `<div class="muted">No data.</div>`;
-
-    cards.push(`
-      <div class="card">
-        <h3>${b.name}</h3>
-        <div class="kpis">
-          <div class="kpi">Matches <strong>${b.matches}</strong></div>
-          <div class="kpi">Wins <strong>${b.wins}</strong> <span class="muted">(${pct(b.wins,b.matches)})</span></div>
-          <div class="kpi">${(el('sumKind').value==='ban'?'Bans':'Picks')} <strong>${b._subj.appear}</strong> <span class="muted">(${pct(b._subj.appear,b.matches)})</span></div>
-          <div class="kpi">When Appeared: <strong>${pct(b._subj.appearWins,b._subj.appear)}</strong></div>
-        </div>
-        ${table}
-      </div>
-    `);
-  });
-
-  grid.innerHTML = cards.join('');
-}
-
-/* ========= NEW: Team × Map Win Rate ========= */
-function computeTeamMapWinRate(records){
-  // Ignore W/L filter here; use the raw fetched slice (already narrowed by date/team/tournament/map)
-  const agg = new Map(); // key: team||map -> {team,map,matches,wins}
-  records.forEach(r=>{
-    const lWin = (r.team_left_score ?? 0) > (r.team_right_score ?? 0);
-    const rWin = (r.team_right_score ?? 0) > (r.team_left_score ?? 0);
-    const kL = `${r.team_left}||${r.map}`;
-    const kR = `${r.team_right}||${r.map}`;
-    if (!agg.has(kL)) agg.set(kL, {team:r.team_left, map:r.map, matches:0, wins:0});
-    if (!agg.has(kR)) agg.set(kR, {team:r.team_right, map:r.map, matches:0, wins:0});
-    agg.get(kL).matches++; if (lWin) agg.get(kL).wins++;
-    agg.get(kR).matches++; if (rWin) agg.get(kR).wins++;
-  });
-  TM_ROWS = [...agg.values()].map(x => ({...x, winpct: (x.matches? x.wins/x.matches : 0)}));
-  renderTeamMapWinRate();
-}
-
-function renderTeamMapWinRate(){
-  const sortBy = el('tmSortBy').value;
-  const dir    = el('tmSortDir').value;
-  const rows = TM_ROWS.slice().sort((a,b)=>{
-    const sign = (dir==='asc')?1:-1;
-    const pick = (o) => (sortBy==='team')?o.team.toLowerCase()
-                         : (sortBy==='map')?o.map.toLowerCase()
-                         : (sortBy==='matches')?o.matches
-                         : (sortBy==='wins')?o.wins
-                         : o.winpct;
-    const A = pick(a), B = pick(b);
-    if (typeof A === 'string') return sign * A.localeCompare(B);
-    return sign * (A - B);
-  });
-
-  const tbody = el('teamMapBody');
-  tbody.innerHTML = '';
-  rows.forEach(r=>{
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${r.team}</td>
-      <td>${r.map}</td>
-      <td class="mono right">${r.matches}</td>
-      <td class="mono right">${r.wins}</td>
-      <td class="mono right">${fmtPct(r.winpct)}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-  const teamSel  = el('fTeam').value || '__ALL__';
-  const tournSel = el('fTourn').value || '__ALL__';
-  const mapSel   = el('fMap').value || '__ALL__';
-  el('tmMeta').textContent =
-    `Rows: ${rows.length} • Team: ${teamSel==='__ALL__'?'All teams':teamSel} • Tournament: ${tournSel==='__ALL__'?'All':tournSel} • Top Map filter: ${mapSel==='__ALL__'?'All maps':mapSel}`;
-}
-
-el('tmSortBy').addEventListener('change', renderTeamMapWinRate);
-el('tmSortDir').addEventListener('change', renderTeamMapWinRate);
-
-/* ========= NEW: Skills Summary by Map ========= */
-function buildBucketsFromRows(rows, groupBy, kind){
-  const buckets = new Map();
-  rows.forEach(r=>{
-    let keys = (groupBy==='team') ? [r.team] : uniq(r.actives.map(a=>a.player)).filter(Boolean);
-    keys.forEach(key=>{
-      if (!buckets.has(key)) buckets.set(key, { name:key, matches:0, wins:0, skills:new Map() });
-      const B = buckets.get(key);
-      B.matches += 1;
-      if (r.result==='W') B.wins += 1;
-
-      if (kind==='active'){
-        r.actives.forEach(a=>{
-          if (groupBy==='player' && a.player !== key) return;
-          const nm = a.hero; if (!nm) return;
-          const S = B.skills.get(nm) || { occ:0, appear:0, appearWins:0 };
-          S.occ += 1; S.appear += 1; if (r.result==='W') S.appearWins += 1;
-          B.skills.set(nm, S);
-        });
-      } else if (kind==='passive'){
-        r.passives.forEach(p=>{
-          if (groupBy==='player' && p.player !== key) return;
-          (p.trio||[]).forEach(s=>{
-            const nm = s?.name || ''; if (!nm) return;
-            const S = B.skills.get(nm) || { occ:0, appear:0, appearWins:0 };
-            S.occ += 1; S.appear += 1; if (r.result==='W') S.appearWins += 1;
-            B.skills.set(nm, S);
-          });
-        });
-      } else {
-        const nm = r.banName; if (!nm) return;
-        const S = B.skills.get(nm) || { occ:0, appear:0, appearWins:0 };
-        S.occ += 1; S.appear += 1; if (r.result==='W') S.appearWins += 1;
-        B.skills.set(nm, S);
-      }
-    });
-  });
-  return buckets;
-}
-
-function renderSummaryTo(container, rows, groupBy, kind, cardSort, cardDir, skillSort, skillDir){
-  const buckets = buildBucketsFromRows(rows, groupBy, kind);
-  const totalEntities = buckets.size;
-  if (!totalEntities){
-    container.innerHTML = `<div class="card"><div class="muted">No data for this selection.</div></div>`;
-    return;
-  }
-
-  // attach rollups
-  const ordered = [...buckets.values()].map(b=>{
-    const subj = [...b.skills.values()].reduce((acc,s)=>{
-      acc.appear+=(s.appear||0); acc.appearWins+=(s.appearWins||0); acc.occ+=(s.occ||0); return acc;
-    },{appear:0,appearWins:0,occ:0});
-    subj.rate = b.matches ? (subj.appear/b.matches) : 0;
-    subj.winrate = subj.appear ? (subj.appearWins/subj.appear) : 0;
-    b._subj = subj; return b;
-  });
-
-  const cardCmp = (a,b)=>{
-    let A,B;
-    if (cardSort==='name'){ A=a.name?.toLowerCase()||''; B=b.name?.toLowerCase()||''; }
-    else if (cardSort==='matches'){ A=a.matches; B=b.matches; }
-    else if (cardSort==='wins'){ A=a.wins; B=b.wins; }
-    else if (cardSort==='winpct'){ A=a.matches? a.wins/a.matches : -1; B=b.matches? b.wins/b.matches : -1; }
-    else if (cardSort==='subjectAppear'){ A=a._subj.appear; B=b._subj.appear; }
-    else if (cardSort==='subjectRate'){ A=a._subj.rate; B=b._subj.rate; }
-    else { A=a._subj.winrate; B=b._subj.winrate; }
-    if (A<B) return cardDir==='asc' ? -1 : 1;
-    if (A>B) return cardDir==='asc' ? 1 : -1;
-    const nA=a.name?.toLowerCase()||'', nB=b.name?.toLowerCase()||'';
-    if (nA<nB) return -1; if (nA>nB) return 1; return 0;
-  };
-  ordered.sort(cardCmp);
-
-  const rateLabel = (kind==='ban') ? 'Ban Rate' : 'Pick Rate';
-  const cards = ordered.map(b=>{
-    let skills = [...b.skills.entries()].map(([name,s])=>{
-      const appearRate = b.matches ? (s.appear/b.matches) : 0;
-      const winRate    = s.appear ? (s.appearWins/s.appear) : 0;
-      return { name, ...s, appearRate, winRate };
-    });
-    const skillCmp = (x,y)=>{
-      let A,B;
-      if (skillSort==='name'){ A=x.name.toLowerCase(); B=y.name.toLowerCase(); }
-      else if (skillSort==='count'){ A=x.occ; B=y.occ; }
-      else if (skillSort==='winrate'){ A=x.winRate; B=y.winRate; }
-      else { A=x.appearRate; B=y.appearRate; }
-      if (A<B) return skillDir==='asc' ? -1 : 1;
-      if (A>B) return skillDir==='asc' ? 1 : -1;
-      return x.name.toLowerCase().localeCompare(y.name.toLowerCase());
-    };
-    skills.sort(skillCmp);
-
-    const table = skills.length
-      ? `<table class="sum-table">
-           <thead><tr><th>Skill</th><th class="right">Count</th><th class="right">${rateLabel}</th><th class="right">Win Rate</th></tr></thead>
-           <tbody>${skills.map(s=>`
-             <tr>
-               <td>${s.name}</td>
-               <td class="right">${s.occ}</td>
-               <td class="right">${fmtPct(s.appearRate)}</td>
-               <td class="right">${fmtPct(s.winRate)}</td>
-             </tr>`).join('')}
-           </tbody>
-         </table>`
       : `<div class="muted">No ${kind} data.</div>`;
 
-    return `
+    cards.push(`
       <div class="card">
         <h3>${b.name}</h3>
         <div class="kpis">
@@ -970,59 +1134,452 @@ function renderSummaryTo(container, rows, groupBy, kind, cardSort, cardDir, skil
           <div class="kpi">When Appeared: <strong>${pct(b._subj.appearWins,b._subj.appear)}</strong></div>
         </div>
         ${table}
-      </div>`;
+      </div>
+    `);
   });
 
-  container.innerHTML = `<div class="grid">${cards.join('')}</div>`;
+  gridEl.innerHTML = `<div class="grid">${cards.join('')}</div>`;
 }
 
 function renderSkillsByMap(){
-  // Build from CURRENT_ROWS (already respects team/WL/map top filters)
-  const mapSel = el('ssMap').value || '__ALL__';
+  const mapSel = el('fMap').value;
+  const rows = CURRENT_ROWS;
+  const maps = (mapSel==='__ALL__') ? uniq(rows.map(r=>r.map)).sort() : [mapSel];
+
   const groupBy = el('ssGroupBy').value;
   const kind    = el('ssKind').value;
-  const cSort   = el('ssCardSort').value;
-  const cDir    = el('ssCardDir').value;
-  const sSort   = el('ssSkillSort').value;
-  const sDir    = el('ssSkillDir').value;
+  const cfg = {
+    cardSort:  el('ssCardSort').value,
+    cardDir:   el('ssCardDir').value,
+    skillSort: el('ssSkillSort').value,
+    skillDir:  el('ssSkillDir').value
+  };
 
-  const container = el('ssContainer');
-  const allMaps = uniq(CURRENT_ROWS.map(r=>r.map).filter(Boolean)).sort();
+  el('ssMeta').textContent = `${maps.length} map(s) • Using current filters`;
 
-  if (mapSel !== '__ALL__'){
-    const rows = CURRENT_ROWS.filter(r=>r.map===mapSel);
-    el('ssMeta').textContent = `Map: ${mapSel} • Rows: ${rows.length}`;
-    renderSummaryTo(container, rows, groupBy, kind, cSort, cDir, sSort, sDir);
+  const container = el('ssWrap');
+  container.innerHTML='';
+
+  if (maps.length === 1){
+    const mapName = maps[0];
+    const mapRows = rows.filter(r=>r.map===mapName);
+    const buckets = buildBucketsFromRows(mapRows, groupBy, kind);
+    const inner = document.createElement('div');
+    container.appendChild(inner);
+    renderCardsToGrid(buckets, groupBy, kind, cfg, inner);
+  } else {
+    maps.forEach(m=>{
+      const details = document.createElement('details');
+      details.className = 'card';
+      const summary = document.createElement('summary');
+      summary.style.cursor='pointer';
+      summary.style.fontWeight='700';
+      summary.style.color='var(--brand2)';
+      summary.textContent = m;
+      details.appendChild(summary);
+
+      const inner = document.createElement('div');
+      inner.style.marginTop='10px';
+      details.appendChild(inner);
+      container.appendChild(details);
+
+      details.addEventListener('toggle', ()=>{
+        if (details.open && !inner.hasChildNodes()){
+          const mapRows = rows.filter(r=>r.map===m);
+          const buckets = buildBucketsFromRows(mapRows, groupBy, kind);
+          renderCardsToGrid(buckets, groupBy, kind, cfg, inner);
+        }
+      }, { once:true });
+    });
+  }
+}
+['ssGroupBy','ssKind','ssCardSort','ssCardDir','ssSkillSort','ssSkillDir'].forEach(id=>{
+  el(id).addEventListener('change', ()=> renderSkillsByMap());
+});
+
+/* ========= Helpers shared by combos/pairs ========= */
+function pillsFromSet(setLike, maxShow=6){
+  const arr = [...setLike].sort();
+  const shown = arr.slice(0, maxShow).map(t => `<span class="pill" title="${t}">${t}</span>`).join('');
+  const more = arr.length>maxShow ? `<span class="pill" title="${arr.join(', ')}">+${arr.length-maxShow} more</span>` : '';
+  return shown + more;
+}
+function pillsFromMapCount(mapCount, maxShow=6){
+  const arr = [...mapCount.entries()].sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0]));
+  const shown = arr.slice(0, maxShow).map(([name,c]) => `<span class="pill" title="${name} ×${c}">${name} <small>×${c}</small></span>`).join('');
+  const more = arr.length>maxShow ? `<span class="pill" title="${arr.map(([n,c])=>`${n}×${c}`).join(', ')}">+${arr.length-maxShow} more</span>` : '';
+  return shown + more;
+}
+
+/* ========= Active Combos ========= */
+function buildActiveCombos(rows){
+  const combos = new Map(); // key: sorted combo "A|B|C|D"
+  rows.forEach(r => {
+    const heroes = r.actives.map(a => a.hero).filter(Boolean);
+    if (heroes.length !== 4) return;
+
+    const imgsMap = new Map();
+    r.actives.forEach(a => { if (a.hero) imgsMap.set(a.hero, a.heroImg || PLACEHOLDER); });
+
+    const sorted = [...heroes].sort((a,b)=>a.localeCompare(b));
+    const key = sorted.join('|');
+
+    if (!combos.has(key)){
+      combos.set(key, {
+        key,
+        heroes: sorted,
+        heroImgs: Object.fromEntries(sorted.map(h => [h, imgsMap.get(h) || PLACEHOLDER])),
+        picks: 0,
+        wins: 0,
+        teams: new Set(),
+        maps: new Map(),
+        matches: []
+      });
+    }
+    const C = combos.get(key);
+    C.picks += 1;
+    if (r.result === 'W') C.wins += 1;
+    C.teams.add(r.team);
+    const m = r.map || '—';
+    C.maps.set(m, (C.maps.get(m)||0) + 1);
+    C.matches.push({
+      rec_id: r.rec_id,
+      date: r.match_date,
+      game: r.game_number,
+      map: r.map,
+      team: r.team,
+      opp: r.opponent,
+      ts: r.team_score,
+      os: r.opp_score,
+      res: r.result
+    });
+  });
+  return combos;
+}
+
+function comboIdFromKey(key){
+  return 'combo_' + key.replace(/[^a-z0-9]+/gi,'_').replace(/^_+|_+$/g,'').toLowerCase();
+}
+function matchLineHTML(m){
+  const score = `${m.ts}-${m.os}`;
+  return `
+    <li>
+      <strong>${m.team}</strong> vs ${m.opp}
+      • <em>${m.map}</em> • Game ${m.game}
+      • <span class="wl ${m.res}">${m.res}</span>
+      • ${score}
+      <span class="muted">(${m.date})</span>
+    </li>`;
+}
+
+function renderActiveCombos(){
+  const min = Math.max(1, parseInt(el('comboMin').value||'1',10));
+  const sortBy = el('comboSort').value;
+  const dir = el('comboDir').value;
+
+  const combos = buildActiveCombos(CURRENT_ROWS);
+  let rows = [...combos.values()].filter(c => c.picks >= min).map(c => ({
+    ...c,
+    winpct: c.picks ? (c.wins / c.picks) : 0
+  }));
+
+  const sgn = (dir==='asc')?1:-1;
+  rows.sort((a,b)=>{
+    if (sortBy==='name') return sgn * a.heroes.join(',').localeCompare(b.heroes.join(','));
+    if (sortBy==='wins') return sgn * (a.wins - b.wins);
+    if (sortBy==='winpct') return sgn * (a.winpct - b.winpct);
+    return sgn * (a.picks - b.picks);
+  });
+
+  const tbody = el('comboBody'); tbody.innerHTML='';
+  if (!rows.length){
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 6; td.className='muted'; td.textContent = 'No combos for your selection.';
+    tr.appendChild(td); tbody.appendChild(tr);
+    el('comboMeta').textContent = `0 combo(s) • Using current filters`;
     return;
   }
 
-  // All maps: render a small sub-section per map
-  el('ssMeta').textContent = `All maps • Sections: ${allMaps.length}`;
-  container.innerHTML = allMaps.map(m=>`
-    <h3 style="color:var(--brand2);margin:8px 4px;">${m}</h3>
-    <div id="ss_${m.replace(/\s+/g,'_')}"></div>
-  `).join('');
+  rows.forEach(c=>{
+    const icons = c.heroes.map(h=>`<img src="${(c.heroImgs[h]||PLACEHOLDER)}" alt="${h}" title="${h}" loading="lazy">`).join('');
+    const names = `<div class="muted" style="margin-top:4px">${c.heroes.join(' · ')}</div>`;
+    const id = comboIdFromKey(c.key);
 
-  allMaps.forEach(m=>{
-    const rows = CURRENT_ROWS.filter(r=>r.map===m);
-    const target = document.getElementById(`ss_${m.replace(/\s+/g,'_')}`);
-    renderSummaryTo(target, rows, groupBy, kind, cSort, cDir, sSort, sDir);
+    const tr = document.createElement('tr');
+    tr.className = 'combo-row';
+    tr.dataset.target = id;
+    tr.innerHTML = `
+      <td>
+        <div class="comboIcons">${icons}</div>
+        ${names}
+      </td>
+      <td class="mono">${c.picks}</td>
+      <td class="mono">${c.wins}</td>
+      <td class="mono">${fmtPct(c.winpct)}</td>
+      <td>${pillsFromSet(c.teams)}</td>
+      <td>${pillsFromMapCount(c.maps)}</td>
+    `;
+    tbody.appendChild(tr);
+
+    const dr = document.createElement('tr');
+    dr.className = 'combo-detail';
+    dr.id = id;
+    dr.style.display = 'none';
+    const detail = `
+      <td colspan="6">
+        <div class="muted" style="margin-bottom:6px;">${c.matches.length} match(es) with this combo</div>
+        <ul style="margin:0; padding-left:18px; line-height:1.35;">
+          ${c.matches.map(matchLineHTML).join('')}
+        </ul>
+      </td>`;
+    dr.innerHTML = detail;
+    tbody.appendChild(dr);
   });
+
+  tbody.querySelectorAll('tr.combo-row').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      const id = row.dataset.target;
+      const drow = document.getElementById(id);
+      if (!drow) return;
+      drow.style.display = (drow.style.display === 'none' ? '' : 'none');
+    });
+  });
+
+  el('comboMeta').textContent = `${rows.length} combo(s) • Using current filters`;
+}
+['comboMin','comboSort','comboDir'].forEach(id => {
+  el(id).addEventListener('change', renderActiveCombos);
+});
+
+/* ========= Active Pairs ========= */
+function buildActivePairs(rows){
+  const pairs = new Map();
+  rows.forEach(r=>{
+    const names = r.actives.map(a=>a.hero).filter(Boolean);
+    if (names.length < 2) return;
+
+    const imgOf = new Map();
+    r.actives.forEach(a=>{ if (a.hero) imgOf.set(a.hero, a.heroImg || PLACEHOLDER); });
+
+    for (let i=0;i<names.length;i++){
+      for (let j=i+1;j<names.length;j++){
+        const [A,B] = [names[i], names[j]].sort((x,y)=>x.localeCompare(y));
+        const key = A + '|' + B;
+        if (!pairs.has(key)){
+          pairs.set(key, {
+            a:A, b:B,
+            imgs: { [A]: imgOf.get(A) || PLACEHOLDER, [B]: imgOf.get(B) || PLACEHOLDER },
+            picks:0, wins:0,
+            teams:new Set(),
+            maps:new Map(),
+            matches:[]
+          });
+        }
+        const P = pairs.get(key);
+        P.picks += 1;
+        if (r.result==='W') P.wins += 1;
+        P.teams.add(r.team);
+        const m = r.map || '—';
+        P.maps.set(m, (P.maps.get(m)||0)+1);
+        P.matches.push({
+          rec_id:r.rec_id, date:r.match_date, game:r.game_number, map:r.map,
+          team:r.team, opp:r.opponent, ts:r.team_score, os:r.opp_score, res:r.result
+        });
+      }
+    }
+  });
+  return pairs;
 }
 
-['ssMap','ssGroupBy','ssKind','ssCardSort','ssCardDir','ssSkillSort','ssSkillDir'].forEach(id=>{
-  const n = document.getElementById(id);
-  if (n) n.addEventListener('change', renderSkillsByMap);
+function renderActivePairs(){
+  const min  = Math.max(1, parseInt(el('pairMin').value||'1',10));
+  const sort = el('pairSort').value;
+  const dir  = el('pairDir').value;
+
+  const pairs = buildActivePairs(CURRENT_ROWS);
+  let rows = [...pairs.values()].filter(p=>p.picks >= min).map(p=>({
+    ...p, winpct: p.picks ? (p.wins/p.picks) : 0
+  }));
+
+  const sgn = (dir==='asc')?1:-1;
+  rows.sort((a,b)=>{
+    if (sort==='name')   return sgn * ( (a.a+a.b).localeCompare(b.a+b.b) );
+    if (sort==='wins')   return sgn * (a.wins - b.wins);
+    if (sort==='winpct') return sgn * (a.winpct - b.winpct);
+    if (sort==='teams')  return sgn * (a.teams.size - b.teams.size);
+    return sgn * (a.picks - b.picks);
+  });
+
+  const tbody = el('pairBody'); tbody.innerHTML='';
+  if (!rows.length){
+    const tr=document.createElement('tr'); const td=document.createElement('td');
+    td.colSpan=6; td.className='muted'; td.textContent='No pairs for your selection.'; tr.appendChild(td);
+    tbody.appendChild(tr); el('pairMeta').textContent = `0 pair(s) • Using current filters`; return;
+  }
+
+  rows.forEach(p=>{
+    const icons = `
+      <div class="comboIcons">
+        <img src="${p.imgs[p.a]}" alt="${p.a}" title="${p.a}" loading="lazy">
+        <img src="${p.imgs[p.b]}" alt="${p.b}" title="${p.b}" loading="lazy">
+      </div>
+      <div class="muted" style="margin-top:4px">${p.a} · ${p.b}</div>
+    `;
+    const tr=document.createElement('tr');
+    tr.innerHTML = `
+      <td>${icons}</td>
+      <td class="mono">${p.picks}</td>
+      <td class="mono">${p.wins}</td>
+      <td class="mono">${fmtPct(p.winpct)}</td>
+      <td>${pillsFromSet(p.teams)}</td>
+      <td>${pillsFromMapCount(p.maps)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  el('pairMeta').textContent = `${rows.length} pair(s) • Using current filters`;
+}
+['pairMin','pairSort','pairDir'].forEach(id=> el(id)?.addEventListener('change', renderActivePairs));
+
+/* ========= Ban Impact ========= */
+function getRowsIgnoringWL(){
+  // Build rows from RAW_RECORDS but ignore fWL filter to avoid outcome bias
+  const allRows = RAW_RECORDS.flatMap(explodeRecordToRows);
+  const teamSel = el('fTeam').value || '__ALL__';
+  let rows = allRows;
+  if (teamSel !== '__ALL__') rows = rows.filter(r => r.team === teamSel);
+  const mapSel = el('fMap').value;
+  if (mapSel !== '__ALL__') rows = rows.filter(r => r.map === mapSel);
+  const tournSel = el('fTourn').value || '__ALL__';
+  if (tournSel !== '__ALL__') rows = rows.filter(r => {
+    const rec = RAW_RECORDS.find(x=>x.id===r.rec_id);
+    return rec?.tournament_name === tournSel;
+  });
+  return rows;
+}
+
+function renderBanImpact(){
+  const min  = Math.max(1, parseInt(el('biMin').value||'1',10));
+  const sort = el('biSort').value;
+  const dir  = el('biDir').value;
+
+  const rows = getRowsIgnoringWL(); // Outcome ignored here
+  const skills = new Map(); // name -> {ban:{n,w}, noban:{n,w}}
+
+  rows.forEach(r=>{
+    const banned = r.banName || '';
+    if (banned){
+      if (!skills.has(banned)) skills.set(banned, { name:banned, ban:{n:0,w:0}, noban:{n:0,w:0} });
+      const S = skills.get(banned);
+      S.ban.n += 1; if (r.result==='W') S.ban.w += 1;
+    }
+  });
+
+  // Baseline across rows where this side did NOT ban that skill
+  const rowsBySkill = Object.fromEntries([...skills.keys()].map(k=>[k, {n:0,w:0}]));
+  rows.forEach(r=>{
+    const resW = (r.result==='W') ? 1 : 0;
+    for (const key in rowsBySkill){
+      if ((r.banName||'') !== key){
+        rowsBySkill[key].n += 1;
+        rowsBySkill[key].w += resW;
+      }
+    }
+  });
+  for (const [name, S] of skills.entries()){
+    S.noban = rowsBySkill[name] || {n:0,w:0};
+  }
+
+  let list = [...skills.values()].map(S=>{
+    const bannedN = S.ban.n, bannedW = S.ban.w;
+    const nobanN  = S.noban.n, nobanW = S.noban.w;
+    const winWhenBan = bannedN ? (bannedW/bannedN) : 0;
+    const winWhenNot = nobanN ? (nobanW/nobanN) : 0;
+    return {
+      name:S.name, bannedN, winWhenBan, nobanN, winWhenNot,
+      delta: winWhenBan - winWhenNot
+    };
+  }).filter(r=>r.bannedN >= min);
+
+  const sgn = (dir==='asc')?1:-1;
+  list.sort((a,b)=>{
+    if (sort==='name')         return sgn * a.name.localeCompare(b.name);
+    if (sort==='banned')       return sgn * (a.bannedN - b.bannedN);
+    if (sort==='win_when_ban') return sgn * (a.winWhenBan - b.winWhenBan);
+    if (sort==='win_when_not') return sgn * (a.winWhenNot - b.winWhenNot);
+    return sgn * (a.delta - b.delta);
+  });
+
+  const tbody = el('biBody'); tbody.innerHTML='';
+  if (!list.length){
+    const tr=document.createElement('tr'); const td=document.createElement('td');
+    td.colSpan=6; td.className='muted'; td.textContent='No ban data for your selection.'; tr.appendChild(td);
+    tbody.appendChild(tr);
+    el('biMeta').textContent = `0 skill(s) • Using current filters (Outcome forced to All)`;
+    return;
+  }
+
+  list.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML = `
+      <td>${r.name}</td>
+      <td class="mono">${r.bannedN}</td>
+      <td class="mono">${fmtPct(r.winWhenBan)}</td>
+      <td class="mono">${r.nobanN}</td>
+      <td class="mono">${fmtPct(r.winWhenNot)}</td>
+      <td class="mono" style="font-weight:700;">${fmtPct(r.delta)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  const teamLabel = (el('fTeam').value||'__ALL__')==='__ALL__' ? 'All teams' : el('fTeam').value;
+  el('biMeta').textContent = `${list.length} skill(s) • ${teamLabel} • Outcome forced to All`;
+}
+['biMin','biSort','biDir'].forEach(id=> el(id)?.addEventListener('change', renderBanImpact));
+
+/* ========= Tabs behavior ========= */
+const TAB_TO_SECTION = {
+  match: 'sec-match',
+  summary: 'sec-summary',
+  teammap: 'sec-teammap',
+  skillsbymap: 'sec-skillsbymap',
+  combos: 'sec-combos',
+  pairs: 'sec-pairs',
+  banimpact: 'sec-banimpact',
+  perskill: 'sec-perskill'
+};
+document.querySelectorAll('.tab').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const target = TAB_TO_SECTION[btn.dataset.tab];
+    document.querySelectorAll('.js-section').forEach(s=>s.classList.remove('active'));
+    document.getElementById(target)?.classList.add('active');
+
+    if (target==='sec-match')       { PAGE=1; renderRowsPaged(CURRENT_ROWS); }
+    if (target==='sec-summary')     { const b=buildBucketsFromRows(CURRENT_ROWS, el('sumGroupBy').value, el('sumKind').value); renderSummary(b, el('sumGroupBy').value, el('sumKind').value); }
+    if (target==='sec-teammap')     { renderTeamMapWinRate(); }
+    if (target==='sec-skillsbymap') { renderSkillsByMap(); }
+    if (target==='sec-combos')      { renderActiveCombos(); }
+    if (target==='sec-pairs')       { renderActivePairs(); }
+    if (target==='sec-banimpact')   { renderBanImpact(); }
+    if (target==='sec-perskill')    { computeSkillStats(); }
+  });
 });
 
 /* ========= Main refresh ========= */
 async function refresh(){
   RAW_RECORDS = await fetchRecords();
 
-  // Populate dropdowns from the currently fetched slice
+  const beforeT = el('fTourn').value || '__ALL__';
   populateTeamDropdown(RAW_RECORDS);
   populateTournamentDropdown(RAW_RECORDS);
-  populateMapDropdownForSummary(RAW_RECORDS);
+  const afterT = el('fTourn').value || '__ALL__';
+
+  if (beforeT !== afterT) {
+    RAW_RECORDS = await fetchRecords();
+  }
 
   const teamSel  = el('fTeam').value || '__ALL__';
   const tournSel = el('fTourn').value || '__ALL__';
@@ -1032,26 +1589,26 @@ async function refresh(){
   const exploded = RAW_RECORDS.flatMap(explodeRecordToRows);
   CURRENT_ROWS = applyRowFilters(exploded);
 
-  renderRows(CURRENT_ROWS);
-
-  const groupBy = el('sumGroupBy').value;
-  const kind    = el('sumKind').value;
-  const buckets = buildBuckets(groupBy, kind);
-  renderSummary(buckets, groupBy, kind);
-
-  // NEW: team × map win rate + skills-by-map
-  computeTeamMapWinRate(RAW_RECORDS);
-  renderSkillsByMap();
-
-  // Also refresh the Per-Skill table to match the current top filters
-  computeSkillStats();
+  const active = document.querySelector('.js-section.active')?.id || 'sec-match';
+  if (active==='sec-match'){ PAGE = 1; renderRowsPaged(CURRENT_ROWS); }
+  if (active==='sec-summary'){
+    const buckets = buildBucketsFromRows(CURRENT_ROWS, el('sumGroupBy').value, el('sumKind').value);
+    renderSummary(buckets, el('sumGroupBy').value, el('sumKind').value);
+  }
+  if (active==='sec-teammap'){ renderTeamMapWinRate(); }
+  if (active==='sec-skillsbymap'){ renderSkillsByMap(); }
+  if (active==='sec-combos'){ renderActiveCombos(); }
+  if (active==='sec-pairs'){ renderActivePairs(); }
+  if (active==='sec-banimpact'){ renderBanImpact(); }
+  if (active==='sec-perskill'){ computeSkillStats(); }
 }
 
 /* ========= Events ========= */
 el('applyBtn').onclick = refresh;
 ['sumGroupBy','sumKind','sumCardSort','sumCardDir','sumSkillSort','sumSkillDir'].forEach(id=>{
   el(id).addEventListener('change', () => {
-    const buckets = buildBuckets(el('sumGroupBy').value, el('sumKind').value);
+    if (!document.getElementById('sec-summary').classList.contains('active')) return;
+    const buckets = buildBucketsFromRows(CURRENT_ROWS, el('sumGroupBy').value, el('sumKind').value);
     renderSummary(buckets, el('sumGroupBy').value, el('sumKind').value);
   });
 });
@@ -1064,8 +1621,10 @@ async function computeSkillStats() {
   const type  = document.getElementById('skillTypeSelect').value;
   const team  = (document.getElementById('fTeam').value || '__ALL__');
   const from  = document.getElementById('fFrom').value;
-  const to    = document.getElementById('fTo').value;
+  const toRaw = document.getElementById('fTo').value;
+  const to    = toRaw && /^\d{4}-\d{2}-\d{2}$/.test(toRaw) ? `${toRaw} 23:59:59` : toRaw; // inclusive EOD
   const tourn = (document.getElementById('fTourn').value || '__ALL__');
+  const map   = (document.getElementById('fMap').value || '__ALL__');
 
   if (!from || !to) {
     alert('Please set a From and To date for Skill Stats.');
@@ -1080,6 +1639,7 @@ async function computeSkillStats() {
 
   if (team !== '__ALL__')  q = q.or(`team_left.eq.${team},team_right.eq.${team}`);
   if (tourn !== '__ALL__') q = q.eq('tournament_name', tourn);
+  if (map !== '__ALL__')   q = q.eq('map', map);
 
   const { data, error } = await q;
   if (error) {
@@ -1114,10 +1674,13 @@ async function computeSkillStats() {
   };
 
   data.forEach(r => {
-    const s = r.state || {};
-    const picks = s.picks || [];
-    const bans  = s.bans  || [];
-    const pass  = s.passives || [];
+    // SAFE parse for computeSkillStats
+    const sraw = r.state;
+    let s = {};
+    try { s = (typeof sraw === 'string') ? JSON.parse(sraw) : (sraw || {}); } catch(_) { s = {}; }
+    const picks = Array.isArray(s.picks) ? s.picks : [];
+    const bans  = Array.isArray(s.bans) ? s.bans : [];
+    const pass  = Array.isArray(s.passives) ? s.passives : [];
 
     const lScore = r.team_left_score ?? 0;
     const rScore = r.team_right_score ?? 0;
@@ -1233,13 +1796,12 @@ async function computeSkillStats() {
   const teamLabel  = (team === '__ALL__') ? 'All teams' : team;
   const typeLabel  = (type === 'active') ? 'Active' : 'Passive';
   const tournLabel = (tourn === '__ALL__') ? 'All tournaments' : tourn;
+  const mapLabel   = (map === '__ALL__') ? 'All maps' : map;
   document.getElementById('skillStatsMeta').textContent =
-    `${teamLabel} • ${tournLabel} • ${typeLabel} • Matches: ${matches} • Slots: ` +
+    `${teamLabel} • ${tournLabel} • ${mapLabel} • ${typeLabel} • Matches: ${matches} • Slots: ` +
     `${(type==='active') ? pickDen + ' active' : pickDen + ' passive'}` +
     `${(type==='active') ? ` • Ban slots: ${banDen}` : ''}`;
 }
-
-/* Auto-recompute when type/sort changes */
 ['skillTypeSelect','skillSortBy','skillSortDir'].forEach(id=>{
   const node = document.getElementById(id);
   if (node) node.addEventListener('change', () => computeSkillStats());
