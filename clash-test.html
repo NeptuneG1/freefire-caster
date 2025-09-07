@@ -133,9 +133,11 @@
     body.passive-hidden .pPassRow span{visibility:hidden}
     body.passive-hidden .pCard:hover .pPassRow span{visibility:visible}
 
-    /* combo drilldown */
+    /* combo & pair drilldown */
     .combo-row{ cursor:pointer; }
     .combo-detail td{ background:#141414; }
+    .pair-row{ cursor:pointer; }
+    .pair-detail td{ background:#141414; }
 
     @media (max-width: 900px){
       .playersWrap{ grid-template-columns: 1fr; }
@@ -1392,6 +1394,10 @@ function buildActivePairs(rows){
   return pairs;
 }
 
+function pairIdFromKey(key){
+  return 'pair_' + key.replace(/[^a-z0-9]+/gi,'_').replace(/^_+|_+$/g,'').toLowerCase();
+}
+
 function renderActivePairs(){
   const min  = Math.max(1, parseInt(el('pairMin').value||'1',10));
   const sort = el('pairSort').value;
@@ -1419,6 +1425,7 @@ function renderActivePairs(){
   }
 
   rows.forEach(p=>{
+    const id = pairIdFromKey(`${p.a}|${p.b}`);
     const icons = `
       <div class="comboIcons">
         <img src="${p.imgs[p.a]}" alt="${p.a}" title="${p.a}" loading="lazy">
@@ -1427,6 +1434,8 @@ function renderActivePairs(){
       <div class="muted" style="margin-top:4px">${p.a} · ${p.b}</div>
     `;
     const tr=document.createElement('tr');
+    tr.className = 'pair-row';
+    tr.dataset.target = id;
     tr.innerHTML = `
       <td>${icons}</td>
       <td class="mono">${p.picks}</td>
@@ -1436,6 +1445,30 @@ function renderActivePairs(){
       <td>${pillsFromMapCount(p.maps)}</td>
     `;
     tbody.appendChild(tr);
+
+    const dr = document.createElement('tr');
+    dr.className = 'pair-detail';
+    dr.id = id;
+    dr.style.display = 'none';
+    dr.innerHTML = `
+      <td colspan="6">
+        <div class="muted" style="margin-bottom:6px;">${p.matches.length} match(es) with this pair</div>
+        <ul style="margin:0; padding-left:18px; line-height:1.35;">
+          ${p.matches.map(matchLineHTML).join('')}
+        </ul>
+      </td>
+    `;
+    tbody.appendChild(dr);
+  });
+
+  // toggle drilldown on click
+  tbody.querySelectorAll('tr.pair-row').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      const id = row.dataset.target;
+      const drow = document.getElementById(id);
+      if (!drow) return;
+      drow.style.display = (drow.style.display === 'none' ? '' : 'none');
+    });
   });
 
   el('pairMeta').textContent = `${rows.length} pair(s) • Using current filters`;
