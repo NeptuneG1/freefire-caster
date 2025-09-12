@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Clash Squad — Passive Determination (by Active / Map / Both)</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root{
+      --bg:#0e0e0e; --panel:#1b1b1b; --panel2:#141414;
+      --ink:#f5f5f5; --muted:#b9b9b9; --brand:#ffbd59; --brand2:#ff7733;
+      --line:#313131; --good:#71d083; --bad:#ff6b6b;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+    header{position:sticky;top:0;z-index:5;background:#1f1f1f;border-bottom:3px solid var(--brand);padding:14px 16px}
+    h1{margin:0;font-size:1.25rem;letter-spacing:.3px;color:var(--brand)}
+    .user-controls{position:absolute;right:16px;top:12px;display:flex;gap:10px;align-items:center}
+    .chip{font-size:.85rem;color:#ddd}
+    .btn{background:var(--brand);color:#1b1b1b;border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
+    .btn:hover{background:#e6a74f}
+    .shell{max-width:1200px;margin:22px auto;padding:0 12px}
+    .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+
+    .block{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:16px}
+    .block h2{margin:0 0 10px 0;color:var(--brand)}
+    .controls{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 10px}
+    .controls label{display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);padding:6px 8px;border-radius:8px}
+    .controls select,.controls input[type="date"],.controls input[type="text"], .controls input[type="number"]{background:#212121;color:#ffbd59;border:1px solid #3a3a3a;border-radius:6px;padding:6px 8px}
+    .muted{color:var(--muted);font-size:.9rem}
+
+    table{width:100%;border-collapse:collapse}
+    th,td{border-bottom:1px solid var(--line);padding:8px;vertical-align:top}
+    thead th{background:#191919;text-align:left;position:sticky;top:0;z-index:1}
+    tbody tr:hover{background:#141414}
+    .mono{font-variant-numeric: tabular-nums;}
+    .caption{margin:4px 0 10px 0}
+    .icons{display:flex; gap:6px; align-items:center; flex-wrap:wrap}
+    .icons img{width:28px; height:28px; border-radius:6px; border:1px solid #333; background:#111}
+
+    .pill{display:inline-block; padding:2px 8px; border-radius:999px; background:#111; border:1px solid #2a2a2a; margin:2px; font-size:.85rem; color:#ddd}
+    .pill small{opacity:.8; font-size:.8em; margin-left:4px}
+
+    .row-click{cursor:pointer}
+    .detail td{background:#141414}
+    .pp{font-weight:700}
+    .up{color:var(--good)}
+    .down{color:var(--bad)}
+  </style>
+</head>
+<body>
+<header>
+  <h1>Clash Squad — Passive Determination</h1>
+  <div class="user-controls">
+    <span class="chip" id="user-info">Checking login…</span>
+    <button class="btn" id="logoutBtn">Logout</button>
+  </div>
+</header>
+
+<div class="shell">
+  <div class="bar">
+    <a href="dashboard.html" class="btn">← Back to Dashboard</a>
+    <a href="skills-report.html" class="btn">Skills Report</a>
+  </div>
+
+  <!-- GLOBAL FILTERS -->
+  <div class="block">
+    <h2>Filters</h2>
+    <div class="controls">
+      <label>From
+        <input type="date" id="fFrom">
+      </label>
+      <label>To
+        <input type="date" id="fTo">
+      </label>
+      <label>Map
+        <select id="fMap">
+          <option value="__ALL__">All maps</option>
+          <option value="Bermuda">Bermuda</option>
+          <option value="Kalahari">Kalahari</option>
+          <option value="Purgatory">Purgatory</option>
+          <option value="Alpine">Alpine</option>
+          <option value="Nexterra">Nexterra</option>
+          <option value="Solara">Solara</option>
+        </select>
+      </label>
+      <label>Team
+        <select id="fTeam"></select>
+      </label>
+      <label>Tournament
+        <select id="fTourn"></select>
+      </label>
+      <label>Outcome
+        <select id="fWL">
+          <option value="__ALL__">All</option>
+          <option value="W">Wins only</option>
+          <option value="L">Losses only</option>
+        </select>
+      </label>
+      <button class="btn" id="applyBtn">Apply</button>
+    </div>
+    <div class="muted" id="filterMeta">—</div>
+  </div>
+
+  <!-- CONDITION PANEL -->
+  <div class="block">
+    <h2>Conditioning</h2>
+    <div class="controls">
+      <label>Condition by
+        <select id="condBy">
+          <option value="active" selected>Active</option>
+          <option value="map">Map</option>
+          <option value="both">Active × Map</option>
+        </select>
+      </label>
+      <label id="condActiveWrap">Active
+        <select id="condActive">
+          <option value="__ALL__">All actives</option>
+        </select>
+      </label>
+      <label id="condMapWrap" style="display:none">Map
+        <select id="condMap">
+          <option value="__ALL__">All maps</option>
+          <option value="Bermuda">Bermuda</option>
+          <option value="Kalahari">Kalahari</option>
+          <option value="Purgatory">Purgatory</option>
+          <option value="Alpine">Alpine</option>
+          <option value="Nexterra">Nexterra</option>
+          <option value="Solara">Solara</option>
+        </select>
+      </label>
+      <label>View
+        <select id="viewMode">
+          <option value="singles" selected>Singles (passives)</option>
+          <option value="trios">Trios (3× passives)</option>
+        </select>
+      </label>
+      <label>Min samples
+        <input type="number" id="minSamples" value="5" min="1" step="1">
+      </label>
+      <label>Sort
+        <select id="sortBy">
+          <option value="picks" selected>Picks</option>
+          <option value="pickrate">Pick %</option>
+          <option value="lift">Lift (pp)</option>
+          <option value="wins">Wins</option>
+          <option value="winrate">Win %</option>
+          <option value="name">Name</option>
+        </select>
+      </label>
+      <label>Dir
+        <select id="sortDir">
+          <option value="desc" selected>Desc</option>
+          <option value="asc">Asc</option>
+        </select>
+      </label>
+    </div>
+    <div class="caption muted" id="condMeta">—</div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="block" id="sec-singles">
+    <h2>Singles — Passive Distribution under Condition</h2>
+    <div class="caption muted">Shows each passive’s pick rate & win rate when the condition holds, vs its baseline over all filtered data. <span class="pp">Lift</span> = conditional pick% − baseline pick%.</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Passive</th>
+          <th>Picks</th>
+          <th>Pick&nbsp;%</th>
+          <th>Lift&nbsp;(pp)</th>
+          <th>Wins</th>
+          <th>Win&nbsp;%</th>
+          <th>#Players</th>
+          <th>#Teams</th>
+          <th>Baseline&nbsp;%</th>
+        </tr>
+      </thead>
+      <tbody id="singlesBody"></tbody>
+    </table>
+  </div>
+
+  <div class="block" id="sec-trios" style="display:none">
+    <h2>Trios — 3× Passive Sets under Condition</h2>
+    <div class="caption muted">Each row is an exact 3-passive combo. Baseline is combo frequency over all filtered data. Click a row to see matches.</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Trio</th>
+          <th>Picks</th>
+          <th>Pick&nbsp;%</th>
+          <th>Lift&nbsp;(pp)</th>
+          <th>Wins</th>
+          <th>Win&nbsp;%</th>
+          <th>#Players</th>
+          <th>#Teams</th>
+          <th>Maps Used</th>
+        </tr>
+      </thead>
+      <tbody id="triosBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+/* ========= Supabase init + auth ========= */
+const client = supabase.createClient(
+  'https://gkugecflfddkpitlrmws.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
+);
+
+(async () => {
+  const { data: { session } } = await client.auth.getSession();
+  if (!session) { window.location.href = "index.html"; return; }
+  const ui = document.getElementById('user-info');
+  if (ui && session.user?.email) ui.textContent = `Logged in as: ${session.user.email}`;
+})();
+document.getElementById('logoutBtn').onclick = async () => {
+  await client.auth.signOut();
+  window.location.href = "index.html";
+};
+
+/* ========= Utils ========= */
+const PLACEHOLDER = 'https://imgur.com/AdvPwAO.png';
+const fmtPct = n => isFinite(n) ? (n*100).toFixed(1)+'%' : '—';
+const pct = (a,b) => b ? fmtPct(a/b) : '—';
+const pp = (a,b) => b ? ((a/b)*100).toFixed(1) + ' pp' : '—';
+const uniq = arr => [...new Set(arr)];
+function ymd(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
+function parseState(val){ if(!val) return {}; if (typeof val==='object') return val; try { return JSON.parse(val); } catch(_){ return {}; } }
+function pillsFromSet(setLike, maxShow=6){
+  const arr = [...setLike].sort();
+  const shown = arr.slice(0,maxShow).map(t=>`<span class="pill" title="${t}">${t}</span>`).join('');
+  const more = arr.length>maxShow ? `<span class="pill" title="${arr.join(', ')}">+${arr.length-maxShow} more</span>` : '';
+  return shown + more;
+}
+function pillsFromMapCount(mapCount, maxShow=6){
+  const arr = [...mapCount.entries()].sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0]));
+  const shown = arr.slice(0, maxShow).map(([name,c]) => `<span class="pill" title="${name} ×${c}">${name} <small>×${c}</small></span>`).join('');
+  const more = arr.length>maxShow ? `<span class="pill" title="${arr.map(([n,c])=>`${n}×${c}`).join(', ')}">+${arr.length-maxShow} more</span>` : '';
+  return shown + more;
+}
+
+/* ========= State ========= */
+let RAW_RECORDS = [];
+let CURRENT_ROWS = [];
+let EVENTS = []; // one per player-slot with active + 3 passives
+
+/* ========= DOM helpers ========= */
+const el = id => document.getElementById(id);
+
+/* ========= Init filters ========= */
+(function initFilters(){
+  const today = new Date();
+  const from = new Date(today); from.setDate(from.getDate()-30);
+  el('fFrom').value = ymd(from);
+  el('fTo').value   = ymd(today);
+  el('fMap').value  = '__ALL__';
+  el('fWL').value   = '__ALL__';
+  const t = el('fTourn'); if (t) t.innerHTML = `<option value="__ALL__">All tournaments</option>`;
+})();
+
+/* ========= Fetch ========= */
+async function fetchRecords(){
+  const from = el('fFrom').value;
+  const toRaw = el('fTo').value;
+  const to = toRaw && /^\d{4}-\d{2}-\d{2}$/.test(toRaw) ? `${toRaw} 23:59:59` : toRaw;
+
+  const map  = el('fMap').value;
+  const team = el('fTeam').value || '__ALL__';
+  const tourn= el('fTourn').value || '__ALL__';
+
+  let q = client
+    .from('draft_records')
+    .select('id, match_date, game_number, team_left, team_right, team_left_score, team_right_score, map, tournament_name, state')
+    .gte('match_date', from);
+
+  if (to) q = q.lte('match_date', to);
+  if (map !== '__ALL__') q = q.eq('map', map);
+  if (team && team !== '__ALL__') q = q.or(`team_left.eq.${team},team_right.eq.${team}`);
+  if (tourn && tourn !== '__ALL__') q = q.eq('tournament_name', tourn);
+
+  q = q.order('match_date', { ascending:false }).order('id', { ascending:false });
+
+  const { data, error } = await q;
+  if (error) { console.error('Fetch error', error); alert('Failed to load records'); return []; }
+  return data || [];
+}
+
+function populateTeamDropdown(records){
+  const teams = new Set();
+  records.forEach(r => { teams.add(r.team_left); teams.add(r.team_right); });
+  const dd = el('fTeam'); const prior = dd.value || '__ALL__';
+  dd.innerHTML = '';
+  const all = document.createElement('option'); all.value='__ALL__'; all.textContent='All teams'; dd.appendChild(all);
+  [...teams].filter(Boolean).sort().forEach(t => {
+    const o=document.createElement('option'); o.value=t; o.textContent=t; dd.appendChild(o);
+  });
+  dd.value = prior;
+}
+function populateTournamentDropdown(records){
+  const dd = el('fTourn'); const prior = dd.value || '__ALL__';
+  const tourns = new Set(); let latest = null;
+  records.forEach(r => {
+    const tn = r.tournament_name; if (!tn) return;
+    tourns.add(tn);
+    if (!latest || (String(r.match_date) > String(latest.date))) latest = { name: tn, date: r.match_date };
+  });
+  dd.innerHTML = '';
+  const all = document.createElement('option'); all.value='__ALL__'; all.textContent='All tournaments'; dd.appendChild(all);
+  [...tourns].sort().forEach(tn => { const o=document.createElement('option'); o.value=tn; o.textContent=tn; dd.appendChild(o); });
+  dd.value = prior;
+}
+
+/* ========= Build rows & events ========= */
+function explodeRecordToRows(rec){
+  const s = parseState(rec.state);
+  const picks    = Array.isArray(s.picks)       ? s.picks       : [];
+  const passives = Array.isArray(s.passives)    ? s.passives    : [];
+  const names    = Array.isArray(s.playerCards) ? s.playerCards : [];
+
+  const leftWin  = (rec.team_left_score ?? 0) > (rec.team_right_score ?? 0);
+  const rightWin = (rec.team_right_score ?? 0) > (rec.team_left_score ?? 0);
+
+  function sideRow(side){
+    const isLeft = side==='L';
+    const team   = isLeft ? rec.team_left : rec.team_right;
+    const opp    = isLeft ? rec.team_right : rec.team_left;
+    const tScore = isLeft ? rec.team_left_score : rec.team_right_score;
+    const oScore = isLeft ? rec.team_right_score : rec.team_left_score;
+    const res    = (isLeft ? leftWin : rightWin) ? 'W' : 'L';
+    const idx = isLeft ? [0,1,2,3] : [7,6,5,4];
+
+    const actives = idx.map((i, k) => {
+      const player = (names[i] && String(names[i]).trim()) ? names[i].trim() : `P${k+1}`;
+      const heroObj= (picks[i] && typeof picks[i] === 'object') ? picks[i] : null;
+      return { player, hero: heroObj?.name || '', heroImg: heroObj?.image_url || PLACEHOLDER };
+    });
+
+    const passiveLines = idx.map((i, k) => {
+      const player = (names[i] && String(names[i]).trim()) ? names[i].trim() : `P${k+1}`;
+      const trioRaw = Array.isArray(passives[i]) ? passives[i] : [];
+      const trioObjs = trioRaw.filter(Boolean).map(ps => ({
+        name: ps?.name || '',
+        img : ps?.image_url || PLACEHOLDER
+      }));
+      while (trioObjs.length < 3) trioObjs.push({name:'', img: PLACEHOLDER});
+      return { player, trio: trioObjs.slice(0,3) };
+    });
+
+    return {
+      rec_id: rec.id,
+      match_date: rec.match_date,
+      game_number: rec.game_number,
+      map: rec.map,
+      team, opponent: opp,
+      team_score: tScore ?? 0,
+      opp_score: oScore ?? 0,
+      result: res,
+      actives,
+      passives: passiveLines
+    };
+  }
+  return [sideRow('L'), sideRow('R')];
+}
+
+function applyRowFilters(allRows){
+  const wl = el('fWL').value;
+  const team = el('fTeam').value || '__ALL__';
+  let rows = allRows.slice();
+  if (team !== '__ALL__') rows = rows.filter(r => r.team === team);
+  if (wl !== '__ALL__') rows = rows.filter(r => r.result === wl);
+  return rows;
+}
+
+function buildEvents(rows){
+  // event = one player-slot with active + its 3 passives
+  const events = [];
+  rows.forEach(r=>{
+    r.actives.forEach(a=>{
+      const p = r.passives.find(x=>x.player===a.player) || { trio: [] };
+      const trio = p.trio.filter(x=>x && x.name);
+      if (!a.hero || trio.length!==3) return;
+      events.push({
+        active: a.hero, heroImg: a.heroImg || PLACEHOLDER,
+        passives: trio.map(x=>({ name:x.name, img:x.img || PLACEHOLDER })),
+        player: a.player || '',
+        team: r.team,
+        map: r.map || '—',
+        won: r.result==='W',
+        match: {
+          date:r.match_date, game:r.game_number, map:r.map,
+          team:r.team, opp:r.opponent, ts:r.team_score, os:r.opp_score, res:r.result
+        }
+      });
+    });
+  });
+  return events;
+}
+
+/* ========= Dropdowns ========= */
+function populateActiveDropdown(){
+  const actives = uniq(EVENTS.map(e=>e.active)).sort();
+  const dd = el('condActive'); const prior = dd.value || '__ALL__';
+  dd.innerHTML = `<option value="__ALL__">All actives</option>` + actives.map(a=>`<option value="${a}">${a}</option>`).join('');
+  dd.value = prior;
+}
+
+/* ========= Conditioning logic ========= */
+function conditionEvents(){
+  const by = el('condBy').value;
+  const a  = el('condActive').value;
+  const m  = el('condMap').value;
+  return EVENTS.filter(e=>{
+    if (by==='active') return (a==='__ALL__') ? true : (e.active===a);
+    if (by==='map')    return (m==='__ALL__') ? true : (e.map===m);
+    // both
+    const okA = (a==='__ALL__') ? true : (e.active===a);
+    const okM = (m==='__ALL__') ? true : (e.map===m);
+    return okA && okM;
+  });
+}
+
+/* ========= Baselines ========= */
+function computeBaselines(){
+  // Singles baseline
+  const slotsTotal = EVENTS.length * 3;
+  const baseSingles = new Map(); // passive -> {picks,wins,players,teams}
+  EVENTS.forEach(e=>{
+    e.passives.forEach(p=>{
+      if (!baseSingles.has(p.name)) baseSingles.set(p.name, {picks:0,wins:0,players:new Set(),teams:new Set(),img:p.img});
+      const S = baseSingles.get(p.name);
+      S.picks += 1;
+      if (e.won) S.wins += 1;
+      S.players.add(e.player); S.teams.add(e.team);
+    });
+  });
+
+  // Trios baseline
+  const baseTrios = new Map(); // key -> {names,imgs,picks,wins,players,teams}
+  EVENTS.forEach(e=>{
+    const names = e.passives.map(x=>x.name).slice().sort((x,y)=>x.localeCompare(y));
+    const key = names.join('|');
+    if (!baseTrios.has(key)) baseTrios.set(key, {names, imgs:Object.fromEntries(e.passives.map(x=>[x.name,x.img])), picks:0, wins:0, players:new Set(), teams:new Set()});
+    const T = baseTrios.get(key);
+    T.picks += 1; if (e.won) T.wins += 1;
+    T.players.add(e.player); T.teams.add(e.team);
+  });
+
+  return { baseSingles, slotsTotal, baseTrios, trioDen: EVENTS.length };
+}
+
+/* ========= Rendering ========= */
+function render(){
+  const mode = el('viewMode').value;
+  el('sec-singles').style.display = (mode==='singles') ? '' : 'none';
+  el('sec-trios').style.display   = (mode==='trios')   ? '' : 'none';
+
+  const by   = el('condBy').value;
+  const a    = el('condActive').value;
+  const m    = el('condMap').value;
+  const min  = Math.max(1, parseInt(el('minSamples').value||'1',10));
+  const sort = el('sortBy').value;
+  const dir  = el('sortDir').value;
+
+  const condEvents = conditionEvents();
+  const { baseSingles, slotsTotal, baseTrios, trioDen } = computeBaselines();
+
+  // Meta
+  const condLabel =
+    by==='active' ? `Active: ${a==='__ALL__'?'All':a}` :
+    by==='map'    ? `Map: ${m==='__ALL__'?'All':m}` :
+                    `Active: ${a==='__ALL__'?'All':a} × Map: ${m==='__ALL__'?'All':m}`;
+  const slotsLabel = `${condEvents.length} player-slot(s) • ${condEvents.length*3} passive-slot(s)`;
+  el('condMeta').textContent = `${condLabel} • ${slotsLabel}`;
+
+  if (mode==='singles'){
+    // conditional singles
+    const condDen = condEvents.length * 3;
+    const singles = new Map(); // name -> {picks,wins,players,teams,img}
+    condEvents.forEach(e=>{
+      e.passives.forEach(p=>{
+        if (!singles.has(p.name)) singles.set(p.name, {picks:0,wins:0,players:new Set(),teams:new Set(),img:p.img});
+        const S = singles.get(p.name);
+        S.picks += 1; if (e.won) S.wins += 1;
+        S.players.add(e.player); S.teams.add(e.team);
+      });
+    });
+
+    let rows = [...singles.entries()].map(([name, S])=>{
+      const base = baseSingles.get(name);
+      const pickRate = condDen ? (S.picks/condDen) : 0;
+      const baseRate = slotsTotal ? ((base?.picks||0)/slotsTotal) : 0;
+      const winRate  = S.picks ? (S.wins/S.picks) : 0;
+      const liftPP   = (pickRate - baseRate) * 100;
+      return {
+        name, img:S.img, picks:S.picks, wins:S.wins,
+        pickRate, baseRate, liftPP, winRate,
+        players:S.players.size, teams:S.teams.size
+      };
+    }).filter(r=>r.picks>=min);
+
+    const sgn = (dir==='asc')?1:-1;
+    rows.sort((a,b)=>{
+      if (sort==='name')     return sgn * a.name.localeCompare(b.name);
+      if (sort==='wins')     return sgn * (a.wins - b.wins);
+      if (sort==='winrate')  return sgn * (a.winRate - b.winRate);
+      if (sort==='pickrate') return sgn * (a.pickRate - b.pickRate);
+      if (sort==='lift')     return sgn * (a.liftPP - b.liftPP);
+      return sgn * (a.picks - b.picks);
+    });
+
+    const tbody = el('singlesBody'); tbody.innerHTML='';
+    if (!rows.length){
+      const tr=document.createElement('tr'); const td=document.createElement('td');
+      td.colSpan=9; td.className='muted'; td.textContent='No passive rows for this selection.'; tr.appendChild(td);
+      tbody.appendChild(tr);
+    } else {
+      rows.forEach(r=>{
+        const liftCls = r.liftPP>0.05 ? 'up' : (r.liftPP<-0.05?'down':'');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <div class="icons" style="gap:8px">
+              <img src="${r.img||PLACEHOLDER}" alt="${r.name}" loading="lazy">
+              <span class="skill-name">${r.name}</span>
+            </div>
+          </td>
+          <td class="mono">${r.picks}</td>
+          <td class="mono">${fmtPct(r.pickRate)}</td>
+          <td class="mono ${liftCls}">${r.liftPP.toFixed(1)} pp</td>
+          <td class="mono">${r.wins}</td>
+          <td class="mono">${fmtPct(r.winRate)}</td>
+          <td class="mono">${r.players}</td>
+          <td class="mono">${r.teams}</td>
+          <td class="mono">${fmtPct(r.baseRate)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+  } else {
+    // Trios view
+    const trioKeyOf = (e)=>{
+      const names = e.passives.map(x=>x.name).slice().sort((x,y)=>x.localeCompare(y));
+      return names.join('|');
+    };
+
+    // build conditional trios
+    const condTrios = new Map(); // key -> {names,imgs,picks,wins,players,teams,maps,matches}
+    condEvents.forEach(e=>{
+      const key = trioKeyOf(e);
+      if (!condTrios.has(key)){
+        condTrios.set(key, {
+          names: e.passives.map(x=>x.name).slice().sort((x,y)=>x.localeCompare(y)),
+          imgs: Object.fromEntries(e.passives.map(x=>[x.name,x.img])),
+          picks:0,wins:0,players:new Set(),teams:new Set(),maps:new Map(), matches:[]
+        });
+      }
+      const T = condTrios.get(key);
+      T.picks += 1; if (e.won) T.wins += 1;
+      T.players.add(e.player); T.teams.add(e.team);
+      const map = e.map || '—';
+      T.maps.set(map, (T.maps.get(map)||0)+1);
+      T.matches.push(e.match);
+    });
+
+    const condDen = condEvents.length;
+    let rows = [...condTrios.entries()].map(([key,T])=>{
+      const base = baseTrios.get(key);
+      const pickRate = condDen ? (T.picks/condDen) : 0;
+      const baseRate = trioDen ? ((base?.picks||0)/trioDen) : 0;
+      const winRate  = T.picks ? (T.wins/T.picks) : 0;
+      const liftPP   = (pickRate - baseRate) * 100;
+      return {
+        key, names:T.names, imgs:T.imgs, picks:T.picks, wins:T.wins,
+        pickRate, baseRate, liftPP, winRate,
+        players:T.players.size, teams:T.teams.size, maps:T.maps, matches:T.matches
+      };
+    }).filter(r=>r.picks>=min);
+
+    const sgn = (dir==='asc')?1:-1;
+    rows.sort((a,b)=>{
+      if (sort==='name')     return sgn * a.names.join(',').localeCompare(b.names.join(','));
+      if (sort==='wins')     return sgn * (a.wins - b.wins);
+      if (sort==='winrate')  return sgn * (a.winRate - b.winRate);
+      if (sort==='pickrate') return sgn * (a.pickRate - b.pickRate);
+      if (sort==='lift')     return sgn * (a.liftPP - b.liftPP);
+      return sgn * (a.picks - b.picks);
+    });
+
+    const tbody = el('triosBody'); tbody.innerHTML='';
+    if (!rows.length){
+      const tr=document.createElement('tr'); const td=document.createElement('td');
+      td.colSpan=9; td.className='muted'; td.textContent='No trio rows for this selection.'; tr.appendChild(td);
+      tbody.appendChild(tr);
+      return;
+    }
+
+    rows.forEach((r, idx)=>{
+      const id = 'trio_' + r.key.replace(/[^a-z0-9]+/gi,'_').toLowerCase() + '_' + idx;
+      const icons = r.names.map(n=>`<img src="${(r.imgs[n]||PLACEHOLDER)}" alt="${n}" title="${n}" loading="lazy">`).join('');
+      const liftCls = r.liftPP>0.05 ? 'up' : (r.liftPP<-0.05?'down':'');
+      const tr = document.createElement('tr');
+      tr.className = 'row-click';
+      tr.dataset.target = id;
+      tr.innerHTML = `
+        <td>
+          <div class="icons">${icons}</div>
+          <div class="muted" style="margin-top:4px">${r.names.join(' · ')}</div>
+        </td>
+        <td class="mono">${r.picks}</td>
+        <td class="mono">${fmtPct(r.pickRate)}</td>
+        <td class="mono ${liftCls}">${r.liftPP.toFixed(1)} pp</td>
+        <td class="mono">${r.wins}</td>
+        <td class="mono">${fmtPct(r.winRate)}</td>
+        <td class="mono">${r.players}</td>
+        <td class="mono">${r.teams}</td>
+        <td>${pillsFromMapCount(r.maps)}</td>
+      `;
+      tbody.appendChild(tr);
+
+      const dr = document.createElement('tr');
+      dr.className = 'detail';
+      dr.id = id;
+      dr.style.display = 'none';
+
+      const matchLine = (m)=>{
+        const score = `${m.ts}-${m.os}`;
+        return `<li>
+          <strong>${m.team}</strong> vs ${m.opp}
+          • <em>${m.map}</em> • Game ${m.game}
+          • <span class="pp">${m.res}</span>
+          • ${score}
+          <span class="muted">(${m.date})</span>
+        </li>`;
+      };
+
+      dr.innerHTML = `
+        <td colspan="9">
+          <div class="muted" style="margin-bottom:6px;">${r.matches.length} match(es) with this trio</div>
+          <ul style="margin:0; padding-left:18px; line-height:1.35;">
+            ${r.matches.map(matchLine).join('')}
+          </ul>
+        </td>
+      `;
+      tbody.appendChild(dr);
+    });
+
+    tbody.querySelectorAll('tr.row-click').forEach(row=>{
+      row.addEventListener('click', ()=>{
+        const d = document.getElementById(row.dataset.target);
+        if (d) d.style.display = (d.style.display==='none' ? '' : 'none');
+      });
+    });
+  }
+}
+
+/* ========= Refresh ========= */
+async function refresh(){
+  RAW_RECORDS = await fetchRecords();
+  populateTeamDropdown(RAW_RECORDS);
+  populateTournamentDropdown(RAW_RECORDS);
+
+  const teamSel  = el('fTeam').value || '__ALL__';
+  const mapSel   = el('fMap').value || '__ALL__';
+  const tournSel = el('fTourn').value || '__ALL__';
+  el('filterMeta').textContent =
+    `Loaded ${RAW_RECORDS.length} matches • Team: ${teamSel==='__ALL__'?'All teams':teamSel} • Map: ${mapSel} • Tournament: ${tournSel==='__ALL__'?'All':tournSel}`;
+
+  const exploded = RAW_RECORDS.flatMap(explodeRecordToRows);
+  CURRENT_ROWS = applyRowFilters(exploded);
+  EVENTS = buildEvents(CURRENT_ROWS);
+
+  populateActiveDropdown(); // uses EVENTS
+  render();
+}
+
+/* ========= Wiring ========= */
+el('applyBtn').onclick = refresh;
+
+['condBy','condActive','condMap','viewMode','minSamples','sortBy','sortDir'].forEach(id=>{
+  el(id).addEventListener('change', ()=>{
+    // show/hide condition inputs
+    const by = el('condBy').value;
+    el('condActiveWrap').style.display = (by==='active' || by==='both') ? '' : 'none';
+    el('condMapWrap').style.display    = (by==='map' || by==='both')    ? '' : 'none';
+    render();
+  });
+});
+
+/* ========= First load ========= */
+(function initDates(){
+  // already set in initFilters
+})();
+refresh();
+</script>
+</body>
+</html>
