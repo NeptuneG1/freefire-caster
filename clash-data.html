@@ -139,6 +139,12 @@
     .pair-row{ cursor:pointer; }
     .pair-detail td{ background:#141414; }
 
+    /* Passive Builder visuals */
+    .icons{display:flex; gap:6px; align-items:center; flex-wrap:wrap}
+    .icons img{width:28px; height:28px; border-radius:6px; border:1px solid #333; background:#111}
+    .row-click{cursor:pointer}
+    .tri-detail td{ background:#141414; }
+
     @media (max-width: 900px){
       .playersWrap{ grid-template-columns: 1fr; }
     }
@@ -211,6 +217,7 @@
         <button data-tab="skillsbymap" class="tab">Skills by Map</button>
         <button data-tab="combos" class="tab">Active Combos</button>
         <button data-tab="pairs" class="tab">Active Pairs</button>
+        <button data-tab="passivebuilder" class="tab">Passive Trios</button>
         <button data-tab="banimpact" class="tab">Ban Impact</button>
         <button data-tab="perskill" class="tab">Per-Skill</button>
       </div>
@@ -452,6 +459,71 @@
       </table>
     </div>
 
+    <!-- PASSIVE TRIOS BUILDER -->
+    <div id="sec-passivebuilder" class="block js-section">
+      <h2>Passive Trios by Active</h2>
+      <div class="controls">
+        <label>Active
+          <select id="pbaActive">
+            <option value="__ALL__">All actives</option>
+          </select>
+        </label>
+        <label>Min picks
+          <input type="number" id="pbaMin" value="3" min="1" step="1">
+        </label>
+        <label>Sort
+          <select id="pbaSort">
+            <option value="picks" selected>Picks</option>
+            <option value="wins">Wins</option>
+            <option value="winpct">Win %</option>
+            <option value="name">Name</option>
+          </select>
+        </label>
+        <label>Dir
+          <select id="pbaDir">
+            <option value="desc" selected>Desc</option>
+            <option value="asc">Asc</option>
+          </select>
+        </label>
+      </div>
+      <div class="caption muted" id="pbaMeta">—</div>
+
+      <h3 style="color:var(--brand2);margin:8px 0 6px">Top Passive Trios</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Active &nbsp;→&nbsp; Passive Trio</th>
+            <th>Picks</th>
+            <th>Wins</th>
+            <th>Win %</th>
+            <th>#Players</th>
+            <th>#Teams</th>
+            <th>Maps Used</th>
+          </tr>
+        </thead>
+        <tbody id="triTablePB"></tbody>
+      </table>
+
+      <h3 style="color:var(--brand2);margin:18px 0 6px">Per-Player (when using selected Active)</h3>
+      <div class="caption muted">
+        Shows each player’s go-to passive trio(s) when they picked the chosen Active. Click a row to expand details.
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Player</th>
+            <th>Active</th>
+            <th>Total Picks</th>
+            <th>Total Wins</th>
+            <th>Win %</th>
+            <th>Teams</th>
+            <th>Top Trio</th>
+          </tr>
+        </thead>
+        <tbody id="ppTablePB"></tbody>
+      </table>
+    </div>
+
     <!-- BAN IMPACT -->
     <div id="sec-banimpact" class="block js-section">
       <h2>Ban Impact</h2>
@@ -477,7 +549,6 @@
       </div>
       <div class="caption muted" id="biMeta">—</div>
 
-      <!-- LEGEND -->
       <div class="caption muted" id="biLegend" style="line-height:1.35">
         <strong>Legend — Ban Impact</strong>:
         <b>Skill</b> = the skill your side banned;
@@ -589,6 +660,30 @@ function parseState(val){
   try { return JSON.parse(val); } catch(e){ console.warn('Bad state JSON:', e, val); return {}; }
 }
 
+function normalizeYMD(val){
+  if (!val) return '';
+  if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) return val.slice(0,10);
+  const d = new Date(val);
+  return isNaN(d) ? '' : ymd(d);
+}
+
+async function getTournamentStartDate(tournName){
+  if (!tournName) return null;
+  const { data, error } = await client
+    .from('draft_records')
+    .select('match_date')
+    .eq('tournament_name', tournName)
+    .order('match_date', { ascending: true })
+    .limit(1);
+
+  if (error) {
+    console.warn('Failed to get tournament start date:', error);
+    return null;
+  }
+  const first = data?.[0]?.match_date;
+  return first ? normalizeYMD(first) : null;
+}
+
 /* ========= State ========= */
 let RAW_RECORDS = [];
 let CURRENT_ROWS = [];
@@ -623,8 +718,6 @@ el('hidePassiveToggle')?.addEventListener('change', (e)=>{
 async function fetchRecords(){
   const from = el('fFrom').value;
   const toRaw = el('fTo').value;
-  // inclusive end-of-day if the column is timestamp
-  const to = toRaw && /^\d{4}-\d{2}-\d{2}$/.test(toRaw) ? `${toRaw} 23:59:59` : toRaw;
 
   const map  = el('fMap').value;
   const team = el('fTeam').value || '__ALL__';
@@ -635,7 +728,14 @@ async function fetchRecords(){
     .select('id, match_date, game_number, team_left, team_right, team_left_score, team_right_score, map, tournament_name, state')
     .gte('match_date', from);
 
-  if (to) q = q.lte('match_date', to);
+  // Half-open window: include entire "to" day regardless of DATE vs TIMESTAMP type
+  if (toRaw) {
+    const d = new Date(toRaw);
+    d.setDate(d.getDate() + 1);
+    const nextYMD = ymd(d);
+    q = q.lt('match_date', nextYMD);
+  }
+
   if (map !== '__ALL__') q = q.eq('map', map);
   if (team && team !== '__ALL__') q = q.or(`team_left.eq.${team},team_right.eq.${team}`);
   if (tourn && tourn !== '__ALL__') q = q.eq('tournament_name', tourn);
@@ -646,7 +746,7 @@ async function fetchRecords(){
   const { data, error } = await q;
   if (error) {
     console.error('Fetch error', error);
-    alert('Failed to load records');
+    alert(`Failed to load records: ${error.message}`);
     return [];
   }
   return data || [];
@@ -666,7 +766,7 @@ function populateTeamDropdown(records){
   dd.value = prior;
 }
 
-function populateTournamentDropdown(records){
+async function populateTournamentDropdown(records){
   const dd = el('fTourn');
   const prior = dd.value || '__ALL__';
 
@@ -696,6 +796,11 @@ function populateTournamentDropdown(records){
 
   if (FIRST_LOAD_TOURN && latest && (prior === '__ALL__' || !prior)) {
     dd.value = latest.name;
+
+    // ⬇️ NEW: set From date to the start of the most recent tournament
+    const start = await getTournamentStartDate(latest.name);
+    if (start) el('fFrom').value = start;
+
     FIRST_LOAD_TOURN = false;
   } else {
     dd.value = prior;
@@ -1475,6 +1580,292 @@ function renderActivePairs(){
 }
 ['pairMin','pairSort','pairDir'].forEach(id=> el(id)?.addEventListener('change', renderActivePairs));
 
+/* ========= Passive Trios Builder ========= */
+
+// Normalize a trio [{name,img}, ...] to key + lookups
+function normalizeTrioPB(trio){
+  const names = (trio||[])
+    .map(x => (x?.name||'').trim())
+    .filter(Boolean);
+  if (names.length !== 3) return null;
+
+  const imgs = {};
+  (trio||[]).forEach(x => {
+    if (x?.name) imgs[x.name] = x.img || x.image_url || PLACEHOLDER;
+  });
+
+  const sorted = [...names].sort((a,b)=>a.localeCompare(b));
+  return { key: sorted.join('|'), names: sorted, imgs };
+}
+
+// Build per-player events (one event per player-slot)
+function buildPassiveEventsPB(rows){
+  const events = [];
+  rows.forEach(r=>{
+    r.actives.forEach(a=>{
+      const p = r.passives.find(x=>x.player===a.player);
+      const trio = normalizeTrioPB(p?.trio || []);
+      if (!a.hero || !trio) return;
+      events.push({
+        active: a.hero,
+        heroImg: a.heroImg || PLACEHOLDER,
+        trioKey: trio.key,
+        trioNames: trio.names,
+        trioImgs: trio.imgs,
+        player: a.player || '',
+        team: r.team,
+        map: r.map || '—',
+        won: r.result==='W',
+        match: {
+          date: r.match_date, game: r.game_number, map: r.map,
+          team: r.team, opp: r.opponent, ts: r.team_score, os: r.opp_score, res: r.result
+        }
+      });
+    });
+  });
+  return events;
+}
+
+// Populate Active dropdown from CURRENT_ROWS
+function populateActiveDropdownPB(rows){
+  const actives = uniq(rows.flatMap(r=>r.actives.map(a=>a.hero).filter(Boolean))).sort();
+  const dd = el('pbaActive');
+  if (!dd) return;
+  const prior = dd.value || '__ALL__';
+  dd.innerHTML = `<option value="__ALL__">All actives</option>` + actives.map(a=>`<option value="${a}">${a}</option>`).join('');
+  dd.value = prior;
+}
+
+// Render top trios table
+function renderPassiveTriosPB(events){
+  const activeSel = el('pbaActive').value;
+  const min = Math.max(1, parseInt(el('pbaMin').value||'1',10));
+  const sort = el('pbaSort').value;
+  const dir  = el('pbaDir').value;
+
+  const filtered = (activeSel==='__ALL__') ? events : events.filter(e=>e.active===activeSel);
+
+  // group by active||trioKey
+  const combos = new Map();
+  filtered.forEach(e=>{
+    const key = e.active + '||' + e.trioKey;
+    if (!combos.has(key)){
+      combos.set(key, {
+        active: e.active, heroImg: e.heroImg,
+        trioKey: e.trioKey, trioNames: e.trioNames, trioImgs: e.trioImgs,
+        picks:0, wins:0, players: new Set(), teams: new Set(), maps: new Map(), matches: []
+      });
+    }
+    const C = combos.get(key);
+    C.picks += 1;
+    if (e.won) C.wins += 1;
+    C.players.add(e.player);
+    C.teams.add(e.team);
+    C.maps.set(e.map, (C.maps.get(e.map)||0)+1);
+    C.matches.push(e.match);
+  });
+
+  let rows = [...combos.values()].filter(c=>c.picks>=min).map(c=>({
+    ...c, winpct: c.picks ? (c.wins/c.picks) : 0
+  }));
+
+  const sgn = (dir==='asc')?1:-1;
+  rows.sort((a,b)=>{
+    if (sort==='name'){
+      const A = (a.active + '|' + a.trioNames.join('·')).toLowerCase();
+      const B = (b.active + '|' + b.trioNames.join('·')).toLowerCase();
+      return sgn * A.localeCompare(B);
+    }
+    if (sort==='wins') return sgn * (a.wins - b.wins);
+    if (sort==='winpct') return sgn * (a.winpct - b.winpct);
+    return sgn * (a.picks - b.picks);
+  });
+
+  const tbody = el('triTablePB'); tbody.innerHTML='';
+  if (!rows.length){
+    const tr=document.createElement('tr'); const td=document.createElement('td');
+    td.colSpan=7; td.className='muted'; td.textContent='No passive trio data for your selection.';
+    tr.appendChild(td); tbody.appendChild(tr);
+  } else {
+    rows.forEach((c, idx)=>{
+      const id = 'triPB_' + (c.active+'_'+c.trioKey).replace(/[^a-z0-9]+/gi,'_').toLowerCase() + '_' + idx;
+      const activeIcon = `<img src="${c.heroImg||PLACEHOLDER}" alt="${c.active}" title="${c.active}" loading="lazy" style="width:28px;height:28px;border-radius:6px;border:1px solid #333;background:#111">`;
+      const trioIcons = c.trioNames.map(n=>`<img src="${(c.trioImgs[n]||PLACEHOLDER)}" alt="${n}" title="${n}" loading="lazy">`).join('');
+
+      const tr = document.createElement('tr');
+      tr.className = 'row-click';
+      tr.dataset.target = id;
+      tr.innerHTML = `
+        <td>
+          <div class="icons" style="margin-bottom:4px">${activeIcon}<span class="muted">→</span>${trioIcons}</div>
+          <div class="muted">${c.active} → ${c.trioNames.join(' · ')}</div>
+        </td>
+        <td class="mono">${c.picks}</td>
+        <td class="mono">${c.wins}</td>
+        <td class="mono">${fmtPct(c.winpct)}</td>
+        <td class="mono">${c.players.size}</td>
+        <td class="mono">${c.teams.size}</td>
+        <td>${pillsFromMapCount(c.maps)}</td>
+      `;
+      tbody.appendChild(tr);
+
+      const dr = document.createElement('tr');
+      dr.className = 'tri-detail';
+      dr.id = id;
+      dr.style.display = 'none';
+      dr.innerHTML = `
+        <td colspan="7">
+          <div class="muted" style="margin-bottom:6px;">${c.matches.length} occurrence(s)</div>
+          <ul style="margin:0; padding-left:18px; line-height:1.35;">
+            ${c.matches.map(matchLineHTML).join('')}
+          </ul>
+        </td>`;
+      tbody.appendChild(dr);
+    });
+
+    tbody.querySelectorAll('tr.row-click').forEach(row=>{
+      row.addEventListener('click', ()=>{
+        const d = document.getElementById(row.dataset.target);
+        if (d) d.style.display = (d.style.display==='none' ? '' : 'none');
+      });
+    });
+  }
+
+  const actLabel = (activeSel==='__ALL__') ? 'All actives' : activeSel;
+  el('pbaMeta').textContent = `${rows.length} trio row(s) • Active: ${actLabel}`;
+}
+
+// Per-player table
+function renderPassivePerPlayerPB(events){
+  const activeSel = el('pbaActive').value;
+  const filtered = (activeSel==='__ALL__') ? events : events.filter(e=>e.active===activeSel);
+
+  const groups = new Map(); // key: player||active
+  filtered.forEach(e=>{
+    const key = e.player + '||' + e.active;
+    if (!groups.has(key)){
+      groups.set(key, {
+        player: e.player, active: e.active, teams: new Set(),
+        picks:0, wins:0, trios: new Map()
+      });
+    }
+    const G = groups.get(key);
+    G.picks += 1; if (e.won) G.wins += 1;
+    G.teams.add(e.team);
+
+    if (!G.trios.has(e.trioKey)){
+      G.trios.set(e.trioKey, {
+        names: e.trioNames, imgs: e.trioImgs, picks:0, wins:0, maps:new Map(), matches:[]
+      });
+    }
+    const T = G.trios.get(e.trioKey);
+    T.picks += 1; if (e.won) T.wins += 1;
+    T.maps.set(e.map, (T.maps.get(e.map)||0)+1);
+    T.matches.push(e.match);
+  });
+
+  const tbody = el('ppTablePB'); tbody.innerHTML='';
+  if (!groups.size){
+    const tr=document.createElement('tr'); const td=document.createElement('td');
+    td.colSpan=7; td.className='muted'; td.textContent='No player rows for this selection.'; tr.appendChild(td);
+    tbody.appendChild(tr);
+    return;
+  }
+
+  const rows = [...groups.values()].map(G=>{
+    const allTrios = [...G.trios.values()].map(T=>({ ...T, winpct: T.picks ? (T.wins/T.picks) : 0 }));
+    allTrios.sort((a,b)=> (b.picks - a.picks) || (b.wins - a.wins));
+    const top = allTrios[0] || null;
+    return {
+      player: G.player,
+      active: G.active,
+      teams: G.teams,
+      picks: G.picks,
+      wins: G.wins,
+      winpct: G.picks ? (G.wins/G.picks) : 0,
+      topTrio: top,
+      allTrios
+    };
+  }).sort((a,b)=> (b.picks - a.picks) || a.player.localeCompare(b.player) );
+
+  rows.forEach((R, idx)=>{
+    const id = 'ppPB_' + (R.player+'_'+R.active).replace(/[^a-z0-9]+/gi,'_').toLowerCase() + '_' + idx;
+
+    const topIcons = R.topTrio
+      ? R.topTrio.names.map(n=>`<img src="${(R.topTrio.imgs[n]||PLACEHOLDER)}" alt="${n}" title="${n}" loading="lazy" style="width:24px;height:24px;border-radius:6px;border:1px solid #333;background:#111">`).join('')
+      : '<span class="muted">—</span>';
+
+    const tr = document.createElement('tr');
+    tr.className = 'row-click';
+    tr.dataset.target = id;
+    tr.innerHTML = `
+      <td><strong>${R.player}</strong></td>
+      <td>${R.active}</td>
+      <td class="mono">${R.picks}</td>
+      <td class="mono">${R.wins}</td>
+      <td class="mono">${fmtPct(R.winpct)}</td>
+      <td>${pillsFromSet(R.teams)}</td>
+      <td>
+        ${R.topTrio ? `<div class="icons" style="gap:4px">${topIcons}</div><div class="muted">${R.topTrio.names.join(' · ')} (${R.topTrio.picks} picks, ${fmtPct(R.topTrio.winpct)})</div>` : '—'}
+      </td>
+    `;
+    tbody.appendChild(tr);
+
+    const detail = document.createElement('tr');
+    detail.className = 'tri-detail';
+    detail.id = id;
+    detail.style.display = 'none';
+    detail.innerHTML = `
+      <td colspan="7">
+        <div class="muted" style="margin-bottom:6px;">All trios used by ${R.player} with ${R.active}:</div>
+        <ul style="margin:0; padding-left:18px; line-height:1.35;">
+          ${R.allTrios.map(T => `
+            <li>
+              <span class="icons" style="gap:4px; vertical-align:middle;">
+                ${T.names.map(n=>`<img src="${(T.imgs[n]||PLACEHOLDER)}" alt="${n}" title="${n}" loading="lazy" style="width:20px;height:20px;border-radius:4px;border:1px solid #333;background:#111">`).join('')}
+              </span>
+              &nbsp; ${T.names.join(' · ')} — <strong>${T.picks}</strong> picks, <strong>${T.wins}</strong> wins
+              <span class="muted">(${fmtPct(T.winpct)})</span>
+              <div style="margin-top:4px">${pillsFromMapCount(T.maps, 8)}</div>
+              <details style="margin-top:4px;">
+                <summary class="muted" style="cursor:pointer;">Show matches</summary>
+                <ul style="margin:0; padding-left:18px; line-height:1.35;">
+                  ${T.matches.map(matchLineHTML).join('')}
+                </ul>
+              </details>
+            </li>
+          `).join('')}
+        </ul>
+      </td>
+    `;
+    tbody.appendChild(detail);
+  });
+
+  tbody.querySelectorAll('tr.row-click').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      const d = document.getElementById(row.dataset.target);
+      if (d) d.style.display = (d.style.display==='none' ? '' : 'none');
+    });
+  });
+}
+
+// One-call renderer for the whole section
+function renderPassiveTriosBuilder(){
+  populateActiveDropdownPB(CURRENT_ROWS);
+  const events = buildPassiveEventsPB(CURRENT_ROWS);
+  renderPassiveTriosPB(events);
+  renderPassivePerPlayerPB(events);
+}
+
+// React to control changes
+['pbaActive','pbaMin','pbaSort','pbaDir'].forEach(id=>{
+  el(id)?.addEventListener('change', ()=> {
+    const events = buildPassiveEventsPB(CURRENT_ROWS);
+    renderPassiveTriosPB(events);
+    renderPassivePerPlayerPB(events);
+  });
+});
+
 /* ========= Ban Impact ========= */
 function getRowsIgnoringWL(){
   // Build rows from RAW_RECORDS but ignore fWL filter to avoid outcome bias
@@ -1579,6 +1970,7 @@ const TAB_TO_SECTION = {
   skillsbymap: 'sec-skillsbymap',
   combos: 'sec-combos',
   pairs: 'sec-pairs',
+  passivebuilder: 'sec-passivebuilder',
   banimpact: 'sec-banimpact',
   perskill: 'sec-perskill'
 };
@@ -1596,6 +1988,7 @@ document.querySelectorAll('.tab').forEach(btn=>{
     if (target==='sec-skillsbymap') { renderSkillsByMap(); }
     if (target==='sec-combos')      { renderActiveCombos(); }
     if (target==='sec-pairs')       { renderActivePairs(); }
+    if (target==='sec-passivebuilder'){ renderPassiveTriosBuilder(); }
     if (target==='sec-banimpact')   { renderBanImpact(); }
     if (target==='sec-perskill')    { computeSkillStats(); }
   });
@@ -1606,11 +1999,16 @@ async function refresh(){
   RAW_RECORDS = await fetchRecords();
 
   const beforeT = el('fTourn').value || '__ALL__';
-  populateTeamDropdown(RAW_RECORDS);
-  populateTournamentDropdown(RAW_RECORDS);
-  const afterT = el('fTourn').value || '__ALL__';
+  const beforeFrom = el('fFrom').value;
 
-  if (beforeT !== afterT) {
+  populateTeamDropdown(RAW_RECORDS);
+  await populateTournamentDropdown(RAW_RECORDS);   // ← await now
+
+  const afterT = el('fTourn').value || '__ALL__';
+  const afterFrom = el('fFrom').value;
+
+  // Refetch if tournament OR start-date changed
+  if (beforeT !== afterT || beforeFrom !== afterFrom) {
     RAW_RECORDS = await fetchRecords();
   }
 
@@ -1632,6 +2030,7 @@ async function refresh(){
   if (active==='sec-skillsbymap'){ renderSkillsByMap(); }
   if (active==='sec-combos'){ renderActiveCombos(); }
   if (active==='sec-pairs'){ renderActivePairs(); }
+  if (active==='sec-passivebuilder'){ renderPassiveTriosBuilder(); }
   if (active==='sec-banimpact'){ renderBanImpact(); }
   if (active==='sec-perskill'){ computeSkillStats(); }
 }
@@ -1655,20 +2054,24 @@ async function computeSkillStats() {
   const team  = (document.getElementById('fTeam').value || '__ALL__');
   const from  = document.getElementById('fFrom').value;
   const toRaw = document.getElementById('fTo').value;
-  const to    = toRaw && /^\d{4}-\d{2}-\d{2}$/.test(toRaw) ? `${toRaw} 23:59:59` : toRaw; // inclusive EOD
   const tourn = (document.getElementById('fTourn').value || '__ALL__');
   const map   = (document.getElementById('fMap').value || '__ALL__');
 
-  if (!from || !to) {
+  if (!from || !toRaw) {
     alert('Please set a From and To date for Skill Stats.');
     return;
   }
+
+  // Half-open date range (handles DATE or TIMESTAMP columns)
+  const end = new Date(toRaw);
+  end.setDate(end.getDate() + 1);
+  const nextYMD = ymd(end);
 
   let q = client
     .from('draft_records')
     .select('team_left, team_right, team_left_score, team_right_score, match_date, map, tournament_name, state')
     .gte('match_date', from)
-    .lte('match_date', to);
+    .lt('match_date', nextYMD);
 
   if (team !== '__ALL__')  q = q.or(`team_left.eq.${team},team_right.eq.${team}`);
   if (tourn !== '__ALL__') q = q.eq('tournament_name', tourn);
@@ -1677,7 +2080,7 @@ async function computeSkillStats() {
   const { data, error } = await q;
   if (error) {
     console.error('❌ Skill stats fetch error:', error);
-    alert('Failed to fetch records for Skill Stats.');
+    alert('Failed to fetch records for Skill Stats: ' + error.message);
     return;
   }
 
@@ -1812,16 +2215,16 @@ async function computeSkillStats() {
     tr.innerHTML = `
       <td>
         <div class="skill-cell">
-          <img src="${r.img || PLACEHOLDER}" alt="${r.name}" loading="lazy">
-          <span class="skill-name">${r.name}</span>
+          <img src="\${r.img || PLACEHOLDER}" alt="\${r.name}" loading="lazy">
+          <span class="skill-name">\${r.name}</span>
         </div>
       </td>
-      <td class="mono">${r.picks}</td>
-      <td class="mono">${pct(r.picks, pickDen)}</td>
-      <td class="mono">${(type === 'active') ? r.bans : '—'}</td>
-      <td class="mono">${(type === 'active') ? pct(r.bans, banDen) : '—'}</td>
-      <td class="mono">${r.wins}</td>
-      <td class="mono">${(r.winRate === null) ? '—' : (r.winRate * 100).toFixed(1) + '%'}</td>
+      <td class="mono">\${r.picks}</td>
+      <td class="mono">\${pct(r.picks, pickDen)}</td>
+      <td class="mono">\${(type === 'active') ? r.bans : '—'}</td>
+      <td class="mono">\${(type === 'active') ? pct(r.bans, banDen) : '—'}</td>
+      <td class="mono">\${r.wins}</td>
+      <td class="mono">\${(r.winRate === null) ? '—' : (r.winRate * 100).toFixed(1) + '%'}</td>
     `;
     tbody.appendChild(tr);
   });
