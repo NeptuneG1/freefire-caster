@@ -339,12 +339,21 @@ function applyRowFilters(allRows){
 
 /* ========= Build passive-combo events ========= */
 function normalizeTrio(trio){
-  const names = (trio||[]).map(x => (x?.name||'').trim()).filter(Boolean);
+  const names = (trio||[])
+    .map(x => (x?.name||'').trim())
+    .filter(Boolean);
   if (names.length !== 3) return null;
-  const imgs = {}; trio.forEach(x => { if (x?.name) imgs[x.name] = x.image_url || PLACEHOLDER; });
+
+  // IMPORTANT: use x.img; fall back to x.image_url if present
+  const imgs = {};
+  (trio||[]).forEach(x => {
+    if (x?.name) imgs[x.name] = x.img || x.image_url || PLACEHOLDER;
+  });
+
   const sorted = [...names].sort((a,b)=>a.localeCompare(b));
   return { key: sorted.join('|'), names: sorted, imgs };
 }
+
 
 function buildPassiveEvents(rows){
   // One event per player-slot: {active, trioKey, trioNames, trioImgs, player, team, map, won, heroImg, match}
