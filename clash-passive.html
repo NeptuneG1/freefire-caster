@@ -549,7 +549,6 @@
       </div>
       <div class="caption muted" id="biMeta">—</div>
 
-      <!-- LEGEND -->
       <div class="caption muted" id="biLegend" style="line-height:1.35">
         <strong>Legend — Ban Impact</strong>:
         <b>Skill</b> = the skill your side banned;
@@ -695,8 +694,6 @@ el('hidePassiveToggle')?.addEventListener('change', (e)=>{
 async function fetchRecords(){
   const from = el('fFrom').value;
   const toRaw = el('fTo').value;
-  // inclusive end-of-day if the column is timestamp
-  const to = toRaw && /^\d{4}-\d{2}-\d{2}$/.test(toRaw) ? `${toRaw} 23:59:59` : toRaw;
 
   const map  = el('fMap').value;
   const team = el('fTeam').value || '__ALL__';
@@ -707,7 +704,14 @@ async function fetchRecords(){
     .select('id, match_date, game_number, team_left, team_right, team_left_score, team_right_score, map, tournament_name, state')
     .gte('match_date', from);
 
-  if (to) q = q.lte('match_date', to);
+  // Half-open window: include entire "to" day regardless of DATE vs TIMESTAMP type
+  if (toRaw) {
+    const d = new Date(toRaw);
+    d.setDate(d.getDate() + 1);
+    const nextYMD = ymd(d);
+    q = q.lt('match_date', nextYMD);
+  }
+
   if (map !== '__ALL__') q = q.eq('map', map);
   if (team && team !== '__ALL__') q = q.or(`team_left.eq.${team},team_right.eq.${team}`);
   if (tourn && tourn !== '__ALL__') q = q.eq('tournament_name', tourn);
@@ -718,7 +722,7 @@ async function fetchRecords(){
   const { data, error } = await q;
   if (error) {
     console.error('Fetch error', error);
-    alert('Failed to load records');
+    alert(`Failed to load records: ${error.message}`);
     return [];
   }
   return data || [];
@@ -2016,20 +2020,24 @@ async function computeSkillStats() {
   const team  = (document.getElementById('fTeam').value || '__ALL__');
   const from  = document.getElementById('fFrom').value;
   const toRaw = document.getElementById('fTo').value;
-  const to    = toRaw && /^\d{4}-\d{2}-\d{2}$/.test(toRaw) ? `${toRaw} 23:59:59` : toRaw; // inclusive EOD
   const tourn = (document.getElementById('fTourn').value || '__ALL__');
   const map   = (document.getElementById('fMap').value || '__ALL__');
 
-  if (!from || !to) {
+  if (!from || !toRaw) {
     alert('Please set a From and To date for Skill Stats.');
     return;
   }
+
+  // Half-open date range (handles DATE or TIMESTAMP columns)
+  const end = new Date(toRaw);
+  end.setDate(end.getDate() + 1);
+  const nextYMD = ymd(end);
 
   let q = client
     .from('draft_records')
     .select('team_left, team_right, team_left_score, team_right_score, match_date, map, tournament_name, state')
     .gte('match_date', from)
-    .lte('match_date', to);
+    .lt('match_date', nextYMD);
 
   if (team !== '__ALL__')  q = q.or(`team_left.eq.${team},team_right.eq.${team}`);
   if (tourn !== '__ALL__') q = q.eq('tournament_name', tourn);
@@ -2038,7 +2046,7 @@ async function computeSkillStats() {
   const { data, error } = await q;
   if (error) {
     console.error('❌ Skill stats fetch error:', error);
-    alert('Failed to fetch records for Skill Stats.');
+    alert('Failed to fetch records for Skill Stats: ' + error.message);
     return;
   }
 
@@ -2173,16 +2181,16 @@ async function computeSkillStats() {
     tr.innerHTML = `
       <td>
         <div class="skill-cell">
-          <img src="${r.img || PLACEHOLDER}" alt="${r.name}" loading="lazy">
-          <span class="skill-name">${r.name}</span>
+          <img src="\${r.img || PLACEHOLDER}" alt="\${r.name}" loading="lazy">
+          <span class="skill-name">\${r.name}</span>
         </div>
       </td>
-      <td class="mono">${r.picks}</td>
-      <td class="mono">${pct(r.picks, pickDen)}</td>
-      <td class="mono">${(type === 'active') ? r.bans : '—'}</td>
-      <td class="mono">${(type === 'active') ? pct(r.bans, banDen) : '—'}</td>
-      <td class="mono">${r.wins}</td>
-      <td class="mono">${(r.winRate === null) ? '—' : (r.winRate * 100).toFixed(1) + '%'}</td>
+      <td class="mono">\${r.picks}</td>
+      <td class="mono">\${pct(r.picks, pickDen)}</td>
+      <td class="mono">\${(type === 'active') ? r.bans : '—'}</td>
+      <td class="mono">\${(type === 'active') ? pct(r.bans, banDen) : '—'}</td>
+      <td class="mono">\${r.wins}</td>
+      <td class="mono">\${(r.winRate === null) ? '—' : (r.winRate * 100).toFixed(1) + '%'}</td>
     `;
     tbody.appendChild(tr);
   });
