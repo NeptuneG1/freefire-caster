@@ -660,6 +660,30 @@ function parseState(val){
   try { return JSON.parse(val); } catch(e){ console.warn('Bad state JSON:', e, val); return {}; }
 }
 
+function normalizeYMD(val){
+  if (!val) return '';
+  if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) return val.slice(0,10);
+  const d = new Date(val);
+  return isNaN(d) ? '' : ymd(d);
+}
+
+async function getTournamentStartDate(tournName){
+  if (!tournName) return null;
+  const { data, error } = await client
+    .from('draft_records')
+    .select('match_date')
+    .eq('tournament_name', tournName)
+    .order('match_date', { ascending: true })
+    .limit(1);
+
+  if (error) {
+    console.warn('Failed to get tournament start date:', error);
+    return null;
+  }
+  const first = data?.[0]?.match_date;
+  return first ? normalizeYMD(first) : null;
+}
+
 /* ========= State ========= */
 let RAW_RECORDS = [];
 let CURRENT_ROWS = [];
@@ -742,7 +766,7 @@ function populateTeamDropdown(records){
   dd.value = prior;
 }
 
-function populateTournamentDropdown(records){
+async function populateTournamentDropdown(records){
   const dd = el('fTourn');
   const prior = dd.value || '__ALL__';
 
@@ -772,6 +796,11 @@ function populateTournamentDropdown(records){
 
   if (FIRST_LOAD_TOURN && latest && (prior === '__ALL__' || !prior)) {
     dd.value = latest.name;
+
+    // ⬇️ NEW: set From date to the start of the most recent tournament
+    const start = await getTournamentStartDate(latest.name);
+    if (start) el('fFrom').value = start;
+
     FIRST_LOAD_TOURN = false;
   } else {
     dd.value = prior;
@@ -1970,11 +1999,16 @@ async function refresh(){
   RAW_RECORDS = await fetchRecords();
 
   const beforeT = el('fTourn').value || '__ALL__';
-  populateTeamDropdown(RAW_RECORDS);
-  populateTournamentDropdown(RAW_RECORDS);
-  const afterT = el('fTourn').value || '__ALL__';
+  const beforeFrom = el('fFrom').value;
 
-  if (beforeT !== afterT) {
+  populateTeamDropdown(RAW_RECORDS);
+  await populateTournamentDropdown(RAW_RECORDS);   // ← await now
+
+  const afterT = el('fTourn').value || '__ALL__';
+  const afterFrom = el('fFrom').value;
+
+  // Refetch if tournament OR start-date changed
+  if (beforeT !== afterT || beforeFrom !== afterFrom) {
     RAW_RECORDS = await fetchRecords();
   }
 
