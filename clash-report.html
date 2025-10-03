@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Team Report — Compact Dashboard (Fast)</title>
+  <title>Team Report — Compact Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root{
@@ -12,35 +12,40 @@
       --good:#71d083; --bad:#ff6b6b;
     }
     *{box-sizing:border-box}
-    html{font-size:clamp(12px,0.85vw+8px,16px)}
+    html{font-size:clamp(12px, 0.85vw + 8px, 16px);}
     body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
     header{position:sticky;top:0;z-index:5;background:#1a1a1a;border-bottom:2px solid var(--brand);padding:10px 12px}
     h1{margin:0;font-size:clamp(1rem,1.2vw,1.15rem);color:var(--brand);letter-spacing:.2px}
     .shell{max-width:min(1600px,98vw);margin:14px auto;padding:0 10px}
 
+    /* Controls */
     .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
     label{display:flex;align-items:center;gap:6px}
     select{background:#1e1e1e;color:#ffe0b0;border:1px solid #3a3a3a;border-radius:8px;padding:6px 8px;font-weight:600}
     .chip{color:var(--muted);font-size:.82rem}
 
+    /* Grid */
     .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;grid-auto-flow:dense}
     .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;min-height:110px}
-    .card.q{grid-column:span 3}
-    .card.h{grid-column:span 6}
-    .card.l{grid-column:span 12}
+    .card.q{grid-column:span 3;}
+    .card.h{grid-column:span 6;}
+    .card.l{grid-column:span 12;}
     .card h3{margin:0 0 6px 0;color:var(--brand2);font-size:clamp(.9rem,1vw,.95rem)}
 
-    .chartcard{min-height:clamp(320px,34vh,480px)}
+    /* Charts */
+    .chartcard{min-height:clamp(280px, 34vh, 420px);} /* taller so grouped bars don't clip */
     .chart{width:100%;height:auto;display:block;overflow:visible}
     .legend{display:flex;gap:10px;align-items:center;font-size:.78rem;color:#cfcfcf}
     .legend span{display:inline-flex;align-items:center;gap:6px}
     .lg{width:10px;height:10px;border-radius:2px;background:#ffbd59;border:1px solid #6a4e23}
     .lg2{width:10px;height:10px;border-radius:2px;background:#4aa86a;border:1px solid #2c5a3a}
 
+    /* KPI row */
     .kpis{display:flex;gap:6px;flex-wrap:wrap}
     .kpi{background:#111;border:1px solid #2a2a2a;border-radius:10px;padding:6px 8px;font-size:.9rem;white-space:nowrap}
     .kpi b{font-size:1rem}
 
+    /* Tables */
     .twrap{overflow:auto}
     table{width:100%;border-collapse:collapse;font-size:clamp(.8rem,.9vw,.9rem);min-width:560px}
     th,td{border-bottom:1px solid #222;padding:6px 6px;vertical-align:middle}
@@ -50,35 +55,17 @@
     .right{text-align:right}
     .muted{color:var(--muted)}
 
+    /* Skill chips / icons */
     .cell-skill{display:flex;align-items:center;gap:8px}
     .cell-icons{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
     .avatar{width:18px;height:18px;border-radius:4px;object-fit:cover;background:#222;border:1px solid #333}
     .avatar.s{width:16px;height:16px;border-radius:3px}
+
     .pill{display:inline-block;padding:2px 6px;border-radius:999px;background:#111;border:1px solid #2a2a2a;margin:2px;font-size:.78rem;color:#ddd}
 
-    /* Tooltip (unchanged) */
-    .tip{position:fixed;z-index:50;pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity .12s ease, transform .12s ease}
-    .tip.show{opacity:1;transform:translateY(0)}
-    .tip .box{max-width:320px;background:#0f0f0f;border:1px solid #2a2a2a;border-radius:10px;box-shadow:0 8px 20px rgba(0,0,0,.4);padding:10px}
-    .tip .hdr{display:flex;gap:10px;align-items:center;margin-bottom:6px}
-    .tip .hdr img{width:36px;height:36px;border-radius:6px;border:1px solid #333;object-fit:cover;background:#222}
-    .tip .name{font-weight:700}
-    .tip .tag{font-size:.75rem;color:#aaa;background:#131313;border:1px solid #2a2a2a;border-radius:999px;padding:2px 6px;margin-left:auto}
-    .tip .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:.88rem}
-    .tip .kv div:nth-child(odd){color:#bbb}
-    .tip .kv div:nth-child(even){text-align:right;font-variant-numeric:tabular-nums}
-
-    /* Skeletons */
-    .skeleton{position:relative;overflow:hidden;background:#111;border:1px solid #222;border-radius:10px;min-height:56px}
-    .sk-bar{height:10px;margin:6px 0;background:#181818;border-radius:6px}
-    .shimmer::after{
-      content:"";position:absolute;inset:0;transform:translateX(-100%);
-      background:linear-gradient(90deg,transparent,rgba(255,255,255,.06),transparent);
-      animation:sh 1.2s infinite
+    @media (max-width: 980px){
+      .card.q,.card.h,.card.l{grid-column:span 12}
     }
-    @keyframes sh{to{transform:translateX(100%)}}
-
-    @media (max-width:980px){ .card.q,.card.h,.card.l{grid-column:span 12} }
     @media (min-width:1600px){
       .grid{grid-template-columns:repeat(16,minmax(0,1fr))}
       .card.q{grid-column:span 4}
@@ -102,64 +89,107 @@
     </div>
 
     <div class="grid">
+
+      <!-- Overview -->
       <div class="card l" id="kpiCard">
         <h3>Overview</h3>
         <div class="kpis" id="kpis"></div>
       </div>
 
-      <!-- Charts row -->
-      <div class="card q chartcard" id="actPickCard"><h3>Most Pick Active</h3><div id="actPickWrap" class="skeleton shimmer"></div></div>
-      <div class="card q chartcard" id="pasPickCard"><h3>Most Pick Passive</h3><div id="pasPickWrap" class="skeleton shimmer"></div></div>
-      <div class="card q chartcard" id="banCard"><h3>Most Banned (Count)</h3><div id="banChartWrap" class="skeleton shimmer"></div></div>
+      <!-- Charts row (left -> right) -->
+      <div class="card q chartcard" id="actPickCard">
+        <h3>Most Pick Active</h3>
+        <div id="actPickWrap"></div>
+      </div>
+
+      <div class="card q chartcard" id="pasPickCard">
+        <h3>Most Pick Passive</h3>
+        <div id="pasPickWrap"></div>
+      </div>
+
+      <div class="card q chartcard" id="banCard">
+        <h3>Most Banned (Count)</h3>
+        <div id="banChartWrap"></div>
+      </div>
+
       <div class="card q chartcard" id="mapCard">
         <h3>Performance by Map</h3>
         <div class="legend" style="margin-bottom:4px"><span><i class="lg"></i> Matches</span><span><i class="lg2"></i> Wins</span></div>
-        <div id="mapChartWrap" class="skeleton shimmer"></div>
+        <div id="mapChartWrap"></div>
       </div>
 
-      <!-- Tables (skeletons shown until render) -->
+      <!-- Side-by-side tables -->
       <div class="card h" id="comboCard">
         <h3>Top Active Combos</h3>
-        <div class="twrap" id="comboWrap"><div class="skeleton shimmer" style="height:160px"></div></div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Combo (4× Active)</th><th class="right">Picks</th><th class="right">Wins</th><th class="right">Win&nbsp;%</th><th>Top Maps</th></tr></thead>
+            <tbody id="comboBody"></tbody>
+          </table>
+        </div>
       </div>
 
       <div class="card h" id="ptrioCard">
         <h3>Top Passive Trio</h3>
-        <div class="twrap" id="ptrioWrap"><div class="skeleton shimmer" style="height:160px"></div></div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Trio (3× Passive)</th><th class="right">Picks</th><th class="right">Wins</th><th class="right">Win&nbsp;%</th><th>Top Maps</th></tr></thead>
+            <tbody id="ptrioBody"></tbody>
+          </table>
+        </div>
       </div>
 
       <div class="card h" id="actCard">
         <h3>Top Active Skills</h3>
-        <div class="twrap" id="actWrap"><div class="skeleton shimmer" style="height:220px"></div></div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Skill</th><th class="right">Picks</th><th class="right">Pick&nbsp;%</th><th class="right">Wins</th><th class="right">Win&nbsp;%</th></tr></thead>
+            <tbody id="actBody"></tbody>
+          </table>
+        </div>
       </div>
 
       <div class="card h" id="pasCard">
         <h3>Top Passive Skills</h3>
-        <div class="twrap" id="pasWrap"><div class="skeleton shimmer" style="height:220px"></div></div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Skill</th><th class="right">Picks</th><th class="right">Pick&nbsp;%</th><th class="right">Wins</th><th class="right">Win&nbsp;%</th></tr></thead>
+            <tbody id="pasBody"></tbody>
+          </table>
+        </div>
       </div>
 
       <div class="card h" id="oppCard">
         <h3>Performance by Opponent</h3>
-        <div class="twrap" id="oppWrap"><div class="skeleton shimmer" style="height:200px"></div></div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Opponent</th><th class="right">Matches</th><th class="right">Wins</th><th class="right">Win&nbsp;%</th></tr></thead>
+            <tbody id="oppBody"></tbody>
+          </table>
+        </div>
       </div>
 
       <div class="card h" id="biCard">
         <h3>Ban Impact (Δ Win %)</h3>
-        <div class="twrap" id="biWrap"><div class="skeleton shimmer" style="height:200px"></div></div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Skill</th><th class="right">Banned</th><th class="right">Win% (banned)</th><th class="right">Win% (not)</th><th class="right">Δ</th></tr></thead>
+            <tbody id="biBody"></tbody>
+          </table>
+        </div>
       </div>
 
       <div class="card l" id="recentCard">
         <h3>Recent Matches</h3>
-        <div class="twrap" id="recentWrap"><div class="skeleton shimmer" style="height:220px"></div></div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Date</th><th>Map</th><th>Opponent</th><th class="right">Score</th><th class="right">Res</th><th>Ban</th></tr></thead>
+            <tbody id="recentBody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
-
-  <!-- Tooltip -->
-  <div id="skillTip" class="tip"><div class="box">
-    <div class="hdr"><img><div class="name"></div><div class="tag"></div></div>
-    <div class="kv"></div>
-  </div></div>
 
 <script>
 /* ========= Supabase ========= */
@@ -173,25 +203,17 @@ const PLACEHOLDER='https://imgur.com/AdvPwAO.png';
 const pct=(n,d)=> d? ((n/d)*100).toFixed(1)+'%':'—';
 const fmtP=(x)=> (x*100).toFixed(1)+'%';
 const uniq=(a)=>[...new Set(a)];
-const sleep=(ms)=> new Promise(r=>setTimeout(r,ms));
 function ymd(d){const dt=new Date(d);if(!d||isNaN(dt))return '';return dt.toISOString().slice(0,10)}
 function parseState(v){if(!v) return {}; if (typeof v==='object') return v; try{return JSON.parse(v)}catch{ return {} }}
-const rafYield=()=> new Promise(r=>requestAnimationFrame(()=>r()));
-
-/* ========= Dynamic label width helpers ========= */
-function labelWidthFor(labels, base=90, perChar=6.2, max=200){
-  const longest = labels.reduce((m,s)=>Math.max(m,(s||'').length),0);
-  return Math.min(max, Math.max(base, Math.round(longest*perChar)));
-}
 
 /* ========= Micro SVGs ========= */
 function barH(labels, values, opts={}){
-  const W = opts.width || 420;
-  const labelW = opts.labelW || labelWidthFor(labels);
+  const W = opts.width || 380;
+  const labelW = 110;
   const pad = 4, row = 14, gap = 3;
   const H = Math.max(40, labels.length*(row+gap) + pad*2);
   const max = Math.max(1, ...values);
-  const scale = (v)=> Math.max(1, (v/max)*(W - labelW - 24));
+  const scale = (v)=> Math.max(1, (v/max)*(W - labelW - 20));
   const svg = [`<svg class="chart" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" shape-rendering="crispEdges">`];
   labels.forEach((lb,i)=>{
     const y = pad + i*(row+gap);
@@ -203,13 +225,14 @@ function barH(labels, values, opts={}){
   svg.push(`</svg>`);
   return svg.join('');
 }
+
 function groupedBars(labels, aVals, bVals, opts={}){
-  const W = opts.width || 440;
-  const labelW = opts.labelW || labelWidthFor(labels, 110);
+  const W = opts.width || 400;
+  const labelW = 120;
   const pad = 6, row = 12, gap = 2, grpGap = 6;
   const H = Math.max(40, labels.length*(row+gap) + labels.length*grpGap + pad*2);
   const max = Math.max(1, ...aVals, ...bVals);
-  const scale = (v)=> Math.max(1, (v/max)*(W - labelW - 28));
+  const scale = (v)=> Math.max(1, (v/max)*(W - labelW - 24));
   const svg = [`<svg class="chart" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" shape-rendering="crispEdges">`];
   let y = pad;
   labels.forEach((lb, i)=>{
@@ -225,15 +248,15 @@ function groupedBars(labels, aVals, bVals, opts={}){
   return svg.join('');
 }
 
-/* ========= Data plumbing & caching ========= */
-let CACHE = new Map();            // key: tournament_name, val: raw rows (records)
-let LATEST_TOURN = '__ALL__';
+/* ========= Data plumbing ========= */
+let ALL_RECORDS=[]; // all rows (matches), used to derive tourn+team lists
 
 function explodeRecordToRows(rec){
   const s=parseState(rec.state);
-  const picks=Array.isArray(s.picks)?s.picks:[];
-  const passives=Array.isArray(s.passives)?s.passives:[];
-  const bans=Array.isArray(s.bans)?s.bans:[];
+  const picks=Array.isArray(s.picks)?s.picks:[];          // active heroes (objects)
+  const passives=Array.isArray(s.passives)?s.passives:[];  // passive trios (objects)
+  const bans=Array.isArray(s.bans)?s.bans:[];              // [{name,image_url}, {name,image_url}]
+
   const leftWin=(rec.team_left_score??0)>(rec.team_right_score??0);
   const rightWin=(rec.team_right_score??0)>(rec.team_left_score??0);
 
@@ -250,69 +273,61 @@ function explodeRecordToRows(rec){
       hero: (picks[i]?.name)||'',
       img : (picks[i]?.image_url)||PLACEHOLDER
     }));
+
     const pas  = idx.map(i=>{
       const arr = Array.isArray(passives[i]) ? passives[i] : [];
       return arr.map(x=>({name:x?.name||'', img:x?.image_url||PLACEHOLDER})).filter(x=>x.name);
     });
 
     return {
-      rec_id:rec.id,date:ymd(rec.match_date),map:rec.map,
+      rec_id:rec.id,
+      date:ymd(rec.match_date),
+      map:rec.map,
       team,opp,ts,os,res,
-      banName: ban?.name || '', banImg: ban?.image_url || PLACEHOLDER,
-      act,pass, tournament: rec.tournament_name || '—'
+      banName: ban?.name || '',
+      banImg : ban?.image_url || PLACEHOLDER,
+      act,    // [{hero,img} ×4]
+      pass:pas // [[{name,img}×3] ×4]
     };
   }
   return [side(true), side(false)];
 }
 
-/* Targeted queries for speed */
-async function fetchLatestTournamentName(){
+async function fetchAll(){
   const { data, error } = await client
     .from('draft_records')
-    .select('tournament_name, match_date')
-    .not('tournament_name','is', null)
-    .order('match_date', { ascending:false })
-    .limit(1);
-  if(error){ console.error(error); return '__ALL__'; }
-  return data?.[0]?.tournament_name || '__ALL__';
-}
-async function fetchTournamentList(limit=500){
-  // pull a limited, recent window and derive distinct tournaments by last appearance
-  const { data, error } = await client
-    .from('draft_records')
-    .select('tournament_name, match_date')
-    .order('match_date', { ascending:false })
-    .limit(limit);
-  if(error){ console.error(error); return []; }
-  const map = new Map();
-  data.forEach(r=>{
-    const t = r.tournament_name || '—';
-    const d = new Date(r.match_date);
-    if(!map.has(t) || d > map.get(t)) map.set(t, d);
-  });
-  return [...map.entries()].sort((a,b)=> b[1]-a[1]).map(([name])=>name);
-}
-async function fetchRecordsForTournament(tName){
-  if(CACHE.has(tName)) return CACHE.get(tName);
-  let q = client.from('draft_records')
     .select('id, match_date, map, team_left, team_right, team_left_score, team_right_score, state, tournament_name')
     .order('match_date', { ascending:false })
     .order('id',{ ascending:false });
-  if(tName !== '__ALL__') q = q.eq('tournament_name', tName);
-  const { data, error } = await q;
-  if(error){ console.error(error); return []; }
-  CACHE.set(tName, data||[]);
+  if(error){ console.error(error); alert('Failed to load records: '+error.message); return [] }
   return data||[];
 }
 
 /* ========= Filters ========= */
-function teamsForRecords(records){
+function tournamentsFrom(records){
+  // return [{name, firstDate, lastDate}] sorted by lastDate desc
+  const map = new Map();
+  records.forEach(r=>{
+    const t = r.tournament_name || '—';
+    const d = new Date(r.match_date);
+    if(!map.has(t)) map.set(t, {name:t, first:d, last:d});
+    const o = map.get(t); if(d<o.first) o.first=d; if(d>o.last) o.last=d;
+  });
+  return [...map.values()].sort((a,b)=> b.last - a.last);
+}
+function teamsForTournament(records, tournName){
   const S = new Set();
-  records.forEach(r=>{ if(r.team_left) S.add(r.team_left); if(r.team_right) S.add(r.team_right); });
+  records.forEach(r=>{
+    if(tournName && tournName!=='__ALL__' && (r.tournament_name||'—')!==tournName) return;
+    if(r.team_left) S.add(r.team_left);
+    if(r.team_right) S.add(r.team_right);
+  });
   return [...S].sort();
 }
-function rowsForTeam(records, team){
-  return records.flatMap(explodeRecordToRows).filter(r=>r.team===team);
+function rowsForTeamAndTournament(records, team, tournName){
+  const inTourn = (r) => (tournName==='__ALL__') || ((r.tournament_name||'—')===tournName);
+  const filtered = records.filter(inTourn).flatMap(explodeRecordToRows);
+  return filtered.filter(r=>r.team===team);
 }
 
 /* ========= Aggregations ========= */
@@ -323,29 +338,45 @@ function kpis(rows){
   return {matches,wins,winpct,diffAvg,maps,opps};
 }
 function mostBanned(rows){
-  const m=new Map(); rows.forEach(r=>{ const b=r.banName||''; if(!b)return; m.set(b,(m.get(b)||0)+1) });
-  const arr=[...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10); return {labels:arr.map(x=>x[0]), values:arr.map(x=>x[1])};
+  const m=new Map(); const imgs=new Map();
+  rows.forEach(r=>{ const b=r.banName||''; if(!b)return; m.set(b,(m.get(b)||0)+1); if(!imgs.has(b)) imgs.set(b,r.banImg||PLACEHOLDER); });
+  const arr=[...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10);
+  return {labels:arr.map(x=>x[0]), values:arr.map(x=>x[1]), imgs};
 }
 function perfByMap(rows){
   const m=new Map();
   rows.forEach(r=>{ if(!m.has(r.map)) m.set(r.map,{m:0,w:0}); const o=m.get(r.map); o.m++; if(r.res==='W') o.w++; });
-  const arr=[...m.entries()].map(([name,o])=>({name,matches:o.m,wins:o.w,winpct:o.m?o.w/o.m:0})).sort((a,b)=>b.matches-a.matches||a.name.localeCompare(b.name));
-  return arr;
+  return [...m.entries()].map(([name,o])=>({name,matches:o.m,wins:o.w,winpct:o.m?o.w/o.m:0}))
+    .sort((a,b)=>b.matches-a.matches||a.name.localeCompare(b.name));
 }
 function mostPickActive(rows){
-  const m=new Map(); rows.forEach(r=>r.act.forEach(a=>{ if(!a.hero) return; m.set(a.hero,(m.get(a.hero)||0)+1) })); 
-  const arr=[...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10); return {labels:arr.map(x=>x[0]), values:arr.map(x=>x[1])};
+  const m=new Map(); const imgs=new Map();
+  rows.forEach(r=>r.act.forEach(a=>{
+    if(!a.hero) return;
+    m.set(a.hero,(m.get(a.hero)||0)+1);
+    if(!imgs.has(a.hero)) imgs.set(a.hero, a.img||PLACEHOLDER);
+  }));
+  const arr=[...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10);
+  return {labels:arr.map(x=>x[0]), values:arr.map(x=>x[1]), imgs};
 }
 function mostPickPassive(rows){
-  const m=new Map(); rows.forEach(r=>r.pass.forEach(trio=>trio.forEach(ps=>{ if(!ps?.name) return; m.set(ps.name,(m.get(ps.name)||0)+1) })));
-  const arr=[...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10); return {labels:arr.map(x=>x[0]), values:arr.map(x=>x[1])};
+  const m=new Map(); const imgs=new Map();
+  rows.forEach(r=>r.pass.forEach(trio=>trio.forEach(ps=>{
+    if(!ps?.name) return;
+    m.set(ps.name,(m.get(ps.name)||0)+1);
+    if(!imgs.has(ps.name)) imgs.set(ps.name, ps.img||PLACEHOLDER);
+  })));
+  const arr=[...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10);
+  return {labels:arr.map(x=>x[0]), values:arr.map(x=>x[1]), imgs};
 }
+
 function topCombos(rows){
   const combos=new Map();
   rows.forEach(r=>{
     const names=r.act.map(a=>a.hero).filter(Boolean);
     const imgMap=new Map(); r.act.forEach(a=>{ if(a.hero&&!imgMap.has(a.hero)) imgMap.set(a.hero,a.img||PLACEHOLDER); });
-    if(names.length!==4) return; const key=names.slice().sort((a,b)=>a.localeCompare(b)).join('|');
+    if(names.length!==4) return;
+    const key=names.slice().sort((a,b)=>a.localeCompare(b)).join('|');
     if(!combos.has(key)) combos.set(key,{names:key.split('|'), heroImgs: Object.fromEntries([...imgMap]), picks:0,wins:0,maps:new Map()});
     const C=combos.get(key); C.picks++; if(r.res==='W')C.wins++; C.maps.set(r.map,(C.maps.get(r.map)||0)+1);
   });
@@ -355,6 +386,7 @@ function topCombos(rows){
   })).sort((a,b)=>b.picks-a.picks||b.wins-a.wins).slice(0,10);
   return list;
 }
+
 function normalizeTrio(arr){
   const names=(arr||[]).map(x=>x?.name||'').filter(Boolean);
   if(names.length!==3) return null;
@@ -377,39 +409,38 @@ function topPassiveTrios(rows){
   })).sort((a,b)=>b.picks-a.picks||b.wins-a.wins).slice(0,10);
   return list;
 }
+
 function topActives(rows){
-  const S=new Map(); const IMG=new Map(); const MAP=new Map();
+  const S=new Map(); const IMG=new Map();
   rows.forEach(r=>{ r.act.forEach(a=>{
     if(!a.hero) return;
     if(!S.has(a.hero)) S.set(a.hero,{p:0,w:0});
     if(!IMG.has(a.hero)) IMG.set(a.hero, a.img||PLACEHOLDER);
-    if(!MAP.has(a.hero)) MAP.set(a.hero,new Map());
-    const mc=MAP.get(a.hero); mc.set(r.map,(mc.get(r.map)||0)+1);
     const o=S.get(a.hero); o.p++; if(r.res==='W')o.w++;
   })});
   const den=rows.length*4;
-  return [...S.entries()].map(([name,o])=>({name,img:IMG.get(name),mapCounts:MAP.get(name),picks:o.p, pickRate: den?o.p/den:0, wins:o.w, winRate: o.p?o.w/o.p:0}))
+  return [...S.entries()].map(([name,o])=>({name,img:IMG.get(name),picks:o.p, pickRate: den?o.p/den:0, wins:o.w, winRate: o.p?o.w/o.p:0}))
     .sort((a,b)=>b.picks-a.picks||b.wins-a.wins).slice(0,15);
 }
 function topPassives(rows){
-  const S=new Map(); const IMG=new Map(); const MAP=new Map();
+  const S=new Map(); const IMG=new Map();
   rows.forEach(r=>{ r.pass.forEach(trio=>trio.forEach(ps=>{
     if(!ps?.name) return;
     if(!S.has(ps.name)) S.set(ps.name,{p:0,w:0});
     if(!IMG.has(ps.name)) IMG.set(ps.name, ps.img||PLACEHOLDER);
-    if(!MAP.has(ps.name)) MAP.set(ps.name,new Map());
-    const mc=MAP.get(ps.name); mc.set(r.map,(mc.get(r.map)||0)+1);
     const o=S.get(ps.name); o.p++; if(r.res==='W')o.w++;
   }))});
   const den=rows.length*12;
-  return [...S.entries()].map(([name,o])=>({name,img:IMG.get(name),mapCounts:MAP.get(name),picks:o.p, pickRate: den?o.p/den:0, wins:o.w, winRate: o.p?o.w/o.p:0}))
+  return [...S.entries()].map(([name,o])=>({name,img:IMG.get(name),picks:o.p, pickRate: den?o.p/den:0, wins:o.w, winRate: o.p?o.w/o.p:0}))
     .sort((a,b)=>b.picks-a.picks||b.wins-a.wins).slice(0,15);
 }
+
 function perfByOpponent(rows){
   const m=new Map(); rows.forEach(r=>{ if(!m.has(r.opp)) m.set(r.opp,{m:0,w:0}); const o=m.get(r.opp); o.m++; if(r.res==='W')o.w++; });
   return [...m.entries()].map(([opp,o])=>({opp,matches:o.m,wins:o.w,winpct:o.m?o.w/o.m:0}))
     .sort((a,b)=>b.matches-a.matches||a.opp.localeCompare(b.opp)).slice(0,20);
 }
+
 function banImpactAgg(rows){
   const skills=new Map(); const IMG=new Map();
   rows.forEach(r=>{
@@ -428,280 +459,194 @@ function banImpactAgg(rows){
     return {name,img:IMG.get(name)||PLACEHOLDER,banned:S.ban.n, wBan:w1, wNot:w2, delta:w1-w2};
   }).sort((a,b)=>b.delta-a.delta||b.banned-a.banned).slice(0,12);
 }
+
 function recent(rows){
   return rows.slice().sort((a,b)=> (b.date.localeCompare(a.date)) || (b.rec_id-a.rec_id)).slice(0,12);
 }
 
-/* ========= Tooltip indexes ========= */
-let ACTIVE_IDX={}, PASSIVE_IDX={}, BAN_IDX={};
-function topMapsFromCounts(mc, k=3){
-  const arr=[...mc.entries()].sort((a,b)=>b[1]-a[1]);
-  return arr.slice(0,k).map(([m,c])=>`${m} ×${c}`).join(', ') || '—';
-}
-function buildIndexes(rows){
-  ACTIVE_IDX={}; PASSIVE_IDX={}; BAN_IDX={};
-  const A = topActives(rows), P = topPassives(rows), B = banImpactAgg(rows);
-  A.forEach(s=>ACTIVE_IDX[s.name]={...s, topMaps: topMapsFromCounts(s.mapCounts)});
-  P.forEach(s=>PASSIVE_IDX[s.name]={...s, topMaps: topMapsFromCounts(s.mapCounts)});
-  B.forEach(s=>BAN_IDX[s.name]=s);
-}
-
-/* ========= Renderers (tables reuse same DOM as before) ========= */
-function clearSkeleton(id, html){ const el=document.getElementById(id); el.innerHTML=html; }
+/* ========= Renderers ========= */
 function renderKPIs(rows){
   const k=kpis(rows);
-  document.getElementById('kpis').innerHTML = `
+  const el=document.getElementById('kpis');
+  el.innerHTML = `
     <div class="kpi">Matches <b>${k.matches}</b></div>
     <div class="kpi">Wins <b>${k.wins}</b> <span class="muted">(${pct(k.wins,k.matches)})</span></div>
     <div class="kpi">Avg Score Diff <b>${k.diffAvg.toFixed(2)}</b></div>
     <div class="kpi">Maps <b>${k.maps}</b></div>
     <div class="kpi">Opponents <b>${k.opps}</b></div>`;
 }
+
 function renderMostPickAct(rows){
   const {labels, values}=mostPickActive(rows);
   const wrap=document.getElementById('actPickWrap');
-  wrap.classList.remove('skeleton','shimmer');
-  wrap.innerHTML = labels.length ? barH(labels, values, {height: labels.length*18+16, labelW: labelWidthFor(labels)}) : `<div class="muted">No active picks.</div>`;
+  wrap.innerHTML = labels.length ? barH(labels, values, {height: labels.length*18+16}) : `<div class="muted">No active picks.</div>`;
 }
+
 function renderMostPickPas(rows){
   const {labels, values}=mostPickPassive(rows);
   const wrap=document.getElementById('pasPickWrap');
-  wrap.classList.remove('skeleton','shimmer');
-  wrap.innerHTML = labels.length ? barH(labels, values, {height: labels.length*18+16, labelW: labelWidthFor(labels)}) : `<div class="muted">No passive picks.</div>`;
+  wrap.innerHTML = labels.length ? barH(labels, values, {height: labels.length*18+16}) : `<div class="muted">No passive picks.</div>`;
 }
+
 function renderMostBanned(rows){
   const {labels, values}=mostBanned(rows);
   const wrap=document.getElementById('banChartWrap');
-  wrap.classList.remove('skeleton','shimmer');
-  wrap.innerHTML = labels.length ? barH(labels, values, {height: labels.length*18+16, labelW: labelWidthFor(labels)}) : `<div class="muted">No bans recorded for this team.</div>`;
+  wrap.innerHTML = labels.length ? barH(labels, values, {height: labels.length*18+16}) : `<div class="muted">No bans recorded for this team.</div>`;
 }
 function renderPerfByMap(rows){
   const data=perfByMap(rows);
   const wrap=document.getElementById('mapChartWrap');
-  wrap.classList.remove('skeleton','shimmer');
   if(!data.length){ wrap.innerHTML='<div class="muted">No map data.</div>'; return; }
   const labels=data.map(x=>x.name), matches=data.map(x=>x.matches), wins=data.map(x=>x.wins);
-  wrap.innerHTML = groupedBars(labels, matches, wins, {height: labels.length*26+24, labelW: labelWidthFor(labels, 110)});
+  wrap.innerHTML = groupedBars(labels, matches, wins, {height: labels.length*26+24});
 }
+
+function pillsFromMapCount(mapCount){
+  const arr=[...mapCount.entries()].sort((a,b)=>b[1]-a[1]);
+  const shown=arr.slice(0,3).map(([n,c])=>`<span class="pill">${n} ×${c}</span>`).join('');
+  const more=arr.length>3?`<span class="pill">+${arr.length-3} more</span>`:''; return shown+more;
+}
+
 function renderCombos(rows){
   const list=topCombos(rows);
-  const html = `
-    <table><thead><tr><th>Combo (4× Active)</th><th class="right">Picks</th><th class="right">Wins</th><th class="right">Win&nbsp;%</th><th>Top Maps</th></tr></thead>
-    <tbody id="comboBody">
-      ${!list.length?`<tr><td colspan="5" class="muted">No combos found.</td></tr>`:
-        list.map(c=>{
-          const icons = c.names.map(n=>`<img class="avatar js-skill" data-skill="${n}" data-kind="active" src="${(c.heroImgs[n]||PLACEHOLDER)}" alt="${n}" loading="lazy">`).join('');
-          const label = `<div class="cell-icons">${icons}<span class="muted" style="margin-left:6px">${c.names.join(' · ')}</span></div>`;
-          return `<tr><td>${label}</td><td class="right mono">${c.picks}</td><td class="right mono">${c.wins}</td><td class="right mono">${fmtP(c.winpct)}</td><td>${c.topMaps||'—'}</td></tr>`;
-        }).join('')}
-    </tbody></table>`;
-  clearSkeleton('comboWrap', html);
+  const tbody=document.getElementById('comboBody'); tbody.innerHTML='';
+  if(!list.length){ tbody.innerHTML = `<tr><td colspan="5" class="muted">No combos found.</td></tr>`; return; }
+  list.forEach(c=>{
+    const icons = c.names.map(n=>`<img class="avatar" src="${(c.heroImgs[n]||PLACEHOLDER)}" alt="${n}" title="${n}" loading="lazy">`).join('');
+    const label = `<div class="cell-icons">${icons}<span class="muted" style="margin-left:6px">${c.names.join(' · ')}</span></div>`;
+    const tr=document.createElement('tr');
+    tr.innerHTML = `<td>${label}</td><td class="right mono">${c.picks}</td><td class="right mono">${c.wins}</td><td class="right mono">${fmtP(c.winpct)}</td><td>${c.topMaps||'—'}</td>`;
+    tbody.appendChild(tr);
+  });
 }
+
 function renderPTrios(rows){
   const list=topPassiveTrios(rows);
-  const html = `
-    <table><thead><tr><th>Trio (3× Passive)</th><th class="right">Picks</th><th class="right">Wins</th><th class="right">Win&nbsp;%</th><th>Top Maps</th></tr></thead>
-    <tbody id="ptrioBody">
-      ${!list.length?`<tr><td colspan="5" class="muted">No passive trio data.</td></tr>`:
-        list.map(t=>{
-          const icons = t.names.map(n=>`<img class="avatar s js-skill" data-skill="${n}" data-kind="passive" src="${(t.imgs[n]||PLACEHOLDER)}" alt="${n}" loading="lazy">`).join('');
-          const label = `<div class="cell-icons">${icons}<span class="muted" style="margin-left:6px">${t.names.join(' · ')}</span></div>`;
-          return `<tr><td>${label}</td><td class="right mono">${t.picks}</td><td class="right mono">${t.wins}</td><td class="right mono">${fmtP(t.winpct)}</td><td>${t.topMaps||'—'}</td></tr>`;
-        }).join('')}
-    </tbody></table>`;
-  clearSkeleton('ptrioWrap', html);
+  const tb=document.getElementById('ptrioBody'); tb.innerHTML='';
+  if(!list.length){ tb.innerHTML='<tr><td colspan="5" class="muted">No passive trio data.</td></tr>'; return; }
+  list.forEach(t=>{
+    const icons = t.names.map(n=>`<img class="avatar s" src="${(t.imgs[n]||PLACEHOLDER)}" alt="${n}" title="${n}" loading="lazy">`).join('');
+    const label = `<div class="cell-icons">${icons}<span class="muted" style="margin-left:6px">${t.names.join(' · ')}</span></div>`;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${label}</td><td class="right mono">${t.picks}</td><td class="right mono">${t.wins}</td><td class="right mono">${fmtP(t.winpct)}</td><td>${t.topMaps||'—'}</td>`;
+    tb.appendChild(tr);
+  });
 }
+
 function renderTopAct(rows){
-  const list=topActives(rows);
-  const html = `
-    <table><thead><tr><th>Skill</th><th class="right">Picks</th><th class="right">Pick&nbsp;%</th><th class="right">Wins</th><th class="right">Win&nbsp;%</th></tr></thead>
-    <tbody id="actBody">
-      ${!list.length?`<tr><td colspan="5" class="muted">No active picks.</td></tr>`:
-        list.map(r=>{
-          const label=`<div class="cell-skill"><img class="avatar js-skill" data-skill="${r.name}" data-kind="active" src="${r.img||PLACEHOLDER}" alt="${r.name}" loading="lazy"><span>${r.name}</span></div>`;
-          return `<tr><td>${label}</td><td class="right mono">${r.picks}</td><td class="right mono">${fmtP(r.pickRate)}</td><td class="right mono">${r.wins}</td><td class="right mono">${fmtP(r.winRate)}</td></tr>`;
-        }).join('')}
-    </tbody></table>`;
-  clearSkeleton('actWrap', html);
+  const list=topActives(rows); const tb=document.getElementById('actBody'); tb.innerHTML='';
+  if(!list.length){ tb.innerHTML='<tr><td colspan="5" class="muted">No active picks.</td></tr>'; return; }
+  list.forEach(r=>{
+    const label=`<div class="cell-skill"><img class="avatar" src="${r.img||PLACEHOLDER}" alt="${r.name}" loading="lazy"><span>${r.name}</span></div>`;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${label}</td><td class="right mono">${r.picks}</td><td class="right mono">${fmtP(r.pickRate)}</td><td class="right mono">${r.wins}</td><td class="right mono">${fmtP(r.winRate)}</td>`;
+    tb.appendChild(tr);
+  })
 }
 function renderTopPas(rows){
-  const list=topPassives(rows);
-  const html = `
-    <table><thead><tr><th>Skill</th><th class="right">Picks</th><th class="right">Pick&nbsp;%</th><th class="right">Wins</th><th class="right">Win&nbsp;%</th></tr></thead>
-    <tbody id="pasBody">
-      ${!list.length?`<tr><td colspan="5" class="muted">No passive picks.</td></tr>`:
-        list.map(r=>{
-          const label=`<div class="cell-skill"><img class="avatar js-skill" data-skill="${r.name}" data-kind="passive" src="${r.img||PLACEHOLDER}" alt="${r.name}" loading="lazy"><span>${r.name}</span></div>`;
-          return `<tr><td>${label}</td><td class="right mono">${r.picks}</td><td class="right mono">${fmtP(r.pickRate)}</td><td class="right mono">${r.wins}</td><td class="right mono">${fmtP(r.winRate)}</td></tr>`;
-        }).join('')}
-    </tbody></table>`;
-  clearSkeleton('pasWrap', html);
+  const list=topPassives(rows); const tb=document.getElementById('pasBody'); tb.innerHTML='';
+  if(!list.length){ tb.innerHTML='<tr><td colspan="5" class="muted">No passive picks.</td></tr>'; return; }
+  list.forEach(r=>{
+    const label=`<div class="cell-skill"><img class="avatar" src="${r.img||PLACEHOLDER}" alt="${r.name}" loading="lazy"><span>${r.name}</span></div>`;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${label}</td><td class="right mono">${r.picks}</td><td class="right mono">${fmtP(r.pickRate)}</td><td class="right mono">${r.wins}</td><td class="right mono">${fmtP(r.winRate)}</td>`;
+    tb.appendChild(tr);
+  })
 }
+
 function renderOpp(rows){
-  const list=perfByOpponent(rows);
-  const html = `
-    <table><thead><tr><th>Opponent</th><th class="right">Matches</th><th class="right">Wins</th><th class="right">Win&nbsp;%</th></tr></thead>
-    <tbody id="oppBody">
-      ${!list.length?`<tr><td colspan="4" class="muted">No opponent data.</td></tr>`:
-        list.map(r=>`<tr><td>${r.opp}</td><td class="right mono">${r.matches}</td><td class="right mono">${r.wins}</td><td class="right mono">${fmtP(r.winpct)}</td></tr>`).join('')}
-    </tbody></table>`;
-  clearSkeleton('oppWrap', html);
+  const list=perfByOpponent(rows); const tb=document.getElementById('oppBody'); tb.innerHTML='';
+  if(!list.length){ tb.innerHTML='<tr><td colspan="4" class="muted">No opponent data.</td></tr>'; return; }
+  list.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${r.opp}</td><td class="right mono">${r.matches}</td><td class="right mono">${r.wins}</td><td class="right mono">${fmtP(r.winpct)}</td>`;
+    tb.appendChild(tr);
+  })
 }
+
 function renderBanImpact(rows){
-  const list=banImpactAgg(rows);
-  const html = `
-    <table><thead><tr><th>Skill</th><th class="right">Banned</th><th class="right">Win% (banned)</th><th class="right">Win% (not)</th><th class="right">Δ</th></tr></thead>
-    <tbody id="biBody">
-      ${!list.length?`<tr><td colspan="5" class="muted">Not enough ban data.</td></tr>`:
-        list.map(r=>{
-          const label=`<div class="cell-skill"><img class="avatar js-skill" data-skill="${r.name}" data-kind="ban" src="${r.img||PLACEHOLDER}" alt="${r.name}" loading="lazy"><span>${r.name}</span></div>`;
-          return `<tr><td>${label}</td><td class="right mono">${r.banned}</td><td class="right mono">${fmtP(r.wBan)}</td><td class="right mono">${fmtP(r.wNot)}</td><td class="right mono" style="font-weight:700;">${fmtP(r.delta)}</td></tr>`;
-        }).join('')}
-    </tbody></table>`;
-  clearSkeleton('biWrap', html);
+  const list=banImpactAgg(rows); const tb=document.getElementById('biBody'); tb.innerHTML='';
+  if(!list.length){ tb.innerHTML='<tr><td colspan="5" class="muted">Not enough ban data.</td></tr>'; return; }
+  list.forEach(r=>{
+    const label=`<div class="cell-skill"><img class="avatar" src="${r.img||PLACEHOLDER}" alt="${r.name}" loading="lazy"><span>${r.name}</span></div>`;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${label}</td><td class="right mono">${r.banned}</td><td class="right mono">${fmtP(r.wBan)}</td><td class="right mono">${fmtP(r.wNot)}</td><td class="right mono" style="font-weight:700;">${fmtP(r.delta)}</td>`;
+    tb.appendChild(tr);
+  })
 }
+
 function renderRecent(rows){
-  const list=recent(rows);
-  const html = `
-    <table><thead><tr><th>Date</th><th>Map</th><th>Opponent</th><th class="right">Score</th><th class="right">Res</th><th>Ban</th></tr></thead>
-    <tbody id="recentBody">
-      ${!list.length?`<tr><td colspan="6" class="muted">No recent matches.</td></tr>`:
-        list.map(r=>{
-          const score=`${r.ts}-${r.os}`;
-          const wl=r.res==='W'?`<span style="color:var(--good);font-weight:700">W</span>`:`<span style="color:var(--bad);font-weight:700">L</span>`;
-          return `<tr>
-            <td>${r.date}</td><td>${r.map}</td><td>${r.opp}</td>
-            <td class="right mono">${score}</td><td class="right">${wl}</td>
-            <td class="cell-skill"><img class="avatar js-skill" data-skill="${r.banName}" data-kind="ban" src="${r.banImg||PLACEHOLDER}" alt="${r.banName}" loading="lazy"><span>${r.banName||'—'}</span></td>
-          </tr>`;
-        }).join('')}
-    </tbody></table>`;
-  clearSkeleton('recentWrap', html);
+  const list=recent(rows); const tb=document.getElementById('recentBody'); tb.innerHTML='';
+  if(!list.length){ tb.innerHTML='<tr><td colspan="6" class="muted">No recent matches.</td></tr>'; return; }
+  list.forEach(r=>{
+    const score=`${r.ts}-${r.os}`;
+    const wl=r.res==='W'?`<span style="color:var(--good);font-weight:700">W</span>`:`<span style="color:var(--bad);font-weight:700">L</span>`;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${r.date}</td><td>${r.map}</td><td>${r.opp}</td><td class="right mono">${score}</td><td class="right">${wl}</td><td class="cell-skill"><img class="avatar" src="${r.banImg||PLACEHOLDER}" alt="${r.banName}" loading="lazy"><span>${r.banName||'—'}</span></td>`;
+    tb.appendChild(tr);
+  })
 }
 
-/* ========= Tooltip logic ========= */
-const tip = document.getElementById('skillTip');
-const tipImg = tip.querySelector('.hdr img');
-const tipName = tip.querySelector('.hdr .name');
-const tipTag = tip.querySelector('.hdr .tag');
-const tipKV  = tip.querySelector('.kv');
-function showTip({img,name,tag,rows}){ tipImg.src=img||PLACEHOLDER; tipName.textContent=name||''; tipTag.textContent=tag||''; tipKV.innerHTML=rows.map(r=>`<div>${r[0]}</div><div>${r[1]}</div>`).join(''); tip.classList.add('show'); }
-function hideTip(){ tip.classList.remove('show'); }
-function moveTip(x,y){ const pad=12; const rect = tip.getBoundingClientRect(); const vw = innerWidth, vh = innerHeight; let left = x + pad, top = y + pad; if(left + rect.width > vw - 8) left = x - rect.width - pad; if(top + rect.height > vh - 8) top = y - rect.height - pad; tip.style.left = left + 'px'; tip.style.top  = top + 'px'; }
-function bindTooltipHandlers(){
-  document.addEventListener('mousemove', (e)=>{
-    const el = e.target.closest('.js-skill'); if(!el){ hideTip(); return; }
-    const name = el.dataset.skill; const kind = el.dataset.kind;
-    let data, rows, tag;
-    if(kind==='active'){ data=ACTIVE_IDX[name]; if(!data){ hideTip(); return; }
-      rows=[['Picks',data.picks],['Pick %',fmtP(data.pickRate||0)],['Wins',data.wins],['Win %',fmtP(data.winRate||0)],['Top maps',data.topMaps||'—']]; tag='Active'; showTip({img:data.img,name,tag,rows});
-    }else if(kind==='passive'){ data=PASSIVE_IDX[name]; if(!data){ hideTip(); return; }
-      rows=[['Picks',data.picks],['Pick %',fmtP(data.pickRate||0)],['Wins',data.wins],['Win %',fmtP(data.winRate||0)],['Top maps',data.topMaps||'—']]; tag='Passive'; showTip({img:data.img,name,tag,rows});
-    }else if(kind==='ban'){ data=BAN_IDX[name]; if(!data || !name){ hideTip(); return; }
-      rows=[['Banned',data.banned],['Win% (banned)',fmtP(data.wBan||0)],['Win% (not)',fmtP(data.wNot||0)],['Δ Win %',fmtP(data.delta||0)]]; tag='Ban'; showTip({img:data.img||el.src,name:name||'—',tag,rows});
-    }
-    moveTip(e.clientX, e.clientY);
-  });
-  document.addEventListener('mouseleave', hideTip, true);
-}
-
-/* ========= Orchestrator with fast-first-paint ========= */
+/* ========= Orchestrator ========= */
 async function init(){
-  bindTooltipHandlers();
+  ALL_RECORDS = await fetchAll();
 
-  // Show a gentle "loading…" hint if slow
-  const meta = document.getElementById('meta');
-  const slowTimer = setTimeout(()=> meta.textContent = 'Loading… (fetching latest tournament)', 600);
-
-  // 1) Find latest tournament quickly
-  LATEST_TOURN = await fetchLatestTournamentName();
-
-  // 2) Fetch its records and render immediately
-  const latestRecords = await fetchRecordsForTournament(LATEST_TOURN);
-  clearTimeout(slowTimer);
-
-  // Populate tournament select (using a quick recent window)
+  // Tournament dropdown (default to latest)
+  const tourns = tournamentsFrom(ALL_RECORDS);
   const tSel = document.getElementById('tournSelect');
-  const tourns = await fetchTournamentList(600);
   tSel.innerHTML = `<option value="__ALL__">All tournaments</option>` +
-                   tourns.map(t=>`<option value="${t}">${t}</option>`).join('');
-  tSel.value = LATEST_TOURN || '__ALL__';
+                   tourns.map(t=>`<option value="${t.name}">${t.name}</option>`).join('');
+  const latest = tourns[0]?.name || '__ALL__';
+  tSel.value = latest;
 
-  // Team select derived from the currently loaded tournament only (fast)
+  // Teams for selected tournament
   const teamSel = document.getElementById('teamSelect');
-  const setTeams = (records)=>{
-    const teams = teamsForRecords(records);
+  const refreshTeams = ()=>{
+    const teams = teamsForTournament(ALL_RECORDS, tSel.value);
     const prev = teamSel.value;
     teamSel.innerHTML = teams.map(x=>`<option value="${x}">${x}</option>`).join('');
     teamSel.value = teams.includes(prev) ? prev : (teams[0]||'');
   };
-  setTeams(latestRecords);
+  refreshTeams();
 
-  // Render the latest tournament instantly (pick first team by default)
-  const renderTournament = async (tourn, team)=>{
-    meta.textContent = `Loading ${tourn}…`;
-    await rafYield(); // yield to paint
+  // Load initial team
+  const load = ()=> loadTeam(teamSel.value, tSel.value);
+  tSel.addEventListener('change', ()=>{ refreshTeams(); load(); });
+  teamSel.addEventListener('change', load);
+  load();
+}
 
-    const recs = await fetchRecordsForTournament(tourn);
-    setTeams(recs); // adjust team list for this tournament
-    const chosenTeam = teamSel.value || team;
-
-    // Build team rows & analytics
-    const rows = rowsForTeam(recs, chosenTeam);
-    meta.textContent = `${chosenTeam} • ${rows.length} team-rows • ${tourn==='__ALL__'?'All tournaments':tourn}`;
-
-    // Build tooltip indexes first (so hover is ready)
-    buildIndexes(rows);
-
-    // Render in chunks to keep UI responsive
-    renderKPIs(rows);
-    await rafYield();
-    renderMostPickAct(rows);
-    renderMostPickPas(rows);
-    renderMostBanned(rows);
-    renderPerfByMap(rows);
-    await rafYield();
-    renderCombos(rows);
-    renderPTrios(rows);
-    await rafYield();
-    renderTopAct(rows);
-    renderTopPas(rows);
-    await rafYield();
-    renderOpp(rows);
-    renderBanImpact(rows);
-    renderRecent(rows);
-  };
-
-  // initial paint
-  await renderTournament(LATEST_TOURN, teamSel.value);
-
-  // change handlers
-  tSel.addEventListener('change', async ()=>{
-    await renderTournament(tSel.value, teamSel.value);
+function setMeta(team, tourn, rows){
+  const tourns = new Set();
+  ALL_RECORDS.forEach(r=>{
+    if(r.team_left===team || r.team_right===team) tourns.add(r.tournament_name||'—');
   });
-  teamSel.addEventListener('change', async ()=>{
-    const tourn = tSel.value;
-    const recs = await fetchRecordsForTournament(tourn);
-    const rows = rowsForTeam(recs, teamSel.value);
-    meta.textContent = `${teamSel.value} • ${rows.length} team-rows • ${tourn==='__ALL__'?'All tournaments':tourn}`;
-    buildIndexes(rows);
-    renderKPIs(rows);
-    renderMostPickAct(rows); renderMostPickPas(rows); renderMostBanned(rows); renderPerfByMap(rows);
-    renderCombos(rows); renderPTrios(rows);
-    renderTopAct(rows); renderTopPas(rows);
-    renderOpp(rows); renderBanImpact(rows); renderRecent(rows);
-  });
+  document.getElementById('meta').textContent =
+    `${team} • ${rows.length} team-rows • ${tourn==='__ALL__'?'All tournaments':tourn}`;
+}
+
+function loadTeam(team, tourn){
+  const rows = rowsForTeamAndTournament(ALL_RECORDS, team, tourn);
+  setMeta(team, tourn, rows);
+
+  renderKPIs(rows);
+  renderMostPickAct(rows);
+  renderMostPickPas(rows);
+  renderMostBanned(rows);
+  renderPerfByMap(rows);
+
+  renderCombos(rows);
+  renderPTrios(rows);
+
+  renderTopAct(rows);
+  renderTopPas(rows);
+
+  renderOpp(rows);
+  renderBanImpact(rows);
+  renderRecent(rows);
 }
 
 init();
-
-/* ======= Pro tips for DB speed (optional, run once in Supabase SQL editor) =======
--- CREATE INDEX idx_draft_records_tournament_date ON draft_records (tournament_name, match_date DESC);
--- CREATE INDEX idx_draft_records_match_date ON draft_records (match_date DESC);
--- CREATE INDEX idx_draft_records_team_left ON draft_records (team_left);
--- CREATE INDEX idx_draft_records_team_right ON draft_records (team_right);
-These speed up the exact filters used above.
-=============================================================================== */
 </script>
 </body>
 </html>
