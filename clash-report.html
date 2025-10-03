@@ -15,7 +15,12 @@
     body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
     header{position:sticky;top:0;z-index:5;background:#1a1a1a;border-bottom:2px solid var(--brand);padding:10px 12px}
     h1{margin:0;font-size:1.05rem;color:var(--brand);letter-spacing:.2px}
-    .shell{max-width:1200px;margin:14px auto;padding:0 10px}
+    .shell{
+      /* was: max-width:1200px */
+      max-width: min(1600px, 98vw);
+      margin:14px auto;
+      padding:0 10px;
+    }
 
     /* Controls */
     .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
@@ -23,10 +28,16 @@
     .chip{color:var(--muted);font-size:.82rem}
 
     /* Grid layout */
-    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:8px}
-    .card{grid-column:span 6;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;min-height:110px}
-    .card.s{grid-column:span 4}
-    .card.l{grid-column:span 12}
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(12, minmax(0,1fr));
+      gap:8px;
+      grid-auto-flow:dense; /* 👈 lets later items fill empty space */
+    }
+    /* card spans */
+    .card{grid-column:span 6;}   /* 1/2 width default */
+    .card.s{grid-column:span 6;} /* was 4; now 1/2 width so two fill the row */
+    .card.l{grid-column:span 12;}
     .card h3{margin:0 0 6px 0;color:var(--brand2);font-size:.95rem}
 
     /* KPI row */
@@ -54,6 +65,13 @@
     @media (max-width: 980px){
       .card{grid-column:span 12}
       .card.s{grid-column:span 12}
+    }
+
+    @media (min-width: 1600px){
+      .grid{ grid-template-columns: repeat(16, minmax(0,1fr)); }
+      .card{grid-column: span 8;}   /* half of 16 */
+      .card.s{grid-column: span 4;} /* quarter of 16 for true 3-up micros */
+      .card.l{grid-column: span 16;}
     }
   </style>
 </head>
@@ -162,38 +180,45 @@ function parseState(v){if(!v) return {}; if (typeof v==='object') return v; try{
 
 /* ========= Micro SVGs (all vector = no blur) ========= */
 function barH(labels, values, opts={}){
-  const W = opts.width||360, H = opts.height||Math.max(40, labels.length*16+8);
-  const pad=6, row=14, gap=2; const max=Math.max(1, ...values);
-  const bw = (w)=> Math.max(1, (w/max)*(W-120));
+  const W = opts.width || 360;
+  const labelW = 96;            // was 110 — tighter
+  const pad = 4, row = 12, gap = 2;
+  const H = Math.max(36, labels.length*(row+gap) + pad*2);
+  const max = Math.max(1, ...values);
+  const scale = (v)=> Math.max(1, (v/max)*(W - labelW - 18));
+
   const svg = [`<svg class="chart" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" shape-rendering="crispEdges">`];
   labels.forEach((lb,i)=>{
-    const y=pad + i*(row+gap);
-    const w=bw(values[i]);
-    svg.push(`<text x="2" y="${y+10}" font-size="10" fill="#ddd">${lb}</text>`);
-    svg.push(`<rect x="110" y="${y}" width="${w}" height="${row}" fill="#ffbd59" stroke="#6a4e23" vector-effect="non-scaling-stroke"/>`);
-    svg.push(`<text x="${110+w+4}" y="${y+10}" font-size="10" fill="#ccc" class="mono">${values[i]}</text>`);
+    const y = pad + i*(row+gap);
+    const w = scale(values[i]);
+    svg.push(`<text x="2" y="${y+9}" font-size="10" fill="#ddd">${lb}</text>`);
+    svg.push(`<rect x="${labelW}" y="${y}" width="${w}" height="${row}" fill="#ffbd59" stroke="#6a4e23" vector-effect="non-scaling-stroke"/>`);
+    svg.push(`<text x="${labelW + w + 4}" y="${y+9}" font-size="10" fill="#ccc" class="mono">${values[i]}</text>`);
   });
-  svg.push('</svg>');
+  svg.push(`</svg>`);
   return svg.join('');
 }
 
 function groupedBars(labels, aVals, bVals, opts={}){
-  const W = opts.width||380, row=12, gap=3, grpGap=6; const pad=8;
-  const H = Math.max(40, labels.length*(row+gap)+pad*2 + labels.length*grpGap);
+  const W = opts.width || 380;
+  const labelW = 96;            // was 110 — tighter
+  const pad = 6, row = 11, gap = 2, grpGap = 5;
+  const H = Math.max(36, labels.length*(row+gap) + labels.length*grpGap + pad*2);
   const max = Math.max(1, ...aVals, ...bVals);
-  const scale=(v)=> Math.max(1, (v/max)*(W-140));
-  const svg=[`<svg class="chart" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" shape-rendering="crispEdges">`];
-  let y=pad;
-  labels.forEach((lb,i)=>{
-    const a=scale(aVals[i]), b=scale(bVals[i]);
-    svg.push(`<text x="2" y="${y+10}" font-size="10" fill="#ddd">${lb}</text>`);
-    svg.push(`<rect x="110" y="${y}" width="${a}" height="${row}" fill="#ffbd59" stroke="#6a4e23" vector-effect="non-scaling-stroke"/>`);
-    y+=row+gap;
-    svg.push(`<rect x="110" y="${y}" width="${b}" height="${row}" fill="#4aa86a" stroke="#2c5a3a" vector-effect="non-scaling-stroke"/>`);
-    svg.push(`<text x="${110+Math.max(a,b)+4}" y="${y-3}" font-size="9" fill="#bbb" class="mono">${aVals[i]}/${bVals[i]}</text>`);
-    y+=row+grpGap;
+  const scale = (v)=> Math.max(1, (v/max)*(W - labelW - 20));
+
+  const svg = [`<svg class="chart" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" shape-rendering="crispEdges">`];
+  let y = pad;
+  labels.forEach((lb, i)=>{
+    const a = scale(aVals[i]), b = scale(bVals[i]);
+    svg.push(`<text x="2" y="${y+9}" font-size="10" fill="#ddd">${lb}</text>`);
+    svg.push(`<rect x="${labelW}" y="${y}" width="${a}" height="${row}" fill="#ffbd59" stroke="#6a4e23" vector-effect="non-scaling-stroke"/>`);
+    y += row + gap;
+    svg.push(`<rect x="${labelW}" y="${y}" width="${b}" height="${row}" fill="#4aa86a" stroke="#2c5a3a" vector-effect="non-scaling-stroke"/>`);
+    svg.push(`<text x="${labelW + Math.max(a,b) + 4}" y="${y-3}" font-size="9" fill="#bbb" class="mono">${aVals[i]}/${bVals[i]}</text>`);
+    y += row + grpGap;
   });
-  svg.push('</svg>');
+  svg.push(`</svg>`);
   return svg.join('');
 }
 
