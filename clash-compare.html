@@ -132,24 +132,32 @@
     </div>
   </div>
 
-<!-- PER-SKILL — ACTIVE (COMPRESSED) -->
-<div class="section">
-  <h2>Per-Skill — Active</h2>
-  <div class="grid2">
-    <div class="card"><h3 id="labelPSA_Act">Team A</h3><div id="psAAct">Loading…</div></div>
-    <div class="card"><h3 id="labelPSB_Act">Team B</h3><div id="psBAct">Loading…</div></div>
+  <!-- PERFORMANCE BY OPPONENT (Series + per-map rows) -->
+  <div class="section">
+    <h2>Performance by Opponent (Series)</h2>
+    <div class="grid2">
+      <div class="card"><h3 id="labelOppA">Team A</h3><div id="oppSeriesA">Loading…</div></div>
+      <div class="card"><h3 id="labelOppB">Team B</h3><div id="oppSeriesB">Loading…</div></div>
+    </div>
   </div>
-</div>
 
-<!-- PER-SKILL — PASSIVE (COMPRESSED) -->
-<div class="section">
-  <h2>Per-Skill — Passive</h2>
-  <div class="grid2">
-    <div class="card"><h3 id="labelPSA_Pas">Team A</h3><div id="psAPas">Loading…</div></div>
-    <div class="card"><h3 id="labelPSB_Pas">Team B</h3><div id="psBPas">Loading…</div></div>
+  <!-- PER-SKILL — ACTIVE (COMPRESSED) -->
+  <div class="section">
+    <h2>Per-Skill — Active</h2>
+    <div class="grid2">
+      <div class="card"><h3 id="labelPSA_Act">Team A</h3><div id="psAAct">Loading…</div></div>
+      <div class="card"><h3 id="labelPSB_Act">Team B</h3><div id="psBAct">Loading…</div></div>
+    </div>
   </div>
-</div>
 
+  <!-- PER-SKILL — PASSIVE (COMPRESSED) -->
+  <div class="section">
+    <h2>Per-Skill — Passive</h2>
+    <div class="grid2">
+      <div class="card"><h3 id="labelPSA_Pas">Team A</h3><div id="psAPas">Loading…</div></div>
+      <div class="card"><h3 id="labelPSB_Pas">Team B</h3><div id="psBPas">Loading…</div></div>
+    </div>
+  </div>
 
   <!-- COMBOS & PAIRS -->
   <div class="section">
@@ -305,9 +313,18 @@ function explodeRecordToRows(rec){
       return { player, trio: trioObjs.slice(0,3) };
     });
 
-    return { rec_id:rec.id, match_date:rec.match_date, game_number:rec.game_number, map:rec.map,
-             team, opponent:opp, team_score:ts, opp_score:os, result:res, banName:ban,
-             actives, passives:passiveLines };
+    return {
+      rec_id:rec.id,
+      match_date:rec.match_date,
+      game_number:rec.game_number,
+      map:rec.map,
+      tournament: rec.tournament_name || '—',   // NEW
+      team, opponent:opp, team_score:ts, opp_score:os, result:res,
+      banName: ban,
+      banImg : banObj?.image_url || PLACEHOLDER, // NEW
+      actives,
+      passives:passiveLines
+    };
   }
   return [sideRow('L'), sideRow('R')];
 }
@@ -410,8 +427,7 @@ function teamMapStats(rows){
 
 function perSkillActiveCompressed(rows, limit=12){
   if (!rows.length) return `<div class="muted">No rows.</div>`;
-  // Count active picks & wins per skill
-  const map = new Map(); // name -> {p: picks, w: wins}
+  const map = new Map(); // name -> {p, w}
   rows.forEach(r=>{
     r.actives.forEach(a=>{
       if (!a.hero) return;
@@ -420,7 +436,7 @@ function perSkillActiveCompressed(rows, limit=12){
       map.set(a.hero, obj);
     });
   });
-  const den = rows.length * 4; // 4 active slots per team-row
+  const den = rows.length * 4;
   const list = [...map.entries()].map(([name,v])=>{
     const winRate = v.p ? v.w/v.p : null;
     return { name, picks:v.p, wins:v.w, winRate, rate: den ? v.p/den : 0 };
@@ -445,8 +461,7 @@ function perSkillActiveCompressed(rows, limit=12){
 
 function perSkillPassiveCompressed(rows, limit=12){
   if (!rows.length) return `<div class="muted">No rows.</div>`;
-  // Count passive picks & wins per passive skill name
-  const map = new Map(); // name -> {p: picks, w: wins}
+  const map = new Map(); // name -> {p, w}
   rows.forEach(r=>{
     r.passives.forEach(p=>{
       (p.trio||[]).forEach(ps=>{
@@ -457,7 +472,7 @@ function perSkillPassiveCompressed(rows, limit=12){
       });
     });
   });
-  const den = rows.length * 12; // 12 passive slots per team-row
+  const den = rows.length * 12;
   const list = [...map.entries()].map(([name,v])=>{
     const winRate = v.p ? v.w/v.p : null;
     return { name, picks:v.p, wins:v.w, winRate, rate: den ? v.p/den : 0 };
@@ -479,7 +494,6 @@ function perSkillPassiveCompressed(rows, limit=12){
       </table>`
     : `<div class="muted">No passive skills.</div>`;
 }
-
 
 /* Combos (4× active) and Pairs (2× active) */
 function buildCombos(rows){
@@ -520,7 +534,7 @@ function tableCombos(list, title, limit=5){
     </table>`;
 }
 
-/* Passive trios overall (ignore which active; aggregate the trio names) */
+/* Passive trios overall */
 function buildTrios(rows){
   const tri = new Map(); // key "a|b|c"
   rows.forEach(r=>{
@@ -568,7 +582,6 @@ function banImpactTable(rows, limit=10){
       const S = skills.get(banned); S.ban.n += 1; if (r.result==='W') S.ban.w += 1;
     }
   });
-  // baseline across other matches
   const rowsBySkill = Object.fromEntries([...skills.keys()].map(k=>[k,{n:0,w:0}]));
   rows.forEach(r=>{
     const win = r.result==='W' ? 1 : 0;
@@ -605,13 +618,90 @@ function banImpactTable(rows, limit=10){
     </table>`;
 }
 
+/* ======== Performance by Opponent (Series table like Recent Matches) ======== */
+function buildOpponentSeriesRows(rows){
+  if(!rows.length) return [];
+  const keyOf = (r)=>{
+    const d = new Date(r.match_date);
+    const day = d.toISOString().slice(0,10);
+    return `${r.tournament}|${r.opponent}|${day}`;
+  };
+  const series = new Map();
+
+  rows.forEach(r=>{
+    const k = keyOf(r);
+    if(!series.has(k)){
+      series.set(k, { opponent:r.opponent, tournament:r.tournament||'—', date:new Date(r.match_date), games:[] });
+    }
+    series.get(k).games.push({
+      game_number: r.game_number ?? 0,
+      map: r.map,
+      mapScore: `${r.team_score}-${r.opp_score}`,
+      result: r.result,
+      banName: r.banName || '',
+      banImg: r.banImg || PLACEHOLDER
+    });
+  });
+
+  const flat = [];
+  for(const s of series.values()){
+    s.games.sort((a,b)=>(a.game_number)-(b.game_number));
+    const w = s.games.filter(g=>g.result==='W').length;
+    const l = s.games.length - w;
+    const seriesScore = `${w}-${l}`;
+    s.games.forEach(g=>{
+      flat.push({
+        opponent: s.opponent,
+        seriesScore,
+        map: g.map,
+        mapScore: g.mapScore,
+        banName: g.banName,
+        banImg: g.banImg,
+        date: s.date
+      });
+    });
+  }
+  return flat.sort((a,b)=> b.date - a.date);
+}
+
+function opponentSeriesTable(rows, limit=30){
+  const list = buildOpponentSeriesRows(rows).slice(0, limit);
+  if(!list.length) return `<div class="muted">No opponent series for selection.</div>`;
+  return `
+    <table>
+      <thead>
+        <tr><th>Opponent</th><th class="right">Series</th><th>Map</th><th class="right">Map score</th><th>Banned skills</th></tr>
+      </thead>
+      <tbody>
+        ${list.map(r=>`
+          <tr>
+            <td>${r.opponent}</td>
+            <td class="right mono">${r.seriesScore}</td>
+            <td>${r.map||'—'}</td>
+            <td class="right mono">${r.mapScore||'—'}</td>
+            <td>
+              <div class="icons">
+                <img src="${r.banImg||PLACEHOLDER}" alt="${r.banName||''}" title="${r.banName||''}">
+                <span class="muted tight">${r.banName||'—'}</span>
+              </div>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+}
+
 /* ========= Render ========= */
 function renderAll(){
   const a = el('cmpTeamA').value, b = el('cmpTeamB').value;
   if (!a || !b || a===b){
     el('meta').textContent = 'Pick two different teams.';
-    ['kpiA','kpiB','activeA','activeB','passiveA','passiveB','bansA','bansB','tmA','tmB','psA','psB','combosA','combosB','pairsA','pairsB','triosA','triosB','biA','biB']
-      .forEach(id=>{ el(id).innerHTML = '<div class="muted">—</div>'; });
+    [
+      'kpiA','kpiB','activeA','activeB','passiveA','passiveB','bansA','bansB',
+      'tmA','tmB','psAAct','psBAct','psAPas','psBPas',
+      'combosA','combosB','pairsA','pairsB','triosA','triosB','biA','biB',
+      'oppSeriesA','oppSeriesB'
+    ].forEach(id=>{ el(id).innerHTML = '<div class="muted">—</div>'; });
     return;
   }
 
@@ -655,12 +745,17 @@ function renderAll(){
   el('tmA').innerHTML = teamMapStats(rowsA);
   el('tmB').innerHTML = teamMapStats(rowsB);
 
-  // NEW — Active compressed
+  // Performance by Opponent (series + map rows)
+  el('labelOppA').textContent = a;
+  el('labelOppB').textContent = b;
+  el('oppSeriesA').innerHTML = opponentSeriesTable(rowsA, 30);
+  el('oppSeriesB').innerHTML = opponentSeriesTable(rowsB, 30);
+
+  // Per-Skill compressed
   el('labelPSA_Act').textContent = a; el('labelPSB_Act').textContent = b;
   el('psAAct').innerHTML = perSkillActiveCompressed(rowsA, 12);
   el('psBAct').innerHTML = perSkillActiveCompressed(rowsB, 12);
-  
-  // NEW — Passive compressed
+
   el('labelPSA_Pas').textContent = a; el('labelPSB_Pas').textContent = b;
   el('psAPas').innerHTML = perSkillPassiveCompressed(rowsA, 12);
   el('psBPas').innerHTML = perSkillPassiveCompressed(rowsB, 12);
@@ -687,10 +782,7 @@ function renderAll(){
 /* ========= Refresh flow ========= */
 async function refresh(){
   RAW_RECORDS = await fetchRecords();
-
-  // (re)populate tourn dropdown to last seen tournament
   await populateTournamentDropdown(RAW_RECORDS);
-
   populateTeamDropdowns(RAW_RECORDS);
   renderAll();
 }
