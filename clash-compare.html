@@ -637,7 +637,7 @@ function buildOpponentSeriesRows(rows){
       game_number: r.game_number ?? 0,
       map: r.map,
       mapScore: `${r.team_score}-${r.opp_score}`,
-      result: r.result,
+      result: r.result,                   // <-- keep result per map
       banName: r.banName || '',
       banImg: r.banImg || PLACEHOLDER
     });
@@ -655,6 +655,7 @@ function buildOpponentSeriesRows(rows){
         seriesScore,
         map: g.map,
         mapScore: g.mapScore,
+        result: g.result,                 // <-- include here
         banName: g.banName,
         banImg: g.banImg,
         date: s.date
@@ -662,6 +663,41 @@ function buildOpponentSeriesRows(rows){
     });
   }
   return flat.sort((a,b)=> b.date - a.date);
+}
+
+function opponentSeriesTable(rows, limit=30){
+  const list = buildOpponentSeriesRows(rows).slice(0, limit);
+  if(!list.length) return `<div class="muted">No opponent series for selection.</div>`;
+  return `
+    <table>
+      <thead>
+        <tr>
+          <th>Opponent</th>
+          <th class="right">Series</th>
+          <th>Map</th>
+          <th class="right">Map score</th>
+          <th class="right">Res</th>           <!-- NEW -->
+          <th>Banned skills</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${list.map(r=>`
+          <tr>
+            <td>${r.opponent}</td>
+            <td class="right mono">${r.seriesScore}</td>
+            <td>${r.map||'—'}</td>
+            <td class="right mono">${r.mapScore||'—'}</td>
+            <td class="right"><span class="wl ${r.result}">${r.result}</span></td>  <!-- NEW -->
+            <td>
+              <div class="icons">
+                <img src="${r.banImg||PLACEHOLDER}" alt="${r.banName||''}" title="${r.banName||''}">
+                <span class="muted tight">${r.banName||'—'}</span>
+              </div>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
 }
 
 function opponentSeriesTable(rows, limit=30){
