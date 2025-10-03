@@ -132,14 +132,24 @@
     </div>
   </div>
 
-  <!-- PER-SKILL (COMPRESSED) -->
-  <div class="section">
-    <h2>Per-Skill (Compressed)</h2>
-    <div class="grid2">
-      <div class="card"><h3 id="labelPSA">Team A</h3><div id="psA">Loading…</div></div>
-      <div class="card"><h3 id="labelPSB">Team B</h3><div id="psB">Loading…</div></div>
-    </div>
+<!-- PER-SKILL — ACTIVE (COMPRESSED) -->
+<div class="section">
+  <h2>Per-Skill — Active</h2>
+  <div class="grid2">
+    <div class="card"><h3 id="labelPSA_Act">Team A</h3><div id="psAAct">Loading…</div></div>
+    <div class="card"><h3 id="labelPSB_Act">Team B</h3><div id="psBAct">Loading…</div></div>
   </div>
+</div>
+
+<!-- PER-SKILL — PASSIVE (COMPRESSED) -->
+<div class="section">
+  <h2>Per-Skill — Passive</h2>
+  <div class="grid2">
+    <div class="card"><h3 id="labelPSA_Pas">Team A</h3><div id="psAPas">Loading…</div></div>
+    <div class="card"><h3 id="labelPSB_Pas">Team B</h3><div id="psBPas">Loading…</div></div>
+  </div>
+</div>
+
 
   <!-- COMBOS & PAIRS -->
   <div class="section">
@@ -398,54 +408,78 @@ function teamMapStats(rows){
     </table>`;
 }
 
-function perSkillCompressed(rows, limit=12){
+function perSkillActiveCompressed(rows, limit=12){
   if (!rows.length) return `<div class="muted">No rows.</div>`;
-  // Count active & passive & wins per skill name separately
-  const S = new Map(); // name -> {type:'A'|'P', picks, wins}
+  // Count active picks & wins per skill
+  const map = new Map(); // name -> {p: picks, w: wins}
   rows.forEach(r=>{
     r.actives.forEach(a=>{
       if (!a.hero) return;
-      const key = 'A|'+a.hero; const k2 = a.hero;
-      const obj = S.get(k2) || { A:{p:0,w:0}, P:{p:0,w:0} };
-      obj.A.p += 1; if (r.result==='W') obj.A.w += 1; S.set(k2,obj);
-    });
-    r.passives.forEach(p=>{
-      (p.trio||[]).forEach(ps=>{
-        if (!ps?.name) return;
-        const k2 = ps.name;
-        const obj = S.get(k2) || { A:{p:0,w:0}, P:{p:0,w:0} };
-        obj.P.p += 1; if (r.result==='W') obj.P.w += 1; S.set(k2,obj);
-      });
+      const obj = map.get(a.hero) || {p:0,w:0};
+      obj.p += 1; if (r.result==='W') obj.w += 1;
+      map.set(a.hero, obj);
     });
   });
-  const denA = rows.length * 4, denP = rows.length * 12;
-  const list = [...S.entries()].map(([name,v])=>{
-    const picks = v.A.p + v.P.p;
-    const wins  = v.A.w + v.P.w;
-    const winRate = picks? wins/picks : null;
-    const rate = (v.A.p/denA) + (v.P.p/denP); // rough combined rate score
-    return { name, picks, wins, winRate, a:v.A, p:v.P, score:rate };
-  }).sort((a,b)=> b.score - a.score || (b.winRate||0) - (a.winRate||0) || a.name.localeCompare(b.name)).slice(0, limit);
+  const den = rows.length * 4; // 4 active slots per team-row
+  const list = [...map.entries()].map(([name,v])=>{
+    const winRate = v.p ? v.w/v.p : null;
+    return { name, picks:v.p, wins:v.w, winRate, rate: den ? v.p/den : 0 };
+  }).sort((a,b)=> b.rate - a.rate || (b.winRate||0)-(a.winRate||0) || a.name.localeCompare(b.name))
+    .slice(0, limit);
 
-  return `
-    <table>
-      <thead><tr>
-        <th>Skill</th><th class="right">Picks</th><th class="right">Wins</th><th class="right">Win %</th>
-        <th class="right">A Picks</th><th class="right">P Picks</th>
-      </tr></thead>
-      <tbody>
-        ${list.map(r=>`
-          <tr>
+  return list.length
+    ? `<table>
+        <thead><tr><th>Skill</th><th class="right">Picks</th><th class="right">Wins</th><th class="right">Win %</th><th class="right">Pick %</th></tr></thead>
+        <tbody>
+          ${list.map(r=>`<tr>
             <td>${r.name}</td>
             <td class="right">${r.picks}</td>
             <td class="right">${r.wins}</td>
             <td class="right">${r.winRate===null?'—':fmtPct(r.winRate)}</td>
-            <td class="right">${r.a.p}</td>
-            <td class="right">${r.p.p}</td>
+            <td class="right">${pct(r.picks, den)}</td>
           </tr>`).join('')}
-      </tbody>
-    </table>`;
+        </tbody>
+      </table>`
+    : `<div class="muted">No active skills.</div>`;
 }
+
+function perSkillPassiveCompressed(rows, limit=12){
+  if (!rows.length) return `<div class="muted">No rows.</div>`;
+  // Count passive picks & wins per passive skill name
+  const map = new Map(); // name -> {p: picks, w: wins}
+  rows.forEach(r=>{
+    r.passives.forEach(p=>{
+      (p.trio||[]).forEach(ps=>{
+        if (!ps?.name) return;
+        const obj = map.get(ps.name) || {p:0,w:0};
+        obj.p += 1; if (r.result==='W') obj.w += 1;
+        map.set(ps.name, obj);
+      });
+    });
+  });
+  const den = rows.length * 12; // 12 passive slots per team-row
+  const list = [...map.entries()].map(([name,v])=>{
+    const winRate = v.p ? v.w/v.p : null;
+    return { name, picks:v.p, wins:v.w, winRate, rate: den ? v.p/den : 0 };
+  }).sort((a,b)=> b.rate - a.rate || (b.winRate||0)-(a.winRate||0) || a.name.localeCompare(b.name))
+    .slice(0, limit);
+
+  return list.length
+    ? `<table>
+        <thead><tr><th>Skill</th><th class="right">Picks</th><th class="right">Wins</th><th class="right">Win %</th><th class="right">Pick %</th></tr></thead>
+        <tbody>
+          ${list.map(r=>`<tr>
+            <td>${r.name}</td>
+            <td class="right">${r.picks}</td>
+            <td class="right">${r.wins}</td>
+            <td class="right">${r.winRate===null?'—':fmtPct(r.winRate)}</td>
+            <td class="right">${pct(r.picks, den)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`
+    : `<div class="muted">No passive skills.</div>`;
+}
+
 
 /* Combos (4× active) and Pairs (2× active) */
 function buildCombos(rows){
@@ -621,10 +655,15 @@ function renderAll(){
   el('tmA').innerHTML = teamMapStats(rowsA);
   el('tmB').innerHTML = teamMapStats(rowsB);
 
-  // Per-skill compressed
-  el('labelPSA').textContent = a; el('labelPSB').textContent = b;
-  el('psA').innerHTML = perSkillCompressed(rowsA, 12);
-  el('psB').innerHTML = perSkillCompressed(rowsB, 12);
+  // NEW — Active compressed
+  el('labelPSA_Act').textContent = a; el('labelPSB_Act').textContent = b;
+  el('psAAct').innerHTML = perSkillActiveCompressed(rowsA, 12);
+  el('psBAct').innerHTML = perSkillActiveCompressed(rowsB, 12);
+  
+  // NEW — Passive compressed
+  el('labelPSA_Pas').textContent = a; el('labelPSB_Pas').textContent = b;
+  el('psAPas').innerHTML = perSkillPassiveCompressed(rowsA, 12);
+  el('psBPas').innerHTML = perSkillPassiveCompressed(rowsB, 12);
 
   // Combos / Pairs
   el('labelCombosA').textContent = `${a} — 4× Active`; el('labelCombosB').textContent = `${b} — 4× Active`;
