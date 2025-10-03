@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Clash Squad — Team Compare (Compressed)</title>
+  <title>Clash Squad — Team Compare</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root{
@@ -17,7 +17,7 @@
     h1{margin:0;font-size:1.1rem;letter-spacing:.3px;color:var(--brand)}
     .user-controls{position:absolute;right:16px;top:12px;display:flex;gap:10px;align-items:center}
     .chip{font-size:.85rem;color:#ddd}
-    .btn{background:var(--brand);color:#1b1b1b;border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
+    .btn{background:var(--brand);color:var(--panel);border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
     .btn:hover{background:#e6a74f}
     .shell{max-width:1200px;margin:22px auto;padding:0 12px}
 
@@ -132,15 +132,6 @@
     </div>
   </div>
 
-  <!-- PERFORMANCE BY OPPONENT (Series + per-map rows) -->
-  <div class="section">
-    <h2>Performance by Opponent (Series)</h2>
-    <div class="grid2">
-      <div class="card"><h3 id="labelOppA">Team A</h3><div id="oppSeriesA">Loading…</div></div>
-      <div class="card"><h3 id="labelOppB">Team B</h3><div id="oppSeriesB">Loading…</div></div>
-    </div>
-  </div>
-
   <!-- PER-SKILL — ACTIVE (COMPRESSED) -->
   <div class="section">
     <h2>Per-Skill — Active</h2>
@@ -187,6 +178,15 @@
       <div class="card"><h3 id="labelBIB">Team B</h3><div id="biB">Loading…</div></div>
     </div>
     <div class="caption muted">Outcome is forced to All for Ban Impact to avoid bias.</div>
+  </div>
+
+  <!-- OPPONENT SERIES (BY MAPS) -->
+  <div class="section">
+    <h2>Performance by Opponent (Series, per map)</h2>
+    <div class="grid2">
+      <div class="card"><h3 id="labelOppSeriesA">Team A</h3><div id="oppSeriesA">Loading…</div></div>
+      <div class="card"><h3 id="labelOppSeriesB">Team B</h3><div id="oppSeriesB">Loading…</div></div>
+    </div>
   </div>
 
 </div>
@@ -296,8 +296,9 @@ function explodeRecordToRows(rec){
     const ts   = isL ? (rec.team_left_score ?? 0) : (rec.team_right_score ?? 0);
     const os   = isL ? (rec.team_right_score ?? 0) : (rec.team_left_score ?? 0);
     const res  = (isL ? leftWin : rightWin) ? 'W' : 'L';
-    const banObj = bans[ isL ? 0 : 1 ];
+    const banObj = bans[ isL ? 0 : 1 ] || {};
     const ban    = banObj?.name || '';
+    const banImg = banObj?.image_url || PLACEHOLDER;
 
     const idx = isL ? [0,1,2,3] : [7,6,5,4];
     const actives = idx.map((i,k)=>{
@@ -315,15 +316,13 @@ function explodeRecordToRows(rec){
 
     return {
       rec_id:rec.id,
+      tournament: rec.tournament_name || '—',
       match_date:rec.match_date,
-      game_number:rec.game_number,
+      game_number:rec.game_number ?? 0,
       map:rec.map,
-      tournament: rec.tournament_name || '—',   // NEW
       team, opponent:opp, team_score:ts, opp_score:os, result:res,
-      banName: ban,
-      banImg : banObj?.image_url || PLACEHOLDER, // NEW
-      actives,
-      passives:passiveLines
+      banName:ban, banImg,
+      actives, passives:passiveLines
     };
   }
   return [sideRow('L'), sideRow('R')];
@@ -427,7 +426,7 @@ function teamMapStats(rows){
 
 function perSkillActiveCompressed(rows, limit=12){
   if (!rows.length) return `<div class="muted">No rows.</div>`;
-  const map = new Map(); // name -> {p, w}
+  const map = new Map();
   rows.forEach(r=>{
     r.actives.forEach(a=>{
       if (!a.hero) return;
@@ -461,7 +460,7 @@ function perSkillActiveCompressed(rows, limit=12){
 
 function perSkillPassiveCompressed(rows, limit=12){
   if (!rows.length) return `<div class="muted">No rows.</div>`;
-  const map = new Map(); // name -> {p, w}
+  const map = new Map();
   rows.forEach(r=>{
     r.passives.forEach(p=>{
       (p.trio||[]).forEach(ps=>{
@@ -497,7 +496,7 @@ function perSkillPassiveCompressed(rows, limit=12){
 
 /* Combos (4× active) and Pairs (2× active) */
 function buildCombos(rows){
-  const combos = new Map(); // key "A|B|C|D"
+  const combos = new Map();
   rows.forEach(r=>{
     const heroes = r.actives.map(a=>a.hero).filter(Boolean);
     if (heroes.length!==4) return;
@@ -508,7 +507,7 @@ function buildCombos(rows){
   return [...combos.values()].map(c=>({ ...c, winpct: c.picks? c.wins/c.picks : 0 }));
 }
 function buildPairs(rows){
-  const pairs = new Map(); // key "A|B"
+  const pairs = new Map();
   rows.forEach(r=>{
     const names = r.actives.map(a=>a.hero).filter(Boolean);
     for (let i=0;i<names.length;i++){
@@ -536,7 +535,7 @@ function tableCombos(list, title, limit=5){
 
 /* Passive trios overall */
 function buildTrios(rows){
-  const tri = new Map(); // key "a|b|c"
+  const tri = new Map();
   rows.forEach(r=>{
     r.passives.forEach(p=>{
       const names = (p.trio||[]).map(x=>x?.name).filter(Boolean);
@@ -560,7 +559,7 @@ function tableTrios(list, limit=5){
     </table>`;
 }
 
-/* Ban Impact (ignore WL filter) */
+/* Ban Impact (ignore WL) */
 function rowsForTeamIgnoringWL(team){
   const mapSel = el('fMap').value;
   const tournSel = el('fTourn').value || '__ALL__';
@@ -618,7 +617,7 @@ function banImpactTable(rows, limit=10){
     </table>`;
 }
 
-/* ======== Performance by Opponent (Series table like Recent Matches) ======== */
+/* ========= Opponent Series (per map) ========= */
 function buildOpponentSeriesRows(rows){
   if(!rows.length) return [];
   const keyOf = (r)=>{
@@ -637,7 +636,7 @@ function buildOpponentSeriesRows(rows){
       game_number: r.game_number ?? 0,
       map: r.map,
       mapScore: `${r.team_score}-${r.opp_score}`,
-      result: r.result,                   // <-- keep result per map
+      result: r.result,
       banName: r.banName || '',
       banImg: r.banImg || PLACEHOLDER
     });
@@ -655,7 +654,7 @@ function buildOpponentSeriesRows(rows){
         seriesScore,
         map: g.map,
         mapScore: g.mapScore,
-        result: g.result,                 // <-- include here
+        result: g.result,
         banName: g.banName,
         banImg: g.banImg,
         date: s.date
@@ -676,7 +675,7 @@ function opponentSeriesTable(rows, limit=30){
           <th class="right">Series</th>
           <th>Map</th>
           <th class="right">Map score</th>
-          <th class="right">Res</th>           <!-- NEW -->
+          <th class="right">Res</th>
           <th>Banned skills</th>
         </tr>
       </thead>
@@ -687,70 +686,7 @@ function opponentSeriesTable(rows, limit=30){
             <td class="right mono">${r.seriesScore}</td>
             <td>${r.map||'—'}</td>
             <td class="right mono">${r.mapScore||'—'}</td>
-            <td class="right"><span class="wl ${r.result}">${r.result}</span></td>  <!-- NEW -->
-            <td>
-              <div class="icons">
-                <img src="${r.banImg||PLACEHOLDER}" alt="${r.banName||''}" title="${r.banName||''}">
-                <span class="muted tight">${r.banName||'—'}</span>
-              </div>
-            </td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>`;
-}
-
-
-function opponentSeriesTable(rows, limit=30){
-  const list = buildOpponentSeriesRows(rows).slice(0, limit);
-  if(!list.length) return `<div class="muted">No opponent series for selection.</div>`;
-  return `
-    <table>
-      <thead>
-        <tr>
-          <th>Opponent</th>
-          <th class="right">Series</th>
-          <th>Map</th>
-          <th class="right">Map score</th>
-          <th class="right">Res</th>           <!-- NEW -->
-          <th>Banned skills</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${list.map(r=>`
-          <tr>
-            <td>${r.opponent}</td>
-            <td class="right mono">${r.seriesScore}</td>
-            <td>${r.map||'—'}</td>
-            <td class="right mono">${r.mapScore||'—'}</td>
-            <td class="right"><span class="wl ${r.result}">${r.result}</span></td>  <!-- NEW -->
-            <td>
-              <div class="icons">
-                <img src="${r.banImg||PLACEHOLDER}" alt="${r.banName||''}" title="${r.banName||''}">
-                <span class="muted tight">${r.banName||'—'}</span>
-              </div>
-            </td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>`;
-}
-
-function opponentSeriesTable(rows, limit=30){
-  const list = buildOpponentSeriesRows(rows).slice(0, limit);
-  if(!list.length) return `<div class="muted">No opponent series for selection.</div>`;
-  return `
-    <table>
-      <thead>
-        <tr><th>Opponent</th><th class="right">Series</th><th>Map</th><th class="right">Map score</th><th>Banned skills</th></tr>
-      </thead>
-      <tbody>
-        ${list.map(r=>`
-          <tr>
-            <td>${r.opponent}</td>
-            <td class="right mono">${r.seriesScore}</td>
-            <td>${r.map||'—'}</td>
-            <td class="right mono">${r.mapScore||'—'}</td>
+            <td class="right"><span class="wl ${r.result}">${r.result}</span></td>
             <td>
               <div class="icons">
                 <img src="${r.banImg||PLACEHOLDER}" alt="${r.banName||''}" title="${r.banName||''}">
@@ -768,12 +704,8 @@ function renderAll(){
   const a = el('cmpTeamA').value, b = el('cmpTeamB').value;
   if (!a || !b || a===b){
     el('meta').textContent = 'Pick two different teams.';
-    [
-      'kpiA','kpiB','activeA','activeB','passiveA','passiveB','bansA','bansB',
-      'tmA','tmB','psAAct','psBAct','psAPas','psBPas',
-      'combosA','combosB','pairsA','pairsB','triosA','triosB','biA','biB',
-      'oppSeriesA','oppSeriesB'
-    ].forEach(id=>{ el(id).innerHTML = '<div class="muted">—</div>'; });
+    ['kpiA','kpiB','activeA','activeB','passiveA','passiveB','bansA','bansB','tmA','tmB','psAAct','psBAct','psAPas','psBPas','combosA','combosB','pairsA','pairsB','triosA','triosB','biA','biB','oppSeriesA','oppSeriesB']
+      .forEach(id=>{ if(el(id)) el(id).innerHTML = '<div class="muted">—</div>'; });
     return;
   }
 
@@ -817,13 +749,7 @@ function renderAll(){
   el('tmA').innerHTML = teamMapStats(rowsA);
   el('tmB').innerHTML = teamMapStats(rowsB);
 
-  // Performance by Opponent (series + map rows)
-  el('labelOppA').textContent = a;
-  el('labelOppB').textContent = b;
-  el('oppSeriesA').innerHTML = opponentSeriesTable(rowsA, 30);
-  el('oppSeriesB').innerHTML = opponentSeriesTable(rowsB, 30);
-
-  // Per-Skill compressed
+  // Per-skill compressed
   el('labelPSA_Act').textContent = a; el('labelPSB_Act').textContent = b;
   el('psAAct').innerHTML = perSkillActiveCompressed(rowsA, 12);
   el('psBAct').innerHTML = perSkillActiveCompressed(rowsB, 12);
@@ -849,11 +775,17 @@ function renderAll(){
   el('labelBIA').textContent = a; el('labelBIB').textContent = b;
   el('biA').innerHTML = banImpactTable(rowsForTeamIgnoringWL(a), 10);
   el('biB').innerHTML = banImpactTable(rowsForTeamIgnoringWL(b), 10);
+
+  // Opponent Series (per map)
+  el('labelOppSeriesA').textContent = a; el('labelOppSeriesB').textContent = b;
+  el('oppSeriesA').innerHTML = opponentSeriesTable(rowsA, 30);
+  el('oppSeriesB').innerHTML = opponentSeriesTable(rowsB, 30);
 }
 
 /* ========= Refresh flow ========= */
 async function refresh(){
   RAW_RECORDS = await fetchRecords();
+
   await populateTournamentDropdown(RAW_RECORDS);
   populateTeamDropdowns(RAW_RECORDS);
   renderAll();
