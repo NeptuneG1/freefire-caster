@@ -18,13 +18,11 @@
     h1{margin:0;font-size:clamp(1rem,1.2vw,1.15rem);color:var(--brand);letter-spacing:.2px}
     .shell{max-width:min(1600px,98vw);margin:14px auto;padding:0 10px}
 
-    /* Controls */
     .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
     label{display:flex;align-items:center;gap:6px}
     select{background:#1e1e1e;color:#ffe0b0;border:1px solid #3a3a3a;border-radius:8px;padding:6px 8px;font-weight:600}
     .chip{color:var(--muted);font-size:.82rem}
 
-    /* Grid */
     .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;grid-auto-flow:dense}
     .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;min-height:110px}
     .card.q{grid-column:span 3;}
@@ -32,20 +30,17 @@
     .card.l{grid-column:span 12;}
     .card h3{margin:0 0 6px 0;color:var(--brand2);font-size:clamp(.9rem,1vw,.95rem)}
 
-    /* Charts */
-    .chartcard{min-height:clamp(250px, 34vh, 300px);} /* taller so grouped bars don't clip */
+    .chartcard{min-height:clamp(280px, 34vh, 420px);}
     .chart{width:100%;height:auto;display:block;overflow:visible}
     .legend{display:flex;gap:10px;align-items:center;font-size:.78rem;color:#cfcfcf}
     .legend span{display:inline-flex;align-items:center;gap:6px}
     .lg{width:10px;height:10px;border-radius:2px;background:#ffbd59;border:1px solid #6a4e23}
     .lg2{width:10px;height:10px;border-radius:2px;background:#4aa86a;border:1px solid #2c5a3a}
 
-    /* KPI row */
     .kpis{display:flex;gap:6px;flex-wrap:wrap}
     .kpi{background:#111;border:1px solid #2a2a2a;border-radius:10px;padding:6px 8px;font-size:.9rem;white-space:nowrap}
     .kpi b{font-size:1rem}
 
-    /* Tables */
     .twrap{overflow:auto}
     table{width:100%;border-collapse:collapse;font-size:clamp(.8rem,.9vw,.9rem);min-width:560px}
     th,td{border-bottom:1px solid #222;padding:6px 6px;vertical-align:middle}
@@ -55,7 +50,6 @@
     .right{text-align:right}
     .muted{color:var(--muted)}
 
-    /* Skill chips / icons */
     .cell-skill{display:flex;align-items:center;gap:8px}
     .cell-icons{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
     .avatar{width:18px;height:18px;border-radius:4px;object-fit:cover;background:#222;border:1px solid #333}
@@ -63,9 +57,18 @@
 
     .pill{display:inline-block;padding:2px 6px;border-radius:999px;background:#111;border:1px solid #2a2a2a;margin:2px;font-size:.78rem;color:#ddd}
 
-    @media (max-width: 980px){
-      .card.q,.card.h,.card.l{grid-column:span 12}
-    }
+    /* Tooltip */
+    .tip{position:fixed;z-index:50;pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity .12s ease, transform .12s ease}
+    .tip.show{opacity:1;transform:translateY(0)}
+    .tip .box{max-width:320px;background:#0f0f0f;border:1px solid #2a2a2a;border-radius:10px;box-shadow:0 8px 20px rgba(0,0,0,.4);padding:10px}
+    .tip .hdr{display:flex;gap:10px;align-items:center;margin-bottom:6px}
+    .tip .hdr img{width:36px;height:36px;border-radius:6px;border:1px solid #333;object-fit:cover;background:#222}
+    .tip .name{font-weight:700}
+    .tip .tag{font-size:.75rem;color:#aaa;background:#131313;border:1px solid #2a2a2a;border-radius:999px;padding:2px 6px;margin-left:auto}
+    .tip .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:.88rem}
+    .tip .kv div:nth-child(odd){color:#bbb}
+    .tip .kv div:nth-child(even){text-align:right;font-variant-numeric:tabular-nums}
+    @media (max-width: 980px){ .card.q,.card.h,.card.l{grid-column:span 12} }
     @media (min-width:1600px){
       .grid{grid-template-columns:repeat(16,minmax(0,1fr))}
       .card.q{grid-column:span 4}
@@ -90,35 +93,31 @@
 
     <div class="grid">
 
-      <!-- Overview -->
       <div class="card l" id="kpiCard">
         <h3>Overview</h3>
         <div class="kpis" id="kpis"></div>
       </div>
 
-      <!-- Charts row (left -> right) -->
+      <!-- Charts -->
       <div class="card q chartcard" id="actPickCard">
         <h3>Most Pick Active</h3>
         <div id="actPickWrap"></div>
       </div>
-
       <div class="card q chartcard" id="pasPickCard">
         <h3>Most Pick Passive</h3>
         <div id="pasPickWrap"></div>
       </div>
-
       <div class="card q chartcard" id="banCard">
         <h3>Most Banned (Count)</h3>
         <div id="banChartWrap"></div>
       </div>
-
       <div class="card q chartcard" id="mapCard">
         <h3>Performance by Map</h3>
         <div class="legend" style="margin-bottom:4px"><span><i class="lg"></i> Matches</span><span><i class="lg2"></i> Wins</span></div>
         <div id="mapChartWrap"></div>
       </div>
 
-      <!-- Side-by-side tables -->
+      <!-- Tables -->
       <div class="card h" id="comboCard">
         <h3>Top Active Combos</h3>
         <div class="twrap">
@@ -191,6 +190,12 @@
     </div>
   </div>
 
+  <!-- Tooltip node -->
+  <div id="skillTip" class="tip"><div class="box">
+    <div class="hdr"><img><div class="name"></div><div class="tag"></div></div>
+    <div class="kv"></div>
+  </div></div>
+
 <script>
 /* ========= Supabase ========= */
 const client = supabase.createClient(
@@ -225,7 +230,6 @@ function barH(labels, values, opts={}){
   svg.push(`</svg>`);
   return svg.join('');
 }
-
 function groupedBars(labels, aVals, bVals, opts={}){
   const W = opts.width || 400;
   const labelW = 120;
@@ -249,14 +253,13 @@ function groupedBars(labels, aVals, bVals, opts={}){
 }
 
 /* ========= Data plumbing ========= */
-let ALL_RECORDS=[]; // all rows (matches), used to derive tourn+team lists
+let ALL_RECORDS=[];
 
 function explodeRecordToRows(rec){
   const s=parseState(rec.state);
-  const picks=Array.isArray(s.picks)?s.picks:[];          // active heroes (objects)
-  const passives=Array.isArray(s.passives)?s.passives:[];  // passive trios (objects)
-  const bans=Array.isArray(s.bans)?s.bans:[];              // [{name,image_url}, {name,image_url}]
-
+  const picks=Array.isArray(s.picks)?s.picks:[];
+  const passives=Array.isArray(s.passives)?s.passives:[];
+  const bans=Array.isArray(s.bans)?s.bans:[];
   const leftWin=(rec.team_left_score??0)>(rec.team_right_score??0);
   const rightWin=(rec.team_right_score??0)>(rec.team_left_score??0);
 
@@ -273,21 +276,16 @@ function explodeRecordToRows(rec){
       hero: (picks[i]?.name)||'',
       img : (picks[i]?.image_url)||PLACEHOLDER
     }));
-
     const pas  = idx.map(i=>{
       const arr = Array.isArray(passives[i]) ? passives[i] : [];
       return arr.map(x=>({name:x?.name||'', img:x?.image_url||PLACEHOLDER})).filter(x=>x.name);
     });
 
     return {
-      rec_id:rec.id,
-      date:ymd(rec.match_date),
-      map:rec.map,
+      rec_id:rec.id,date:ymd(rec.match_date),map:rec.map,
       team,opp,ts,os,res,
-      banName: ban?.name || '',
-      banImg : ban?.image_url || PLACEHOLDER,
-      act,    // [{hero,img} ×4]
-      pass:pas // [[{name,img}×3] ×4]
+      banName: ban?.name || '', banImg: ban?.image_url || PLACEHOLDER,
+      act,pass
     };
   }
   return [side(true), side(false)];
@@ -305,7 +303,6 @@ async function fetchAll(){
 
 /* ========= Filters ========= */
 function tournamentsFrom(records){
-  // return [{name, firstDate, lastDate}] sorted by lastDate desc
   const map = new Map();
   records.forEach(r=>{
     const t = r.tournament_name || '—';
@@ -338,10 +335,10 @@ function kpis(rows){
   return {matches,wins,winpct,diffAvg,maps,opps};
 }
 function mostBanned(rows){
-  const m=new Map(); const imgs=new Map();
-  rows.forEach(r=>{ const b=r.banName||''; if(!b)return; m.set(b,(m.get(b)||0)+1); if(!imgs.has(b)) imgs.set(b,r.banImg||PLACEHOLDER); });
+  const m=new Map();
+  rows.forEach(r=>{ const b=r.banName||''; if(!b)return; m.set(b,(m.get(b)||0)+1) });
   const arr=[...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10);
-  return {labels:arr.map(x=>x[0]), values:arr.map(x=>x[1]), imgs};
+  return {labels:arr.map(x=>x[0]), values:arr.map(x=>x[1])};
 }
 function perfByMap(rows){
   const m=new Map();
@@ -350,24 +347,16 @@ function perfByMap(rows){
     .sort((a,b)=>b.matches-a.matches||a.name.localeCompare(b.name));
 }
 function mostPickActive(rows){
-  const m=new Map(); const imgs=new Map();
-  rows.forEach(r=>r.act.forEach(a=>{
-    if(!a.hero) return;
-    m.set(a.hero,(m.get(a.hero)||0)+1);
-    if(!imgs.has(a.hero)) imgs.set(a.hero, a.img||PLACEHOLDER);
-  }));
+  const m=new Map();
+  rows.forEach(r=>r.act.forEach(a=>{ if(!a.hero) return; m.set(a.hero,(m.get(a.hero)||0)+1) }));
   const arr=[...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10);
-  return {labels:arr.map(x=>x[0]), values:arr.map(x=>x[1]), imgs};
+  return {labels:arr.map(x=>x[0]), values:arr.map(x=>x[1])};
 }
 function mostPickPassive(rows){
-  const m=new Map(); const imgs=new Map();
-  rows.forEach(r=>r.pass.forEach(trio=>trio.forEach(ps=>{
-    if(!ps?.name) return;
-    m.set(ps.name,(m.get(ps.name)||0)+1);
-    if(!imgs.has(ps.name)) imgs.set(ps.name, ps.img||PLACEHOLDER);
-  })));
+  const m=new Map();
+  rows.forEach(r=>r.pass.forEach(trio=>trio.forEach(ps=>{ if(!ps?.name) return; m.set(ps.name,(m.get(ps.name)||0)+1) })));
   const arr=[...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10);
-  return {labels:arr.map(x=>x[0]), values:arr.map(x=>x[1]), imgs};
+  return {labels:arr.map(x=>x[0]), values:arr.map(x=>x[1])};
 }
 
 function topCombos(rows){
@@ -386,7 +375,6 @@ function topCombos(rows){
   })).sort((a,b)=>b.picks-a.picks||b.wins-a.wins).slice(0,10);
   return list;
 }
-
 function normalizeTrio(arr){
   const names=(arr||[]).map(x=>x?.name||'').filter(Boolean);
   if(names.length!==3) return null;
@@ -409,38 +397,39 @@ function topPassiveTrios(rows){
   })).sort((a,b)=>b.picks-a.picks||b.wins-a.wins).slice(0,10);
   return list;
 }
-
 function topActives(rows){
-  const S=new Map(); const IMG=new Map();
+  const S=new Map(); const IMG=new Map(); const MAP=new Map();
   rows.forEach(r=>{ r.act.forEach(a=>{
     if(!a.hero) return;
     if(!S.has(a.hero)) S.set(a.hero,{p:0,w:0});
     if(!IMG.has(a.hero)) IMG.set(a.hero, a.img||PLACEHOLDER);
+    if(!MAP.has(a.hero)) MAP.set(a.hero,new Map());
+    const mc=MAP.get(a.hero); mc.set(r.map,(mc.get(r.map)||0)+1);
     const o=S.get(a.hero); o.p++; if(r.res==='W')o.w++;
   })});
   const den=rows.length*4;
-  return [...S.entries()].map(([name,o])=>({name,img:IMG.get(name),picks:o.p, pickRate: den?o.p/den:0, wins:o.w, winRate: o.p?o.w/o.p:0}))
+  return [...S.entries()].map(([name,o])=>({name,img:IMG.get(name),mapCounts:MAP.get(name),picks:o.p, pickRate: den?o.p/den:0, wins:o.w, winRate: o.p?o.w/o.p:0}))
     .sort((a,b)=>b.picks-a.picks||b.wins-a.wins).slice(0,15);
 }
 function topPassives(rows){
-  const S=new Map(); const IMG=new Map();
+  const S=new Map(); const IMG=new Map(); const MAP=new Map();
   rows.forEach(r=>{ r.pass.forEach(trio=>trio.forEach(ps=>{
     if(!ps?.name) return;
     if(!S.has(ps.name)) S.set(ps.name,{p:0,w:0});
     if(!IMG.has(ps.name)) IMG.set(ps.name, ps.img||PLACEHOLDER);
+    if(!MAP.has(ps.name)) MAP.set(ps.name,new Map());
+    const mc=MAP.get(ps.name); mc.set(r.map,(mc.get(r.map)||0)+1);
     const o=S.get(ps.name); o.p++; if(r.res==='W')o.w++;
   }))});
   const den=rows.length*12;
-  return [...S.entries()].map(([name,o])=>({name,img:IMG.get(name),picks:o.p, pickRate: den?o.p/den:0, wins:o.w, winRate: o.p?o.w/o.p:0}))
+  return [...S.entries()].map(([name,o])=>({name,img:IMG.get(name),mapCounts:MAP.get(name),picks:o.p, pickRate: den?o.p/den:0, wins:o.w, winRate: o.p?o.w/o.p:0}))
     .sort((a,b)=>b.picks-a.picks||b.wins-a.wins).slice(0,15);
 }
-
 function perfByOpponent(rows){
   const m=new Map(); rows.forEach(r=>{ if(!m.has(r.opp)) m.set(r.opp,{m:0,w:0}); const o=m.get(r.opp); o.m++; if(r.res==='W')o.w++; });
   return [...m.entries()].map(([opp,o])=>({opp,matches:o.m,wins:o.w,winpct:o.m?o.w/o.m:0}))
     .sort((a,b)=>b.matches-a.matches||a.opp.localeCompare(b.opp)).slice(0,20);
 }
-
 function banImpactAgg(rows){
   const skills=new Map(); const IMG=new Map();
   rows.forEach(r=>{
@@ -459,9 +448,23 @@ function banImpactAgg(rows){
     return {name,img:IMG.get(name)||PLACEHOLDER,banned:S.ban.n, wBan:w1, wNot:w2, delta:w1-w2};
   }).sort((a,b)=>b.delta-a.delta||b.banned-a.banned).slice(0,12);
 }
-
 function recent(rows){
   return rows.slice().sort((a,b)=> (b.date.localeCompare(a.date)) || (b.rec_id-a.rec_id)).slice(0,12);
+}
+
+/* ========= Tooltip indexes ========= */
+let ACTIVE_IDX={}, PASSIVE_IDX={}, BAN_IDX={};
+function topMapsFromCounts(mc, k=3){
+  const arr=[...mc.entries()].sort((a,b)=>b[1]-a[1]);
+  return arr.slice(0,k).map(([m,c])=>`${m} ×${c}`).join(', ') || '—';
+}
+function buildIndexes(rows){
+  ACTIVE_IDX={}; PASSIVE_IDX={}; BAN_IDX={};
+  // active / passive
+  const A = topActives(rows), P = topPassives(rows), B = banImpactAgg(rows);
+  A.forEach(s=>ACTIVE_IDX[s.name]={...s, topMaps: topMapsFromCounts(s.mapCounts)});
+  P.forEach(s=>PASSIVE_IDX[s.name]={...s, topMaps: topMapsFromCounts(s.mapCounts)});
+  B.forEach(s=>BAN_IDX[s.name]=s);
 }
 
 /* ========= Renderers ========= */
@@ -475,19 +478,16 @@ function renderKPIs(rows){
     <div class="kpi">Maps <b>${k.maps}</b></div>
     <div class="kpi">Opponents <b>${k.opps}</b></div>`;
 }
-
 function renderMostPickAct(rows){
   const {labels, values}=mostPickActive(rows);
   const wrap=document.getElementById('actPickWrap');
   wrap.innerHTML = labels.length ? barH(labels, values, {height: labels.length*18+16}) : `<div class="muted">No active picks.</div>`;
 }
-
 function renderMostPickPas(rows){
   const {labels, values}=mostPickPassive(rows);
   const wrap=document.getElementById('pasPickWrap');
   wrap.innerHTML = labels.length ? barH(labels, values, {height: labels.length*18+16}) : `<div class="muted">No passive picks.</div>`;
 }
-
 function renderMostBanned(rows){
   const {labels, values}=mostBanned(rows);
   const wrap=document.getElementById('banChartWrap');
@@ -500,44 +500,35 @@ function renderPerfByMap(rows){
   const labels=data.map(x=>x.name), matches=data.map(x=>x.matches), wins=data.map(x=>x.wins);
   wrap.innerHTML = groupedBars(labels, matches, wins, {height: labels.length*26+24});
 }
-
-function pillsFromMapCount(mapCount){
-  const arr=[...mapCount.entries()].sort((a,b)=>b[1]-a[1]);
-  const shown=arr.slice(0,3).map(([n,c])=>`<span class="pill">${n} ×${c}</span>`).join('');
-  const more=arr.length>3?`<span class="pill">+${arr.length-3} more</span>`:''; return shown+more;
-}
-
 function renderCombos(rows){
   const list=topCombos(rows);
   const tbody=document.getElementById('comboBody'); tbody.innerHTML='';
   if(!list.length){ tbody.innerHTML = `<tr><td colspan="5" class="muted">No combos found.</td></tr>`; return; }
   list.forEach(c=>{
-    const icons = c.names.map(n=>`<img class="avatar" src="${(c.heroImgs[n]||PLACEHOLDER)}" alt="${n}" title="${n}" loading="lazy">`).join('');
+    const icons = c.names.map(n=>`<img class="avatar js-skill" data-skill="${n}" data-kind="active" src="${(c.heroImgs[n]||PLACEHOLDER)}" alt="${n}" loading="lazy">`).join('');
     const label = `<div class="cell-icons">${icons}<span class="muted" style="margin-left:6px">${c.names.join(' · ')}</span></div>`;
     const tr=document.createElement('tr');
     tr.innerHTML = `<td>${label}</td><td class="right mono">${c.picks}</td><td class="right mono">${c.wins}</td><td class="right mono">${fmtP(c.winpct)}</td><td>${c.topMaps||'—'}</td>`;
     tbody.appendChild(tr);
   });
 }
-
 function renderPTrios(rows){
   const list=topPassiveTrios(rows);
   const tb=document.getElementById('ptrioBody'); tb.innerHTML='';
   if(!list.length){ tb.innerHTML='<tr><td colspan="5" class="muted">No passive trio data.</td></tr>'; return; }
   list.forEach(t=>{
-    const icons = t.names.map(n=>`<img class="avatar s" src="${(t.imgs[n]||PLACEHOLDER)}" alt="${n}" title="${n}" loading="lazy">`).join('');
+    const icons = t.names.map(n=>`<img class="avatar s js-skill" data-skill="${n}" data-kind="passive" src="${(t.imgs[n]||PLACEHOLDER)}" alt="${n}" loading="lazy">`).join('');
     const label = `<div class="cell-icons">${icons}<span class="muted" style="margin-left:6px">${t.names.join(' · ')}</span></div>`;
     const tr=document.createElement('tr');
     tr.innerHTML=`<td>${label}</td><td class="right mono">${t.picks}</td><td class="right mono">${t.wins}</td><td class="right mono">${fmtP(t.winpct)}</td><td>${t.topMaps||'—'}</td>`;
     tb.appendChild(tr);
   });
 }
-
 function renderTopAct(rows){
   const list=topActives(rows); const tb=document.getElementById('actBody'); tb.innerHTML='';
   if(!list.length){ tb.innerHTML='<tr><td colspan="5" class="muted">No active picks.</td></tr>'; return; }
   list.forEach(r=>{
-    const label=`<div class="cell-skill"><img class="avatar" src="${r.img||PLACEHOLDER}" alt="${r.name}" loading="lazy"><span>${r.name}</span></div>`;
+    const label=`<div class="cell-skill"><img class="avatar js-skill" data-skill="${r.name}" data-kind="active" src="${r.img||PLACEHOLDER}" alt="${r.name}" loading="lazy"><span>${r.name}</span></div>`;
     const tr=document.createElement('tr');
     tr.innerHTML=`<td>${label}</td><td class="right mono">${r.picks}</td><td class="right mono">${fmtP(r.pickRate)}</td><td class="right mono">${r.wins}</td><td class="right mono">${fmtP(r.winRate)}</td>`;
     tb.appendChild(tr);
@@ -547,13 +538,12 @@ function renderTopPas(rows){
   const list=topPassives(rows); const tb=document.getElementById('pasBody'); tb.innerHTML='';
   if(!list.length){ tb.innerHTML='<tr><td colspan="5" class="muted">No passive picks.</td></tr>'; return; }
   list.forEach(r=>{
-    const label=`<div class="cell-skill"><img class="avatar" src="${r.img||PLACEHOLDER}" alt="${r.name}" loading="lazy"><span>${r.name}</span></div>`;
+    const label=`<div class="cell-skill"><img class="avatar js-skill" data-skill="${r.name}" data-kind="passive" src="${r.img||PLACEHOLDER}" alt="${r.name}" loading="lazy"><span>${r.name}</span></div>`;
     const tr=document.createElement('tr');
     tr.innerHTML=`<td>${label}</td><td class="right mono">${r.picks}</td><td class="right mono">${fmtP(r.pickRate)}</td><td class="right mono">${r.wins}</td><td class="right mono">${fmtP(r.winRate)}</td>`;
     tb.appendChild(tr);
   })
 }
-
 function renderOpp(rows){
   const list=perfByOpponent(rows); const tb=document.getElementById('oppBody'); tb.innerHTML='';
   if(!list.length){ tb.innerHTML='<tr><td colspan="4" class="muted">No opponent data.</td></tr>'; return; }
@@ -563,18 +553,16 @@ function renderOpp(rows){
     tb.appendChild(tr);
   })
 }
-
 function renderBanImpact(rows){
   const list=banImpactAgg(rows); const tb=document.getElementById('biBody'); tb.innerHTML='';
   if(!list.length){ tb.innerHTML='<tr><td colspan="5" class="muted">Not enough ban data.</td></tr>'; return; }
   list.forEach(r=>{
-    const label=`<div class="cell-skill"><img class="avatar" src="${r.img||PLACEHOLDER}" alt="${r.name}" loading="lazy"><span>${r.name}</span></div>`;
+    const label=`<div class="cell-skill"><img class="avatar js-skill" data-skill="${r.name}" data-kind="ban" src="${r.img||PLACEHOLDER}" alt="${r.name}" loading="lazy"><span>${r.name}</span></div>`;
     const tr=document.createElement('tr');
     tr.innerHTML=`<td>${label}</td><td class="right mono">${r.banned}</td><td class="right mono">${fmtP(r.wBan)}</td><td class="right mono">${fmtP(r.wNot)}</td><td class="right mono" style="font-weight:700;">${fmtP(r.delta)}</td>`;
     tb.appendChild(tr);
   })
 }
-
 function renderRecent(rows){
   const list=recent(rows); const tb=document.getElementById('recentBody'); tb.innerHTML='';
   if(!list.length){ tb.innerHTML='<tr><td colspan="6" class="muted">No recent matches.</td></tr>'; return; }
@@ -582,16 +570,88 @@ function renderRecent(rows){
     const score=`${r.ts}-${r.os}`;
     const wl=r.res==='W'?`<span style="color:var(--good);font-weight:700">W</span>`:`<span style="color:var(--bad);font-weight:700">L</span>`;
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${r.date}</td><td>${r.map}</td><td>${r.opp}</td><td class="right mono">${score}</td><td class="right">${wl}</td><td class="cell-skill"><img class="avatar" src="${r.banImg||PLACEHOLDER}" alt="${r.banName}" loading="lazy"><span>${r.banName||'—'}</span></td>`;
+    tr.innerHTML=`<td>${r.date}</td><td>${r.map}</td><td>${r.opp}</td><td class="right mono">${score}</td><td class="right">${wl}</td><td class="cell-skill"><img class="avatar js-skill" data-skill="${r.banName}" data-kind="ban" src="${r.banImg||PLACEHOLDER}" alt="${r.banName}" loading="lazy"><span>${r.banName||'—'}</span></td>`;
     tb.appendChild(tr);
   })
+}
+
+/* ========= Tooltip logic ========= */
+const tip = document.getElementById('skillTip');
+const tipImg = tip.querySelector('.hdr img');
+const tipName = tip.querySelector('.hdr .name');
+const tipTag = tip.querySelector('.hdr .tag');
+const tipKV  = tip.querySelector('.kv');
+
+function showTip({img,name,tag,rows}){
+  tipImg.src = img || PLACEHOLDER;
+  tipName.textContent = name || '';
+  tipTag.textContent = tag || '';
+  tipKV.innerHTML = rows.map(r=>`<div>${r[0]}</div><div>${r[1]}</div>`).join('');
+  tip.classList.add('show');
+}
+function hideTip(){ tip.classList.remove('show'); }
+function moveTip(x,y){
+  const pad=12;
+  const rect = tip.getBoundingClientRect();
+  const vw = window.innerWidth, vh = window.innerHeight;
+  let left = x + pad, top = y + pad;
+  if(left + rect.width > vw - 8) left = x - rect.width - pad;
+  if(top + rect.height > vh - 8) top = y - rect.height - pad;
+  tip.style.left = left + 'px';
+  tip.style.top  = top + 'px';
+}
+function bindTooltipHandlers(){
+  document.addEventListener('mousemove', (e)=>{
+    const el = e.target.closest('.js-skill');
+    if(!el){ hideTip(); return; }
+    const name = el.dataset.skill;
+    const kind = el.dataset.kind; // active|passive|ban
+    let data, rows, tag;
+    if(kind==='active'){
+      data = ACTIVE_IDX[name];
+      if(!data){ hideTip(); return; }
+      rows = [
+        ['Picks', data.picks],
+        ['Pick %', fmtP(data.pickRate||0)],
+        ['Wins', data.wins],
+        ['Win %', fmtP(data.winRate||0)],
+        ['Top maps', data.topMaps || '—']
+      ];
+      tag = 'Active';
+      showTip({img:data.img,name,tag,rows});
+    }else if(kind==='passive'){
+      data = PASSIVE_IDX[name];
+      if(!data){ hideTip(); return; }
+      rows = [
+        ['Picks', data.picks],
+        ['Pick %', fmtP(data.pickRate||0)],
+        ['Wins', data.wins],
+        ['Win %', fmtP(data.winRate||0)],
+        ['Top maps', data.topMaps || '—']
+      ];
+      tag = 'Passive';
+      showTip({img:data.img,name,tag,rows});
+    }else if(kind==='ban'){
+      data = BAN_IDX[name];
+      if(!data || !name){ hideTip(); return; }
+      rows = [
+        ['Banned', data.banned],
+        ['Win% (banned)', fmtP(data.wBan||0)],
+        ['Win% (not)', fmtP(data.wNot||0)],
+        ['Δ Win %', fmtP(data.delta||0)]
+      ];
+      tag = 'Ban';
+      showTip({img:data.img || el.src, name: name || '—', tag, rows});
+    }
+    moveTip(e.clientX, e.clientY);
+  });
+  document.addEventListener('mouseleave', hideTip, true);
 }
 
 /* ========= Orchestrator ========= */
 async function init(){
   ALL_RECORDS = await fetchAll();
 
-  // Tournament dropdown (default to latest)
   const tourns = tournamentsFrom(ALL_RECORDS);
   const tSel = document.getElementById('tournSelect');
   tSel.innerHTML = `<option value="__ALL__">All tournaments</option>` +
@@ -599,7 +659,6 @@ async function init(){
   const latest = tourns[0]?.name || '__ALL__';
   tSel.value = latest;
 
-  // Teams for selected tournament
   const teamSel = document.getElementById('teamSelect');
   const refreshTeams = ()=>{
     const teams = teamsForTournament(ALL_RECORDS, tSel.value);
@@ -609,18 +668,14 @@ async function init(){
   };
   refreshTeams();
 
-  // Load initial team
   const load = ()=> loadTeam(teamSel.value, tSel.value);
   tSel.addEventListener('change', ()=>{ refreshTeams(); load(); });
   teamSel.addEventListener('change', load);
+  bindTooltipHandlers();
   load();
 }
 
 function setMeta(team, tourn, rows){
-  const tourns = new Set();
-  ALL_RECORDS.forEach(r=>{
-    if(r.team_left===team || r.team_right===team) tourns.add(r.tournament_name||'—');
-  });
   document.getElementById('meta').textContent =
     `${team} • ${rows.length} team-rows • ${tourn==='__ALL__'?'All tournaments':tourn}`;
 }
@@ -628,6 +683,8 @@ function setMeta(team, tourn, rows){
 function loadTeam(team, tourn){
   const rows = rowsForTeamAndTournament(ALL_RECORDS, team, tourn);
   setMeta(team, tourn, rows);
+
+  buildIndexes(rows); // <— build tooltip data
 
   renderKPIs(rows);
   renderMostPickAct(rows);
