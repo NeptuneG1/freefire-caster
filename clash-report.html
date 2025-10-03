@@ -16,7 +16,6 @@
     body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
     header{position:sticky;top:0;z-index:5;background:#1a1a1a;border-bottom:2px solid var(--brand);padding:10px 12px}
     h1{margin:0;font-size:clamp(1rem,1.2vw,1.15rem);color:var(--brand);letter-spacing:.2px}
-
     .shell{max-width:min(1600px,98vw);margin:14px auto;padding:0 10px}
 
     /* Controls */
@@ -27,11 +26,19 @@
 
     /* Grid */
     .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;grid-auto-flow:dense}
-    .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;min-height:110px;overflow:auto}
-    .card.q{grid-column:span 3;}   /* quarter width */
-    .card.h{grid-column:span 6;}   /* half width  */
-    .card.l{grid-column:span 12;}  /* full width  */
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;min-height:110px}
+    .card.q{grid-column:span 3;}
+    .card.h{grid-column:span 6;}
+    .card.l{grid-column:span 12;}
     .card h3{margin:0 0 6px 0;color:var(--brand2);font-size:clamp(.9rem,1vw,.95rem)}
+
+    /* Charts */
+    .chartcard{min-height:clamp(280px, 34vh, 420px);} /* taller so grouped bars don't clip */
+    .chart{width:100%;height:auto;display:block;overflow:visible}
+    .legend{display:flex;gap:10px;align-items:center;font-size:.78rem;color:#cfcfcf}
+    .legend span{display:inline-flex;align-items:center;gap:6px}
+    .lg{width:10px;height:10px;border-radius:2px;background:#ffbd59;border:1px solid #6a4e23}
+    .lg2{width:10px;height:10px;border-radius:2px;background:#4aa86a;border:1px solid #2c5a3a}
 
     /* KPI row */
     .kpis{display:flex;gap:6px;flex-wrap:wrap}
@@ -40,24 +47,19 @@
 
     /* Tables */
     .twrap{overflow:auto}
-    table{width:100%;border-collapse:collapse;font-size:clamp(.8rem,.9vw,.9rem);min-width:520px}
+    table{width:100%;border-collapse:collapse;font-size:clamp(.8rem,.9vw,.9rem);min-width:560px}
     th,td{border-bottom:1px solid #222;padding:6px 6px;vertical-align:middle}
     thead th{background:#141414;text-align:left;color:#ddd;position:sticky;top:0}
     tbody tr:hover{background:#121212}
     .mono{font-variant-numeric:tabular-nums}
     .right{text-align:right}
     .muted{color:var(--muted)}
-    .cell-skill{display:flex;align-items:center;gap:8px}
-    .avatar{width:18px;height:18px;border-radius:4px;object-fit:cover;background:#222;border:1px solid #333}
-    .trio{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-    .trio .avatar{width:16px;height:16px;border-radius:3px}
 
-    /* Vector charts (no blur) */
-    .chart{width:100%;height:auto;display:block}
-    .legend{display:flex;gap:10px;align-items:center;font-size:.78rem;color:#cfcfcf}
-    .legend span{display:inline-flex;align-items:center;gap:6px}
-    .lg{width:10px;height:10px;border-radius:2px;background:#ffbd59;border:1px solid #6a4e23}
-    .lg2{width:10px;height:10px;border-radius:2px;background:#4aa86a;border:1px solid #2c5a3a}
+    /* Skill chips / icons */
+    .cell-skill{display:flex;align-items:center;gap:8px}
+    .cell-icons{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+    .avatar{width:18px;height:18px;border-radius:4px;object-fit:cover;background:#222;border:1px solid #333}
+    .avatar.s{width:16px;height:16px;border-radius:3px}
 
     .pill{display:inline-block;padding:2px 6px;border-radius:999px;background:#111;border:1px solid #2a2a2a;margin:2px;font-size:.78rem;color:#ddd}
 
@@ -77,11 +79,11 @@
 
   <div class="shell">
     <div class="controls">
-      <label class="muted">Team
-        <select id="teamSelect"></select>
-      </label>
       <label class="muted">Tournament
         <select id="tournSelect"></select>
+      </label>
+      <label class="muted">Team
+        <select id="teamSelect"></select>
       </label>
       <span class="chip" id="meta">Loading…</span>
     </div>
@@ -94,29 +96,29 @@
         <div class="kpis" id="kpis"></div>
       </div>
 
-      <!-- === Charts row (left -> right) === -->
-      <div class="card q" id="actPickCard">
+      <!-- Charts row (left -> right) -->
+      <div class="card q chartcard" id="actPickCard">
         <h3>Most Pick Active</h3>
         <div id="actPickWrap"></div>
       </div>
 
-      <div class="card q" id="pasPickCard">
+      <div class="card q chartcard" id="pasPickCard">
         <h3>Most Pick Passive</h3>
         <div id="pasPickWrap"></div>
       </div>
 
-      <div class="card q" id="banCard">
+      <div class="card q chartcard" id="banCard">
         <h3>Most Banned (Count)</h3>
         <div id="banChartWrap"></div>
       </div>
 
-      <div class="card q" id="mapCard">
+      <div class="card q chartcard" id="mapCard">
         <h3>Performance by Map</h3>
         <div class="legend" style="margin-bottom:4px"><span><i class="lg"></i> Matches</span><span><i class="lg2"></i> Wins</span></div>
         <div id="mapChartWrap"></div>
       </div>
 
-      <!-- === Side-by-side tables: Active Combos | Passive Trio === -->
+      <!-- Side-by-side tables -->
       <div class="card h" id="comboCard">
         <h3>Top Active Combos</h3>
         <div class="twrap">
@@ -131,13 +133,12 @@
         <h3>Top Passive Trio</h3>
         <div class="twrap">
           <table>
-            <thead><tr><th>Trio</th><th class="right">Picks</th><th class="right">Wins</th><th class="right">Win&nbsp;%</th></tr></thead>
+            <thead><tr><th>Trio (3× Passive)</th><th class="right">Picks</th><th class="right">Wins</th><th class="right">Win&nbsp;%</th><th>Top Maps</th></tr></thead>
             <tbody id="ptrioBody"></tbody>
           </table>
         </div>
       </div>
 
-      <!-- === Side-by-side: Top Active Skills | Top Passive Skills === -->
       <div class="card h" id="actCard">
         <h3>Top Active Skills</h3>
         <div class="twrap">
@@ -158,7 +159,6 @@
         </div>
       </div>
 
-      <!-- === Side-by-side: Opponent | Ban Impact === -->
       <div class="card h" id="oppCard">
         <h3>Performance by Opponent</h3>
         <div class="twrap">
@@ -179,7 +179,6 @@
         </div>
       </div>
 
-      <!-- Recent Matches -->
       <div class="card l" id="recentCard">
         <h3>Recent Matches</h3>
         <div class="twrap">
@@ -189,7 +188,6 @@
           </table>
         </div>
       </div>
-
     </div>
   </div>
 
@@ -208,49 +206,42 @@ const uniq=(a)=>[...new Set(a)];
 function ymd(d){const dt=new Date(d);if(!d||isNaN(dt))return '';return dt.toISOString().slice(0,10)}
 function parseState(v){if(!v) return {}; if (typeof v==='object') return v; try{return JSON.parse(v)}catch{ return {} }}
 
-/* ========= Container-aware micro charts ========= */
-function measureWrap(el, fallback=360){ return Math.max(240, el?.clientWidth || fallback); }
-function guessLabelW(labels, fs){ const maxLen = Math.max(0, ...labels.map(s=>String(s).length)); return Math.min(160, Math.max(70, maxLen * (fs*0.62))); }
-
+/* ========= Micro SVGs ========= */
 function barH(labels, values, opts={}){
-  const W = opts.width || 360;
-  const fs = opts.fontSize || 10;
-  const labelW = opts.labelW ?? guessLabelW(labels, fs);
-  const pad = 4, row = 12, gap = 2;
-  const H = Math.max(36, labels.length*(row+gap) + pad*2);
+  const W = opts.width || 380;
+  const labelW = 110;
+  const pad = 4, row = 14, gap = 3;
+  const H = Math.max(40, labels.length*(row+gap) + pad*2);
   const max = Math.max(1, ...values);
-  const scale = (v)=> Math.max(1, (v/max)*(W - labelW - 18));
-
+  const scale = (v)=> Math.max(1, (v/max)*(W - labelW - 20));
   const svg = [`<svg class="chart" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" shape-rendering="crispEdges">`];
   labels.forEach((lb,i)=>{
     const y = pad + i*(row+gap);
     const w = scale(values[i]);
-    svg.push(`<text x="2" y="${y+fs-1}" font-size="${fs}" fill="#ddd">${lb}</text>`);
+    svg.push(`<text x="2" y="${y+10}" font-size="11" fill="#ddd">${lb}</text>`);
     svg.push(`<rect x="${labelW}" y="${y}" width="${w}" height="${row}" fill="#ffbd59" stroke="#6a4e23" vector-effect="non-scaling-stroke"/>`);
-    svg.push(`<text x="${labelW + w + 4}" y="${y+fs-1}" font-size="${fs}" fill="#ccc" class="mono">${values[i]}</text>`);
+    svg.push(`<text x="${labelW + w + 4}" y="${y+10}" font-size="10" fill="#ccc" class="mono">${values[i]}</text>`);
   });
   svg.push(`</svg>`);
   return svg.join('');
 }
 
 function groupedBars(labels, aVals, bVals, opts={}){
-  const W = opts.width || 380;
-  const fs = opts.fontSize || 10;
-  const labelW = opts.labelW ?? guessLabelW(labels, fs);
-  const pad = 6, row = 11, gap = 2, grpGap = 5;
-  const H = Math.max(36, labels.length*(row+gap) + labels.length*grpGap + pad*2);
+  const W = opts.width || 400;
+  const labelW = 120;
+  const pad = 6, row = 12, gap = 2, grpGap = 6;
+  const H = Math.max(40, labels.length*(row+gap) + labels.length*grpGap + pad*2);
   const max = Math.max(1, ...aVals, ...bVals);
-  const scale = (v)=> Math.max(1, (v/max)*(W - labelW - 20));
-
+  const scale = (v)=> Math.max(1, (v/max)*(W - labelW - 24));
   const svg = [`<svg class="chart" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" shape-rendering="crispEdges">`];
   let y = pad;
   labels.forEach((lb, i)=>{
     const a = scale(aVals[i]), b = scale(bVals[i]);
-    svg.push(`<text x="2" y="${y+fs-1}" font-size="${fs}" fill="#ddd">${lb}</text>`);
+    svg.push(`<text x="2" y="${y+10}" font-size="11" fill="#ddd">${lb}</text>`);
     svg.push(`<rect x="${labelW}" y="${y}" width="${a}" height="${row}" fill="#ffbd59" stroke="#6a4e23" vector-effect="non-scaling-stroke"/>`);
     y += row + gap;
     svg.push(`<rect x="${labelW}" y="${y}" width="${b}" height="${row}" fill="#4aa86a" stroke="#2c5a3a" vector-effect="non-scaling-stroke"/>`);
-    svg.push(`<text x="${labelW + Math.max(a,b) + 4}" y="${y-3}" font-size="${fs-1}" fill="#bbb" class="mono">${aVals[i]}/${bVals[i]}</text>`);
+    svg.push(`<text x="${labelW + Math.max(a,b) + 4}" y="${y-2}" font-size="10" fill="#bbb" class="mono">${aVals[i]}/${bVals[i]}</text>`);
     y += row + grpGap;
   });
   svg.push(`</svg>`);
@@ -258,8 +249,49 @@ function groupedBars(labels, aVals, bVals, opts={}){
 }
 
 /* ========= Data plumbing ========= */
-let ALL_RECORDS=[]; // raw
-let CURR_ROWS=[];   // filtered to team + tourn
+let ALL_RECORDS=[]; // all rows (matches), used to derive tourn+team lists
+
+function explodeRecordToRows(rec){
+  const s=parseState(rec.state);
+  const picks=Array.isArray(s.picks)?s.picks:[];          // active heroes (objects)
+  const passives=Array.isArray(s.passives)?s.passives:[];  // passive trios (objects)
+  const bans=Array.isArray(s.bans)?s.bans:[];              // [{name,image_url}, {name,image_url}]
+
+  const leftWin=(rec.team_left_score??0)>(rec.team_right_score??0);
+  const rightWin=(rec.team_right_score??0)>(rec.team_left_score??0);
+
+  function side(isLeft){
+    const team = isLeft? rec.team_left : rec.team_right;
+    const opp  = isLeft? rec.team_right : rec.team_left;
+    const ts   = isLeft? (rec.team_left_score??0) : (rec.team_right_score??0);
+    const os   = isLeft? (rec.team_right_score??0) : (rec.team_left_score??0);
+    const res  = (isLeft?leftWin:rightWin)?'W':'L';
+    const ban  = bans[isLeft?0:1] || {};
+    const idx  = isLeft? [0,1,2,3] : [7,6,5,4];
+
+    const act  = idx.map(i=>({
+      hero: (picks[i]?.name)||'',
+      img : (picks[i]?.image_url)||PLACEHOLDER
+    }));
+
+    const pas  = idx.map(i=>{
+      const arr = Array.isArray(passives[i]) ? passives[i] : [];
+      return arr.map(x=>({name:x?.name||'', img:x?.image_url||PLACEHOLDER})).filter(x=>x.name);
+    });
+
+    return {
+      rec_id:rec.id,
+      date:ymd(rec.match_date),
+      map:rec.map,
+      team,opp,ts,os,res,
+      banName: ban?.name || '',
+      banImg : ban?.image_url || PLACEHOLDER,
+      act,    // [{hero,img} ×4]
+      pass:pas // [[{name,img}×3] ×4]
+    };
+  }
+  return [side(true), side(false)];
+}
 
 async function fetchAll(){
   const { data, error } = await client
@@ -271,156 +303,172 @@ async function fetchAll(){
   return data||[];
 }
 
-function explodeRecordToRows(rec){
-  const s=parseState(rec.state);
-  const picks=Array.isArray(s.picks)?s.picks:[];         // actives with .name, .image_url
-  const passives=Array.isArray(s.passives)?s.passives:[]; // passives per slot (arrays of objects)
-  const bans=Array.isArray(s.bans)?s.bans:[];
-  const leftWin=(rec.team_left_score??0)>(rec.team_right_score??0);
-  const rightWin=(rec.team_right_score??0)>(rec.team_left_score??0);
-  function side(isLeft){
-    const team=isLeft?rec.team_left:rec.team_right;
-    const opp =isLeft?rec.team_right:rec.team_left;
-    const ts  =isLeft?(rec.team_left_score??0):(rec.team_right_score??0);
-    const os  =isLeft?(rec.team_right_score??0):(rec.team_left_score??0);
-    const res =(isLeft?leftWin:rightWin)?'W':'L';
-    const ban=(bans[isLeft?0:1]||{});
-    const idx=isLeft?[0,1,2,3]:[7,6,5,4];
-    const act=idx.map(i=>({hero:(picks[i]?.name)||'', img:(picks[i]?.image_url)||PLACEHOLDER}));
-    const pas=idx.map(i=>Array.isArray(passives[i])?
-        passives[i].map(x=>({name:x?.name||'', img:x?.image_url||PLACEHOLDER})).filter(p=>p.name):[]
-      );
-    return {rec_id:rec.id,date:ymd(rec.match_date),map:rec.map,team,opp,ts,os,res,ban:ban.name||'',act,pass:pas,tourn:rec.tournament_name||''};
-  }
-  return [side(true), side(false)];
-}
-
-function teamsFrom(records){
-  const S=new Set(); records.forEach(r=>{ if(r.team_left)S.add(r.team_left); if(r.team_right)S.add(r.team_right) }); return [...S].sort();
-}
+/* ========= Filters ========= */
 function tournamentsFrom(records){
-  const m = new Map();
+  // return [{name, firstDate, lastDate}] sorted by lastDate desc
+  const map = new Map();
   records.forEach(r=>{
-    const nm = r.tournament_name || '';
-    if(!nm) return;
-    const d = String(r.match_date||'');
-    const t = m.get(nm);
-    if(!t || d > t) m.set(nm, d);
+    const t = r.tournament_name || '—';
+    const d = new Date(r.match_date);
+    if(!map.has(t)) map.set(t, {name:t, first:d, last:d});
+    const o = map.get(t); if(d<o.first) o.first=d; if(d>o.last) o.last=d;
   });
-  return [...m.entries()].map(([name,lastDate])=>({name,lastDate})).sort((a,b)=> b.lastDate.localeCompare(a.lastDate));
+  return [...map.values()].sort((a,b)=> b.last - a.last);
 }
-
-function rowsForTeam(records, team, tournSel){
-  return records.flatMap(explodeRecordToRows)
-    .filter(r=>r.team===team)
-    .filter(r=> tournSel==='__ALL__' ? true : r.tourn===tournSel);
+function teamsForTournament(records, tournName){
+  const S = new Set();
+  records.forEach(r=>{
+    if(tournName && tournName!=='__ALL__' && (r.tournament_name||'—')!==tournName) return;
+    if(r.team_left) S.add(r.team_left);
+    if(r.team_right) S.add(r.team_right);
+  });
+  return [...S].sort();
+}
+function rowsForTeamAndTournament(records, team, tournName){
+  const inTourn = (r) => (tournName==='__ALL__') || ((r.tournament_name||'—')===tournName);
+  const filtered = records.filter(inTourn).flatMap(explodeRecordToRows);
+  return filtered.filter(r=>r.team===team);
 }
 
 /* ========= Aggregations ========= */
-const kpis = (rows)=>{
-  const matches=rows.length, wins=rows.filter(r=>r.res==='W').length, winpct=matches?wins/matches:0;
+function kpis(rows){
+  const matches=rows.length; const wins=rows.filter(r=>r.res==='W').length; const winpct=matches?wins/matches:0;
   const diffAvg=matches? (rows.reduce((a,r)=>a+(r.ts-r.os),0)/matches):0;
-  const maps=uniq(rows.map(r=>r.map)).length, opps=uniq(rows.map(r=>r.opp)).length;
+  const maps=uniq(rows.map(r=>r.map)).length; const opps=uniq(rows.map(r=>r.opp)).length;
   return {matches,wins,winpct,diffAvg,maps,opps};
-};
-const mostBanned = rows => {
-  const m=new Map(); rows.forEach(r=>{ const b=r.ban||''; if(!b)return; m.set(b,(m.get(b)||0)+1) });
-  const arr=[...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10); return {labels:arr.map(x=>x[0]), values:arr.map(x=>x[1])};
-};
-const perfByMap = rows => {
+}
+function mostBanned(rows){
+  const m=new Map(); const imgs=new Map();
+  rows.forEach(r=>{ const b=r.banName||''; if(!b)return; m.set(b,(m.get(b)||0)+1); if(!imgs.has(b)) imgs.set(b,r.banImg||PLACEHOLDER); });
+  const arr=[...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10);
+  return {labels:arr.map(x=>x[0]), values:arr.map(x=>x[1]), imgs};
+}
+function perfByMap(rows){
   const m=new Map();
   rows.forEach(r=>{ if(!m.has(r.map)) m.set(r.map,{m:0,w:0}); const o=m.get(r.map); o.m++; if(r.res==='W') o.w++; });
   return [...m.entries()].map(([name,o])=>({name,matches:o.m,wins:o.w,winpct:o.m?o.w/o.m:0}))
     .sort((a,b)=>b.matches-a.matches||a.name.localeCompare(b.name));
-};
-const topCombos = rows => {
+}
+function mostPickActive(rows){
+  const m=new Map(); const imgs=new Map();
+  rows.forEach(r=>r.act.forEach(a=>{
+    if(!a.hero) return;
+    m.set(a.hero,(m.get(a.hero)||0)+1);
+    if(!imgs.has(a.hero)) imgs.set(a.hero, a.img||PLACEHOLDER);
+  }));
+  const arr=[...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10);
+  return {labels:arr.map(x=>x[0]), values:arr.map(x=>x[1]), imgs};
+}
+function mostPickPassive(rows){
+  const m=new Map(); const imgs=new Map();
+  rows.forEach(r=>r.pass.forEach(trio=>trio.forEach(ps=>{
+    if(!ps?.name) return;
+    m.set(ps.name,(m.get(ps.name)||0)+1);
+    if(!imgs.has(ps.name)) imgs.set(ps.name, ps.img||PLACEHOLDER);
+  })));
+  const arr=[...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10);
+  return {labels:arr.map(x=>x[0]), values:arr.map(x=>x[1]), imgs};
+}
+
+function topCombos(rows){
   const combos=new Map();
   rows.forEach(r=>{
     const names=r.act.map(a=>a.hero).filter(Boolean);
+    const imgMap=new Map(); r.act.forEach(a=>{ if(a.hero&&!imgMap.has(a.hero)) imgMap.set(a.hero,a.img||PLACEHOLDER); });
     if(names.length!==4) return;
     const key=names.slice().sort((a,b)=>a.localeCompare(b)).join('|');
-    if(!combos.has(key)) combos.set(key,{names:key.split('|'), picks:0,wins:0,maps:new Map()});
+    if(!combos.has(key)) combos.set(key,{names:key.split('|'), heroImgs: Object.fromEntries([...imgMap]), picks:0,wins:0,maps:new Map()});
     const C=combos.get(key); C.picks++; if(r.res==='W')C.wins++; C.maps.set(r.map,(C.maps.get(r.map)||0)+1);
   });
-  return [...combos.values()].map(c=>({
-    ...c, winpct:c.picks?c.wins/c.picks:0,
-    topMaps:[...c.maps.entries()].sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>`${x[0]} ×${x[1]}`).join(', ')
+  const list=[...combos.values()].map(c=>({
+    ...c, winpct: c.picks?c.wins/c.picks:0,
+    topMaps: [...c.maps.entries()].sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>`${x[0]} ×${x[1]}`).join(', ')
   })).sort((a,b)=>b.picks-a.picks||b.wins-a.wins).slice(0,10);
-};
+  return list;
+}
 
-/* topActiveSkills with image */
-const topActives = rows => {
-  const S=new Map(); rows.forEach(r=>{
-    r.act.forEach(a=>{
-      if(!a.hero) return;
-      if(!S.has(a.hero)) S.set(a.hero,{name:a.hero,img:a.img||PLACEHOLDER,p:0,w:0});
-      const o=S.get(a.hero);
-      if(a.img && o.img===PLACEHOLDER) o.img=a.img;
-      o.p++; if(r.res==='W')o.w++;
-    })
-  });
-  const den=rows.length*4;
-  return [...S.values()].map(o=>({
-    name:o.name,img:o.img,picks:o.p, pickRate: den?o.p/den:0, wins:o.w, winRate: o.p?o.w/o.p:0
-  })).sort((a,b)=>b.picks-a.picks||b.wins-a.wins).slice(0,15);
-};
-
-/* topPassiveSkills with image */
-const topPassives = rows => {
-  const S=new Map(); rows.forEach(r=>{
-    r.pass.forEach(trio=>{
-      trio.forEach(p=>{
-        if(!p.name) return;
-        if(!S.has(p.name)) S.set(p.name,{name:p.name,img:p.img||PLACEHOLDER,p:0,w:0});
-        const o=S.get(p.name);
-        if(p.img && o.img===PLACEHOLDER) o.img=p.img;
-        o.p++; if(r.res==='W')o.w++;
-      })
-    })
-  });
-  const den=rows.length*12;
-  return [...S.values()].map(o=>({
-    name:o.name,img:o.img,picks:o.p, pickRate: den?o.p/den:0, wins:o.w, winRate: o.p?o.w/o.p:0
-  })).sort((a,b)=>b.picks-a.picks||b.wins-a.wins).slice(0,15);
-};
-
-/* Top Passive Trio (per player trio of passives) */
-const topPassiveTrios = rows => {
+function normalizeTrio(arr){
+  const names=(arr||[]).map(x=>x?.name||'').filter(Boolean);
+  if(names.length!==3) return null;
+  const imgs = {}; (arr||[]).forEach(x=>{ if(x?.name) imgs[x.name]=x.img||PLACEHOLDER; });
+  const sorted=[...names].sort((a,b)=>a.localeCompare(b));
+  return {key:sorted.join('|'), names:sorted, imgs};
+}
+function topPassiveTrios(rows){
   const M=new Map();
   rows.forEach(r=>{
-    r.pass.forEach(trio=>{
-      if(!Array.isArray(trio) || trio.length!==3) return;
-      const names = trio.map(p=>p.name).filter(Boolean);
-      if(names.length!==3) return;
-      const imgs  = trio.map(p=>p.img || PLACEHOLDER);
-      const key = names.slice().sort((a,b)=>a.localeCompare(b)).join('|');
-      if(!M.has(key)) M.set(key,{names:key.split('|'), imgs, picks:0, wins:0});
-      const o=M.get(key); o.picks++; if(r.res==='W') o.wins++;
+    r.pass.forEach(tr=>{
+      const n=normalizeTrio(tr); if(!n) return;
+      if(!M.has(n.key)) M.set(n.key,{names:n.names, imgs:n.imgs, picks:0,wins:0,maps:new Map()});
+      const T=M.get(n.key); T.picks++; if(r.res==='W')T.wins++; T.maps.set(r.map,(T.maps.get(r.map)||0)+1);
     });
   });
-  return [...M.values()].map(o=>({...o, winpct:o.picks?o.wins/o.picks:0}))
-    .sort((a,b)=>b.picks-a.picks||b.wins-a.wins).slice(0,10);
-};
+  const list=[...M.values()].map(T=>({
+    ...T, winpct: T.picks?T.wins/T.picks:0,
+    topMaps:[...T.maps.entries()].sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>`${x[0]} ×${x[1]}`).join(', ')
+  })).sort((a,b)=>b.picks-a.picks||b.wins-a.wins).slice(0,10);
+  return list;
+}
 
-const perfByOpponent = rows => {
+function topActives(rows){
+  const S=new Map(); const IMG=new Map();
+  rows.forEach(r=>{ r.act.forEach(a=>{
+    if(!a.hero) return;
+    if(!S.has(a.hero)) S.set(a.hero,{p:0,w:0});
+    if(!IMG.has(a.hero)) IMG.set(a.hero, a.img||PLACEHOLDER);
+    const o=S.get(a.hero); o.p++; if(r.res==='W')o.w++;
+  })});
+  const den=rows.length*4;
+  return [...S.entries()].map(([name,o])=>({name,img:IMG.get(name),picks:o.p, pickRate: den?o.p/den:0, wins:o.w, winRate: o.p?o.w/o.p:0}))
+    .sort((a,b)=>b.picks-a.picks||b.wins-a.wins).slice(0,15);
+}
+function topPassives(rows){
+  const S=new Map(); const IMG=new Map();
+  rows.forEach(r=>{ r.pass.forEach(trio=>trio.forEach(ps=>{
+    if(!ps?.name) return;
+    if(!S.has(ps.name)) S.set(ps.name,{p:0,w:0});
+    if(!IMG.has(ps.name)) IMG.set(ps.name, ps.img||PLACEHOLDER);
+    const o=S.get(ps.name); o.p++; if(r.res==='W')o.w++;
+  }))});
+  const den=rows.length*12;
+  return [...S.entries()].map(([name,o])=>({name,img:IMG.get(name),picks:o.p, pickRate: den?o.p/den:0, wins:o.w, winRate: o.p?o.w/o.p:0}))
+    .sort((a,b)=>b.picks-a.picks||b.wins-a.wins).slice(0,15);
+}
+
+function perfByOpponent(rows){
   const m=new Map(); rows.forEach(r=>{ if(!m.has(r.opp)) m.set(r.opp,{m:0,w:0}); const o=m.get(r.opp); o.m++; if(r.res==='W')o.w++; });
   return [...m.entries()].map(([opp,o])=>({opp,matches:o.m,wins:o.w,winpct:o.m?o.w/o.m:0}))
     .sort((a,b)=>b.matches-a.matches||a.opp.localeCompare(b.opp)).slice(0,20);
-};
-const banImpactAgg = rows => {
-  const skills=new Map(); rows.forEach(r=>{ if(!r.ban) return; if(!skills.has(r.ban)) skills.set(r.ban,{ban:{n:0,w:0}, noban:{n:0,w:0}}); const S=skills.get(r.ban); S.ban.n++; if(r.res==='W') S.ban.w++; });
+}
+
+function banImpactAgg(rows){
+  const skills=new Map(); const IMG=new Map();
+  rows.forEach(r=>{
+    if(!r.banName) return;
+    if(!skills.has(r.banName)) skills.set(r.banName,{ban:{n:0,w:0},noban:{n:0,w:0}});
+    if(!IMG.has(r.banName)) IMG.set(r.banName, r.banImg||PLACEHOLDER);
+    const S=skills.get(r.banName); S.ban.n++; if(r.res==='W') S.ban.w++;
+  });
   const names=[...skills.keys()];
-  rows.forEach(r=>{ names.forEach(n=>{ if(r.ban!==n){ const S=skills.get(n); S.noban.n++; if(r.res==='W')S.noban.w++; }}) });
+  rows.forEach(r=>{
+    const win = (r.res==='W')?1:0;
+    names.forEach(k=>{ if(r.banName!==k){ const S=skills.get(k); S.noban.n++; S.noban.w += win; }});
+  });
   return [...skills.entries()].map(([name,S])=>{
-    const w1=S.ban.n?S.ban.w/S.ban.n:0; const w2=S.noban.n?S.noban.w/S.noban.n:0; return {name,banned:S.ban.n, wBan:w1, wNot:w2, delta:w1-w2};
+    const w1=S.ban.n?S.ban.w/S.ban.n:0; const w2=S.noban.n?S.noban.w/S.noban.n:0;
+    return {name,img:IMG.get(name)||PLACEHOLDER,banned:S.ban.n, wBan:w1, wNot:w2, delta:w1-w2};
   }).sort((a,b)=>b.delta-a.delta||b.banned-a.banned).slice(0,12);
-};
-const recent = rows => rows.slice().sort((a,b)=> (b.date.localeCompare(a.date)) || (b.rec_id-a.rec_id)).slice(0,12);
+}
+
+function recent(rows){
+  return rows.slice().sort((a,b)=> (b.date.localeCompare(a.date)) || (b.rec_id-a.rec_id)).slice(0,12);
+}
 
 /* ========= Renderers ========= */
 function renderKPIs(rows){
   const k=kpis(rows);
-  document.getElementById('kpis').innerHTML = `
+  const el=document.getElementById('kpis');
+  el.innerHTML = `
     <div class="kpi">Matches <b>${k.matches}</b></div>
     <div class="kpi">Wins <b>${k.wins}</b> <span class="muted">(${pct(k.wins,k.matches)})</span></div>
     <div class="kpi">Avg Score Diff <b>${k.diffAvg.toFixed(2)}</b></div>
@@ -428,67 +476,86 @@ function renderKPIs(rows){
     <div class="kpi">Opponents <b>${k.opps}</b></div>`;
 }
 
-/* Charts */
+function renderMostPickAct(rows){
+  const {labels, values}=mostPickActive(rows);
+  const wrap=document.getElementById('actPickWrap');
+  wrap.innerHTML = labels.length ? barH(labels, values, {height: labels.length*18+16}) : `<div class="muted">No active picks.</div>`;
+}
+
+function renderMostPickPas(rows){
+  const {labels, values}=mostPickPassive(rows);
+  const wrap=document.getElementById('pasPickWrap');
+  wrap.innerHTML = labels.length ? barH(labels, values, {height: labels.length*18+16}) : `<div class="muted">No passive picks.</div>`;
+}
+
 function renderMostBanned(rows){
   const {labels, values}=mostBanned(rows);
   const wrap=document.getElementById('banChartWrap');
-  if(!labels.length){ wrap.innerHTML = `<div class="muted">No bans recorded for this team.</div>`; return; }
-  const W = measureWrap(wrap, 360), fs = Math.max(9, Math.min(12, W/48));
-  wrap.innerHTML = barH(labels, values, {width: W, fontSize: fs});
+  wrap.innerHTML = labels.length ? barH(labels, values, {height: labels.length*18+16}) : `<div class="muted">No bans recorded for this team.</div>`;
 }
 function renderPerfByMap(rows){
-  const data=perfByMap(rows), wrap=document.getElementById('mapChartWrap');
+  const data=perfByMap(rows);
+  const wrap=document.getElementById('mapChartWrap');
   if(!data.length){ wrap.innerHTML='<div class="muted">No map data.</div>'; return; }
   const labels=data.map(x=>x.name), matches=data.map(x=>x.matches), wins=data.map(x=>x.wins);
-  const W = measureWrap(wrap, 380), fs = Math.max(9, Math.min(12, W/52));
-  wrap.innerHTML = groupedBars(labels, matches, wins, {width: W, fontSize: fs});
-}
-function renderMostPickAct(rows){
-  const list = topActives(rows).slice(0,8);
-  const wrap = document.getElementById('actPickWrap');
-  if(!list.length){ wrap.innerHTML='<div class="muted">No active picks.</div>'; return; }
-  const labels = list.map(x=>x.name), vals = list.map(x=>x.picks);
-  const W = measureWrap(wrap, 340), fs = Math.max(9, Math.min(12, W/52));
-  wrap.innerHTML = barH(labels, vals, {width:W, fontSize:fs});
-}
-function renderMostPickPas(rows){
-  const list = topPassives(rows).slice(0,8);
-  const wrap = document.getElementById('pasPickWrap');
-  if(!list.length){ wrap.innerHTML='<div class="muted">No passive picks.</div>'; return; }
-  const labels = list.map(x=>x.name), vals = list.map(x=>x.picks);
-  const W = measureWrap(wrap, 340), fs = Math.max(9, Math.min(12, W/52));
-  wrap.innerHTML = barH(labels, vals, {width:W, fontSize:fs});
+  wrap.innerHTML = groupedBars(labels, matches, wins, {height: labels.length*26+24});
 }
 
-/* Tables */
+function pillsFromMapCount(mapCount){
+  const arr=[...mapCount.entries()].sort((a,b)=>b[1]-a[1]);
+  const shown=arr.slice(0,3).map(([n,c])=>`<span class="pill">${n} ×${c}</span>`).join('');
+  const more=arr.length>3?`<span class="pill">+${arr.length-3} more</span>`:''; return shown+more;
+}
+
 function renderCombos(rows){
   const list=topCombos(rows);
   const tbody=document.getElementById('comboBody'); tbody.innerHTML='';
   if(!list.length){ tbody.innerHTML = `<tr><td colspan="5" class="muted">No combos found.</td></tr>`; return; }
   list.forEach(c=>{
+    const icons = c.names.map(n=>`<img class="avatar" src="${(c.heroImgs[n]||PLACEHOLDER)}" alt="${n}" title="${n}" loading="lazy">`).join('');
+    const label = `<div class="cell-icons">${icons}<span class="muted" style="margin-left:6px">${c.names.join(' · ')}</span></div>`;
     const tr=document.createElement('tr');
-    tr.innerHTML = `<td class="muted">${c.names.join(' · ')}</td><td class="right mono">${c.picks}</td><td class="right mono">${c.wins}</td><td class="right mono">${fmtP(c.winpct)}</td><td>${c.topMaps||'—'}</td>`;
+    tr.innerHTML = `<td>${label}</td><td class="right mono">${c.picks}</td><td class="right mono">${c.wins}</td><td class="right mono">${fmtP(c.winpct)}</td><td>${c.topMaps||'—'}</td>`;
     tbody.appendChild(tr);
   });
 }
-function renderPassiveTrios(rows){
+
+function renderPTrios(rows){
   const list=topPassiveTrios(rows);
   const tb=document.getElementById('ptrioBody'); tb.innerHTML='';
-  if(!list.length){ tb.innerHTML='<tr><td colspan="4" class="muted">No passive trios.</td></tr>'; return; }
-  list.forEach(r=>{
+  if(!list.length){ tb.innerHTML='<tr><td colspan="5" class="muted">No passive trio data.</td></tr>'; return; }
+  list.forEach(t=>{
+    const icons = t.names.map(n=>`<img class="avatar s" src="${(t.imgs[n]||PLACEHOLDER)}" alt="${n}" title="${n}" loading="lazy">`).join('');
+    const label = `<div class="cell-icons">${icons}<span class="muted" style="margin-left:6px">${t.names.join(' · ')}</span></div>`;
     const tr=document.createElement('tr');
-    const trioHTML = `<div class="trio">
-      <img class="avatar" src="${r.imgs?.[0]||PLACEHOLDER}" alt="">
-      <img class="avatar" src="${r.imgs?.[1]||PLACEHOLDER}" alt="">
-      <img class="avatar" src="${r.imgs?.[2]||PLACEHOLDER}" alt="">
-      <span class="muted">${r.names.join(' · ')}</span>
-    </div>`;
-    tr.innerHTML=`<td>${trioHTML}</td><td class="right mono">${r.picks}</td><td class="right mono">${r.wins}</td><td class="right mono">${fmtP(r.winpct)}</td>`;
+    tr.innerHTML=`<td>${label}</td><td class="right mono">${t.picks}</td><td class="right mono">${t.wins}</td><td class="right mono">${fmtP(t.winpct)}</td><td>${t.topMaps||'—'}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+function renderTopAct(rows){
+  const list=topActives(rows); const tb=document.getElementById('actBody'); tb.innerHTML='';
+  if(!list.length){ tb.innerHTML='<tr><td colspan="5" class="muted">No active picks.</td></tr>'; return; }
+  list.forEach(r=>{
+    const label=`<div class="cell-skill"><img class="avatar" src="${r.img||PLACEHOLDER}" alt="${r.name}" loading="lazy"><span>${r.name}</span></div>`;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${label}</td><td class="right mono">${r.picks}</td><td class="right mono">${fmtP(r.pickRate)}</td><td class="right mono">${r.wins}</td><td class="right mono">${fmtP(r.winRate)}</td>`;
     tb.appendChild(tr);
   })
 }
+function renderTopPas(rows){
+  const list=topPassives(rows); const tb=document.getElementById('pasBody'); tb.innerHTML='';
+  if(!list.length){ tb.innerHTML='<tr><td colspan="5" class="muted">No passive picks.</td></tr>'; return; }
+  list.forEach(r=>{
+    const label=`<div class="cell-skill"><img class="avatar" src="${r.img||PLACEHOLDER}" alt="${r.name}" loading="lazy"><span>${r.name}</span></div>`;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${label}</td><td class="right mono">${r.picks}</td><td class="right mono">${fmtP(r.pickRate)}</td><td class="right mono">${r.wins}</td><td class="right mono">${fmtP(r.winRate)}</td>`;
+    tb.appendChild(tr);
+  })
+}
+
 function renderOpp(rows){
-  const list=perfByOpponent(rows), tb=document.getElementById('oppBody'); tb.innerHTML='';
+  const list=perfByOpponent(rows); const tb=document.getElementById('oppBody'); tb.innerHTML='';
   if(!list.length){ tb.innerHTML='<tr><td colspan="4" class="muted">No opponent data.</td></tr>'; return; }
   list.forEach(r=>{
     const tr=document.createElement('tr');
@@ -496,119 +563,87 @@ function renderOpp(rows){
     tb.appendChild(tr);
   })
 }
-function renderTopAct(rows){
-  const list=topActives(rows), tb=document.getElementById('actBody'); tb.innerHTML='';
-  if(!list.length){ tb.innerHTML='<tr><td colspan="5" class="muted">No active picks.</td></tr>'; return; }
-  list.forEach(r=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td><div class="cell-skill"><img class="avatar" src="${r.img||PLACEHOLDER}" alt=""><span>${r.name}</span></div></td>
-      <td class="right mono">${r.picks}</td><td class="right mono">${fmtP(r.pickRate)}</td>
-      <td class="right mono">${r.wins}</td><td class="right mono">${fmtP(r.winRate)}</td>`;
-    tb.appendChild(tr);
-  })
-}
-function renderTopPas(rows){
-  const list=topPassives(rows), tb=document.getElementById('pasBody'); tb.innerHTML='';
-  if(!list.length){ tb.innerHTML='<tr><td colspan="5" class="muted">No passive picks.</td></tr>'; return; }
-  list.forEach(r=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td><div class="cell-skill"><img class="avatar" src="${r.img||PLACEHOLDER}" alt=""><span>${r.name}</span></div></td>
-      <td class="right mono">${r.picks}</td><td class="right mono">${fmtP(r.pickRate)}</td>
-      <td class="right mono">${r.wins}</td><td class="right mono">${fmtP(r.winRate)}</td>`;
-    tb.appendChild(tr);
-  })
-}
+
 function renderBanImpact(rows){
-  const list=banImpactAgg(rows), tb=document.getElementById('biBody'); tb.innerHTML='';
+  const list=banImpactAgg(rows); const tb=document.getElementById('biBody'); tb.innerHTML='';
   if(!list.length){ tb.innerHTML='<tr><td colspan="5" class="muted">Not enough ban data.</td></tr>'; return; }
   list.forEach(r=>{
+    const label=`<div class="cell-skill"><img class="avatar" src="${r.img||PLACEHOLDER}" alt="${r.name}" loading="lazy"><span>${r.name}</span></div>`;
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${r.name}</td><td class="right mono">${r.banned}</td><td class="right mono">${fmtP(r.wBan)}</td><td class="right mono">${fmtP(r.wNot)}</td><td class="right mono" style="font-weight:700;">${fmtP(r.delta)}</td>`;
+    tr.innerHTML=`<td>${label}</td><td class="right mono">${r.banned}</td><td class="right mono">${fmtP(r.wBan)}</td><td class="right mono">${fmtP(r.wNot)}</td><td class="right mono" style="font-weight:700;">${fmtP(r.delta)}</td>`;
     tb.appendChild(tr);
   })
 }
+
 function renderRecent(rows){
-  const list=recent(rows), tb=document.getElementById('recentBody'); tb.innerHTML='';
+  const list=recent(rows); const tb=document.getElementById('recentBody'); tb.innerHTML='';
   if(!list.length){ tb.innerHTML='<tr><td colspan="6" class="muted">No recent matches.</td></tr>'; return; }
   list.forEach(r=>{
-    const tr=document.createElement('tr');
     const score=`${r.ts}-${r.os}`;
     const wl=r.res==='W'?`<span style="color:var(--good);font-weight:700">W</span>`:`<span style="color:var(--bad);font-weight:700">L</span>`;
-    tr.innerHTML=`<td>${r.date}</td><td>${r.map}</td><td>${r.opp}</td><td class="right mono">${score}</td><td class="right">${wl}</td><td>${r.ban||'—'}</td>`;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${r.date}</td><td>${r.map}</td><td>${r.opp}</td><td class="right mono">${score}</td><td class="right">${wl}</td><td class="cell-skill"><img class="avatar" src="${r.banImg||PLACEHOLDER}" alt="${r.banName}" loading="lazy"><span>${r.banName||'—'}</span></td>`;
     tb.appendChild(tr);
   })
 }
 
 /* ========= Orchestrator ========= */
-let CURRENT_TEAM = '';
-let CURRENT_TOURN = '__ALL__';
-
 async function init(){
   ALL_RECORDS = await fetchAll();
 
-  // Team select
-  const teams = teamsFrom(ALL_RECORDS);
-  const teamSel=document.getElementById('teamSelect');
-  teamSel.innerHTML = teams.map(t=>`<option value="${t}">${t}</option>`).join('');
-
-  // Tournament select; default to latest
-  const tournSel=document.getElementById('tournSelect');
+  // Tournament dropdown (default to latest)
   const tourns = tournamentsFrom(ALL_RECORDS);
+  const tSel = document.getElementById('tournSelect');
+  tSel.innerHTML = `<option value="__ALL__">All tournaments</option>` +
+                   tourns.map(t=>`<option value="${t.name}">${t.name}</option>`).join('');
   const latest = tourns[0]?.name || '__ALL__';
-  tournSel.innerHTML = `<option value="__ALL__">All tournaments</option>` +
-                       tourns.map(t=>`<option value="${t.name}">${t.name}</option>`).join('');
-  tournSel.value = latest;
-  CURRENT_TOURN = tournSel.value;
+  tSel.value = latest;
 
-  // Initial team
-  const qTeam = new URLSearchParams(location.search).get('team');
-  const startTeam = (qTeam && teams.includes(qTeam)) ? qTeam : (teams[0] || '');
-  teamSel.value = startTeam;
-  CURRENT_TEAM = startTeam;
+  // Teams for selected tournament
+  const teamSel = document.getElementById('teamSelect');
+  const refreshTeams = ()=>{
+    const teams = teamsForTournament(ALL_RECORDS, tSel.value);
+    const prev = teamSel.value;
+    teamSel.innerHTML = teams.map(x=>`<option value="${x}">${x}</option>`).join('');
+    teamSel.value = teams.includes(prev) ? prev : (teams[0]||'');
+  };
+  refreshTeams();
 
-  teamSel.addEventListener('change', ()=>{ CURRENT_TEAM = teamSel.value; load(); });
-  tournSel.addEventListener('change', ()=>{ CURRENT_TOURN = tournSel.value; load(); });
-
+  // Load initial team
+  const load = ()=> loadTeam(teamSel.value, tSel.value);
+  tSel.addEventListener('change', ()=>{ refreshTeams(); load(); });
+  teamSel.addEventListener('change', load);
   load();
-
-  // Re-render responsive charts on resize
-  window.addEventListener('resize', ()=>{
-    if(!CURR_ROWS.length) return;
-    renderMostPickAct(CURR_ROWS);
-    renderMostPickPas(CURR_ROWS);
-    renderMostBanned(CURR_ROWS);
-    renderPerfByMap(CURR_ROWS);
-  });
 }
 
-function setMeta(team, rows){
-  const t = rows.length;
+function setMeta(team, tourn, rows){
   const tourns = new Set();
-  ALL_RECORDS.forEach(r=>{ if(r.team_left===team||r.team_right===team) tourns.add(r.tournament_name||'') });
-  const tLabel = (CURRENT_TOURN==='__ALL__') ? 'All tournaments' : CURRENT_TOURN;
-  document.getElementById('meta').textContent = `${team} • ${t} team-rows • ${tLabel} • ${tourns.size} tournament(s) total`;
+  ALL_RECORDS.forEach(r=>{
+    if(r.team_left===team || r.team_right===team) tourns.add(r.tournament_name||'—');
+  });
+  document.getElementById('meta').textContent =
+    `${team} • ${rows.length} team-rows • ${tourn==='__ALL__'?'All tournaments':tourn}`;
 }
 
-function load(){
-  CURR_ROWS = rowsForTeam(ALL_RECORDS, CURRENT_TEAM, CURRENT_TOURN);
-  setMeta(CURRENT_TEAM, CURR_ROWS);
+function loadTeam(team, tourn){
+  const rows = rowsForTeamAndTournament(ALL_RECORDS, team, tourn);
+  setMeta(team, tourn, rows);
 
-  renderKPIs(CURR_ROWS);
+  renderKPIs(rows);
+  renderMostPickAct(rows);
+  renderMostPickPas(rows);
+  renderMostBanned(rows);
+  renderPerfByMap(rows);
 
-  // Charts
-  renderMostPickAct(CURR_ROWS);
-  renderMostPickPas(CURR_ROWS);
-  renderMostBanned(CURR_ROWS);
-  renderPerfByMap(CURR_ROWS);
+  renderCombos(rows);
+  renderPTrios(rows);
 
-  // Tables
-  renderCombos(CURR_ROWS);
-  renderPassiveTrios(CURR_ROWS);
-  renderTopAct(CURR_ROWS);
-  renderTopPas(CURR_ROWS);
-  renderOpp(CURR_ROWS);
-  renderBanImpact(CURR_ROWS);
-  renderRecent(CURR_ROWS);
+  renderTopAct(rows);
+  renderTopPas(rows);
+
+  renderOpp(rows);
+  renderBanImpact(rows);
+  renderRecent(rows);
 }
 
 init();
