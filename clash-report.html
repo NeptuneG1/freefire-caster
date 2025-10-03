@@ -1,343 +1,446 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Clash Squad — Team Report Dashboard</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Team Report — Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
     :root{
-      --bg:#0e0e0e; --panel:#1b1b1b; --panel2:#141414;
-      --ink:#f5f5f5; --muted:#b9b9b9; --brand:#ffbd59; --brand2:#ff7733;
-      --line:#2b2b2b; --good:#71d083; --bad:#ff6b6b;
+      --bg:#0e0e0e; --panel:#151515; --panel2:#1b1b1b; --ink:#f5f5f5; --muted:#b9b9b9;
+      --brand:#ffbd59; --brand2:#ff7733; --line:#2b2b2b; --good:#71d083; --bad:#ff6b6b;
+      --accent:#8ad2ff;
     }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
-    header{display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:5;background:#1f1f1f;border-bottom:3px solid var(--brand);padding:12px 14px}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif}
+    header{position:sticky;top:0;z-index:5;background:#1f1f1f;border-bottom:3px solid var(--brand);padding:14px 16px;display:flex;align-items:center;gap:10px}
     h1{margin:0;font-size:1.15rem;color:var(--brand)}
     .muted{color:var(--muted)}
-    select,button{background:#232323;color:var(--ink);border:1px solid #3a3a3a;border-radius:8px;padding:7px 10px;font-weight:600}
-    button.btn{background:var(--brand);color:#191919;border:0}
-    button.btn:hover{filter:brightness(1.05)}
-    .shell{max-width:1160px;margin:18px auto;padding:0 10px}
+    .shell{max-width:1200px;margin:18px auto;padding:0 12px}
+    .controls{display:flex;flex-wrap:wrap;gap:8px;margin-left:auto;align-items:center}
+    select,button{background:#212121;color:#eee;border:1px solid #3a3a3a;border-radius:8px;padding:8px 10px;cursor:pointer}
+    button.btn{background:var(--brand);color:#141414;border:none;font-weight:800}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
+    .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px}
+    .card h2{margin:0 0 6px;font-size:1.05rem;color:var(--brand2)}
+    .kpi-wrap{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+    .kpi{background:#121212;border:1px solid #242424;border-radius:10px;padding:10px;text-align:center}
+    .kpi .lbl{font-size:.8rem;color:#bbb}
+    .kpi .val{font-weight:800;font-size:1.35rem}
 
-    /* Report grid – fit one page */
-    .report{display:grid;grid-template-columns: 1fr 1fr 1fr;grid-template-rows:auto auto auto auto;gap:10px}
-    .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px}
-    .card h2{margin:0 0 6px 0;font-size:1rem;color:var(--brand2)}
-    .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
-    .kpi{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px;text-align:center}
-    .kpi b{display:block;font-size:1.15rem;margin-top:2px}
+    /* SVG charts — crisp, non-blurry */
+    .chart svg{width:100%;height:auto;display:block}
+    .chart text{fill:#ddd;font-family:inherit}
+    .chart .axis path,.chart .axis line{stroke:#444}
+    .chart .bar{shape-rendering:crispEdges}
+    .chart .line{fill:none;stroke-width:2.5}
 
-    .span-3{grid-column:1/4}
-    .span-2{grid-column:span 2}
-
-    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .pill{display:inline-block;padding:2px 8px;border:1px solid var(--line);border-radius:999px;background:#101010;margin:2px;color:#ddd;font-size:.85rem}
-
-    table{width:100%;border-collapse:collapse;font-size:.9rem}
-    th,td{border-bottom:1px solid var(--line);padding:6px 6px}
+    table{width:100%;border-collapse:collapse}
+    th,td{border-bottom:1px solid var(--line);padding:8px;font-size:.92rem}
     thead th{background:#191919;text-align:left}
     tbody tr:hover{background:#141414}
-    .right{text-align:right}
-    .mono{font-variant-numeric:tabular-nums}
 
-    canvas{width:100% !important;height:180px !important}
+    /* layout */
+    .col-6{grid-column:span 6}
+    .col-12{grid-column:span 12}
+    .col-4{grid-column:span 4}
+    .col-8{grid-column:span 8}
+    .tight{line-height:1.25}
 
-    /* Print / one-page fit (A4) */
-    @page{size:A4;margin:10mm}
-    @media print{
-      header{position:static}
-      .no-print{display:none !important}
-      .shell{max-width:unset;margin:0}
-      .report{gap:8px}
-      canvas{height:140px !important}
+    @media (max-width: 900px){
+      .kpi-wrap{grid-template-columns:repeat(2,1fr)}
+      .col-6,.col-8,.col-4{grid-column:span 12}
     }
   </style>
 </head>
 <body>
-<header>
-  <h1>Team Report Dashboard</h1>
-  <div class="row" style="margin-left:auto">
-    <label class="muted">Team
-      <select id="teamSel"></select>
-    </label>
-    <button id="refreshBtn" class="btn">Apply</button>
-    <button class="btn no-print" onclick="window.print()">Print</button>
-    <a href="dashboard.html" class="btn no-print" style="text-decoration:none">← Back</a>
-  </div>
-</header>
+  <header>
+    <h1>Team Report — Dashboard</h1>
+    <div class="controls">
+      <label class="muted">Team
+        <select id="teamSelect"></select>
+      </label>
+      <button class="btn" id="printBtn">Print</button>
+    </div>
+  </header>
 
-<div class="shell">
-  <div id="meta" class="muted" style="margin-bottom:10px">Loading…</div>
-
-  <div class="report">
+  <div class="shell">
     <!-- KPIs -->
-    <div class="card span-3">
-      <h2>Key Metrics</h2>
-      <div class="kpis" id="kpiWrap"></div>
-    </div>
-
-    <!-- Win/Loss Donut -->
     <div class="card">
-      <h2>W/L Split</h2>
-      <canvas id="chartDonut"></canvas>
+      <div class="kpi-wrap" id="kpiWrap">
+        <div class="kpi"><div class="lbl">Matches</div><div class="val" id="kpiMatches">—</div></div>
+        <div class="kpi"><div class="lbl">Wins</div><div class="val" id="kpiWins">—</div></div>
+        <div class="kpi"><div class="lbl">Win %</div><div class="val" id="kpiWinPct">—</div></div>
+        <div class="kpi"><div class="lbl">Avg Score Δ</div><div class="val" id="kpiDiff">—</div></div>
+      </div>
     </div>
 
-    <!-- Win % over Time -->
-    <div class="card span-2">
-      <h2>Win % by Date</h2>
-      <canvas id="chartWinTime"></canvas>
-    </div>
+    <div class="grid" style="margin-top:12px">
+      <div class="card col-6 chart">
+        <h2>Result Breakdown</h2>
+        <div id="donutWrap" aria-label="Win/Loss Donut Chart"></div>
+      </div>
+      <div class="card col-6 chart">
+        <h2>Win % Over Time</h2>
+        <div id="winLineWrap" aria-label="Win % Over Time"></div>
+      </div>
 
-    <!-- Top Actives -->
-    <div class="card span-2">
-      <h2>Top Active Picks (Pick %)</h2>
-      <canvas id="chartActives"></canvas>
-    </div>
+      <div class="card col-6 chart">
+        <h2>Top Active Picks (Rate)</h2>
+        <div id="topActiveWrap"></div>
+      </div>
+      <div class="card col-6 chart">
+        <h2>Top Passive Picks (Rate)</h2>
+        <div id="topPassiveWrap"></div>
+      </div>
 
-    <!-- Top Passives -->
-    <div class="card">
-      <h2>Top Passive Picks (Pick %)</h2>
-      <canvas id="chartPassives"></canvas>
-    </div>
+      <div class="card col-12 chart">
+        <h2>Most Banned (Count)</h2>
+        <div id="banWrap"></div>
+      </div>
 
-    <!-- Ban Summary -->
-    <div class="card">
-      <h2>Most Banned (Count)</h2>
-      <canvas id="chartBans"></canvas>
+      <div class="card col-6">
+        <h2>Performance by Map</h2>
+        <table>
+          <thead><tr><th>Map</th><th>Matches</th><th>Wins</th><th>Win %</th></tr></thead>
+          <tbody id="mapBody"></tbody>
+        </table>
+      </div>
+      <div class="card col-6">
+        <h2>Top Active Combos</h2>
+        <table>
+          <thead><tr><th>Combo (4× Active)</th><th>Picks</th><th>Wins</th><th>Win %</th></tr></thead>
+          <tbody id="comboBody"></tbody>
+        </table>
+      </div>
     </div>
-
-    <!-- Team × Map Table -->
-    <div class="card span-2">
-      <h2>Performance by Map</h2>
-      <table>
-        <thead><tr><th>Map</th><th class="right">Matches</th><th class="right">Wins</th><th class="right">Win %</th></tr></thead>
-        <tbody id="tblMap"></tbody>
-      </table>
-    </div>
-
-    <!-- Top Active Combos -->
-    <div class="card span-3">
-      <h2>Top Active Combos</h2>
-      <table>
-        <thead><tr><th>Combo (4× Active)</th><th class="right">Picks</th><th class="right">Wins</th><th class="right">Win %</th></tr></thead>
-        <tbody id="tblCombos"></tbody>
-      </table>
-    </div>
-
   </div>
-</div>
 
 <script>
-/* ========= Supabase init ========= */
+/**************** Supabase init (same project) ****************/
 const client = supabase.createClient(
   'https://gkugecflfddkpitlrmws.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
 );
 
-/* ========= Utils ========= */
+/**************** Utilities ****************/
 const PLACEHOLDER = 'https://imgur.com/AdvPwAO.png';
-const pct = (a,b)=> b? (a/b*100).toFixed(1)+'%':'—';
-const fmtPct = x => (x==null || !isFinite(x)) ? '—' : (x*100).toFixed(1)+'%';
-const uniq = arr => [...new Set(arr)];
-function parseState(val){ if(!val) return {}; if(typeof val==='object') return val; try{ return JSON.parse(val);}catch(_){return{};} }
+const fmtPct = (n)=> (isFinite(n) ? (n*100).toFixed(1)+'%' : '—');
+const pct = (a,b)=> b?fmtPct(a/b):'—';
+const uniq = (a)=> [...new Set(a)];
+function parseState(val){ if(!val) return {}; if(typeof val==='object') return val; try{return JSON.parse(val)}catch(e){return {}} }
+function ymd(d){const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`}
 
-/* ========= Global ========= */
+/**************** Data load & shaping ****************/
 let RAW = [];
-let CHARTS = {};
 
-/* ========= Data ops ========= */
+async function loadAll(){
+  // Load all rows; dashboard is per-team so we aggregate client-side.
+  const { data, error } = await client
+    .from('draft_records')
+    .select('id, match_date, game_number, team_left, team_right, team_left_score, team_right_score, map, tournament_name, state')
+    .order('match_date', { ascending:true })
+    .order('id', { ascending:true });
+  if(error){ console.error(error); alert('Failed to load records: '+error.message); return; }
+  RAW = data || [];
+  populateTeams(RAW);
+  render();
+}
+
+function populateTeams(records){
+  const teams = uniq(records.flatMap(r=>[r.team_left, r.team_right]).filter(Boolean)).sort();
+  const dd = document.getElementById('teamSelect');
+  dd.innerHTML = teams.map(t=>`<option value="${t}">${t}</option>`).join('');
+  // default to first team alphabetically
+  if(teams.length) dd.value = teams[0];
+  dd.onchange = render;
+}
+
 function explodeRecordToRows(rec){
   const s = parseState(rec.state);
-  const picks = Array.isArray(s.picks)?s.picks:[];
-  const passives = Array.isArray(s.passives)?s.passives:[];
-  const bans = Array.isArray(s.bans)?s.bans:[];
+  const picks    = Array.isArray(s.picks)       ? s.picks       : [];
+  const passives = Array.isArray(s.passives)    ? s.passives    : [];
+  const bans     = Array.isArray(s.bans)        ? s.bans        : [];
+  const names    = Array.isArray(s.playerCards) ? s.playerCards : [];
+  const lWin = (rec.team_left_score ?? 0) > (rec.team_right_score ?? 0);
+  const rWin = (rec.team_right_score ?? 0) > (rec.team_left_score ?? 0);
 
-  const leftWin  = (rec.team_left_score ?? 0) > (rec.team_right_score ?? 0);
-  const rightWin = (rec.team_right_score ?? 0) > (rec.team_left_score ?? 0);
-
-  function side(side){
-    const L = side==='L';
-    const team = L? rec.team_left : rec.team_right;
-    const opp  = L? rec.team_right: rec.team_left;
-    const res  = L? (leftWin?'W':'L') : (rightWin?'W':'L');
-    const idxs = L? [0,1,2,3] : [7,6,5,4];
-    const actives = idxs.map(i=>({ hero: picks[i]?.name||'', heroImg: picks[i]?.image_url||PLACEHOLDER }));
-    const pass = idxs.map(i=> (Array.isArray(passives[i])?passives[i]:[]).slice(0,3).map(ps=>ps?.name).filter(Boolean) );
-    const ban  = (L? bans[0]:bans[1])?.name || '';
-    return {rec_id:rec.id, date: rec.match_date, map: rec.map, team, opp, res, actives, pass, ban};
+  function sideRow(side){
+    const isL = side==='L';
+    const team = isL ? rec.team_left : rec.team_right;
+    const opp  = isL ? rec.team_right : rec.team_left;
+    const tScore = isL ? rec.team_left_score : rec.team_right_score;
+    const oScore = isL ? rec.team_right_score : rec.team_left_score;
+    const res  = (isL ? lWin : rWin) ? 'W' : 'L';
+    const banObj = bans[ isL ? 0 : 1 ];
+    const idx = isL ? [0,1,2,3] : [7,6,5,4];
+    const actives = idx.map(i => {
+      const heroObj = picks[i] && typeof picks[i]==='object' ? picks[i] : null;
+      const player  = (names[i] && String(names[i]).trim()) ? names[i].trim() : '';
+      return { player, hero: heroObj?.name || '', heroImg: heroObj?.image_url || PLACEHOLDER };
+    });
+    return {
+      rec_id: rec.id,
+      date: rec.match_date,
+      game: rec.game_number,
+      map: rec.map,
+      team, opp,
+      tScore: tScore ?? 0,
+      oScore: oScore ?? 0,
+      res,
+      banName: banObj?.name || '',
+      banImg:  banObj?.image_url || PLACEHOLDER,
+      actives
+    };
   }
-  return [side('L'), side('R')];
+  return [sideRow('L'), sideRow('R')];
 }
 
 function rowsForTeam(team){
   return RAW.flatMap(explodeRecordToRows).filter(r=>r.team===team);
 }
 
-/* ========= Charts ========= */
-function destroyCharts(){ Object.values(CHARTS).forEach(c=>{ try{c.destroy()}catch(_){}}); CHARTS={}; }
-function mk(ctx, type, data, opt){ return new Chart(ctx, { type, data, options: opt||{} }); }
-
-/* ========= UI renderers ========= */
-function renderKPIs(rows){
+/**************** Aggregations ****************/
+function aggKPIs(rows){
   const matches = rows.length;
   const wins = rows.filter(r=>r.res==='W').length;
-  const winpct = matches? wins/matches : 0;
-  const maps = uniq(rows.map(r=>r.map)).length;
-  const opps = uniq(rows.map(r=>r.opp)).length;
-  const bans = rows.filter(r=>r.ban).length;
-  const el = document.getElementById('kpiWrap');
-  el.innerHTML = `
-    <div class="kpi">Matches<b>${matches}</b></div>
-    <div class="kpi">Wins<b>${wins}</b><div class="muted">(${fmtPct(winpct)})</div></div>
-    <div class="kpi">Opponents<b>${opps}</b></div>
-    <div class="kpi">Maps Played<b>${maps}</b></div>
-    <div class="kpi">Bans Issued<b>${bans}</b></div>
-    <div class="kpi">Last Match<b>${rows[0]?.date? String(rows[0].date).slice(0,10):'—'}</b></div>`;
+  const winPct = matches ? wins/matches : 0;
+  const avgDiff = matches ? (rows.reduce((a,r)=>a+(r.tScore - r.oScore),0)/matches) : 0;
+  return {matches,wins,winPct,avgDiff};
 }
 
-function renderDonut(rows){
-  const w = rows.filter(r=>r.res==='W').length, l = rows.length - w;
-  const ctx = document.getElementById('chartDonut');
-  CHARTS.donut = mk(ctx,'doughnut',{labels:['Wins','Losses'],datasets:[{data:[w,l]}]},{plugins:{legend:{display:true,labels:{color:'#ddd'}}}});
-}
-
-function renderWinTime(rows){
-  const byDate = new Map();
+function aggTopPicks(rows, kind='active', topN=8){
+  const map = new Map();
+  const den = rows.length; // per-team-row basis for rate
   rows.forEach(r=>{
-    const d = String(r.date).slice(0,10);
-    if(!byDate.has(d)) byDate.set(d,{n:0,w:0});
-    byDate.get(d).n += 1; if(r.res==='W') byDate.get(d).w += 1;
-  });
-  const ordered = [...byDate.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
-  const labels = ordered.map(x=>x[0]);
-  const data = ordered.map(x=> x[1].n? +(x[1].w/x[1].n*100).toFixed(1) : 0);
-  const ctx = document.getElementById('chartWinTime');
-  CHARTS.wtime = mk(ctx,'line',{labels,datasets:[{label:'Win %',data}]},{scales:{y:{ticks:{color:'#ddd'},grid:{color:'#333'},title:{display:true,text:'%'}},x:{ticks:{color:'#ddd'},grid:{display:false}}},plugins:{legend:{labels:{color:'#ddd'}}}});
-}
-
-function tallyActives(rows){
-  const map = new Map(); let picks=0, wins=0;
-  rows.forEach(r=>{ r.actives.forEach(a=>{ if(!a.hero) return; const o = map.get(a.hero)||{p:0,w:0}; o.p++; if(r.res==='W') o.w++; map.set(a.hero,o); picks++; if(r.res==='W') wins++; });});
-  return {map, slots: rows.length*4};
-}
-function tallyPassives(rows){
-  const map = new Map(); rows.forEach(r=>{ r.pass.forEach(trio=> trio.forEach(n=>{ const o = map.get(n)||{p:0,w:0}; o.p++; if(r.res==='W') o.w++; map.set(n,o); })); });
-  return {map, slots: rows.length*12};
-}
-function tallyBans(rows){
-  const map = new Map(); rows.forEach(r=>{ const n = r.ban||''; if(!n) return; map.set(n,(map.get(n)||0)+1); });
-  return map;
-}
-
-function renderBarTop(mapSlots, canvasId, topN=8, label='Pick %'){
-  const arr = [...mapSlots.map.entries? mapSlots.map.entries(): mapSlots.entries()].map(([name,v])=>{
-    if(mapSlots.slots!=null){ // has slots
-      const picks = v.p, wins = v.w; const rate = mapSlots.slots? (picks/mapSlots.slots*100):0;
-      return {name, picks, wins, rate:+rate.toFixed(2)};
+    if(kind==='active'){
+      r.actives.forEach(a=>{ if(!a.hero) return; const s = map.get(a.hero)||{name:a.hero,count:0}; s.count+=1; map.set(a.hero,s); });
     } else {
-      return {name, count:v};
+      // passive rate not tracked here (we only have names inside state.passives in the full app). For this dashboard,
+      // approximate using trio members from picks data if available in state (not sent to this page). To avoid missing data,
+      // we compute passives by looking into state.passives again from RAW when exploding (not included above). We'll reparse below per rec.
     }
   });
-  arr.sort((a,b)=> (b.rate??b.count) - (a.rate??a.count) || a.name.localeCompare(b.name));
-  const top = arr.slice(0, topN);
-  const ctx = document.getElementById(canvasId);
-  if(mapSlots.slots!=null){
-    CHARTS[canvasId] = mk(ctx,'bar',{labels: top.map(x=>x.name), datasets:[{label, data: top.map(x=>x.rate)}]},{plugins:{legend:{labels:{color:'#ddd'}}},scales:{y:{ticks:{color:'#ddd'},grid:{color:'#333'}},x:{ticks:{color:'#ddd'},grid:{display:false}}}});
-  } else {
-    CHARTS[canvasId] = mk(ctx,'bar',{labels: top.map(x=>x.name), datasets:[{label:'Count', data: top.map(x=>x.count)}]},{plugins:{legend:{labels:{color:'#ddd'}}},scales:{y:{ticks:{color:'#ddd'},grid:{color:'#333'}},x:{ticks:{color:'#ddd'},grid:{display:false}}}});
+  if(kind==='passive'){
+    // Re-scan RAW for this team's rows to count passive names accurately
+    rows.forEach(row=>{
+      const rec = RAW.find(x=>x.id===row.rec_id);
+      const s = parseState(rec?.state);
+      const pass = Array.isArray(s.passives)? s.passives : [];
+      const idxs = row.team===rec.team_left ? [0,1,2,3] : [4,5,6,7];
+      idxs.forEach(i=>{
+        const trio = Array.isArray(pass[i]) ? pass[i] : [];
+        trio.forEach(ps=>{ const nm=ps?.name||''; if(!nm) return; const S=map.get(nm)||{name:nm,count:0}; S.count+=1; map.set(nm,S); });
+      });
+    });
+  }
+  const arr = [...map.values()].map(x=>({ name:x.name, count:x.count, rate: den? x.count/den : 0 }))
+                               .sort((a,b)=> b.rate-a.rate || a.name.localeCompare(b.name))
+                               .slice(0, topN);
+  return { arr, den };
+}
+
+function aggBans(rows, topN=10){
+  const m = new Map();
+  rows.forEach(r=>{ const nm=r.banName||''; if(!nm) return; const v=m.get(nm)||0; m.set(nm, v+1); });
+  const arr = [...m.entries()].map(([name,count])=>({name,count}))
+                              .sort((a,b)=> b.count-a.count || a.name.localeCompare(b.name))
+                              .slice(0, topN);
+  return arr;
+}
+
+function aggByMap(rows){
+  const m = new Map();
+  rows.forEach(r=>{
+    const key = r.map || '—';
+    if(!m.has(key)) m.set(key, {map:key,matches:0,wins:0});
+    const o = m.get(key); o.matches+=1; if(r.res==='W') o.wins+=1; m.set(key,o);
+  });
+  return [...m.values()].map(x=>({...x, winpct: x.matches ? x.wins/x.matches : 0}))
+                        .sort((a,b)=> b.matches-a.matches || a.map.localeCompare(b.map));
+}
+
+function aggActiveCombos(rows, topN=10){
+  const combos = new Map();
+  rows.forEach(r=>{
+    const heroes = r.actives.map(a=>a.hero).filter(Boolean);
+    if(heroes.length!==4) return; // ignore incomplete rows
+    const key = [...heroes].sort((a,b)=>a.localeCompare(b)).join('|');
+    if(!combos.has(key)) combos.set(key,{heroes:[...heroes].sort((a,b)=>a.localeCompare(b)),picks:0,wins:0});
+    const C = combos.get(key); C.picks+=1; if(r.res==='W') C.wins+=1;
+  });
+  const arr = [...combos.values()].map(c=>({...c, winpct: c.picks? c.wins/c.picks : 0}))
+                                  .sort((a,b)=> b.picks-a.picks || b.winpct-a.winpct)
+                                  .slice(0, topN);
+  return arr;
+}
+
+/**************** SVG Chart helpers (no blur) ****************/
+function mkSVG(w=600,h=320){
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+  svg.style.width='100%'; svg.style.height='auto';
+  return {svg,w,h};
+}
+
+function donutChart(target, wins, losses){
+  const total = wins+losses; const winPct = total? wins/total : 0;
+  const {svg,w,h} = mkSVG(360,240);
+  const cx=120, cy=120, r=80, th=18;
+  const bg = document.createElementNS(svg.namespaceURI,'circle');
+  bg.setAttribute('cx',cx); bg.setAttribute('cy',cy); bg.setAttribute('r',r);
+  bg.setAttribute('fill','none'); bg.setAttribute('stroke','#2d2d2d'); bg.setAttribute('stroke-width',th);
+  svg.appendChild(bg);
+  function arcPath(frac){
+    const a0=-Math.PI/2, a1=a0+frac*2*Math.PI;
+    const x0=cx+Math.cos(a0)*r, y0=cy+Math.sin(a0)*r;
+    const x1=cx+Math.cos(a1)*r, y1=cy+Math.sin(a1)*r;
+    const large= frac>0.5 ? 1:0;
+    return `M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1}`;
+  }
+  const arc = document.createElementNS(svg.namespaceURI,'path');
+  arc.setAttribute('d', arcPath(winPct));
+  arc.setAttribute('fill','none'); arc.setAttribute('stroke', 'var(--good)'); arc.setAttribute('stroke-width', th);
+  arc.setAttribute('stroke-linecap','round');
+  svg.appendChild(arc);
+  const mid = document.createElementNS(svg.namespaceURI,'text');
+  mid.setAttribute('x',cx); mid.setAttribute('y',cy+6); mid.setAttribute('text-anchor','middle'); mid.setAttribute('font-size','28'); mid.textContent = total? (winPct*100).toFixed(1)+'%':'—';
+  svg.appendChild(mid);
+  const lg = document.createElementNS(svg.namespaceURI,'g');
+  const t1=document.createElementNS(svg.namespaceURI,'text'); t1.setAttribute('x',220); t1.setAttribute('y',90); t1.textContent=`Wins: ${wins}`; t1.setAttribute('fill','var(--good)'); t1.setAttribute('font-size','14'); lg.appendChild(t1);
+  const t2=document.createElementNS(svg.namespaceURI,'text'); t2.setAttribute('x',220); t2.setAttribute('y',115); t2.textContent=`Losses: ${losses}`; t2.setAttribute('fill','var(--bad)'); t2.setAttribute('font-size','14'); lg.appendChild(t2);
+  const t3=document.createElementNS(svg.namespaceURI,'text'); t3.setAttribute('x',220); t3.setAttribute('y',140); t3.textContent=`Total: ${total}`; t3.setAttribute('fill','#ddd'); t3.setAttribute('font-size','14'); lg.appendChild(t3);
+  svg.appendChild(lg);
+  target.innerHTML=''; target.appendChild(svg);
+}
+
+function lineChart(target, pts){
+  // pts: [{x: index or date string, y: fraction}]
+  const {svg,w,h} = mkSVG(600,240);
+  const pad = {l:40,r:10,t:10,b:28};
+  const W = w - pad.l - pad.r, H = h - pad.t - pad.b;
+  const maxY = 1.0, minY = 0;
+  const N = Math.max(pts.length, 2);
+  function sx(i){ return pad.l + (i/(N-1))*W }
+  function sy(v){ return pad.t + (1-(v-minY)/(maxY-minY))*H }
+  // grid
+  const gridY=[0,0.25,0.5,0.75,1];
+  gridY.forEach(g=>{
+    const y=sy(g);
+    const line=document.createElementNS(svg.namespaceURI,'line');
+    line.setAttribute('x1',pad.l); line.setAttribute('x2',pad.l+W); line.setAttribute('y1',y); line.setAttribute('y2',y); line.setAttribute('stroke','#2d2d2d');
+    svg.appendChild(line);
+    const tx=document.createElementNS(svg.namespaceURI,'text');
+    tx.setAttribute('x',6); tx.setAttribute('y',y+4); tx.setAttribute('font-size','11'); tx.textContent=(g*100).toFixed(0)+'%';
+    svg.appendChild(tx);
+  });
+  // path
+  const path = document.createElementNS(svg.namespaceURI,'path');
+  const d = pts.map((p,i)=> `${i?'L':'M'} ${sx(i)} ${sy(p.y)}`).join(' ');
+  path.setAttribute('d', d);
+  path.setAttribute('class','line');
+  path.setAttribute('stroke','var(--accent)');
+  svg.appendChild(path);
+  // x labels sparse
+  const step = Math.ceil(pts.length/6);
+  pts.forEach((p,i)=>{
+    if(i%step) return; const tx=document.createElementNS(svg.namespaceURI,'text'); tx.setAttribute('x',sx(i)); tx.setAttribute('y',h-8); tx.setAttribute('font-size','11'); tx.setAttribute('text-anchor','middle'); tx.textContent=p.x; svg.appendChild(tx);
+  });
+  target.innerHTML=''; target.appendChild(svg);
+}
+
+function barChart(target, items, {w=760,h=260,label='Count',valueKey='count',showRate=false}={}){
+  const {svg} = mkSVG(w,h);
+  const pad={l:160,r:20,t:10,b:30};
+  const W=w-pad.l-pad.r, H=h-pad.t-pad.b;
+  const max = Math.max(1, ...items.map(d=>d[valueKey]||0));
+  const rowH = H / Math.max(items.length,1);
+  // axes labels
+  const x0=document.createElementNS(svg.namespaceURI,'text'); x0.setAttribute('x',pad.l); x0.setAttribute('y',h-8); x0.setAttribute('font-size','11'); x0.textContent=label; svg.appendChild(x0);
+  items.forEach((d,i)=>{
+    const y = pad.t + i*rowH + 4;
+    const barW = max ? ((d[valueKey]||0)/max)*W : 0;
+    const r = document.createElementNS(svg.namespaceURI,'rect');
+    r.setAttribute('x', pad.l); r.setAttribute('y', y); r.setAttribute('width', barW); r.setAttribute('height', Math.max(8,rowH-12));
+    r.setAttribute('fill', 'url(#barGrad)'); r.setAttribute('class','bar'); svg.appendChild(r);
+    const name=document.createElementNS(svg.namespaceURI,'text'); name.setAttribute('x', 8); name.setAttribute('y', y + Math.max(8,rowH-12) - 2); name.setAttribute('font-size','12'); name.textContent=d.name; svg.appendChild(name);
+    const val=document.createElementNS(svg.namespaceURI,'text'); val.setAttribute('x', pad.l + barW + 6); val.setAttribute('y', y + Math.max(8,rowH-12) - 2); val.setAttribute('font-size','12'); val.textContent = showRate && d.rate!=null ? `${(d.rate*100).toFixed(1)}%` : (d[valueKey]||0); svg.appendChild(val);
+  });
+  // gradient defs (nice but crisp)
+  const defs=document.createElementNS(svg.namespaceURI,'defs');
+  const grad=document.createElementNS(svg.namespaceURI,'linearGradient'); grad.setAttribute('id','barGrad'); grad.setAttribute('x1','0');grad.setAttribute('x2','1');grad.setAttribute('y1','0');grad.setAttribute('y2','0');
+  const s1=document.createElementNS(svg.namespaceURI,'stop'); s1.setAttribute('offset','0%'); s1.setAttribute('stop-color','var(--brand)'); grad.appendChild(s1);
+  const s2=document.createElementNS(svg.namespaceURI,'stop'); s2.setAttribute('offset','100%'); s2.setAttribute('stop-color','var(--brand2)'); grad.appendChild(s2);
+  defs.appendChild(grad); svg.appendChild(defs);
+  target.innerHTML=''; target.appendChild(svg);
+}
+
+/**************** Render ****************/
+function render(){
+  const team = document.getElementById('teamSelect').value;
+  if(!team) return;
+  const rows = rowsForTeam(team);
+
+  // KPIs
+  const {matches,wins,winPct,avgDiff} = aggKPIs(rows);
+  document.getElementById('kpiMatches').textContent = matches;
+  document.getElementById('kpiWins').textContent = wins;
+  document.getElementById('kpiWinPct').textContent = fmtPct(winPct);
+  document.getElementById('kpiDiff').textContent = (avgDiff>=0?'+':'') + avgDiff.toFixed(2);
+
+  // Donut
+  const winN = wins, loseN = matches - wins;
+  donutChart(document.getElementById('donutWrap'), winN, loseN);
+
+  // Win % over time (cumulative)
+  const seq = [];
+  let wCount = 0;
+  rows.sort((a,b)=> String(a.date).localeCompare(String(b.date)) || a.rec_id - b.rec_id)
+      .forEach((r,i)=>{ if(r.res==='W') wCount++; const cum = wCount/(i+1); seq.push({x: r.date.slice(5,10), y: cum}); });
+  lineChart(document.getElementById('winLineWrap'), seq.length?seq:[{x:'',y:0},{x:'',y:0}]);
+
+  // Top Actives / Passives (rate)
+  const topA = aggTopPicks(rows, 'active', 8);
+  barChart(document.getElementById('topActiveWrap'), topA.arr, {label:'Pick Rate', valueKey:'rate', showRate:true});
+
+  const topP = aggTopPicks(rows, 'passive', 8);
+  barChart(document.getElementById('topPassiveWrap'), topP.arr, {label:'Pick Rate', valueKey:'rate', showRate:true});
+
+  // Most Banned (Count)
+  const bans = aggBans(rows, 12);
+  const banWrap = document.getElementById('banWrap');
+  if(bans.length){ barChart(banWrap, bans, {label:'Bans', valueKey:'count'}); }
+  else { banWrap.innerHTML = '<div class="muted">No bans recorded for this team.</div>'; }
+
+  // Performance by Map
+  const byMap = aggByMap(rows);
+  const mapBody = document.getElementById('mapBody'); mapBody.innerHTML='';
+  if(!byMap.length){ mapBody.innerHTML = '<tr><td colspan="4" class="muted">No map data.</td></tr>'; }
+  else {
+    byMap.forEach(r=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML = `<td>${r.map}</td><td>${r.matches}</td><td>${r.wins}</td><td>${fmtPct(r.winpct)}</td>`;
+      mapBody.appendChild(tr);
+    });
+  }
+
+  // Top Active Combos
+  const combos = aggActiveCombos(rows, 10);
+  const comboBody = document.getElementById('comboBody'); comboBody.innerHTML='';
+  if(!combos.length){ comboBody.innerHTML='<tr><td colspan="4" class="muted">No combos found.</td></tr>'; }
+  else {
+    combos.forEach(c=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML = `<td class="tight">${c.heroes.join(' · ')}</td><td>${c.picks}</td><td>${c.wins}</td><td>${fmtPct(c.winpct)}</td>`;
+      comboBody.appendChild(tr);
+    });
   }
 }
 
-function renderMapTable(rows){
-  const agg = new Map();
-  rows.forEach(r=>{
-    const k = r.map||'—'; if(!agg.has(k)) agg.set(k,{m:0,w:0}); const o = agg.get(k); o.m++; if(r.res==='W') o.w++; });
-  const list = [...agg.entries()].map(([map,v])=>({map, m:v.m, w:v.w, wp: v.m? v.w/v.m:0}))
-                                 .sort((a,b)=> b.m - a.m || a.map.localeCompare(b.map));
-  const tb = document.getElementById('tblMap'); tb.innerHTML = list.map(r=>
-    `<tr><td>${r.map}</td><td class="right mono">${r.m}</td><td class="right mono">${r.w}</td><td class="right mono">${fmtPct(r.wp)}</td></tr>`
-  ).join('');
-}
-
-function renderCombos(rows){
-  const combos = new Map();
-  rows.forEach(r=>{
-    const names = r.actives.map(a=>a.hero).filter(Boolean);
-    if(names.length!==4) return; const key = [...names].sort((a,b)=>a.localeCompare(b)).join('|');
-    if(!combos.has(key)) combos.set(key,{heroes: key.split('|'), p:0, w:0});
-    const C = combos.get(key); C.p++; if(r.res==='W') C.w++;
-  });
-  const list = [...combos.values()].map(c=>({names:c.heroes.join(' · '), p:c.p, w:c.w, wp: c.p? c.w/c.p:0}))
-                                  .sort((a,b)=> b.p - a.p || b.wp - a.wp || a.names.localeCompare(b.names))
-                                  .slice(0,8);
-  document.getElementById('tblCombos').innerHTML = list.length? list.map(r=>
-    `<tr><td>${r.names}</td><td class="right mono">${r.p}</td><td class="right mono">${r.w}</td><td class="right mono">${fmtPct(r.wp)}</td></tr>`
-  ).join('') : `<tr><td colspan="4" class="muted">No combos.</td></tr>`;
-}
-
-/* ========= Main ========= */
-async function loadData(){
-  const { data, error } = await client
-    .from('draft_records')
-    .select('id, match_date, team_left, team_right, team_left_score, team_right_score, map, tournament_name, state')
-    .order('match_date', { ascending:false })
-    .limit(3000); // safety cap
-  if(error){ console.error(error); alert('Failed to load: '+error.message); return []; }
-  return data||[];
-}
-
-function populateTeams(records){
-  const teams = uniq(records.flatMap(r=>[r.team_left, r.team_right]).filter(Boolean)).sort();
-  const sel = document.getElementById('teamSel');
-  sel.innerHTML = teams.map(t=>`<option value="${t}">${t}</option>`).join('');
-  // best-effort keep last used via hash
-  const fromHash = decodeURIComponent(location.hash.slice(1)||'');
-  if(fromHash && teams.includes(fromHash)) sel.value = fromHash;
-}
-
-function updateMeta(team, rows){
-  const tourns = uniq(RAW.filter(r=> r.team_left===team || r.team_right===team).map(r=>r.tournament_name).filter(Boolean));
-  const maps = uniq(rows.map(r=>r.map).filter(Boolean));
-  document.getElementById('meta').textContent = `${team} • ${rows.length} team-rows • Tournaments: ${tourns.length||0} • Maps: ${maps.length||0}`;
-}
-
-async function render(){
-  const team = document.getElementById('teamSel').value;
-  if(!team) return;
-  const rows = rowsForTeam(team);
-  updateMeta(team, rows);
-  destroyCharts();
-
-  renderKPIs(rows);
-  renderDonut(rows);
-  renderWinTime(rows);
-  renderBarTop(tallyActives(rows), 'chartActives', 8, 'Pick %');
-  renderBarTop(tallyPassives(rows), 'chartPassives', 8, 'Pick %');
-  renderBarTop(tallyBans(rows), 'chartBans', 8, 'Count');
-  renderMapTable(rows);
-  renderCombos(rows);
-
-  // persist selection in URL hash
-  location.hash = encodeURIComponent(team);
-}
-
-// Init
-(async ()=>{
-  // Basic auth guard (optional redirect like other pages)
-  const { data: { session } } = await client.auth.getSession();
-  if (!session) { /* window.location.href = "index.html"; return; */ }
-
-  RAW = await loadData();
-  populateTeams(RAW);
-  await render();
-})();
-
-// Events
- document.getElementById('refreshBtn').addEventListener('click', render);
- document.getElementById('teamSel').addEventListener('change', render);
+/**************** Events ****************/
+window.addEventListener('DOMContentLoaded', loadAll);
+document.getElementById('printBtn').onclick = ()=> window.print();
 </script>
 </body>
 </html>
