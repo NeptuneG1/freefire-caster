@@ -12,56 +12,58 @@
       --good:#71d083; --bad:#ff6b6b;
     }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
-    header{position:sticky;top:0;z-index:5;background:#1a1a1a;border-bottom:2px solid var(--brand);padding:10px 12px}
-    h1{margin:0;font-size:1.05rem;color:var(--brand);letter-spacing:.2px}
-
-    /* shell */
-    .shell{
-      max-width:min(1600px,98vw);
-      margin:14px auto;
-      padding:0 10px;
+    body{
+      margin:0;background:var(--bg);color:var(--ink);
+      font-family:Inter,system-ui,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;
+      /* fluid body size */
+      font-size: clamp(12px, 0.55vw + 8px, 15px);
     }
+    header{position:sticky;top:0;z-index:5;background:#1a1a1a;border-bottom:2px solid var(--brand);padding:10px 12px}
+    h1{margin:0;color:var(--brand);letter-spacing:.2px;font-size:clamp(0.95rem, 0.5vw + 0.7rem, 1.1rem)}
+
+    .shell{max-width:min(1600px,98vw);margin:14px auto;padding:0 10px}
 
     /* Controls */
     .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
     select{background:#1e1e1e;color:#ffe0b0;border:1px solid #3a3a3a;border-radius:8px;padding:6px 8px;font-weight:600}
-    .chip{color:var(--muted);font-size:.82rem}
+    .chip{color:var(--muted);font-size:clamp(.78rem,.3vw + .65rem,.85rem)}
 
-    /* Grid layout (stable rows) */
-    .grid{
-      display:grid;
-      grid-template-columns:repeat(12, minmax(0,1fr));
-      gap:8px;
-    }
+    /* Grid layout */
+    .grid{display:grid;grid-template-columns:repeat(12, minmax(0,1fr));gap:8px}
     .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;min-height:110px}
     .card.full{grid-column:span 12}
     .card.half{grid-column:span 6}
     .card.quarter{grid-column:span 3}
-    .card h3{margin:0 0 6px 0;color:var(--brand2);font-size:.95rem;line-height:1.1}
+    .card h3{margin:0 0 6px 0;color:var(--brand2);line-height:1.1;font-size:clamp(.9rem,.4vw + .7rem,1rem)}
 
-    /* KPI row */
+    /* KPIs */
     .kpis{display:flex;gap:6px;flex-wrap:wrap}
-    .kpi{background:#111;border:1px solid #2a2a2a;border-radius:10px;padding:6px 8px;font-size:.85rem}
-    .kpi b{font-size:.95rem}
+    .kpi{background:#111;border:1px solid #2a2a2a;border-radius:10px;padding:6px 8px;font-size:clamp(.8rem,.3vw + .65rem,.9rem)}
+    .kpi b{font-size:clamp(.9rem,.35vw + .7rem,1rem)}
 
     /* Tables */
-    table{width:100%;border-collapse:collapse;font-size:.85rem;table-layout:fixed}
-    th,td{border-bottom:1px solid #222;padding:5px 6px;vertical-align:top;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:clamp(11px, 0.45vw + 8px, 14px)}
+    th,td{
+      border-bottom:1px solid #222;padding:5px 6px;vertical-align:top;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
     thead th{background:#141414;text-align:left;color:#ddd}
     tbody tr:hover{background:#121212}
     .mono{font-variant-numeric:tabular-nums}
     .right{text-align:right}
     .muted{color:var(--muted)}
 
-    /* Make first column a bit wider on text-heavy tables */
+    /* widen first column where texty */
     #comboCard table th:first-child,
     #actCard   table th:first-child,
-    #pasCard   table th:first-child { width:44% }
+    #pasCard   table th:first-child { width:50% }
 
-    /* Micro SVG bars */
+    /* text that should shrink instead of ellipsize hard */
+    .fittext{display:inline-block;max-width:100%}
+
+    /* SVG charts */
     .chart{width:100%;height:auto;display:block}
-    .legend{display:flex;gap:10px;align-items:center;font-size:.78rem;color:#cfcfcf}
+    .legend{display:flex;gap:10px;align-items:center;color:#cfcfcf;font-size:clamp(10px,.25vw + 8px,12px)}
     .legend span{display:inline-flex;align-items:center;gap:6px}
     .lg{width:10px;height:10px;border-radius:2px;background:#ffbd59;border:1px solid #6a4e23}
     .lg2{width:10px;height:10px;border-radius:2px;background:#4aa86a;border:1px solid #2c5a3a}
@@ -80,9 +82,7 @@
   </style>
 </head>
 <body>
-  <header>
-    <h1>Team Report — Compact Dashboard</h1>
-  </header>
+  <header><h1>Team Report — Compact Dashboard</h1></header>
 
   <div class="shell">
     <div class="controls">
@@ -93,13 +93,11 @@
     </div>
 
     <div class="grid">
-      <!-- KPI -->
       <div class="card full" id="kpiCard">
         <h3>Overview</h3>
         <div class="kpis" id="kpis"></div>
       </div>
 
-      <!-- Row: two halves -->
       <div class="card half" id="banCard">
         <h3>Most Banned (Count)</h3>
         <div id="banChartWrap"></div>
@@ -114,7 +112,6 @@
         <div id="mapChartWrap"></div>
       </div>
 
-      <!-- Full width -->
       <div class="card full" id="comboCard">
         <h3>Top Active Combos</h3>
         <table>
@@ -125,7 +122,6 @@
         </table>
       </div>
 
-      <!-- Four across -->
       <div class="card quarter" id="oppCard">
         <h3>Performance by Opponent</h3>
         <table>
@@ -138,7 +134,7 @@
         <h3>Top Active Skills</h3>
         <table>
           <thead><tr><th>Skill</th><th class="right">Picks</th><th class="right">Pick&nbsp;%</th><th class="right">Wins</th><th class="right">Win&nbsp;%</th></tr></thead>
-        <tbody id="actBody"></tbody>
+          <tbody id="actBody"></tbody>
         </table>
       </div>
 
@@ -158,7 +154,6 @@
         </table>
       </div>
 
-      <!-- Full width -->
       <div class="card full" id="recentCard">
         <h3>Recent Matches</h3>
         <table>
@@ -184,7 +179,26 @@ const uniq=(a)=>[...new Set(a)];
 function ymd(d){const dt=new Date(d);if(!d||isNaN(dt))return '';return dt.toISOString().slice(0,10)}
 function parseState(v){if(!v) return {}; if (typeof v==='object') return v; try{return JSON.parse(v)}catch{ return {} }}
 
+/* ========= Fit text (auto-shrink) ========= */
+function fitTextAll(){
+  const targets = document.querySelectorAll('.fittext');
+  targets.forEach(el=>{
+    const parent = el.parentElement;
+    const base = parseFloat(getComputedStyle(parent).fontSize) || 14;
+    let s = Math.min(base, 15), min = 11;
+    el.style.fontSize = s+'px';
+    while (s > min && el.scrollWidth > parent.clientWidth){
+      s -= 0.5;
+      el.style.fontSize = s+'px';
+    }
+  });
+}
+const ro = new ResizeObserver(()=>fitTextAll());
+ro.observe(document.body);
+
 /* ========= Micro SVGs (vector-crisp) ========= */
+const ell = (str, max) => (str.length<=max?str : str.slice(0, Math.max(1,max-1))+'…');
+
 function barH(labels, values, opts={}){
   const W = opts.width || 360;
   const labelW = 96;
@@ -192,12 +206,13 @@ function barH(labels, values, opts={}){
   const H = Math.max(36, labels.length*(row+gap) + pad*2);
   const max = Math.max(1, ...values);
   const scale = (v)=> Math.max(1, (v/max)*(W - labelW - 18));
+  const maxChars = Math.max(5, Math.floor(labelW/7));
 
   const svg = [`<svg class="chart" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" shape-rendering="crispEdges">`];
   labels.forEach((lb,i)=>{
     const y = pad + i*(row+gap);
     const w = scale(values[i]);
-    svg.push(`<text x="2" y="${y+9}" font-size="10" fill="#ddd">${lb}</text>`);
+    svg.push(`<text x="2" y="${y+9}" font-size="10" fill="#ddd">${ell(lb, maxChars)}</text>`);
     svg.push(`<rect x="${labelW}" y="${y}" width="${w}" height="${row}" fill="#ffbd59" stroke="#6a4e23" vector-effect="non-scaling-stroke"/>`);
     svg.push(`<text x="${labelW + w + 4}" y="${y+9}" font-size="10" fill="#ccc" class="mono">${values[i]}</text>`);
   });
@@ -212,12 +227,13 @@ function groupedBars(labels, aVals, bVals, opts={}){
   const H = Math.max(36, labels.length*(row+gap) + labels.length*grpGap + pad*2);
   const max = Math.max(1, ...aVals, ...bVals);
   const scale = (v)=> Math.max(1, (v/max)*(W - labelW - 20));
+  const maxChars = Math.max(5, Math.floor(labelW/7));
 
   const svg = [`<svg class="chart" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" shape-rendering="crispEdges">`];
   let y = pad;
   labels.forEach((lb, i)=>{
     const a = scale(aVals[i]), b = scale(bVals[i]);
-    svg.push(`<text x="2" y="${y+9}" font-size="10" fill="#ddd">${lb}</text>`);
+    svg.push(`<text x="2" y="${y+9}" font-size="10" fill="#ddd">${ell(lb, maxChars)}</text>`);
     svg.push(`<rect x="${labelW}" y="${y}" width="${a}" height="${row}" fill="#ffbd59" stroke="#6a4e23" vector-effect="non-scaling-stroke"/>`);
     y += row + gap;
     svg.push(`<rect x="${labelW}" y="${y}" width="${b}" height="${row}" fill="#4aa86a" stroke="#2c5a3a" vector-effect="non-scaling-stroke"/>`);
@@ -229,14 +245,10 @@ function groupedBars(labels, aVals, bVals, opts={}){
 }
 
 /* ========= Data plumbing ========= */
-let ALL_RECORDS=[]; // for team dropdown only
-let CURR_ROWS=[];
-
+let ALL_RECORDS=[], CURR_ROWS=[];
 function explodeRecordToRows(rec){
   const s=parseState(rec.state);
-  const picks=Array.isArray(s.picks)?s.picks:[];
-  const passives=Array.isArray(s.passives)?s.passives:[];
-  const bans=Array.isArray(s.bans)?s.bans:[];
+  const picks=Array.isArray(s.picks)?s.picks:[]; const passives=Array.isArray(s.passives)?s.passives:[]; const bans=Array.isArray(s.bans)?s.bans:[];
   const leftWin=(rec.team_left_score??0)>(rec.team_right_score??0);
   const rightWin=(rec.team_right_score??0)>(rec.team_left_score??0);
   function side(isLeft){
@@ -269,7 +281,6 @@ function teamsFrom(records){
   records.forEach(r=>{ if(r.team_left)S.add(r.team_left); if(r.team_right)S.add(r.team_right) });
   return [...S].sort();
 }
-
 function rowsForTeam(records, team){
   return records.flatMap(explodeRecordToRows).filter(r=>r.team===team);
 }
@@ -281,20 +292,16 @@ function kpis(rows){
   const maps=uniq(rows.map(r=>r.map)).length; const opps=uniq(rows.map(r=>r.opp)).length;
   return {matches,wins,winpct: matches? wins/matches : 0, diffAvg, maps, opps};
 }
-
 function mostBanned(rows){
   const m=new Map(); rows.forEach(r=>{ const b=r.ban||''; if(!b)return; m.set(b,(m.get(b)||0)+1) });
   const arr=[...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10); return {labels:arr.map(x=>x[0]), values:arr.map(x=>x[1])};
 }
-
 function perfByMap(rows){
   const m=new Map();
   rows.forEach(r=>{ if(!m.has(r.map)) m.set(r.map,{m:0,w:0}); const o=m.get(r.map); o.m++; if(r.res==='W') o.w++; });
-  return [...m.entries()]
-    .map(([name,o])=>({name,matches:o.m,wins:o.w,winpct:o.m?o.w/o.m:0}))
-    .sort((a,b)=>b.matches-a.matches||a.name.localeCompare(b.name));
+  return [...m.entries()].map(([name,o])=>({name,matches:o.m,wins:o.w,winpct:o.m?o.w/o.m:0}))
+                        .sort((a,b)=>b.matches-a.matches||a.name.localeCompare(b.name));
 }
-
 function topCombos(rows){
   const combos=new Map();
   rows.forEach(r=>{
@@ -309,27 +316,23 @@ function topCombos(rows){
     topMaps: [...c.maps.entries()].sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>`${x[0]} ×${x[1]}`).join(', ')
   })).sort((a,b)=>b.picks-a.picks||b.wins-a.wins).slice(0,10);
 }
-
 function topActives(rows){
   const S=new Map(); rows.forEach(r=>{ r.act.forEach(a=>{ if(!a.hero)return; if(!S.has(a.hero))S.set(a.hero,{p:0,w:0}); const o=S.get(a.hero); o.p++; if(r.res==='W')o.w++; }) });
   const den=rows.length*4;
   return [...S.entries()].map(([name,o])=>({name,picks:o.p, pickRate: den?o.p/den:0, wins:o.w, winRate: o.p?o.w/o.p:0}))
-    .sort((a,b)=>b.picks-a.picks||b.wins-a.wins).slice(0,15);
+                         .sort((a,b)=>b.picks-a.picks||b.wins-a.wins).slice(0,15);
 }
-
 function topPassives(rows){
   const S=new Map(); rows.forEach(r=>{ r.pass.forEach(trio=>trio.forEach(n=>{ if(!n)return; if(!S.has(n))S.set(n,{p:0,w:0}); const o=S.get(n); o.p++; if(r.res==='W')o.w++; })) });
   const den=rows.length*12;
   return [...S.entries()].map(([name,o])=>({name,picks:o.p, pickRate: den?o.p/den:0, wins:o.w, winRate: o.p?o.w/o.p:0}))
-    .sort((a,b)=>b.picks-a.picks||b.wins-a.wins).slice(0,15);
+                         .sort((a,b)=>b.picks-a.picks||b.wins-a.wins).slice(0,15);
 }
-
 function perfByOpponent(rows){
   const m=new Map(); rows.forEach(r=>{ if(!m.has(r.opp)) m.set(r.opp,{m:0,w:0}); const o=m.get(r.opp); o.m++; if(r.res==='W')o.w++; });
   return [...m.entries()].map(([opp,o])=>({opp,matches:o.m,wins:o.w,winpct:o.m?o.w/o.m:0}))
-    .sort((a,b)=>b.matches-a.matches||a.opp.localeCompare(b.opp)).slice(0,20);
+                         .sort((a,b)=>b.matches-a.matches||a.opp.localeCompare(b.opp)).slice(0,20);
 }
-
 function computeBanImpact(rows){
   const skills=new Map();
   rows.forEach(r=>{
@@ -348,7 +351,6 @@ function computeBanImpact(rows){
     return {name,banned:S.ban.n, wBan:w1, wNot:w2, delta:w1-w2};
   }).sort((a,b)=>b.delta-a.delta||b.banned-a.banned).slice(0,12);
 }
-
 function recent(rows){
   return rows.slice().sort((a,b)=> (b.date.localeCompare(a.date)) || (b.rec_id-a.rec_id)).slice(0,12);
 }
@@ -384,7 +386,11 @@ function renderCombos(rows){
   if(!list.length){ tbody.innerHTML = `<tr><td colspan="5" class="muted">No combos found.</td></tr>`; return; }
   list.forEach(c=>{
     const tr=document.createElement('tr');
-    tr.innerHTML = `<td class="muted">${c.names.join(' · ')}</td><td class="right mono">${c.picks}</td><td class="right mono">${c.wins}</td><td class="right mono">${fmtP(c.winpct)}</td><td>${c.topMaps||'—'}</td>`;
+    tr.innerHTML = `<td class="muted"><span class="fittext">${c.names.join(' · ')}</span></td>
+                    <td class="right mono">${c.picks}</td>
+                    <td class="right mono">${c.wins}</td>
+                    <td class="right mono">${fmtP(c.winpct)}</td>
+                    <td><span class="fittext">${c.topMaps||'—'}</span></td>`;
     tbody.appendChild(tr);
   });
 }
@@ -394,7 +400,10 @@ function renderOpp(rows){
   if(!list.length){ tb.innerHTML='<tr><td colspan="4" class="muted">No opponent data.</td></tr>'; return; }
   list.forEach(r=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${r.opp}</td><td class="right mono">${r.matches}</td><td class="right mono">${r.wins}</td><td class="right mono">${fmtP(r.winpct)}</td>`;
+    tr.innerHTML=`<td><span class="fittext">${r.opp}</span></td>
+                  <td class="right mono">${r.matches}</td>
+                  <td class="right mono">${r.wins}</td>
+                  <td class="right mono">${fmtP(r.winpct)}</td>`;
     tb.appendChild(tr);
   });
 }
@@ -404,7 +413,11 @@ function renderTopAct(rows){
   if(!list.length){ tb.innerHTML='<tr><td colspan="5" class="muted">No active picks.</td></tr>'; return; }
   list.forEach(r=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${r.name}</td><td class="right mono">${r.picks}</td><td class="right mono">${fmtP(r.pickRate)}</td><td class="right mono">${r.wins}</td><td class="right mono">${fmtP(r.winRate)}</td>`;
+    tr.innerHTML=`<td><span class="fittext">${r.name}</span></td>
+                  <td class="right mono">${r.picks}</td>
+                  <td class="right mono">${fmtP(r.pickRate)}</td>
+                  <td class="right mono">${r.wins}</td>
+                  <td class="right mono">${fmtP(r.winRate)}</td>`;
     tb.appendChild(tr);
   });
 }
@@ -414,7 +427,11 @@ function renderTopPas(rows){
   if(!list.length){ tb.innerHTML='<tr><td colspan="5" class="muted">No passive picks.</td></tr>'; return; }
   list.forEach(r=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${r.name}</td><td class="right mono">${r.picks}</td><td class="right mono">${fmtP(r.pickRate)}</td><td class="right mono">${r.wins}</td><td class="right mono">${fmtP(r.winRate)}</td>`;
+    tr.innerHTML=`<td><span class="fittext">${r.name}</span></td>
+                  <td class="right mono">${r.picks}</td>
+                  <td class="right mono">${fmtP(r.pickRate)}</td>
+                  <td class="right mono">${r.wins}</td>
+                  <td class="right mono">${fmtP(r.winRate)}</td>`;
     tb.appendChild(tr);
   });
 }
@@ -424,7 +441,11 @@ function renderBanImpact(rows){
   if(!list.length){ tb.innerHTML='<tr><td colspan="5" class="muted">Not enough ban data.</td></tr>'; return; }
   list.forEach(r=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${r.name}</td><td class="right mono">${r.banned}</td><td class="right mono">${fmtP(r.wBan)}</td><td class="right mono">${fmtP(r.wNot)}</td><td class="right mono" style="font-weight:700;">${fmtP(r.delta)}</td>`;
+    tr.innerHTML=`<td><span class="fittext">${r.name}</span></td>
+                  <td class="right mono">${r.banned}</td>
+                  <td class="right mono">${fmtP(r.wBan)}</td>
+                  <td class="right mono">${fmtP(r.wNot)}</td>
+                  <td class="right mono" style="font-weight:700;">${fmtP(r.delta)}</td>`;
     tb.appendChild(tr);
   });
 }
@@ -436,7 +457,12 @@ function renderRecent(rows){
     const tr=document.createElement('tr');
     const score=`${r.ts}-${r.os}`;
     const wl=r.res==='W'?`<span style="color:var(--good);font-weight:700">W</span>`:`<span style="color:var(--bad);font-weight:700">L</span>`;
-    tr.innerHTML=`<td>${r.date}</td><td>${r.map}</td><td>${r.opp}</td><td class="right mono">${score}</td><td class="right">${wl}</td><td>${r.ban||'—'}</td>`;
+    tr.innerHTML=`<td>${r.date}</td>
+                  <td>${r.map}</td>
+                  <td><span class="fittext">${r.opp}</span></td>
+                  <td class="right mono">${score}</td>
+                  <td class="right">${wl}</td>
+                  <td><span class="fittext">${r.ban||'—'}</span></td>`;
     tb.appendChild(tr);
   });
 }
@@ -471,6 +497,8 @@ function loadTeam(team){
   renderTopPas(CURR_ROWS);
   renderBanImpact(CURR_ROWS);
   renderRecent(CURR_ROWS);
+  // apply shrink after DOM filled
+  requestAnimationFrame(fitTextAll);
 }
 
 init();
