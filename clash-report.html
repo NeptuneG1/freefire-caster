@@ -257,26 +257,38 @@ function barH(labels, values, opts={}){
 }
 
 function groupedBars(labels, aVals, bVals, opts={}){
+  // aVals = matches, bVals = wins
   const W = opts.width || 400;
   const labelW = 120;
+  const rightPad = 80;                  // space for "wins/matches (win%)" label
   const pad = 6, row = 12, gap = 2, grpGap = 6;
   const H = Math.max(40, labels.length*(row+gap) + labels.length*grpGap + pad*2);
   const max = Math.max(1, ...aVals, ...bVals);
-  const scale = (v)=> Math.max(1, (v/max)*(W - labelW - 24));
+  const scale = (v)=> Math.max(1, (v/max)*(W - labelW - rightPad));
+
   const svg = [`<svg class="chart" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" shape-rendering="crispEdges">`];
   let y = pad;
   labels.forEach((lb, i)=>{
-    const a = scale(aVals[i]), b = scale(bVals[i]);
+    const a = scale(aVals[i]);               // Matches bar
+    const b = scale(bVals[i]);               // Wins bar
+    const wr = aVals[i] ? ((bVals[i]/aVals[i])*100).toFixed(1)+'%' : '—';
+
     svg.push(`<text x="2" y="${y+10}" font-size="11" fill="#ddd">${lb}</text>`);
     svg.push(`<rect x="${labelW}" y="${y}" width="${a}" height="${row}" fill="#ffbd59" stroke="#6a4e23" vector-effect="non-scaling-stroke"/>`);
     y += row + gap;
     svg.push(`<rect x="${labelW}" y="${y}" width="${b}" height="${row}" fill="#4aa86a" stroke="#2c5a3a" vector-effect="non-scaling-stroke"/>`);
-    svg.push(`<text x="${labelW + Math.max(a,b) + 4}" y="${y-2}" font-size="10" fill="#bbb" class="mono">${aVals[i]}/${bVals[i]}</text>`);
+
+    // Right-side label: wins/matches (win%)
+    svg.push(
+      `<text x="${labelW + Math.max(a,b) + 6}" y="${y-2}" font-size="10" fill="#bbb" class="mono">` +
+      `${bVals[i]}/${aVals[i]} (${wr})</text>`
+    );
     y += row + grpGap;
   });
   svg.push(`</svg>`);
   return svg.join('');
 }
+
 
 /* ========= Data plumbing ========= */
 let ALL_RECORDS=[]; // all rows (matches), used to derive tourn+team lists
