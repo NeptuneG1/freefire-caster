@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Clash Squad — Team Report Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root{
+      --bg:#0e0e0e; --panel:#1b1b1b; --panel2:#141414;
+      --ink:#f5f5f5; --muted:#b9b9b9; --brand:#ffbd59; --brand2:#ff7733;
+      --line:#2b2b2b; --good:#71d083; --bad:#ff6b6b;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
+    header{display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:5;background:#1f1f1f;border-bottom:3px solid var(--brand);padding:12px 14px}
+    h1{margin:0;font-size:1.15rem;color:var(--brand)}
+    .muted{color:var(--muted)}
+    select,button{background:#232323;color:var(--ink);border:1px solid #3a3a3a;border-radius:8px;padding:7px 10px;font-weight:600}
+    button.btn{background:var(--brand);color:#191919;border:0}
+    button.btn:hover{filter:brightness(1.05)}
+    .shell{max-width:1160px;margin:18px auto;padding:0 10px}
+
+    /* Report grid – fit one page */
+    .report{display:grid;grid-template-columns: 1fr 1fr 1fr;grid-template-rows:auto auto auto auto;gap:10px}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px}
+    .card h2{margin:0 0 6px 0;font-size:1rem;color:var(--brand2)}
+    .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+    .kpi{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px;text-align:center}
+    .kpi b{display:block;font-size:1.15rem;margin-top:2px}
+
+    .span-3{grid-column:1/4}
+    .span-2{grid-column:span 2}
+
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .pill{display:inline-block;padding:2px 8px;border:1px solid var(--line);border-radius:999px;background:#101010;margin:2px;color:#ddd;font-size:.85rem}
+
+    table{width:100%;border-collapse:collapse;font-size:.9rem}
+    th,td{border-bottom:1px solid var(--line);padding:6px 6px}
+    thead th{background:#191919;text-align:left}
+    tbody tr:hover{background:#141414}
+    .right{text-align:right}
+    .mono{font-variant-numeric:tabular-nums}
+
+    canvas{width:100% !important;height:180px !important}
+
+    /* Print / one-page fit (A4) */
+    @page{size:A4;margin:10mm}
+    @media print{
+      header{position:static}
+      .no-print{display:none !important}
+      .shell{max-width:unset;margin:0}
+      .report{gap:8px}
+      canvas{height:140px !important}
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Team Report Dashboard</h1>
+  <div class="row" style="margin-left:auto">
+    <label class="muted">Team
+      <select id="teamSel"></select>
+    </label>
+    <button id="refreshBtn" class="btn">Apply</button>
+    <button class="btn no-print" onclick="window.print()">Print</button>
+    <a href="dashboard.html" class="btn no-print" style="text-decoration:none">← Back</a>
+  </div>
+</header>
+
+<div class="shell">
+  <div id="meta" class="muted" style="margin-bottom:10px">Loading…</div>
+
+  <div class="report">
+    <!-- KPIs -->
+    <div class="card span-3">
+      <h2>Key Metrics</h2>
+      <div class="kpis" id="kpiWrap"></div>
+    </div>
+
+    <!-- Win/Loss Donut -->
+    <div class="card">
+      <h2>W/L Split</h2>
+      <canvas id="chartDonut"></canvas>
+    </div>
+
+    <!-- Win % over Time -->
+    <div class="card span-2">
+      <h2>Win % by Date</h2>
+      <canvas id="chartWinTime"></canvas>
+    </div>
+
+    <!-- Top Actives -->
+    <div class="card span-2">
+      <h2>Top Active Picks (Pick %)</h2>
+      <canvas id="chartActives"></canvas>
+    </div>
+
+    <!-- Top Passives -->
+    <div class="card">
+      <h2>Top Passive Picks (Pick %)</h2>
+      <canvas id="chartPassives"></canvas>
+    </div>
+
+    <!-- Ban Summary -->
+    <div class="card">
+      <h2>Most Banned (Count)</h2>
+      <canvas id="chartBans"></canvas>
+    </div>
+
+    <!-- Team × Map Table -->
+    <div class="card span-2">
+      <h2>Performance by Map</h2>
+      <table>
+        <thead><tr><th>Map</th><th class="right">Matches</th><th class="right">Wins</th><th class="right">Win %</th></tr></thead>
+        <tbody id="tblMap"></tbody>
+      </table>
+    </div>
+
+    <!-- Top Active Combos -->
+    <div class="card span-3">
+      <h2>Top Active Combos</h2>
+      <table>
+        <thead><tr><th>Combo (4× Active)</th><th class="right">Picks</th><th class="right">Wins</th><th class="right">Win %</th></tr></thead>
+        <tbody id="tblCombos"></tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ========= Supabase init ========= */
+const client = supabase.createClient(
+  'https://gkugecflfddkpitlrmws.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
+);
+
+/* ========= Utils ========= */
+const PLACEHOLDER = 'https://imgur.com/AdvPwAO.png';
+const pct = (a,b)=> b? (a/b*100).toFixed(1)+'%':'—';
+const fmtPct = x => (x==null || !isFinite(x)) ? '—' : (x*100).toFixed(1)+'%';
+const uniq = arr => [...new Set(arr)];
+function parseState(val){ if(!val) return {}; if(typeof val==='object') return val; try{ return JSON.parse(val);}catch(_){return{};} }
+
+/* ========= Global ========= */
+let RAW = [];
+let CHARTS = {};
+
+/* ========= Data ops ========= */
+function explodeRecordToRows(rec){
+  const s = parseState(rec.state);
+  const picks = Array.isArray(s.picks)?s.picks:[];
+  const passives = Array.isArray(s.passives)?s.passives:[];
+  const bans = Array.isArray(s.bans)?s.bans:[];
+
+  const leftWin  = (rec.team_left_score ?? 0) > (rec.team_right_score ?? 0);
+  const rightWin = (rec.team_right_score ?? 0) > (rec.team_left_score ?? 0);
+
+  function side(side){
+    const L = side==='L';
+    const team = L? rec.team_left : rec.team_right;
+    const opp  = L? rec.team_right: rec.team_left;
+    const res  = L? (leftWin?'W':'L') : (rightWin?'W':'L');
+    const idxs = L? [0,1,2,3] : [7,6,5,4];
+    const actives = idxs.map(i=>({ hero: picks[i]?.name||'', heroImg: picks[i]?.image_url||PLACEHOLDER }));
+    const pass = idxs.map(i=> (Array.isArray(passives[i])?passives[i]:[]).slice(0,3).map(ps=>ps?.name).filter(Boolean) );
+    const ban  = (L? bans[0]:bans[1])?.name || '';
+    return {rec_id:rec.id, date: rec.match_date, map: rec.map, team, opp, res, actives, pass, ban};
+  }
+  return [side('L'), side('R')];
+}
+
+function rowsForTeam(team){
+  return RAW.flatMap(explodeRecordToRows).filter(r=>r.team===team);
+}
+
+/* ========= Charts ========= */
+function destroyCharts(){ Object.values(CHARTS).forEach(c=>{ try{c.destroy()}catch(_){}}); CHARTS={}; }
+function mk(ctx, type, data, opt){ return new Chart(ctx, { type, data, options: opt||{} }); }
+
+/* ========= UI renderers ========= */
+function renderKPIs(rows){
+  const matches = rows.length;
+  const wins = rows.filter(r=>r.res==='W').length;
+  const winpct = matches? wins/matches : 0;
+  const maps = uniq(rows.map(r=>r.map)).length;
+  const opps = uniq(rows.map(r=>r.opp)).length;
+  const bans = rows.filter(r=>r.ban).length;
+  const el = document.getElementById('kpiWrap');
+  el.innerHTML = `
+    <div class="kpi">Matches<b>${matches}</b></div>
+    <div class="kpi">Wins<b>${wins}</b><div class="muted">(${fmtPct(winpct)})</div></div>
+    <div class="kpi">Opponents<b>${opps}</b></div>
+    <div class="kpi">Maps Played<b>${maps}</b></div>
+    <div class="kpi">Bans Issued<b>${bans}</b></div>
+    <div class="kpi">Last Match<b>${rows[0]?.date? String(rows[0].date).slice(0,10):'—'}</b></div>`;
+}
+
+function renderDonut(rows){
+  const w = rows.filter(r=>r.res==='W').length, l = rows.length - w;
+  const ctx = document.getElementById('chartDonut');
+  CHARTS.donut = mk(ctx,'doughnut',{labels:['Wins','Losses'],datasets:[{data:[w,l]}]},{plugins:{legend:{display:true,labels:{color:'#ddd'}}}});
+}
+
+function renderWinTime(rows){
+  const byDate = new Map();
+  rows.forEach(r=>{
+    const d = String(r.date).slice(0,10);
+    if(!byDate.has(d)) byDate.set(d,{n:0,w:0});
+    byDate.get(d).n += 1; if(r.res==='W') byDate.get(d).w += 1;
+  });
+  const ordered = [...byDate.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
+  const labels = ordered.map(x=>x[0]);
+  const data = ordered.map(x=> x[1].n? +(x[1].w/x[1].n*100).toFixed(1) : 0);
+  const ctx = document.getElementById('chartWinTime');
+  CHARTS.wtime = mk(ctx,'line',{labels,datasets:[{label:'Win %',data}]},{scales:{y:{ticks:{color:'#ddd'},grid:{color:'#333'},title:{display:true,text:'%'}},x:{ticks:{color:'#ddd'},grid:{display:false}}},plugins:{legend:{labels:{color:'#ddd'}}}});
+}
+
+function tallyActives(rows){
+  const map = new Map(); let picks=0, wins=0;
+  rows.forEach(r=>{ r.actives.forEach(a=>{ if(!a.hero) return; const o = map.get(a.hero)||{p:0,w:0}; o.p++; if(r.res==='W') o.w++; map.set(a.hero,o); picks++; if(r.res==='W') wins++; });});
+  return {map, slots: rows.length*4};
+}
+function tallyPassives(rows){
+  const map = new Map(); rows.forEach(r=>{ r.pass.forEach(trio=> trio.forEach(n=>{ const o = map.get(n)||{p:0,w:0}; o.p++; if(r.res==='W') o.w++; map.set(n,o); })); });
+  return {map, slots: rows.length*12};
+}
+function tallyBans(rows){
+  const map = new Map(); rows.forEach(r=>{ const n = r.ban||''; if(!n) return; map.set(n,(map.get(n)||0)+1); });
+  return map;
+}
+
+function renderBarTop(mapSlots, canvasId, topN=8, label='Pick %'){
+  const arr = [...mapSlots.map.entries? mapSlots.map.entries(): mapSlots.entries()].map(([name,v])=>{
+    if(mapSlots.slots!=null){ // has slots
+      const picks = v.p, wins = v.w; const rate = mapSlots.slots? (picks/mapSlots.slots*100):0;
+      return {name, picks, wins, rate:+rate.toFixed(2)};
+    } else {
+      return {name, count:v};
+    }
+  });
+  arr.sort((a,b)=> (b.rate??b.count) - (a.rate??a.count) || a.name.localeCompare(b.name));
+  const top = arr.slice(0, topN);
+  const ctx = document.getElementById(canvasId);
+  if(mapSlots.slots!=null){
+    CHARTS[canvasId] = mk(ctx,'bar',{labels: top.map(x=>x.name), datasets:[{label, data: top.map(x=>x.rate)}]},{plugins:{legend:{labels:{color:'#ddd'}}},scales:{y:{ticks:{color:'#ddd'},grid:{color:'#333'}},x:{ticks:{color:'#ddd'},grid:{display:false}}}});
+  } else {
+    CHARTS[canvasId] = mk(ctx,'bar',{labels: top.map(x=>x.name), datasets:[{label:'Count', data: top.map(x=>x.count)}]},{plugins:{legend:{labels:{color:'#ddd'}}},scales:{y:{ticks:{color:'#ddd'},grid:{color:'#333'}},x:{ticks:{color:'#ddd'},grid:{display:false}}}});
+  }
+}
+
+function renderMapTable(rows){
+  const agg = new Map();
+  rows.forEach(r=>{
+    const k = r.map||'—'; if(!agg.has(k)) agg.set(k,{m:0,w:0}); const o = agg.get(k); o.m++; if(r.res==='W') o.w++; });
+  const list = [...agg.entries()].map(([map,v])=>({map, m:v.m, w:v.w, wp: v.m? v.w/v.m:0}))
+                                 .sort((a,b)=> b.m - a.m || a.map.localeCompare(b.map));
+  const tb = document.getElementById('tblMap'); tb.innerHTML = list.map(r=>
+    `<tr><td>${r.map}</td><td class="right mono">${r.m}</td><td class="right mono">${r.w}</td><td class="right mono">${fmtPct(r.wp)}</td></tr>`
+  ).join('');
+}
+
+function renderCombos(rows){
+  const combos = new Map();
+  rows.forEach(r=>{
+    const names = r.actives.map(a=>a.hero).filter(Boolean);
+    if(names.length!==4) return; const key = [...names].sort((a,b)=>a.localeCompare(b)).join('|');
+    if(!combos.has(key)) combos.set(key,{heroes: key.split('|'), p:0, w:0});
+    const C = combos.get(key); C.p++; if(r.res==='W') C.w++;
+  });
+  const list = [...combos.values()].map(c=>({names:c.heroes.join(' · '), p:c.p, w:c.w, wp: c.p? c.w/c.p:0}))
+                                  .sort((a,b)=> b.p - a.p || b.wp - a.wp || a.names.localeCompare(b.names))
+                                  .slice(0,8);
+  document.getElementById('tblCombos').innerHTML = list.length? list.map(r=>
+    `<tr><td>${r.names}</td><td class="right mono">${r.p}</td><td class="right mono">${r.w}</td><td class="right mono">${fmtPct(r.wp)}</td></tr>`
+  ).join('') : `<tr><td colspan="4" class="muted">No combos.</td></tr>`;
+}
+
+/* ========= Main ========= */
+async function loadData(){
+  const { data, error } = await client
+    .from('draft_records')
+    .select('id, match_date, team_left, team_right, team_left_score, team_right_score, map, tournament_name, state')
+    .order('match_date', { ascending:false })
+    .limit(3000); // safety cap
+  if(error){ console.error(error); alert('Failed to load: '+error.message); return []; }
+  return data||[];
+}
+
+function populateTeams(records){
+  const teams = uniq(records.flatMap(r=>[r.team_left, r.team_right]).filter(Boolean)).sort();
+  const sel = document.getElementById('teamSel');
+  sel.innerHTML = teams.map(t=>`<option value="${t}">${t}</option>`).join('');
+  // best-effort keep last used via hash
+  const fromHash = decodeURIComponent(location.hash.slice(1)||'');
+  if(fromHash && teams.includes(fromHash)) sel.value = fromHash;
+}
+
+function updateMeta(team, rows){
+  const tourns = uniq(RAW.filter(r=> r.team_left===team || r.team_right===team).map(r=>r.tournament_name).filter(Boolean));
+  const maps = uniq(rows.map(r=>r.map).filter(Boolean));
+  document.getElementById('meta').textContent = `${team} • ${rows.length} team-rows • Tournaments: ${tourns.length||0} • Maps: ${maps.length||0}`;
+}
+
+async function render(){
+  const team = document.getElementById('teamSel').value;
+  if(!team) return;
+  const rows = rowsForTeam(team);
+  updateMeta(team, rows);
+  destroyCharts();
+
+  renderKPIs(rows);
+  renderDonut(rows);
+  renderWinTime(rows);
+  renderBarTop(tallyActives(rows), 'chartActives', 8, 'Pick %');
+  renderBarTop(tallyPassives(rows), 'chartPassives', 8, 'Pick %');
+  renderBarTop(tallyBans(rows), 'chartBans', 8, 'Count');
+  renderMapTable(rows);
+  renderCombos(rows);
+
+  // persist selection in URL hash
+  location.hash = encodeURIComponent(team);
+}
+
+// Init
+(async ()=>{
+  // Basic auth guard (optional redirect like other pages)
+  const { data: { session } } = await client.auth.getSession();
+  if (!session) { /* window.location.href = "index.html"; return; */ }
+
+  RAW = await loadData();
+  populateTeams(RAW);
+  await render();
+})();
+
+// Events
+ document.getElementById('refreshBtn').addEventListener('click', render);
+ document.getElementById('teamSel').addEventListener('change', render);
+</script>
+</body>
+</html>
