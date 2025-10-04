@@ -57,6 +57,23 @@
     /* Opponent logos next to Loss % */
     .opp-logos{display:inline-flex;gap:4px;vertical-align:middle;margin-left:6px}
     .opp-logos img{width:16px;height:16px;border-radius:3px;border:1px solid #333;background:#111;object-fit:cover}
+    /* Add after .opp-logos and .opp-logos img */
+    .opp-logos .logo-wrap{
+      position: relative;
+      display: inline-block;
+    }
+    .opp-logos .cnt{
+      position: absolute;
+      right: -6px;
+      bottom: -6px;
+      background: #171717;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 0 3px;
+      font-size: 10px;
+      line-height: 1.2;
+      color: #ccc;
+    }
 
     @media (max-width: 860px){
       .grid2{grid-template-columns:1fr}
@@ -569,13 +586,17 @@ function activeSkillImpactTable(rows, limit=12){
   if (!list.length) return `<div class="muted">No active skills.</div>`;
 
   const logoSpan = (lossOppMap)=>{
-    const entries = [...(lossOppMap||new Map()).entries()]
-      .sort((a,b)=> b[1]-a[1])
-      .slice(0,3); // top 3 opponents by loss count
+  const entries = [...(lossOppMap||new Map()).entries()]
+    .sort((a,b)=> b[1]-a[1])
+    .slice(0,3); // top 3 opponents by loss count
     if (!entries.length) return '';
     const imgs = entries.map(([opp, cnt])=>{
       const src = TEAM_LOGO[opp] || PLACEHOLDER;
-      return `<img src="${src}" alt="${opp}" title="${opp} ×${cnt}" loading="lazy">`;
+      const badge = cnt > 1 ? `<span class="cnt">×${cnt}</span>` : '';
+      return `<span class="logo-wrap" title="${opp} ×${cnt}">
+                <img src="${src}" alt="${opp}" loading="lazy">
+                ${badge}
+              </span>`;
     }).join('');
     return `<span class="opp-logos">${imgs}</span>`;
   };
