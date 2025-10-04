@@ -50,30 +50,20 @@
     .caption{margin:4px 0 8px}
     .tight{line-height:1.25}
 
-    /* New for impact deltas */
+    /* Active Skill Impact deltas + loss logos */
     .delta-pos{color:var(--good);font-weight:700}
     .delta-neg{color:var(--bad);font-weight:700}
-
-    /* Opponent logos next to Loss % */
-    .opp-logos{display:inline-flex;gap:4px;vertical-align:middle;margin-left:6px}
-    .opp-logos img{width:16px;height:16px;border-radius:3px;border:1px solid #333;background:#111;object-fit:cover}
-    /* Add after .opp-logos and .opp-logos img */
-    .opp-logos .logo-wrap{
-      position: relative;
-      display: inline-block;
-    }
+    .opp-logos{display:inline-flex;gap:4px;align-items:center;margin-left:6px;vertical-align:middle}
+    .opp-logos img{width:18px;height:18px;border-radius:4px;border:1px solid #333;background:#111;object-fit:cover}
+    .opp-logos .logo-wrap{position:relative;display:inline-block}
     .opp-logos .cnt{
-      position: absolute;
-      right: -6px;
-      bottom: -6px;
-      background: #171717;
-      border: 1px solid #333;
-      border-radius: 6px;
-      padding: 0 3px;
-      font-size: 10px;
-      line-height: 1.2;
-      color: #ccc;
+      position:absolute;right:-6px;bottom:-6px;background:#171717;border:1px solid #333;
+      border-radius:6px;padding:0 3px;font-size:10px;line-height:1.2;color:#ccc;
     }
+
+    /* AI Prompt box */
+    .ai-actions{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+    .ai-text{width:100%;min-height:220px;background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:10px;font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;font-size:.85rem;white-space:pre-wrap}
 
     @media (max-width: 860px){
       .grid2{grid-template-columns:1fr}
@@ -139,12 +129,13 @@
   <div class="section">
     <h2>Skills (Top 10 by Rate)</h2>
     <div class="grid2">
+      <div class="card"><h3 id="labelBansA">Team A — Bans</h3><div id="bansA">Loading…</div></div>
+      <div class="card"><h3 id="labelBansB">Team B — Bans</h3><div id="bansB">Loading…</div></div>
       <div class="card"><h3 id="labelActiveA">Team A — Active</h3><div id="activeA">Loading…</div></div>
       <div class="card"><h3 id="labelActiveB">Team B — Active</h3><div id="activeB">Loading…</div></div>
       <div class="card"><h3 id="labelPassiveA">Team A — Passive</h3><div id="passiveA">Loading…</div></div>
       <div class="card"><h3 id="labelPassiveB">Team B — Passive</h3><div id="passiveB">Loading…</div></div>
-      <div class="card"><h3 id="labelBansA">Team A — Bans</h3><div id="bansA">Loading…</div></div>
-      <div class="card"><h3 id="labelBansB">Team B — Bans</h3><div id="bansB">Loading…</div></div>
+      
     </div>
   </div>
 
@@ -166,7 +157,7 @@
     </div>
   </div>
 
-  <!-- NEW: ACTIVE SKILL IMPACT (WIN/LOSS) -->
+  <!-- ACTIVE SKILL IMPACT (WIN/LOSS) -->
   <div class="section">
     <h2>Active Skill Impact (Win/Loss)</h2>
     <div class="grid2">
@@ -226,6 +217,16 @@
     </div>
   </div>
 
+  <!-- AI ANALYSIS PROMPT -->
+  <div class="section">
+    <h2>AI Analysis Prompt</h2>
+    <div class="ai-actions">
+      <button class="btn" id="copyPromptBtn">Copy prompt</button>
+      <span class="muted">Copies a structured prompt + current data snapshot for ChatGPT.</span>
+    </div>
+    <textarea id="aiPrompt" class="ai-text" readonly>Loading…</textarea>
+  </div>
+
 </div>
 
 <script>
@@ -255,6 +256,7 @@ const uniq = (arr) => [...new Set(arr)];
 function ymd(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
 function parseState(val){ if (!val) return {}; if (typeof val==='object') return val; try { return JSON.parse(val); } catch(e){ return {}; } }
 
+/* ========= Filters init ========= */
 function initFilters(){
   const today = new Date(); const from = new Date(today); from.setDate(from.getDate()-30);
   el('fFrom').value = ymd(from); el('fTo').value = ymd(today);
@@ -266,24 +268,8 @@ initFilters();
 /* ========= State ========= */
 let RAW_RECORDS = [];
 let FIRST_LOAD_TOURN = true;
-
-/* ========= Team Logos ========= */
-let TEAM_LOGO = {};
-let TEAM_LOGO_READY = false;
-
-async function ensureTeamLogos(){
-  if (TEAM_LOGO_READY) return;
-  const { data, error } = await client
-    .from('team_logos')
-    .select('team_name, image_url');
-  if (error){
-    console.warn('team_logos fetch error:', error);
-    TEAM_LOGO_READY = true;
-    return;
-  }
-  TEAM_LOGO = Object.fromEntries((data||[]).map(r => [r.team_name, r.image_url]));
-  TEAM_LOGO_READY = true;
-}
+let TEAM_LOGO = {}; // name -> url
+let LATEST_EXPORT = null;
 
 /* ========= Fetch ========= */
 async function fetchRecords(){
@@ -311,6 +297,18 @@ async function fetchRecords(){
   return data || [];
 }
 
+async function fetchTeamLogos(){
+  const { data, error } = await client.from('team_logos').select('*');
+  if (error){ console.warn('team_logos fetch error:', error.message); TEAM_LOGO={}; return; }
+  const map = {};
+  (data||[]).forEach(r=>{
+    const name = r.team || r.team_name || r.TEAM || r.name || '';
+    const url  = r.image_url || r.image_link || r['Image Link'] || r.link || '';
+    if (name && url) map[String(name).trim()] = url;
+  });
+  TEAM_LOGO = map;
+}
+
 function populateTeamDropdowns(records){
   const teams = [...new Set(records.flatMap(r=>[r.team_left, r.team_right]).filter(Boolean))].sort();
   const A = el('cmpTeamA'), B = el('cmpTeamB');
@@ -327,7 +325,7 @@ async function populateTournamentDropdown(records){
   records.forEach(r => {
     const tn = r.tournament_name; if (!tn) return;
     tourns.add(tn);
-    if (!latest || (String(r.match_date) > String(latest.date))) latest = { name: tn, date: r.match_date };
+    if (!latest || (String(r.match_date) > String(latest?.date))) latest = { name: tn, date: r.match_date };
   });
   dd.innerHTML = `<option value="__ALL__">All tournaments</option>` + [...tourns].sort().map(t=>`<option value="${t}">${t}</option>`).join('');
   if (FIRST_LOAD_TOURN && latest && (prior==='__ALL__' || !prior)){ dd.value = latest.name; FIRST_LOAD_TOURN=false; } else { dd.value = prior; }
@@ -394,7 +392,7 @@ function rowsForTeam(team){
   return applyWL(rows);
 }
 
-/* ========= Aggregations / Tables ========= */
+/* ========= Aggregations / Data helpers ========= */
 function buildTeamBucket(rows, teamName, kind){
   const B = { name: teamName, matches:0, wins:0, skills:new Map() };
   rows.forEach(r=>{
@@ -424,14 +422,20 @@ function buildTeamBucket(rows, teamName, kind){
   });
   return B;
 }
-
+function topSkillsData(bucket, limit=10){
+  if (!bucket || !bucket.matches) return [];
+  return [...bucket.skills.entries()].map(([name, s])=>{
+    return {
+      skill: name,
+      count: s.occ,
+      appear: s.appear,
+      pick_rate: bucket.matches ? s.appear/bucket.matches : 0,
+      win_rate: s.appear ? s.appearWins/s.appear : 0
+    };
+  }).sort((a,b)=> b.pick_rate - a.pick_rate || a.skill.localeCompare(b.skill)).slice(0,limit);
+}
 function topSkillsTable(bucket, kind, limit=10){
-  if (!bucket || !bucket.matches) return `<div class="muted">No data.</div>`;
-  const skills = [...bucket.skills.entries()].map(([name, s])=>{
-    const appearRate = bucket.matches ? (s.appear/bucket.matches) : 0;
-    const winRate    = s.appear ? (s.appearWins/s.appear) : 0;
-    return { name, count:s.occ, appear:s.appear, appearRate, winRate };
-  }).sort((a,b)=> (b.appearRate - a.appearRate) || a.name.localeCompare(b.name)).slice(0, limit);
+  const skills = topSkillsData(bucket, limit);
   const rateLabel = (kind==='ban') ? 'Ban Rate' : 'Pick Rate';
   if (!skills.length) return `<div class="muted">No ${kind} data.</div>`;
   return `
@@ -439,36 +443,24 @@ function topSkillsTable(bucket, kind, limit=10){
       <thead><tr><th>Skill</th><th class="right">Count</th><th class="right">${rateLabel}</th><th class="right">Win Rate</th></tr></thead>
       <tbody>
         ${skills.map(s=>`
-          <tr><td>${s.name}</td><td class="right">${s.count}</td><td class="right">${pct(s.appear,bucket.matches)}</td><td class="right">${fmtPct(s.winRate)}</td></tr>
+          <tr><td>${s.skill}</td><td class="right">${s.count}</td><td class="right">${fmtPct(s.pick_rate)}</td><td class="right">${fmtPct(s.win_rate)}</td></tr>
         `).join('')}
       </tbody>
     </table>`;
 }
 
-function kpiCard(bucket, kindActive, kindPassive, kindBan){
-  if (!bucket || !bucket.matches) return `<div class="muted">No data for selection.</div>`;
-  const subjA = [...kindActive.skills.values()].reduce((a,s)=>(a.appear+=s.appear,a),{appear:0});
-  const subjP = [...kindPassive.skills.values()].reduce((a,s)=>(a.appear+=s.appear,a),{appear:0});
-  const subjB = [...kindBan.skills.values()].reduce((a,s)=>(a.appear+=s.appear,a),{appear:0});
-  return `
-    <div class="kpis">
-      <div class="kpi">Matches <strong>${bucket.matches}</strong></div>
-      <div class="kpi">Wins <strong>${bucket.wins}</strong> <span class="muted">(${pct(bucket.wins,bucket.matches)})</span></div>
-      <div class="kpi">Active picks <strong>${subjA.appear}</strong> <span class="muted">(${pct(subjA.appear,bucket.matches)})</span></div>
-      <div class="kpi">Passive picks <strong>${subjP.appear}</strong> <span class="muted">(${pct(subjP.appear,bucket.matches)})</span></div>
-      <div class="kpi">Bans <strong>${subjB.appear}</strong> <span class="muted">(${pct(subjB.appear,bucket.matches)})</span></div>
-    </div>`;
-}
-
-function teamMapStats(rows){
+function teamMapStatsData(rows){
   const agg = new Map();
   rows.forEach(r=>{
     const m = r.map || '—';
     if (!agg.has(m)) agg.set(m, { map:m, matches:0, wins:0 });
     const A = agg.get(m); A.matches += 1; if (r.result==='W') A.wins += 1;
   });
-  const list = [...agg.values()].map(x=>({ ...x, winpct: x.matches? x.wins/x.matches : 0 }))
+  return [...agg.values()].map(x=>({ ...x, winpct: x.matches? x.wins/x.matches : 0 }))
                .sort((a,b)=> b.matches - a.matches || b.winpct - a.winpct || a.map.localeCompare(b.map));
+}
+function teamMapStats(rows){
+  const list = teamMapStatsData(rows);
   if (!list.length) return `<div class="muted">No team×map rows.</div>`;
   return `
     <table>
@@ -479,8 +471,8 @@ function teamMapStats(rows){
     </table>`;
 }
 
-function perSkillActiveCompressed(rows, limit=12){
-  if (!rows.length) return `<div class="muted">No rows.</div>`;
+function perSkillActiveCompressedData(rows, limit=12){
+  if (!rows.length) return [];
   const map = new Map();
   rows.forEach(r=>{
     r.actives.forEach(a=>{
@@ -491,30 +483,30 @@ function perSkillActiveCompressed(rows, limit=12){
     });
   });
   const den = rows.length * 4;
-  const list = [...map.entries()].map(([name,v])=>{
-    const winRate = v.p ? v.w/v.p : null;
-    return { name, picks:v.p, wins:v.w, winRate, rate: den ? v.p/den : 0 };
-  }).sort((a,b)=> b.rate - a.rate || (b.winRate||0)-(a.winRate||0) || a.name.localeCompare(b.name))
+  return [...map.entries()].map(([name,v])=>{
+    return { skill:name, picks:v.p, wins:v.w, win_rate: v.p? v.w/v.p : null, pick_rate: den? v.p/den : 0 };
+  }).sort((a,b)=> b.pick_rate - a.pick_rate || (b.win_rate||0)-(a.win_rate||0) || a.skill.localeCompare(b.skill))
     .slice(0, limit);
-
-  return list.length
-    ? `<table>
-        <thead><tr><th>Skill</th><th class="right">Picks</th><th class="right">Wins</th><th class="right">Win %</th><th class="right">Pick %</th></tr></thead>
-        <tbody>
-          ${list.map(r=>`<tr>
-            <td>${r.name}</td>
-            <td class="right">${r.picks}</td>
-            <td class="right">${r.wins}</td>
-            <td class="right">${r.winRate===null?'—':fmtPct(r.winRate)}</td>
-            <td class="right">${pct(r.picks, den)}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>`
-    : `<div class="muted">No active skills.</div>`;
+}
+function perSkillActiveCompressed(rows, limit=12){
+  const list = perSkillActiveCompressedData(rows, limit);
+  if (!list.length) return `<div class="muted">No active skills.</div>`;
+  return `<table>
+    <thead><tr><th>Skill</th><th class="right">Picks</th><th class="right">Wins</th><th class="right">Win %</th><th class="right">Pick %</th></tr></thead>
+    <tbody>
+      ${list.map(r=>`<tr>
+        <td>${r.skill}</td>
+        <td class="right">${r.picks}</td>
+        <td class="right">${r.wins}</td>
+        <td class="right">${r.win_rate===null?'—':fmtPct(r.win_rate)}</td>
+        <td class="right">${fmtPct(r.pick_rate)}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
 }
 
-function perSkillPassiveCompressed(rows, limit=12){
-  if (!rows.length) return `<div class="muted">No rows.</div>`;
+function perSkillPassiveCompressedData(rows, limit=12){
+  if (!rows.length) return [];
   const map = new Map();
   rows.forEach(r=>{
     r.passives.forEach(p=>{
@@ -527,74 +519,73 @@ function perSkillPassiveCompressed(rows, limit=12){
     });
   });
   const den = rows.length * 12;
-  const list = [...map.entries()].map(([name,v])=>{
-    const winRate = v.p ? v.w/v.p : null;
-    return { name, picks:v.p, wins:v.w, winRate, rate: den ? v.p/den : 0 };
-  }).sort((a,b)=> b.rate - a.rate || (b.winRate||0)-(a.winRate||0) || a.name.localeCompare(b.name))
+  return [...map.entries()].map(([name,v])=>{
+    return { skill:name, picks:v.p, wins:v.w, win_rate: v.p? v.w/v.p : null, pick_rate: den? v.p/den : 0 };
+  }).sort((a,b)=> b.pick_rate - a.pick_rate || (b.win_rate||0)-(a.win_rate||0) || a.skill.localeCompare(b.skill))
     .slice(0, limit);
-
-  return list.length
-    ? `<table>
-        <thead><tr><th>Skill</th><th class="right">Picks</th><th class="right">Wins</th><th class="right">Win %</th><th class="right">Pick %</th></tr></thead>
-        <tbody>
-          ${list.map(r=>`<tr>
-            <td>${r.name}</td>
-            <td class="right">${r.picks}</td>
-            <td class="right">${r.wins}</td>
-            <td class="right">${r.winRate===null?'—':fmtPct(r.winRate)}</td>
-            <td class="right">${pct(r.picks, den)}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>`
-    : `<div class="muted">No passive skills.</div>`;
+}
+function perSkillPassiveCompressed(rows, limit=12){
+  const list = perSkillPassiveCompressedData(rows, limit);
+  if (!list.length) return `<div class="muted">No passive skills.</div>`;
+  return `<table>
+    <thead><tr><th>Skill</th><th class="right">Picks</th><th class="right">Wins</th><th class="right">Win %</th><th class="right">Pick %</th></tr></thead>
+    <tbody>
+      ${list.map(r=>`<tr>
+        <td>${r.skill}</td>
+        <td class="right">${r.picks}</td>
+        <td class="right">${r.wins}</td>
+        <td class="right">${r.win_rate===null?'—':fmtPct(r.win_rate)}</td>
+        <td class="right">${fmtPct(r.pick_rate)}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
 }
 
-/* NEW: Active Skill Impact (Win/Loss vs team baseline) with loss-opponent logos */
-function activeSkillImpactTable(rows, limit=12){
-  if (!rows.length) return `<div class="muted">No rows.</div>`;
+/* Active Skill Impact (Win/Loss vs baseline) + loss logos */
+function activeSkillImpactData(rows, limit=12){
+  if (!rows.length) return [];
   const matches = rows.length;
   const winsOverall = rows.filter(r=>r.result==='W').length;
   const baseline = matches ? winsOverall / matches : 0;
 
-  // name -> {p: picks, w: wins, lossOpp: Map<opponent, count>}
-  const map = new Map();
-
+  const map = new Map(); // skill -> {p,w,lossOpp Map}
   rows.forEach(r=>{
-    const skillNames = r.actives.map(a=>a.hero).filter(Boolean);
-    skillNames.forEach(name=>{
-      const o = map.get(name) || {p:0,w:0,lossOpp:new Map()};
-      o.p += 1;
-      if (r.result==='W'){ o.w += 1; }
-      else {
-        const opp = r.opponent || '';
-        if (opp){
-          o.lossOpp.set(opp, (o.lossOpp.get(opp)||0)+1);
-        }
+    r.actives.forEach(a=>{
+      if(!a.hero) return;
+      const o = map.get(a.hero) || {p:0,w:0,lossOpp:new Map()};
+      o.p += 1; if (r.result==='W') o.w += 1;
+      if (r.result==='L'){
+        const c = o.lossOpp.get(r.opponent)||0;
+        o.lossOpp.set(r.opponent, c+1);
       }
-      map.set(name, o);
+      map.set(a.hero, o);
     });
   });
 
-  const list = [...map.entries()].map(([name, v])=>{
+  return [...map.entries()].map(([name, v])=>{
     const winRate = v.p ? v.w / v.p : 0;
     const lossRate = v.p ? 1 - winRate : 0;
     const delta = winRate - baseline;
-    return { name, picks:v.p, winRate, lossRate, delta, lossOpp:v.lossOpp };
-  }).sort((a,b)=> b.delta - a.delta || b.picks - a.picks || a.name.localeCompare(b.name))
+    const losses_by_opponent = [...v.lossOpp.entries()]
+      .sort((a,b)=>b[1]-a[1])
+      .map(([opp,count])=>({ opponent:opp, count, logo: TEAM_LOGO[opp] || null }))
+      .slice(0,3);
+    return { skill:name, picks:v.p, win_rate:winRate, loss_rate:lossRate, delta_vs_team:delta, losses_by_opponent };
+  }).sort((a,b)=> b.delta_vs_team - a.delta_vs_team || b.picks - a.picks || a.skill.localeCompare(b.skill))
     .slice(0, limit);
+}
+function activeSkillImpactTable(rows, limit=12){
+  const list = activeSkillImpactData(rows, limit);
+  if(!list.length) return `<div class="muted">No active skills.</div>`;
 
-  if (!list.length) return `<div class="muted">No active skills.</div>`;
-
-  const logoSpan = (lossOppMap)=>{
-  const entries = [...(lossOppMap||new Map()).entries()]
-    .sort((a,b)=> b[1]-a[1])
-    .slice(0,3); // top 3 opponents by loss count
+  const logoSpan = (lossOppList)=>{
+    const entries = (lossOppList||[]).slice(0,3);
     if (!entries.length) return '';
-    const imgs = entries.map(([opp, cnt])=>{
-      const src = TEAM_LOGO[opp] || PLACEHOLDER;
-      const badge = cnt > 1 ? `<span class="cnt">×${cnt}</span>` : '';
-      return `<span class="logo-wrap" title="${opp} ×${cnt}">
-                <img src="${src}" alt="${opp}" loading="lazy">
+    const imgs = entries.map(({opponent, count, logo})=>{
+      const src = logo || PLACEHOLDER;
+      const badge = count > 1 ? `<span class="cnt">×${count}</span>` : '';
+      return `<span class="logo-wrap" title="${opponent} ×${count}">
+                <img src="${src}" alt="${opponent}" loading="lazy">
                 ${badge}
               </span>`;
     }).join('');
@@ -614,13 +605,13 @@ function activeSkillImpactTable(rows, limit=12){
       </thead>
       <tbody>
         ${list.map(r=>{
-          const dClass = r.delta>0 ? 'delta-pos' : (r.delta<0 ? 'delta-neg' : '');
-          const dText = (r.delta>=0?'+':'') + fmtPct(r.delta);
+          const dClass = r.delta_vs_team>0 ? 'delta-pos' : (r.delta_vs_team<0 ? 'delta-neg' : '');
+          const dText = (r.delta_vs_team>=0?'+':'') + fmtPct(r.delta_vs_team);
           return `<tr>
-            <td>${r.name}</td>
+            <td>${r.skill}</td>
             <td class="right mono">${r.picks}</td>
-            <td class="right mono">${fmtPct(r.winRate)}</td>
-            <td class="right mono">${fmtPct(r.lossRate)} ${logoSpan(r.lossOpp)}</td>
+            <td class="right mono">${fmtPct(r.win_rate)}</td>
+            <td class="right mono">${fmtPct(r.loss_rate)} ${logoSpan(r.losses_by_opponent)}</td>
             <td class="right mono ${dClass}">${dText}</td>
           </tr>`;
         }).join('')}
@@ -629,7 +620,7 @@ function activeSkillImpactTable(rows, limit=12){
   `;
 }
 
-/* Combos (4× active) and Pairs (2× active) */
+/* Combos, Pairs, Trios */
 function buildCombos(rows){
   const combos = new Map();
   rows.forEach(r=>{
@@ -668,7 +659,6 @@ function tableCombos(list, title, limit=5){
     </table>`;
 }
 
-/* Passive trios overall */
 function buildTrios(rows){
   const tri = new Map();
   rows.forEach(r=>{
@@ -694,7 +684,7 @@ function tableTrios(list, limit=5){
     </table>`;
 }
 
-/* Ban Impact (ignore WL) */
+/* Ban Impact (ignore WL for baseline) */
 function rowsForTeamIgnoringWL(team){
   const mapSel = el('fMap').value;
   const tournSel = el('fTourn').value || '__ALL__';
@@ -707,7 +697,7 @@ function rowsForTeamIgnoringWL(team){
   });
   return rows;
 }
-function banImpactTable(rows, limit=10){
+function banImpactData(rows, limit=10){
   const skills = new Map();
   rows.forEach(r=>{
     const banned = r.banName || '';
@@ -728,9 +718,13 @@ function banImpactTable(rows, limit=10){
   const list = [...skills.values()].map(S=>{
     const bN=S.ban.n, bW=S.ban.w, nN=S.noban.n, nW=S.noban.w;
     const winBan = bN? bW/bN : 0; const winNot = nN? nW/nN : 0;
-    return { name:S.name, bN, winBan, nN, winNot, delta:winBan-winNot };
-  }).filter(r=>r.bN>=1).sort((a,b)=> b.delta - a.delta || b.bN - a.bN).slice(0,limit);
+    return { skill:S.name, banned:bN, win_rate_banned:winBan, other:nN, win_rate_not_banned:winNot, delta:winBan-winNot };
+  }).filter(r=>r.banned>=1).sort((a,b)=> b.delta - a.delta || b.banned - a.banned).slice(0,limit);
 
+  return list;
+}
+function banImpactTable(rows, limit=10){
+  const list = banImpactData(rows, limit);
   if (!list.length) return `<div class="muted">No ban data.</div>`;
   return `
     <table>
@@ -741,11 +735,11 @@ function banImpactTable(rows, limit=10){
       <tbody>
         ${list.map(r=>`
           <tr>
-            <td>${r.name}</td>
-            <td class="right">${r.bN}</td>
-            <td class="right">${fmtPct(r.winBan)}</td>
-            <td class="right">${r.nN}</td>
-            <td class="right">${fmtPct(r.winNot)}</td>
+            <td>${r.skill}</td>
+            <td class="right">${r.banned}</td>
+            <td class="right">${fmtPct(r.win_rate_banned)}</td>
+            <td class="right">${r.other}</td>
+            <td class="right">${fmtPct(r.win_rate_not_banned)}</td>
             <td class="right" style="font-weight:700">${fmtPct(r.delta)}</td>
           </tr>`).join('')}
       </tbody>
@@ -798,7 +792,6 @@ function buildOpponentSeriesRows(rows){
   }
   return flat.sort((a,b)=> b.date - a.date);
 }
-
 function opponentSeriesTable(rows, limit=30){
   const list = buildOpponentSeriesRows(rows).slice(0, limit);
   if(!list.length) return `<div class="muted">No opponent series for selection.</div>`;
@@ -834,6 +827,83 @@ function opponentSeriesTable(rows, limit=30){
     </table>`;
 }
 
+/* ========= KPIs card ========= */
+function kpiCard(bucket, kindActive, kindPassive, kindBan){
+  if (!bucket || !bucket.matches) return `<div class="muted">No data for selection.</div>`;
+  const subjA = [...kindActive.skills.values()].reduce((a,s)=>(a.appear+=s.appear,a),{appear:0});
+  const subjP = [...kindPassive.skills.values()].reduce((a,s)=>(a.appear+=s.appear,a),{appear:0});
+  const subjB = [...kindBan.skills.values()].reduce((a,s)=>(a.appear+=s.appear,a),{appear:0});
+  return `
+    <div class="kpis">
+      <div class="kpi">Matches <strong>${bucket.matches}</strong></div>
+      <div class="kpi">Wins <strong>${bucket.wins}</strong> <span class="muted">(${pct(bucket.wins,bucket.matches)})</span></div>
+      <div class="kpi">Active picks <strong>${subjA.appear}</strong> <span class="muted">(${pct(subjA.appear,bucket.matches)})</span></div>
+      <div class="kpi">Passive picks <strong>${subjP.appear}</strong> <span class="muted">(${pct(subjP.appear,bucket.matches)})</span></div>
+      <div class="kpi">Bans <strong>${subjB.appear}</strong> <span class="muted">(${pct(subjB.appear,bucket.matches)})</span></div>
+    </div>`;
+}
+
+/* ========= AI Prompt Build + Copy ========= */
+// Helper: strip *any* URLs from an export object (used ONLY for the AI prompt)
+function stripLinksDeep(x){
+  if (Array.isArray(x)) return x.map(stripLinksDeep);
+  if (x && typeof x === 'object'){
+    const out = {};
+    for (const [k, v] of Object.entries(x)){
+      // Drop common image/link keys entirely
+      if (['logo','banImg','heroImg','img','image','image_url','imageUrl','imageLink','link','url'].includes(k)) continue;
+      // Also drop any string that looks like a URL
+      if (typeof v === 'string' && /^https?:\/\//i.test(v)) continue;
+      out[k] = stripLinksDeep(v);
+    }
+    return out;
+  }
+  return x;
+}
+
+function buildAIPrompt(exportObj){
+  const meta = exportObj.meta;
+  const header = `You are an esports analyst. Analyze the following JSON snapshot comparing two Clash Squad teams.
+
+Context:
+- Teams: ${meta.teamA} vs ${meta.teamB}
+- Filters: ${meta.mapLabel}, ${meta.tournamentLabel}, ${meta.wlLabel}
+- Date range: ${meta.from} → ${meta.to}
+
+Instructions:
+1) Summarize overall performance for each team (matches, wins, win%).
+2) Highlight strongest/weakest maps (use win% and volume).
+3) Analyze Active Skill Impact (Win/Loss) — call out skills with the largest positive/negative Δ vs team baseline.
+4) Mention rivals driving losses for key skills (logos/opponents listed in the data).
+5) Note top combos/pairs and passive trios; comment on reliability (win% + picks).
+6) Identify impactful bans (largest Δ win% vs not banned).
+7) Surface opponent-series patterns (sweeps, close scores, repeat bans).
+8) Finish with top 3 actionable recommendations.
+
+Use only the provided data. Be concise but specific.`;
+
+  return header + "\n\nJSON:\n" + JSON.stringify(exportObj, null, 2);
+}
+
+async function copyTextToClipboard(text){
+  try{
+    if (navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  }catch{}
+  // Fallback
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position='fixed'; ta.style.left='-9999px';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  let ok=false;
+  try{ ok = document.execCommand('copy'); }catch{}
+  ta.remove();
+  return ok;
+}
+
 /* ========= Render ========= */
 function renderAll(){
   const a = el('cmpTeamA').value, b = el('cmpTeamB').value;
@@ -841,6 +911,7 @@ function renderAll(){
     el('meta').textContent = 'Pick two different teams.';
     ['kpiA','kpiB','activeA','activeB','passiveA','passiveB','bansA','bansB','tmA','tmB','psAAct','psBAct','impactA','impactB','psAPas','psBPas','combosA','combosB','pairsA','pairsB','triosA','triosB','biA','biB','oppSeriesA','oppSeriesB']
       .forEach(id=>{ if(el(id)) el(id).innerHTML = '<div class="muted">—</div>'; });
+    const ta = el('aiPrompt'); if (ta) ta.value = 'Pick two different teams.';
     return;
   }
 
@@ -889,7 +960,7 @@ function renderAll(){
   el('psAAct').innerHTML = perSkillActiveCompressed(rowsA, 12);
   el('psBAct').innerHTML = perSkillActiveCompressed(rowsB, 12);
 
-  // NEW: Active Skill Impact
+  // Active Skill Impact
   el('labelImpactA').textContent = a; el('labelImpactB').textContent = b;
   el('impactA').innerHTML = activeSkillImpactTable(rowsA, 12);
   el('impactB').innerHTML = activeSkillImpactTable(rowsB, 12);
@@ -909,24 +980,70 @@ function renderAll(){
 
   // Passive Trios
   el('labelTriosA').textContent = a; el('labelTriosB').textContent = b;
-  el('triosA').innerHTML = tableTrios(buildTrios(rowsA), 5);
-  el('triosB').innerHTML = tableTrios(buildTrios(rowsB), 5);
+  const triA = buildTrios(rowsA), triB = buildTrios(rowsB);
+  el('triosA').innerHTML = tableTrios(triA, 5);
+  el('triosB').innerHTML = tableTrios(triB, 5);
 
   // Ban Impact (ignore WL)
   el('labelBIA').textContent = a; el('labelBIB').textContent = b;
-  el('biA').innerHTML = banImpactTable(rowsForTeamIgnoringWL(a), 10);
-  el('biB').innerHTML = banImpactTable(rowsForTeamIgnoringWL(b), 10);
+  const biA_rows = rowsForTeamIgnoringWL(a), biB_rows = rowsForTeamIgnoringWL(b);
+  el('biA').innerHTML = banImpactTable(biA_rows, 10);
+  el('biB').innerHTML = banImpactTable(biB_rows, 10);
 
   // Opponent Series (per map)
   el('labelOppSeriesA').textContent = a; el('labelOppSeriesB').textContent = b;
+  const oppRowsA = buildOpponentSeriesRows(rowsA).slice(0,30);
+  const oppRowsB = buildOpponentSeriesRows(rowsB).slice(0,30);
   el('oppSeriesA').innerHTML = opponentSeriesTable(rowsA, 30);
   el('oppSeriesB').innerHTML = opponentSeriesTable(rowsB, 30);
+
+  // ===== Build data snapshot for AI prompt (links removed only here) =====
+  const meta = {
+    teamA: a, teamB: b,
+    mapLabel, tournamentLabel: tournLabel, wlLabel,
+    from: el('fFrom').value, to: el('fTo').value
+  };
+  const exportObj = {
+    meta,
+    teamA:{
+      kpis:{ matches:bA.matches, wins:bA.wins, win_rate: bA.matches? bA.wins/bA.matches : 0 },
+      team_map: teamMapStatsData(rowsA),
+      active_skill_impact: activeSkillImpactData(rowsA, 12),
+      per_skill_active: perSkillActiveCompressedData(rowsA, 12),
+      per_skill_passive: perSkillPassiveCompressedData(rowsA, 12),
+      top_active_by_rate: topSkillsData(bA, 10),
+      top_passive_by_rate: topSkillsData(bP_A, 10),
+      top_bans_by_rate: topSkillsData(bBan_A, 10),
+      combos: buildCombos(rowsA).sort((a,b)=> b.picks-a.picks || b.winpct-a.winpct).slice(0,5),
+      pairs: buildPairs(rowsA).sort((a,b)=> b.picks-a.picks || b.winpct-a.winpct).slice(0,5),
+      passive_trios: triA.sort((a,b)=> b.picks-a.picks || b.winpct-a.winpct).slice(0,5),
+      ban_impact: banImpactData(biA_rows, 10),
+      opponent_series: oppRowsA
+    },
+    teamB:{
+      kpis:{ matches:bB.matches, wins:bB.wins, win_rate: bB.matches? bB.wins/bB.matches : 0 },
+      team_map: teamMapStatsData(rowsB),
+      active_skill_impact: activeSkillImpactData(rowsB, 12),
+      per_skill_active: perSkillActiveCompressedData(rowsB, 12),
+      per_skill_passive: perSkillPassiveCompressedData(rowsB, 12),
+      top_active_by_rate: topSkillsData(bB, 10),
+      top_passive_by_rate: topSkillsData(bP_B, 10),
+      top_bans_by_rate: topSkillsData(bBan_B, 10),
+      combos: buildCombos(rowsB).sort((a,b)=> b.picks-a.picks || b.winpct-a.winpct).slice(0,5),
+      pairs: buildPairs(rowsB).sort((a,b)=> b.picks-a.picks || b.winpct-a.winpct).slice(0,5),
+      passive_trios: triB.sort((a,b)=> b.picks-a.picks || b.winpct-a.winpct).slice(0,5),
+      ban_impact: banImpactData(biB_rows, 10),
+      opponent_series: oppRowsB
+    }
+  };
+  const exportClean = stripLinksDeep(exportObj); // strip URLs only for the prompt
+  el('aiPrompt').value = buildAIPrompt(exportClean);
 }
 
 /* ========= Refresh flow ========= */
 async function refresh(){
-  RAW_RECORDS = await fetchRecords();
-  await ensureTeamLogos();            // ensure logo cache is ready
+  [RAW_RECORDS] = await Promise.all([fetchRecords()]);
+  await Promise.all([fetchTeamLogos()]);
   await populateTournamentDropdown(RAW_RECORDS);
   populateTeamDropdowns(RAW_RECORDS);
   renderAll();
@@ -937,6 +1054,14 @@ el('applyBtn').onclick = refresh;
 ['cmpTeamA','cmpTeamB'].forEach(id=> el(id).addEventListener('change', renderAll));
 el('cmpSwap').addEventListener('click', ()=>{
   const A = el('cmpTeamA'), B = el('cmpTeamB'); const t = A.value; A.value = B.value; B.value = t; renderAll();
+});
+el('copyPromptBtn').addEventListener('click', async ()=>{
+  const ta = el('aiPrompt');
+  const ok = await copyTextToClipboard(ta.value || '');
+  const btn = el('copyPromptBtn');
+  const orig = btn.textContent;
+  btn.textContent = ok ? 'Copied!' : 'Copy failed';
+  setTimeout(()=> btn.textContent = orig, 1200);
 });
 
 /* ========= First load ========= */
