@@ -297,7 +297,6 @@ async function fetchRecords(){
 }
 
 async function fetchTeamLogos(){
-  // Robustly read common column names
   const { data, error } = await client.from('team_logos').select('*');
   if (error){ console.warn('team_logos fetch error:', error.message); TEAM_LOGO={}; return; }
   const map = {};
@@ -844,6 +843,23 @@ function kpiCard(bucket, kindActive, kindPassive, kindBan){
 }
 
 /* ========= AI Prompt Build + Copy ========= */
+// Helper: strip *any* URLs from an export object (used ONLY for the AI prompt)
+function stripLinksDeep(x){
+  if (Array.isArray(x)) return x.map(stripLinksDeep);
+  if (x && typeof x === 'object'){
+    const out = {};
+    for (const [k, v] of Object.entries(x)){
+      // Drop common image/link keys entirely
+      if (['logo','banImg','heroImg','img','image','image_url','imageUrl','imageLink','link','url'].includes(k)) continue;
+      // Also drop any string that looks like a URL
+      if (typeof v === 'string' && /^https?:\/\//i.test(v)) continue;
+      out[k] = stripLinksDeep(v);
+    }
+    return out;
+  }
+  return x;
+}
+
 function buildAIPrompt(exportObj){
   const meta = exportObj.meta;
   const header = `You are an esports analyst. Analyze the following JSON snapshot comparing two Clash Squad teams.
@@ -892,8 +908,9 @@ function renderAll(){
   const a = el('cmpTeamA').value, b = el('cmpTeamB').value;
   if (!a || !b || a===b){
     el('meta').textContent = 'Pick two different teams.';
-    ['kpiA','kpiB','activeA','activeB','passiveA','passiveB','bansA','bansB','tmA','tmB','psAAct','psBAct','impactA','impactB','psAPas','psBPas','combosA','combosB','pairsA','pairsB','triosA','triosB','biA','biB','oppSeriesA','oppSeriesB','aiPrompt']
+    ['kpiA','kpiB','activeA','activeB','passiveA','passiveB','bansA','bansB','tmA','tmB','psAAct','psBAct','impactA','impactB','psAPas','psBPas','combosA','combosB','pairsA','pairsB','triosA','triosB','biA','biB','oppSeriesA','oppSeriesB']
       .forEach(id=>{ if(el(id)) el(id).innerHTML = '<div class="muted">—</div>'; });
+    const ta = el('aiPrompt'); if (ta) ta.value = 'Pick two different teams.';
     return;
   }
 
@@ -979,7 +996,7 @@ function renderAll(){
   el('oppSeriesA').innerHTML = opponentSeriesTable(rowsA, 30);
   el('oppSeriesB').innerHTML = opponentSeriesTable(rowsB, 30);
 
-  // ===== Build data snapshot for AI prompt =====
+  // ===== Build data snapshot for AI prompt (links removed only here) =====
   const meta = {
     teamA: a, teamB: b,
     mapLabel, tournamentLabel: tournLabel, wlLabel,
@@ -1018,8 +1035,8 @@ function renderAll(){
       opponent_series: oppRowsB
     }
   };
-  LATEST_EXPORT = exportObj;
-  el('aiPrompt').value = buildAIPrompt(exportObj);
+  const exportClean = stripLinksDeep(exportObj); // strip URLs only for the prompt
+  el('aiPrompt').value = buildAIPrompt(exportClean);
 }
 
 /* ========= Refresh flow ========= */
