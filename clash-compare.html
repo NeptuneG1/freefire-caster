@@ -50,6 +50,31 @@
     .caption{margin:4px 0 8px}
     .tight{line-height:1.25}
 
+    /* New for impact deltas */
+    .delta-pos{color:var(--good);font-weight:700}
+    .delta-neg{color:var(--bad);font-weight:700}
+
+    /* Opponent logos next to Loss % */
+    .opp-logos{display:inline-flex;gap:4px;vertical-align:middle;margin-left:6px}
+    .opp-logos img{width:16px;height:16px;border-radius:3px;border:1px solid #333;background:#111;object-fit:cover}
+    /* Add after .opp-logos and .opp-logos img */
+    .opp-logos .logo-wrap{
+      position: relative;
+      display: inline-block;
+    }
+    .opp-logos .cnt{
+      position: absolute;
+      right: -6px;
+      bottom: -6px;
+      background: #171717;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 0 3px;
+      font-size: 10px;
+      line-height: 1.2;
+      color: #ccc;
+    }
+
     @media (max-width: 860px){
       .grid2{grid-template-columns:1fr}
     }
@@ -114,12 +139,12 @@
   <div class="section">
     <h2>Skills (Top 10 by Rate)</h2>
     <div class="grid2">
-      <div class="card"><h3 id="labelBansA">Team A — Bans</h3><div id="bansA">Loading…</div></div>
-      <div class="card"><h3 id="labelBansB">Team B — Bans</h3><div id="bansB">Loading…</div></div>
       <div class="card"><h3 id="labelActiveA">Team A — Active</h3><div id="activeA">Loading…</div></div>
       <div class="card"><h3 id="labelActiveB">Team B — Active</h3><div id="activeB">Loading…</div></div>
       <div class="card"><h3 id="labelPassiveA">Team A — Passive</h3><div id="passiveA">Loading…</div></div>
       <div class="card"><h3 id="labelPassiveB">Team B — Passive</h3><div id="passiveB">Loading…</div></div>
+      <div class="card"><h3 id="labelBansA">Team A — Bans</h3><div id="bansA">Loading…</div></div>
+      <div class="card"><h3 id="labelBansB">Team B — Bans</h3><div id="bansB">Loading…</div></div>
     </div>
   </div>
 
@@ -138,6 +163,18 @@
     <div class="grid2">
       <div class="card"><h3 id="labelPSA_Act">Team A</h3><div id="psAAct">Loading…</div></div>
       <div class="card"><h3 id="labelPSB_Act">Team B</h3><div id="psBAct">Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- NEW: ACTIVE SKILL IMPACT (WIN/LOSS) -->
+  <div class="section">
+    <h2>Active Skill Impact (Win/Loss)</h2>
+    <div class="grid2">
+      <div class="card"><h3 id="labelImpactA">Team A</h3><div id="impactA">Loading…</div></div>
+      <div class="card"><h3 id="labelImpactB">Team B</h3><div id="impactB">Loading…</div></div>
+    </div>
+    <div class="caption muted tight">
+      Δ vs team baseline win% shows how much the skill raises (green) or lowers (red) win chance when picked.
     </div>
   </div>
 
@@ -219,7 +256,7 @@ function ymd(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0
 function parseState(val){ if (!val) return {}; if (typeof val==='object') return val; try { return JSON.parse(val); } catch(e){ return {}; } }
 
 function initFilters(){
-  const today = new Date(); const from = new Date(today); from.setDate(from.getDate()-60);
+  const today = new Date(); const from = new Date(today); from.setDate(from.getDate()-30);
   el('fFrom').value = ymd(from); el('fTo').value = ymd(today);
   el('fMap').value='__ALL__'; el('fWL').value='__ALL__';
   el('fTourn').innerHTML = `<option value="__ALL__">All tournaments</option>`;
@@ -229,6 +266,24 @@ initFilters();
 /* ========= State ========= */
 let RAW_RECORDS = [];
 let FIRST_LOAD_TOURN = true;
+
+/* ========= Team Logos ========= */
+let TEAM_LOGO = {};
+let TEAM_LOGO_READY = false;
+
+async function ensureTeamLogos(){
+  if (TEAM_LOGO_READY) return;
+  const { data, error } = await client
+    .from('team_logos')
+    .select('team_name, image_url');
+  if (error){
+    console.warn('team_logos fetch error:', error);
+    TEAM_LOGO_READY = true;
+    return;
+  }
+  TEAM_LOGO = Object.fromEntries((data||[]).map(r => [r.team_name, r.image_url]));
+  TEAM_LOGO_READY = true;
+}
 
 /* ========= Fetch ========= */
 async function fetchRecords(){
@@ -339,7 +394,7 @@ function rowsForTeam(team){
   return applyWL(rows);
 }
 
-/* ========= Aggregations ========= */
+/* ========= Aggregations / Tables ========= */
 function buildTeamBucket(rows, teamName, kind){
   const B = { name: teamName, matches:0, wins:0, skills:new Map() };
   rows.forEach(r=>{
@@ -492,6 +547,86 @@ function perSkillPassiveCompressed(rows, limit=12){
         </tbody>
       </table>`
     : `<div class="muted">No passive skills.</div>`;
+}
+
+/* NEW: Active Skill Impact (Win/Loss vs team baseline) with loss-opponent logos */
+function activeSkillImpactTable(rows, limit=12){
+  if (!rows.length) return `<div class="muted">No rows.</div>`;
+  const matches = rows.length;
+  const winsOverall = rows.filter(r=>r.result==='W').length;
+  const baseline = matches ? winsOverall / matches : 0;
+
+  // name -> {p: picks, w: wins, lossOpp: Map<opponent, count>}
+  const map = new Map();
+
+  rows.forEach(r=>{
+    const skillNames = r.actives.map(a=>a.hero).filter(Boolean);
+    skillNames.forEach(name=>{
+      const o = map.get(name) || {p:0,w:0,lossOpp:new Map()};
+      o.p += 1;
+      if (r.result==='W'){ o.w += 1; }
+      else {
+        const opp = r.opponent || '';
+        if (opp){
+          o.lossOpp.set(opp, (o.lossOpp.get(opp)||0)+1);
+        }
+      }
+      map.set(name, o);
+    });
+  });
+
+  const list = [...map.entries()].map(([name, v])=>{
+    const winRate = v.p ? v.w / v.p : 0;
+    const lossRate = v.p ? 1 - winRate : 0;
+    const delta = winRate - baseline;
+    return { name, picks:v.p, winRate, lossRate, delta, lossOpp:v.lossOpp };
+  }).sort((a,b)=> b.delta - a.delta || b.picks - a.picks || a.name.localeCompare(b.name))
+    .slice(0, limit);
+
+  if (!list.length) return `<div class="muted">No active skills.</div>`;
+
+  const logoSpan = (lossOppMap)=>{
+  const entries = [...(lossOppMap||new Map()).entries()]
+    .sort((a,b)=> b[1]-a[1])
+    .slice(0,3); // top 3 opponents by loss count
+    if (!entries.length) return '';
+    const imgs = entries.map(([opp, cnt])=>{
+      const src = TEAM_LOGO[opp] || PLACEHOLDER;
+      const badge = cnt > 1 ? `<span class="cnt">×${cnt}</span>` : '';
+      return `<span class="logo-wrap" title="${opp} ×${cnt}">
+                <img src="${src}" alt="${opp}" loading="lazy">
+                ${badge}
+              </span>`;
+    }).join('');
+    return `<span class="opp-logos">${imgs}</span>`;
+  };
+
+  return `
+    <table>
+      <thead>
+        <tr>
+          <th>Skill</th>
+          <th class="right">Picks</th>
+          <th class="right">Win %</th>
+          <th class="right">Loss %</th>
+          <th class="right">Δ vs team</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${list.map(r=>{
+          const dClass = r.delta>0 ? 'delta-pos' : (r.delta<0 ? 'delta-neg' : '');
+          const dText = (r.delta>=0?'+':'') + fmtPct(r.delta);
+          return `<tr>
+            <td>${r.name}</td>
+            <td class="right mono">${r.picks}</td>
+            <td class="right mono">${fmtPct(r.winRate)}</td>
+            <td class="right mono">${fmtPct(r.lossRate)} ${logoSpan(r.lossOpp)}</td>
+            <td class="right mono ${dClass}">${dText}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
 }
 
 /* Combos (4× active) and Pairs (2× active) */
@@ -704,7 +839,7 @@ function renderAll(){
   const a = el('cmpTeamA').value, b = el('cmpTeamB').value;
   if (!a || !b || a===b){
     el('meta').textContent = 'Pick two different teams.';
-    ['kpiA','kpiB','activeA','activeB','passiveA','passiveB','bansA','bansB','tmA','tmB','psAAct','psBAct','psAPas','psBPas','combosA','combosB','pairsA','pairsB','triosA','triosB','biA','biB','oppSeriesA','oppSeriesB']
+    ['kpiA','kpiB','activeA','activeB','passiveA','passiveB','bansA','bansB','tmA','tmB','psAAct','psBAct','impactA','impactB','psAPas','psBPas','combosA','combosB','pairsA','pairsB','triosA','triosB','biA','biB','oppSeriesA','oppSeriesB']
       .forEach(id=>{ if(el(id)) el(id).innerHTML = '<div class="muted">—</div>'; });
     return;
   }
@@ -754,6 +889,12 @@ function renderAll(){
   el('psAAct').innerHTML = perSkillActiveCompressed(rowsA, 12);
   el('psBAct').innerHTML = perSkillActiveCompressed(rowsB, 12);
 
+  // NEW: Active Skill Impact
+  el('labelImpactA').textContent = a; el('labelImpactB').textContent = b;
+  el('impactA').innerHTML = activeSkillImpactTable(rowsA, 12);
+  el('impactB').innerHTML = activeSkillImpactTable(rowsB, 12);
+
+  // Passive compressed
   el('labelPSA_Pas').textContent = a; el('labelPSB_Pas').textContent = b;
   el('psAPas').innerHTML = perSkillPassiveCompressed(rowsA, 12);
   el('psBPas').innerHTML = perSkillPassiveCompressed(rowsB, 12);
@@ -785,7 +926,7 @@ function renderAll(){
 /* ========= Refresh flow ========= */
 async function refresh(){
   RAW_RECORDS = await fetchRecords();
-
+  await ensureTeamLogos();            // ensure logo cache is ready
   await populateTournamentDropdown(RAW_RECORDS);
   populateTeamDropdowns(RAW_RECORDS);
   renderAll();
