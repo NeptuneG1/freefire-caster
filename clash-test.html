@@ -54,6 +54,10 @@
     .delta-pos{color:var(--good);font-weight:700}
     .delta-neg{color:var(--bad);font-weight:700}
 
+    /* Opponent logos next to Loss % */
+    .opp-logos{display:inline-flex;gap:4px;vertical-align:middle;margin-left:6px}
+    .opp-logos img{width:16px;height:16px;border-radius:3px;border:1px solid #333;background:#111;object-fit:cover}
+
     @media (max-width: 860px){
       .grid2{grid-template-columns:1fr}
     }
@@ -245,6 +249,24 @@ initFilters();
 /* ========= State ========= */
 let RAW_RECORDS = [];
 let FIRST_LOAD_TOURN = true;
+
+/* ========= Team Logos ========= */
+let TEAM_LOGO = {};
+let TEAM_LOGO_READY = false;
+
+async function ensureTeamLogos(){
+  if (TEAM_LOGO_READY) return;
+  const { data, error } = await client
+    .from('team_logos')
+    .select('team_name, image_url');
+  if (error){
+    console.warn('team_logos fetch error:', error);
+    TEAM_LOGO_READY = true;
+    return;
+  }
+  TEAM_LOGO = Object.fromEntries((data||[]).map(r => [r.team_name, r.image_url]));
+  TEAM_LOGO_READY = true;
+}
 
 /* ========= Fetch ========= */
 async function fetchRecords(){
@@ -510,20 +532,29 @@ function perSkillPassiveCompressed(rows, limit=12){
     : `<div class="muted">No passive skills.</div>`;
 }
 
-/* NEW: Active Skill Impact (Win/Loss vs team baseline) */
+/* NEW: Active Skill Impact (Win/Loss vs team baseline) with loss-opponent logos */
 function activeSkillImpactTable(rows, limit=12){
   if (!rows.length) return `<div class="muted">No rows.</div>`;
   const matches = rows.length;
   const winsOverall = rows.filter(r=>r.result==='W').length;
   const baseline = matches ? winsOverall / matches : 0;
 
-  const map = new Map(); // skill -> {p: picks, w: wins}
+  // name -> {p: picks, w: wins, lossOpp: Map<opponent, count>}
+  const map = new Map();
+
   rows.forEach(r=>{
-    r.actives.forEach(a=>{
-      if(!a.hero) return;
-      const o = map.get(a.hero) || {p:0,w:0};
-      o.p += 1; if (r.result==='W') o.w += 1;
-      map.set(a.hero, o);
+    const skillNames = r.actives.map(a=>a.hero).filter(Boolean);
+    skillNames.forEach(name=>{
+      const o = map.get(name) || {p:0,w:0,lossOpp:new Map()};
+      o.p += 1;
+      if (r.result==='W'){ o.w += 1; }
+      else {
+        const opp = r.opponent || '';
+        if (opp){
+          o.lossOpp.set(opp, (o.lossOpp.get(opp)||0)+1);
+        }
+      }
+      map.set(name, o);
     });
   });
 
@@ -531,11 +562,23 @@ function activeSkillImpactTable(rows, limit=12){
     const winRate = v.p ? v.w / v.p : 0;
     const lossRate = v.p ? 1 - winRate : 0;
     const delta = winRate - baseline;
-    return { name, picks:v.p, winRate, lossRate, delta };
+    return { name, picks:v.p, winRate, lossRate, delta, lossOpp:v.lossOpp };
   }).sort((a,b)=> b.delta - a.delta || b.picks - a.picks || a.name.localeCompare(b.name))
     .slice(0, limit);
 
-  if(!list.length) return `<div class="muted">No active skills.</div>`;
+  if (!list.length) return `<div class="muted">No active skills.</div>`;
+
+  const logoSpan = (lossOppMap)=>{
+    const entries = [...(lossOppMap||new Map()).entries()]
+      .sort((a,b)=> b[1]-a[1])
+      .slice(0,3); // top 3 opponents by loss count
+    if (!entries.length) return '';
+    const imgs = entries.map(([opp, cnt])=>{
+      const src = TEAM_LOGO[opp] || PLACEHOLDER;
+      return `<img src="${src}" alt="${opp}" title="${opp} ×${cnt}" loading="lazy">`;
+    }).join('');
+    return `<span class="opp-logos">${imgs}</span>`;
+  };
 
   return `
     <table>
@@ -556,7 +599,7 @@ function activeSkillImpactTable(rows, limit=12){
             <td>${r.name}</td>
             <td class="right mono">${r.picks}</td>
             <td class="right mono">${fmtPct(r.winRate)}</td>
-            <td class="right mono">${fmtPct(r.lossRate)}</td>
+            <td class="right mono">${fmtPct(r.lossRate)} ${logoSpan(r.lossOpp)}</td>
             <td class="right mono ${dClass}">${dText}</td>
           </tr>`;
         }).join('')}
@@ -695,7 +738,6 @@ function buildOpponentSeriesRows(rows){
     const d = new Date(r.match_date);
     const day = d.toISOString().slice(0,10);
     return `${r.tournament}|${r.opponent}|${day}`;
-    // This assumes a series is unique per tournament + opponent + day
   };
   const series = new Map();
 
@@ -863,7 +905,7 @@ function renderAll(){
 /* ========= Refresh flow ========= */
 async function refresh(){
   RAW_RECORDS = await fetchRecords();
-
+  await ensureTeamLogos();            // ensure logo cache is ready
   await populateTournamentDropdown(RAW_RECORDS);
   populateTeamDropdowns(RAW_RECORDS);
   renderAll();
