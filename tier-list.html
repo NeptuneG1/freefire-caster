@@ -7,7 +7,6 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<!-- html2canvas for PNG export -->
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <style>
@@ -18,7 +17,7 @@
     --masthead-h: 136px; --masthead-pad: 18px;
   }
   *{box-sizing:border-box}
-  html,body{height:100%; overflow:hidden}
+  html,body{height:100%; overflow:hidden}      /* desktop: no scroll */
   body{
     margin:0; color:#fff; font-family:Inter,system-ui,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;
     background:
@@ -49,7 +48,7 @@
     letter-spacing:.6px; font-size:clamp(22px, 3.6vw, 36px);
     color:#161616; text-shadow:0 1px 0 #ffd77a, 0 2px 0 #f9b93a, 0 2px 6px rgba(0,0,0,.25);
   }
-  .right-actions{margin-left:auto; display:flex; align-items:center; gap:8px}
+  .right-actions{margin-left:auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
   .chip,.btn{
     font-weight:800; border-radius:999px; padding:6px 10px; border:2px solid #7a5a11;
   }
@@ -58,19 +57,16 @@
   .btn.primary{background:#ffe28f; color:#1b1b1b}
   .btn.dark{background:#232323; color:#ffd46d; border-color:#4e3f16}
 
- 
-  /* Make the left column the wide Tiers, right column the narrower Pool */
+  /* Layout: TIERS left (wide), POOL right (narrow) */
   .workspace{
     height:calc(var(--vh) - var(--hdr));
     max-width:1280px; margin:12px auto; padding:0 12px;
     display:grid;
-    grid-template-columns: 1fr minmax(520px, 34vw); /* wide left, narrow right */
+    grid-template-columns: 1fr minmax(520px, 34vw);
     gap:12px;
   }
-  
-  /* Place the specific panels */
-  #tiersPanel{ grid-column: 1; }   /* Tiers on the LEFT  */
-  #poolPanel { grid-column: 2; }   /* Pool on the RIGHT  */
+  #tiersPanel{ grid-column: 1; position:relative; padding:10px; min-height:0 }
+  #poolPanel { grid-column: 2 }
 
   .panel{
     background:linear-gradient(180deg, #191919, #0e0e10);
@@ -79,7 +75,7 @@
     border-radius:16px;
     display:flex; flex-direction:column; min-height:0;
   }
-  
+
   .head{display:flex; align-items:center; gap:10px; padding:10px 12px; border-bottom:1px dashed #4a3a14}
   .badge{
     font-family:"Bebas Neue", Inter, sans-serif; font-size:26px; line-height:1;
@@ -90,8 +86,11 @@
   .head .spacer{flex:1}
 
   /* Pools */
-  .pool{padding:10px; overflow:auto; min-height:0; display:grid; gap:10px; grid-template-columns:repeat(auto-fill, minmax(200px,1fr))}
-  /* Left pool = 2 columns with safe width for region chip */
+  .pool{
+    padding:10px; overflow:auto; min-height:0;
+    display:grid; gap:10px; grid-template-columns:repeat(auto-fill, minmax(200px,1fr));
+  }
+  /* Pool rail = 2 columns wide with safe room for region chip */
   #tier-UNRANKED{grid-template-columns: repeat(2, minmax(240px,1fr))}
 
   /* Team card */
@@ -102,12 +101,12 @@
   }
   .card:hover{border-color:#3b3b3b; box-shadow:0 0 0 2px #000 inset, 0 6px 18px rgba(0,0,0,.35)}
   .card:active{cursor:grabbing; transform:scale(.98)}
+  .card.selected{ outline:2px solid #ffcc55; }
   .crest{width:36px; height:36px; border-radius:10px; object-fit:contain; background:#111; padding:6px; border:1px solid #2a2a2a}
   .name{font-weight:800; color:#f6f6f6; letter-spacing:.2px; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   .tag{margin-left:auto; font-size:10px; font-weight:800; padding:2px 8px; border-radius:999px; border:1px solid #4e3f16; background:#2b240e; color:#ffd46d; flex:0 0 auto}
 
-  /* Tiers grid (right) */
-  #tiersPanel{position:relative; padding:10px; min-height:0}
+  /* Tiers grid */
   #tiersPanel::before{
     content:""; position:absolute; inset:6% 10%;
     background:url("https://i.imgur.com/C8hLztI.png") center/360px no-repeat;
@@ -123,7 +122,31 @@
   .tier{min-height:0; display:flex; flex-direction:column}
   #tierwrap-S{grid-area:S} #tierwrap-A{grid-area:A} #tierwrap-B{grid-area:B} #tierwrap-C{grid-area:C} #tierwrap-D{grid-area:D}
 
-  .pool.dragover{outline:2px dashed #ffcc55; outline-offset:4px; background:#14141480}
+  /* Drag/tap visuals */
+  .pool.dragover, .pool.tap-target{outline:2px dashed #ffcc55; outline-offset:4px; background:#14141480}
+
+  /* ======= Mobile adaptations ======= */
+  @media (max-width: 900px){
+    html,body{ overflow:auto }                         /* allow page scroll on phones */
+    header .bar{ gap:10px; flex-wrap:wrap }
+    .right-actions{ margin-left:0; width:100%; justify-content:flex-start }
+    .workspace{
+      height:auto; max-width:100%; margin:8px auto; padding:0 8px;
+      grid-template-columns: 1fr;                      /* stack */
+      grid-auto-rows: minmax(0,auto);
+    }
+    #tiersPanel{ grid-column:1; order:1 }
+    #poolPanel { grid-column:1; order:2 }
+    #tier-UNRANKED{ grid-template-columns: 1fr }       /* pool becomes 1 column */
+    .tiers{ grid-template-columns:1fr; grid-template-areas:"S" "A" "B" "C" "D" } /* tiers single column */
+    .title{ font-size: clamp(20px, 5.5vw, 28px) }
+    .logo{ height:72px }
+  }
+
+  /* Prefer modern viewport on mobile if supported */
+  @supports (height: 100dvh){
+    .workspace{ height:calc(100dvh - var(--hdr)); }
+  }
 </style>
 </head>
 <body>
@@ -144,8 +167,8 @@
 </header>
 
 <div class="workspace">
-  <!-- LEFT: UNRANKED -->
- <section class="panel" id="poolPanel">
+  <!-- RIGHT (on desktop) / SECOND (on mobile): UNRANKED -->
+  <section class="panel" id="poolPanel">
     <div class="head">
       <div class="badge">POOL</div>
       <h2>Unranked Teams</h2>
@@ -155,8 +178,7 @@
     <div class="pool" id="tier-UNRANKED"></div>
   </section>
 
-
-  <!-- RIGHT: TIERS -->
+  <!-- LEFT (on desktop) / FIRST (on mobile): TIERS -->
   <section class="panel" id="tiersPanel">
     <div class="tiers">
       <div class="tier" id="tierwrap-S">
@@ -183,7 +205,7 @@
   </section>
 </div>
 
-<!-- Your required Supabase auth snippet -->
+<!-- Supabase auth -->
 <script>
   const client = supabase.createClient(
     'https://gkugecflfddkpitlrmws.supabase.co',
@@ -209,7 +231,7 @@
 </script>
 
 <script>
-/* viewport fix */
+/* viewport helper */
 function setVH(){
   document.documentElement.style.setProperty('--vh', window.innerHeight + 'px');
   const hdr = document.querySelector('header').offsetHeight || 64;
@@ -217,7 +239,7 @@ function setVH(){
 }
 setVH(); window.addEventListener('resize', setVH);
 
-/* Teams (alphabetical already) */
+/* Teams */
 const TEAMS = [
   { name:"ALL GAMERS GLOBAL",   region:"SEA",   logo:"https://i.imgur.com/KVvhezz.png" },
   { name:"BURIRAM UNITED",      region:"SEA",   logo:"https://i.imgur.com/ngHig8q.png" },
@@ -262,17 +284,22 @@ function laneFor(team){
 function card(team){
   const el = document.createElement('div');
   el.className = 'card';
-  el.draggable = true;
+  el.draggable = true;                            // desktop drag
   el.dataset.team = team.name;
   el.innerHTML = `
     <img class="crest" src="${team.logo}" alt="${team.name}">
     <div class="name">${team.name}</div>
     <span class="tag">${team.region}</span>
   `;
+  // desktop drag start
   el.addEventListener('dragstart', e=>{
     e.dataTransfer.setData('text/team', team.name);
     e.dataTransfer.effectAllowed = 'move';
   });
+  // touch-friendly: tap to select, then tap a pool to drop
+  if (isTouch) {
+    el.addEventListener('click', () => selectCard(el));
+  }
   return el;
 }
 
@@ -282,9 +309,10 @@ function render(){
   const order = {S:[],A:[],B:[],C:[],D:[],UNRANKED:[]};
   TEAMS.forEach(t => order[laneFor(t)].push(t));
   Object.keys(order).forEach(k => order[k].forEach(t => lanes[k].appendChild(card(t))));
+  wireTapTargets();   // refresh tap targets after re-render
 }
 
-/* Drag & drop */
+/* Drag & drop (desktop) */
 document.querySelectorAll('.pool').forEach(pool=>{
   pool.addEventListener('dragover', e=>{
     e.preventDefault(); e.dataTransfer.dropEffect='move';
@@ -300,6 +328,36 @@ document.querySelectorAll('.pool').forEach(pool=>{
   });
 });
 
+/* Tap-to-move (mobile) */
+const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+let selectedCard = null;
+
+function selectCard(el){
+  if (selectedCard === el){ clearSelection(); return; }
+  clearSelection();
+  selectedCard = el;
+  el.classList.add('selected');
+  document.querySelectorAll('.pool').forEach(p=> p.classList.add('tap-target'));
+}
+function clearSelection(){
+  if(selectedCard){ selectedCard.classList.remove('selected'); }
+  selectedCard = null;
+  document.querySelectorAll('.pool').forEach(p=> p.classList.remove('tap-target'));
+}
+function wireTapTargets(){
+  if(!isTouch) return;
+  document.querySelectorAll('.pool').forEach(pool=>{
+    pool.addEventListener('click', () => {
+      if(selectedCard){
+        pool.appendChild(selectedCard);
+        persist();
+        clearSelection();
+      }
+    });
+  });
+}
+
+/* Collect + persist */
 function collectState(){
   const state = {};
   Object.entries(lanes).forEach(([lane, el])=>{
@@ -308,21 +366,19 @@ function collectState(){
   return state;
 }
 function persist(){
-  const state = collectState();
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(state));
+  localStorage.setItem(LOCAL_KEY, JSON.stringify(collectState()));
 }
 
-/* Reset button: move all back to pool */
+/* Reset button */
 document.getElementById('resetBtn').addEventListener('click', ()=>{
   localStorage.removeItem(LOCAL_KEY);
-  Object.keys(saved).forEach(k=> delete saved[k]);
+  for (const k of Object.keys(saved)) delete saved[k];
   render();
 });
 
-/* Export PNG of tier column */
+/* Export PNG (tiers only) */
 async function exportPNG(){
   const target = document.getElementById('tiersPanel');
-  // temporarily remove scrollbars from inner pools
   const pools = target.querySelectorAll('.pool');
   const prev = [...pools].map(p=>p.style.overflow);
   pools.forEach(p=> p.style.overflow='visible');
@@ -331,7 +387,7 @@ async function exportPNG(){
     useCORS:true,
     allowTaint:false,
     backgroundColor:null,
-    scale: Math.max(2, window.devicePixelRatio || 2)
+    scale: Math.max(2.5, window.devicePixelRatio || 2)   /* crisper on phones */
   });
 
   pools.forEach((p,i)=> p.style.overflow = prev[i]);
