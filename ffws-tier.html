@@ -26,14 +26,22 @@
 
   /* Header */
   header{
-    position:sticky; top:0; z-index:5;
-    min-height:var(--masthead-h);
-    display:flex; align-items:center;
-    background:linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.15));
-    border-bottom:3px solid var(--edge);
-    backdrop-filter:saturate(120%) blur(2px);
-    padding-block: var(--masthead-pad);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    min-height: var(--masthead-h);
+    display: flex;
+    align-items: center;
+  
+    /* OPAQUE header */
+    background: #0e0e10;                 /* solid */
+    border-bottom: 3px solid var(--edge);
+    box-shadow: 0 6px 20px rgba(0,0,0,.35);
+  
+    /* remove translucency */
+    backdrop-filter: none;
   }
+
   .bar{
     max-width: clamp(980px, 92vw, 1200px);
     width:100%; margin:0 auto; padding:0 12px;
@@ -133,6 +141,10 @@
     outline:3px dashed #ffcc55; outline-offset:6px; background:#141414a6; border-radius:12px;
   }
 
+  /* Roomier drop zones so it's easier to drag into */
+  #tiersPanel .pool{ min-height: 160px; padding: 14px; border-radius: 12px; }
+
+  
   /* Header tweaks for narrow phones */
   @media (max-width:900px){
     header .bar{ gap:10px; flex-wrap:wrap }
@@ -279,6 +291,110 @@ function render(){
   wireTapTargets();
 }
 
+  // ===== Touch drag with auto-scroll =====
+  const AUTOSCROLL_EDGE = 80;    // px from top/bottom of viewport
+  const AUTOSCROLL_SPEED = 14;   // px per frame-ish
+  
+  let dragState = null;          // {card, ghost, originPool, overPool}
+  
+  function wireTouchDrag(){
+    if (!('ontouchstart' in window) && (navigator.maxTouchPoints || 0) === 0) return;
+  
+    document.querySelectorAll('.card').forEach(card=>{
+      // prevent duplicate wiring
+      if (card.dataset.touchwired === '1') return;
+      card.dataset.touchwired = '1';
+  
+      card.addEventListener('pointerdown', (e)=>{
+        if (e.pointerType !== 'touch') return;
+        startTouchDrag(card, e);
+      });
+    });
+  }
+  
+  function startTouchDrag(card, e){
+    e.preventDefault();
+    card.setPointerCapture?.(e.pointerId);
+  
+    const rect = card.getBoundingClientRect();
+  
+    // build the floating ghost
+    const ghost = card.cloneNode(true);
+    ghost.style.position = 'fixed';
+    ghost.style.left = `${rect.left}px`;
+    ghost.style.top = `${rect.top}px`;
+    ghost.style.width = `${rect.width}px`;
+    ghost.style.pointerEvents = 'none';
+    ghost.style.opacity = '0.95';
+    ghost.style.transform = 'scale(1.03)';
+    ghost.style.zIndex = '9999';
+    ghost.classList.add('selected');
+  
+    document.body.appendChild(ghost);
+  
+    dragState = {
+      card,
+      ghost,
+      originPool: card.closest('.pool'),
+      overPool: null,
+      dx: e.clientX - rect.left,
+      dy: e.clientY - rect.top
+    };
+  
+    window.addEventListener('pointermove', onTouchDragMove, {passive:false});
+    window.addEventListener('pointerup', onTouchDragEnd, {once:true});
+  }
+  
+  function onTouchDragMove(e){
+    if (!dragState) return;
+    e.preventDefault();
+  
+    // move ghost
+    const x = e.clientX - dragState.dx;
+    const y = e.clientY - dragState.dy;
+    dragState.ghost.style.left = `${x}px`;
+    dragState.ghost.style.top  = `${y}px`;
+  
+    // auto-scroll near edges
+    if (e.clientY < AUTOSCROLL_EDGE){
+      window.scrollBy(0, -AUTOSCROLL_SPEED);
+    } else if (e.clientY > window.innerHeight - AUTOSCROLL_EDGE){
+      window.scrollBy(0, AUTOSCROLL_SPEED);
+    }
+  
+    // highlight pool under finger
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const pool = el && el.closest ? el.closest('.pool') : null;
+    if (pool !== dragState.overPool){
+      if (dragState.overPool) dragState.overPool.classList.remove('dragover');
+      if (pool) pool.classList.add('dragover');
+      dragState.overPool = pool;
+    }
+  }
+  
+  function onTouchDragEnd(){
+    window.removeEventListener('pointermove', onTouchDragMove);
+  
+    if (dragState){
+      // drop
+      if (dragState.overPool){
+        dragState.overPool.appendChild(dragState.card);
+        persist && persist(); // call your existing persist()
+        dragState.overPool.classList.remove('dragover');
+      }
+      // cleanup
+      dragState.ghost.remove();
+      dragState = null;
+    }
+  }
+  
+  // ===== Hook it into your lifecycle =====
+  // After each render, call wireTouchDrag() so new cards are touch-draggable
+  const _renderOrig = render;
+  render = function(){
+    _renderOrig();
+    wireTouchDrag();
+  };
 /* Drag & drop (desktop) */
 document.querySelectorAll('.pool').forEach(pool=>{
   pool.addEventListener('dragover', e=>{
