@@ -374,43 +374,53 @@ function drawWatermark(canvas, url, {
   });
 }
 
-/* Export PNG (tiers only) — hide CSS watermark, then paint it on */
 async function exportPNG(){
   const target = document.getElementById('tiersPanel');
 
-  // Hide CSS ::before watermark so it never overlays cards while capturing
+  // Hide the CSS ::before watermark so we don't double-stamp it
   target.classList.add('exporting');
 
-  // temporarily allow inner pools to fully render
+  // Let inner pools fully render
   const pools = target.querySelectorAll('.pool');
   const prev = [...pools].map(p=>p.style.overflow);
   pools.forEach(p=> p.style.overflow='visible');
 
   const canvas = await html2canvas(target, {
-    useCORS:true,
-    allowTaint:false,
-    backgroundColor:null,
-    scale: Math.max(2.5, window.devicePixelRatio || 2)
+    useCORS: true,
+    allowTaint: false,
+    backgroundColor: null,               // keep transparent; change to a color if you want a solid BG
+    scale: Math.max(2.5, window.devicePixelRatio || 2),
+    onclone: (doc) => {
+      // Inject a watermark IMG inside the cloned tiersPanel, behind content
+      const t = doc.getElementById('tiersPanel');
+      const wm = doc.createElement('img');
+      wm.src = 'https://i.imgur.com/C8hLztI.png';
+      wm.setAttribute('alt','FFWS');
+      Object.assign(wm.style, {
+        position: 'absolute',
+        opacity: '0.14',                 // bump if you want it stronger
+        width: '28%',                    // size relative to panel width
+        left: '50%',
+        bottom: '28px',                  // bottom-center placement
+        transform: 'translateX(-50%)',
+        pointerEvents: 'none',
+        zIndex: '0'                      // behind cards (cards render above)
+      });
+      t.appendChild(wm);
+    }
   });
 
   pools.forEach((p,i)=> p.style.overflow = prev[i]);
   target.classList.remove('exporting');
 
-  // Add the FFWS watermark to the exported canvas
-  await drawWatermark(canvas, 'https://i.imgur.com/C8hLztI.png', {
-    opacity: 0.12,
-    widthRatio: 0.26,
-    position: 'bottom-center',
-    margin: 36
-  });
-
   const dataUrl = canvas.toDataURL('image/png');
 
-  // Mobile Safari fallback (open in new tab)
+  // Mobile-friendly save
   const a = document.createElement('a');
   a.download = 'ffws-tier-list.png';
   a.href = dataUrl;
   if (typeof a.download === 'undefined') {
+    // iOS Safari fallback
     window.open(dataUrl, '_blank');
   } else {
     a.click();
