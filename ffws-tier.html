@@ -11,7 +11,7 @@
 
 <style>
   :root{
-    --bg1:#FFD24B; --bg2:#FF8B2B;
+    --bg1:#FFD24B; --bg2:#FF8B2B;   /* theme */
     --plate:#0d0d0f; --edge:#ffbf2b; --edge-dim:#7a5a11;
     --masthead-h: 136px; --masthead-pad: 18px;
   }
@@ -24,7 +24,7 @@
       linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 70%);
   }
 
-  /* Header */
+  /* Header — opaque & on-theme */
   header{
     position: sticky;
     top: 0;
@@ -32,20 +32,14 @@
     min-height: var(--masthead-h);
     display: flex;
     align-items: center;
-  
-    /* OPAQUE header */
-    background: #0e0e10;                 /* solid */
+    background: linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 75%); /* theme gradient, fully opaque */
     border-bottom: 3px solid var(--edge);
     box-shadow: 0 6px 20px rgba(0,0,0,.35);
-  
-    /* remove translucency */
-    backdrop-filter: none;
   }
-
   .bar{
     max-width: clamp(980px, 92vw, 1200px);
     width:100%; margin:0 auto; padding:0 12px;
-    display:flex; gap:14px; align-items:center
+    display:flex; gap:14px; align-items:center;
   }
   .logo{
     height:calc(var(--masthead-h) - 34px);
@@ -55,7 +49,8 @@
   .title{
     font-family:"Bebas Neue", Inter, sans-serif;
     letter-spacing:.6px; font-size:clamp(22px, 3.6vw, 36px);
-    color:#161616; text-shadow:0 1px 0 #ffd77a, 0 2px 0 #f9b93a, 0 2px 6px rgba(0,0,0,.25);
+    color:#161616;                           /* dark text works on bright header */
+    text-shadow:0 1px 0 #ffd77a, 0 2px 0 #f9b93a, 0 2px 6px rgba(0,0,0,.18);
   }
   .right-actions{margin-left:auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
   .btn{
@@ -90,7 +85,6 @@
     padding:10px; overflow:auto; min-height:0;
     display:grid; gap:10px; grid-template-columns:repeat(2, minmax(240px,1fr));
   }
-  /* Unranked can expand to 3 columns on wide */
   @media (min-width:1100px){
     #tier-UNRANKED{ grid-template-columns:repeat(3, minmax(240px,1fr)); }
   }
@@ -104,6 +98,7 @@
     border:2px solid #272727; border-radius:12px; padding:10px; cursor:grab; user-select:none; overflow:hidden;
     transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
     min-height:56px;
+    touch-action: pan-y; /* allow vertical scroll until actual drag starts */
   }
   .card:hover{border-color:#3b3b3b; box-shadow:0 0 0 2px #000 inset, 0 6px 18px rgba(0,0,0,.35)}
   .card:active{cursor:grabbing; transform:scale(.98)}
@@ -141,10 +136,6 @@
     outline:3px dashed #ffcc55; outline-offset:6px; background:#141414a6; border-radius:12px;
   }
 
-  /* Roomier drop zones so it's easier to drag into */
-  #tiersPanel .pool{ min-height: 160px; padding: 14px; border-radius: 12px; }
-
-  
   /* Header tweaks for narrow phones */
   @media (max-width:900px){
     header .bar{ gap:10px; flex-wrap:wrap }
@@ -167,7 +158,7 @@
     <img class="logo" src="https://i.imgur.com/C8hLztI.png" alt="FFWS">
     <div class="title">FFWS Global Finals 2025 — Tier List</div>
     <div class="right-actions">
-      <button class="btn dark" id="saveBtn" onclick="exportPNG()">Save Tier PNG</button>
+      <button class="btn dark" id="saveBtn" type="button" onclick="exportPNG()">Save Tier PNG</button>
     </div>
   </div>
 </header>
@@ -220,7 +211,7 @@
 /* Touch detection */
 const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
-/* Teams */
+/* Teams (use your full names/logos as needed) */
 const TEAMS = [
   { name:"AG",     region:"SEA",   logo:"https://i.imgur.com/KVvhezz.png" },
   { name:"BRU",    region:"SEA",   logo:"https://i.imgur.com/ngHig8q.png" },
@@ -277,8 +268,6 @@ function card(team){
     e.dataTransfer.setData('text/team', team.name);
     e.dataTransfer.effectAllowed = 'move';
   });
-  // touch-friendly: tap to select, then tap a pool to drop
-  if (isTouch) el.addEventListener('click', () => selectCard(el));
   return el;
 }
 
@@ -288,113 +277,10 @@ function render(){
   const order = {S:[],A:[],B:[],C:[],D:[],UNRANKED:[]};
   TEAMS.forEach(t => order[laneFor(t)].push(t));
   Object.keys(order).forEach(k => order[k].forEach(t => lanes[k].appendChild(card(t))));
-  wireTapTargets();
+  wireTapTargets();     // optional tap-to-move
+  wireTouchDrag();      // natural touch-drag with auto-scroll
 }
 
-  // ===== Touch drag with auto-scroll =====
-  const AUTOSCROLL_EDGE = 80;    // px from top/bottom of viewport
-  const AUTOSCROLL_SPEED = 14;   // px per frame-ish
-  
-  let dragState = null;          // {card, ghost, originPool, overPool}
-  
-  function wireTouchDrag(){
-    if (!('ontouchstart' in window) && (navigator.maxTouchPoints || 0) === 0) return;
-  
-    document.querySelectorAll('.card').forEach(card=>{
-      // prevent duplicate wiring
-      if (card.dataset.touchwired === '1') return;
-      card.dataset.touchwired = '1';
-  
-      card.addEventListener('pointerdown', (e)=>{
-        if (e.pointerType !== 'touch') return;
-        startTouchDrag(card, e);
-      });
-    });
-  }
-  
-  function startTouchDrag(card, e){
-    e.preventDefault();
-    card.setPointerCapture?.(e.pointerId);
-  
-    const rect = card.getBoundingClientRect();
-  
-    // build the floating ghost
-    const ghost = card.cloneNode(true);
-    ghost.style.position = 'fixed';
-    ghost.style.left = `${rect.left}px`;
-    ghost.style.top = `${rect.top}px`;
-    ghost.style.width = `${rect.width}px`;
-    ghost.style.pointerEvents = 'none';
-    ghost.style.opacity = '0.95';
-    ghost.style.transform = 'scale(1.03)';
-    ghost.style.zIndex = '9999';
-    ghost.classList.add('selected');
-  
-    document.body.appendChild(ghost);
-  
-    dragState = {
-      card,
-      ghost,
-      originPool: card.closest('.pool'),
-      overPool: null,
-      dx: e.clientX - rect.left,
-      dy: e.clientY - rect.top
-    };
-  
-    window.addEventListener('pointermove', onTouchDragMove, {passive:false});
-    window.addEventListener('pointerup', onTouchDragEnd, {once:true});
-  }
-  
-  function onTouchDragMove(e){
-    if (!dragState) return;
-    e.preventDefault();
-  
-    // move ghost
-    const x = e.clientX - dragState.dx;
-    const y = e.clientY - dragState.dy;
-    dragState.ghost.style.left = `${x}px`;
-    dragState.ghost.style.top  = `${y}px`;
-  
-    // auto-scroll near edges
-    if (e.clientY < AUTOSCROLL_EDGE){
-      window.scrollBy(0, -AUTOSCROLL_SPEED);
-    } else if (e.clientY > window.innerHeight - AUTOSCROLL_EDGE){
-      window.scrollBy(0, AUTOSCROLL_SPEED);
-    }
-  
-    // highlight pool under finger
-    const el = document.elementFromPoint(e.clientX, e.clientY);
-    const pool = el && el.closest ? el.closest('.pool') : null;
-    if (pool !== dragState.overPool){
-      if (dragState.overPool) dragState.overPool.classList.remove('dragover');
-      if (pool) pool.classList.add('dragover');
-      dragState.overPool = pool;
-    }
-  }
-  
-  function onTouchDragEnd(){
-    window.removeEventListener('pointermove', onTouchDragMove);
-  
-    if (dragState){
-      // drop
-      if (dragState.overPool){
-        dragState.overPool.appendChild(dragState.card);
-        persist && persist(); // call your existing persist()
-        dragState.overPool.classList.remove('dragover');
-      }
-      // cleanup
-      dragState.ghost.remove();
-      dragState = null;
-    }
-  }
-  
-  // ===== Hook it into your lifecycle =====
-  // After each render, call wireTouchDrag() so new cards are touch-draggable
-  const _renderOrig = render;
-  render = function(){
-    _renderOrig();
-    wireTouchDrag();
-  };
 /* Drag & drop (desktop) */
 document.querySelectorAll('.pool').forEach(pool=>{
   pool.addEventListener('dragover', e=>{
@@ -411,7 +297,7 @@ document.querySelectorAll('.pool').forEach(pool=>{
   });
 });
 
-/* Tap-to-move (mobile) */
+/* Tap-to-move (optional mobile helper) */
 let selectedCard = null;
 function selectCard(el){
   if (selectedCard === el){ clearSelection(); return; }
@@ -427,8 +313,15 @@ function clearSelection(){
 }
 function wireTapTargets(){
   if(!isTouch) return;
+  // Add click-to-select on newly rendered cards
+  document.querySelectorAll('.card').forEach(card=>{
+    if (card.dataset.tapwired === '1') return;
+    card.dataset.tapwired = '1';
+    card.addEventListener('click', () => selectCard(card));
+  });
+  // Pools accept taps to drop selected
   document.querySelectorAll('.pool').forEach(pool=>{
-    if(pool.dataset.tapwired === '1') return;   // avoid duplicate handlers
+    if(pool.dataset.tapwired === '1') return;
     pool.dataset.tapwired = '1';
     pool.addEventListener('click', () => {
       if(selectedCard){
@@ -440,6 +333,109 @@ function wireTapTargets(){
   });
 }
 
+/* Touch drag with auto-scroll + small threshold */
+const AUTOSCROLL_EDGE = 80;    // px from top/bottom of viewport
+const AUTOSCROLL_SPEED = 14;   // px per step
+const DRAG_THRESHOLD = 6;      // px before we "start" dragging
+
+let dragState = null;          // {card, ghost, originPool, overPool, startX, startY, dx, dy, started}
+
+function wireTouchDrag(){
+  if (!isTouch) return;
+
+  document.querySelectorAll('.card').forEach(card=>{
+    if (card.dataset.touchwired === '1') return;
+    card.dataset.touchwired = '1';
+
+    card.addEventListener('pointerdown', (e)=>{
+      if (e.pointerType !== 'touch') return;
+      e.preventDefault();
+      card.setPointerCapture?.(e.pointerId);
+
+      const rect = card.getBoundingClientRect();
+      dragState = {
+        card,
+        ghost: null,            // create after threshold
+        originPool: card.closest('.pool'),
+        overPool: null,
+        startX: e.clientX,
+        startY: e.clientY,
+        dx: e.clientX - rect.left,
+        dy: e.clientY - rect.top,
+        started: false
+      };
+
+      window.addEventListener('pointermove', onTouchDragMove, {passive:false});
+      window.addEventListener('pointerup', onTouchDragEnd, {once:true});
+    });
+  });
+}
+
+function createGhostFrom(card, dx, dy){
+  const rect = card.getBoundingClientRect();
+  const ghost = card.cloneNode(true);
+  ghost.style.position = 'fixed';
+  ghost.style.left = `${rect.left}px`;
+  ghost.style.top = `${rect.top}px`;
+  ghost.style.width = `${rect.width}px`;
+  ghost.style.pointerEvents = 'none';
+  ghost.style.opacity = '0.95';
+  ghost.style.transform = 'scale(1.03)';
+  ghost.style.zIndex = '9999';
+  ghost.classList.add('selected');
+  document.body.appendChild(ghost);
+  return ghost;
+}
+
+function onTouchDragMove(e){
+  if (!dragState) return;
+  e.preventDefault();
+
+  const dist = Math.hypot(e.clientX - dragState.startX, e.clientY - dragState.startY);
+  if (!dragState.started && dist >= DRAG_THRESHOLD){
+    dragState.started = true;
+    dragState.ghost = createGhostFrom(dragState.card, dragState.dx, dragState.dy);
+  }
+  if (!dragState.started) return; // still a tap
+
+  // move ghost
+  const x = e.clientX - dragState.dx;
+  const y = e.clientY - dragState.dy;
+  dragState.ghost.style.left = `${x}px`;
+  dragState.ghost.style.top  = `${y}px`;
+
+  // auto-scroll near edges
+  if (e.clientY < AUTOSCROLL_EDGE){
+    window.scrollBy(0, -AUTOSCROLL_SPEED);
+  } else if (e.clientY > window.innerHeight - AUTOSCROLL_EDGE){
+    window.scrollBy(0, AUTOSCROLL_SPEED);
+  }
+
+  // highlight pool under finger
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const pool = el && el.closest ? el.closest('.pool') : null;
+  if (pool !== dragState.overPool){
+    if (dragState.overPool) dragState.overPool.classList.remove('dragover');
+    if (pool) pool.classList.add('dragover');
+    dragState.overPool = pool;
+  }
+}
+
+function onTouchDragEnd(){
+  window.removeEventListener('pointermove', onTouchDragMove);
+
+  if (dragState){
+    // only drop if a real drag started
+    if (dragState.started && dragState.overPool){
+      dragState.overPool.appendChild(dragState.card);
+      persist();
+      dragState.overPool.classList.remove('dragover');
+    }
+    if (dragState.ghost) dragState.ghost.remove();
+    dragState = null;
+  }
+}
+
 /* Collect + persist */
 function collectState(){
   const state = {};
@@ -449,54 +445,24 @@ function collectState(){
   return state;
 }
 function persist(){
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(collectState()));
+  localStorage.setItem('ffws_tierlist', JSON.stringify(collectState()));
 }
 
 /* Reset button */
 document.getElementById('resetBtn').addEventListener('click', ()=>{
-  localStorage.removeItem(LOCAL_KEY);
-  for (const k of Object.keys(saved)) delete saved[k];
+  localStorage.removeItem('ffws_tierlist');
+  Object.keys(saved).forEach(k=> delete saved[k]);
   render();
 });
 
-/* Draw watermark onto an existing canvas */
-function drawWatermark(canvas, url, {
-  opacity = 0.12,
-  widthRatio = 0.26,
-  position = 'bottom-center',
-  margin = 36
-} = {}) {
-  return new Promise((resolve, reject) => {
-    const ctx = canvas.getContext('2d');
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const w = Math.round(canvas.width * widthRatio);
-      const h = Math.round(img.height * (w / img.width));
-      let x = (canvas.width - w) / 2;
-      let y = (canvas.height - h) / 2;
-
-      if (position === 'bottom-center') { x = (canvas.width - w) / 2; y = canvas.height - h - margin; }
-      if (position === 'bottom-right')   { x = canvas.width - w - margin; y = canvas.height - h - margin; }
-
-      ctx.save();
-      ctx.globalAlpha = opacity;
-      ctx.drawImage(img, x, y, w, h);
-      ctx.restore();
-      resolve();
-    };
-    img.onerror = reject;
-    img.src = url;
-  });
-}
-
+/* Export PNG (tiers only) — inject watermark in the cloned DOM, behind cards */
 async function exportPNG(){
   const target = document.getElementById('tiersPanel');
 
   // Hide the CSS ::before watermark so we don't double-stamp it
   target.classList.add('exporting');
 
-  // Let inner pools fully render
+  // temporarily expand inner pools
   const pools = target.querySelectorAll('.pool');
   const prev = [...pools].map(p=>p.style.overflow);
   pools.forEach(p=> p.style.overflow='visible');
@@ -504,23 +470,23 @@ async function exportPNG(){
   const canvas = await html2canvas(target, {
     useCORS: true,
     allowTaint: false,
-    backgroundColor: null,               // keep transparent; change to a color if you want a solid BG
+    backgroundColor: null,   // keep transparent; change to a color if you prefer a solid BG
     scale: Math.max(2.5, window.devicePixelRatio || 2),
     onclone: (doc) => {
-      // Inject a watermark IMG inside the cloned tiersPanel, behind content
+      // Add a watermark <img> inside cloned tiersPanel, under content
       const t = doc.getElementById('tiersPanel');
       const wm = doc.createElement('img');
       wm.src = 'https://i.imgur.com/C8hLztI.png';
-      wm.setAttribute('alt','FFWS');
+      wm.alt = 'FFWS';
       Object.assign(wm.style, {
         position: 'absolute',
-        opacity: '0.14',                 // bump if you want it stronger
-        width: '28%',                    // size relative to panel width
+        opacity: '0.14',
+        width: '28%',
         left: '50%',
-        bottom: '28px',                  // bottom-center placement
+        bottom: '28px',
         transform: 'translateX(-50%)',
         pointerEvents: 'none',
-        zIndex: '0'                      // behind cards (cards render above)
+        zIndex: '0'
       });
       t.appendChild(wm);
     }
@@ -530,14 +496,11 @@ async function exportPNG(){
   target.classList.remove('exporting');
 
   const dataUrl = canvas.toDataURL('image/png');
-
-  // Mobile-friendly save
   const a = document.createElement('a');
   a.download = 'ffws-tier-list.png';
   a.href = dataUrl;
   if (typeof a.download === 'undefined') {
-    // iOS Safari fallback
-    window.open(dataUrl, '_blank');
+    window.open(dataUrl, '_blank');  // iOS Safari fallback
   } else {
     a.click();
   }
@@ -548,4 +511,3 @@ render();
 </script>
 </body>
 </html>
-
