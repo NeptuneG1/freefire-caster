@@ -32,7 +32,7 @@
     min-height: var(--masthead-h);
     display: flex;
     align-items: center;
-    background: linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 75%); /* theme gradient, fully opaque */
+    background: linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 75%);
     border-bottom: 3px solid var(--edge);
     box-shadow: 0 6px 20px rgba(0,0,0,.35);
   }
@@ -49,7 +49,7 @@
   .title{
     font-family:"Bebas Neue", Inter, sans-serif;
     letter-spacing:.6px; font-size:clamp(22px, 3.6vw, 36px);
-    color:#161616;                           /* dark text works on bright header */
+    color:#161616;
     text-shadow:0 1px 0 #ffd77a, 0 2px 0 #f9b93a, 0 2px 6px rgba(0,0,0,.18);
   }
   .right-actions{margin-left:auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
@@ -58,7 +58,7 @@
   }
   .btn.dark{background:#232323; color:#ffd46d; border-color:#4e3f16}
 
-  /* === Single-column canvas === */
+  /* Single-column layout */
   .workspace{
     max-width: clamp(980px, 92vw, 1200px);
     margin:12px auto 24px auto; padding:0 12px;
@@ -98,11 +98,11 @@
     border:2px solid #272727; border-radius:12px; padding:10px; cursor:grab; user-select:none; overflow:hidden;
     transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
     min-height:56px;
-    touch-action: pan-y; /* allow vertical scroll until actual drag starts */
+    touch-action: pan-y; /* allow page scroll until we actually start a drag */
   }
   .card:hover{border-color:#3b3b3b; box-shadow:0 0 0 2px #000 inset, 0 6px 18px rgba(0,0,0,.35)}
   .card:active{cursor:grabbing; transform:scale(.98)}
-  .card.selected{ outline:3px solid #ffcc55; }
+  .card.dragging{ visibility:hidden; } /* hide original when ghost is active */
   .crest{width:40px; height:40px; border-radius:10px; object-fit:contain; background:#111; padding:6px; border:1px solid #2a2a2a}
   .name{font-weight:800; color:#f6f6f6; letter-spacing:.2px; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   .tag{margin-left:auto; font-size:11px; font-weight:800; padding:3px 9px; border-radius:999px; border:1px solid #4e3f16; background:#2b240e; color:#ffd46d; flex:0 0 auto}
@@ -113,8 +113,7 @@
   #tiersPanel::before{
     content:""; position:absolute; inset:6% 10%;
     background:url("https://i.imgur.com/C8hLztI.png") center/360px no-repeat;
-    opacity:.07; mix-blend-mode:multiply; pointer-events:none;
-    z-index:0;
+    opacity:.07; mix-blend-mode:multiply; pointer-events:none; z-index:0;
   }
   #tiersPanel.exporting::before{ content:none !important; }  /* hide while exporting */
 
@@ -132,9 +131,7 @@
   #tiersPanel .pool{ min-height:160px; padding:14px; border-radius:12px; }
 
   /* Drag/tap visuals */
-  .pool.dragover, .pool.tap-target{
-    outline:3px dashed #ffcc55; outline-offset:6px; background:#141414a6; border-radius:12px;
-  }
+  .pool.dragover{ outline:3px dashed #ffcc55; outline-offset:6px; background:#141414a6; border-radius:12px; }
 
   /* Header tweaks for narrow phones */
   @media (max-width:900px){
@@ -211,7 +208,7 @@
 /* Touch detection */
 const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
-/* Teams (use your full names/logos as needed) */
+/* Teams (use full names if you like) */
 const TEAMS = [
   { name:"AG",     region:"SEA",   logo:"https://i.imgur.com/KVvhezz.png" },
   { name:"BRU",    region:"SEA",   logo:"https://i.imgur.com/ngHig8q.png" },
@@ -277,8 +274,7 @@ function render(){
   const order = {S:[],A:[],B:[],C:[],D:[],UNRANKED:[]};
   TEAMS.forEach(t => order[laneFor(t)].push(t));
   Object.keys(order).forEach(k => order[k].forEach(t => lanes[k].appendChild(card(t))));
-  wireTapTargets();     // optional tap-to-move
-  wireTouchDrag();      // natural touch-drag with auto-scroll
+  wireTouchDrag();      // robust mobile drag
 }
 
 /* Drag & drop (desktop) */
@@ -297,143 +293,173 @@ document.querySelectorAll('.pool').forEach(pool=>{
   });
 });
 
-/* Tap-to-move (optional mobile helper) */
-let selectedCard = null;
-function selectCard(el){
-  if (selectedCard === el){ clearSelection(); return; }
-  clearSelection();
-  selectedCard = el;
-  el.classList.add('selected');
-  document.querySelectorAll('.pool').forEach(p=> p.classList.add('tap-target'));
-}
-function clearSelection(){
-  if(selectedCard){ selectedCard.classList.remove('selected'); }
-  selectedCard = null;
-  document.querySelectorAll('.pool').forEach(p=> p.classList.remove('tap-target'));
-}
-function wireTapTargets(){
-  if(!isTouch) return;
-  // Add click-to-select on newly rendered cards
-  document.querySelectorAll('.card').forEach(card=>{
-    if (card.dataset.tapwired === '1') return;
-    card.dataset.tapwired = '1';
-    card.addEventListener('click', () => selectCard(card));
-  });
-  // Pools accept taps to drop selected
-  document.querySelectorAll('.pool').forEach(pool=>{
-    if(pool.dataset.tapwired === '1') return;
-    pool.dataset.tapwired = '1';
-    pool.addEventListener('click', () => {
-      if(selectedCard){
-        pool.appendChild(selectedCard);
-        persist();
-        clearSelection();
-      }
-    });
-  });
-}
+/* Mobile pointer-drag with threshold + autoscroll + solid cleanup */
+const isPointer = !!window.PointerEvent;
+const THRESHOLD = 6;           // px before a drag starts
+const EDGE = 80;               // px from top/bottom to trigger autoscroll
+const SPEED = 16;              // scroll px per RAF tick
 
-/* Touch drag with auto-scroll + small threshold */
-const AUTOSCROLL_EDGE = 80;    // px from top/bottom of viewport
-const AUTOSCROLL_SPEED = 14;   // px per step
-const DRAG_THRESHOLD = 6;      // px before we "start" dragging
-
-let dragState = null;          // {card, ghost, originPool, overPool, startX, startY, dx, dy, started}
+let drag = null;               // state bag
+let rafId = null;              // autoscroll loop
+let lastClient = {x:0, y:0};
 
 function wireTouchDrag(){
-  if (!isTouch) return;
-
+  if (!isPointer || !isTouch) return;
   document.querySelectorAll('.card').forEach(card=>{
-    if (card.dataset.touchwired === '1') return;
-    card.dataset.touchwired = '1';
+    if (card.dataset.pwired === '1') return;
+    card.dataset.pwired = '1';
 
-    card.addEventListener('pointerdown', (e)=>{
-      if (e.pointerType !== 'touch') return;
-      e.preventDefault();
-      card.setPointerCapture?.(e.pointerId);
-
-      const rect = card.getBoundingClientRect();
-      dragState = {
-        card,
-        ghost: null,            // create after threshold
-        originPool: card.closest('.pool'),
-        overPool: null,
-        startX: e.clientX,
-        startY: e.clientY,
-        dx: e.clientX - rect.left,
-        dy: e.clientY - rect.top,
-        started: false
-      };
-
-      window.addEventListener('pointermove', onTouchDragMove, {passive:false});
-      window.addEventListener('pointerup', onTouchDragEnd, {once:true});
-    });
+    card.addEventListener('pointerdown', onPointerDown, {passive:true});
   });
 }
 
-function createGhostFrom(card, dx, dy){
+function onPointerDown(e){
+  if (e.pointerType !== 'touch') return;
+
+  const card = e.currentTarget;
   const rect = card.getBoundingClientRect();
-  const ghost = card.cloneNode(true);
-  ghost.style.position = 'fixed';
-  ghost.style.left = `${rect.left}px`;
-  ghost.style.top = `${rect.top}px`;
-  ghost.style.width = `${rect.width}px`;
-  ghost.style.pointerEvents = 'none';
-  ghost.style.opacity = '0.95';
-  ghost.style.transform = 'scale(1.03)';
-  ghost.style.zIndex = '9999';
-  ghost.classList.add('selected');
-  document.body.appendChild(ghost);
-  return ghost;
+
+  drag = {
+    card,
+    originPool: card.closest('.pool'),
+    overPool: null,
+    ghost: null,
+    started: false,
+    startX: e.clientX,
+    startY: e.clientY,
+    dx: e.clientX - rect.left,
+    dy: e.clientY - rect.top,
+    pointerId: e.pointerId
+  };
+
+  lastClient.x = e.clientX;
+  lastClient.y = e.clientY;
+
+  window.addEventListener('pointermove', onPointerMove, {passive:false});
+  window.addEventListener('pointerup', onPointerUp, {once:true});
+  window.addEventListener('pointercancel', onPointerCancel, {once:true});
+  // extra safety if browser swaps to another tab
+  document.addEventListener('visibilitychange', cancelDragIfHidden, {once:true});
+  // iOS fallback
+  window.addEventListener('touchend', onPointerUp, {once:true, passive:true});
 }
 
-function onTouchDragMove(e){
-  if (!dragState) return;
-  e.preventDefault();
+function maybeStartDrag(){
+  if (!drag || drag.started) return;
 
-  const dist = Math.hypot(e.clientX - dragState.startX, e.clientY - dragState.startY);
-  if (!dragState.started && dist >= DRAG_THRESHOLD){
-    dragState.started = true;
-    dragState.ghost = createGhostFrom(dragState.card, dragState.dx, dragState.dy);
+  const ghost = drag.card.cloneNode(true);
+  const rect = drag.card.getBoundingClientRect();
+
+  Object.assign(ghost.style, {
+    position: 'fixed',
+    left: `${rect.left}px`,
+    top: `${rect.top}px`,
+    width: `${rect.width}px`,
+    pointerEvents: 'none',
+    opacity: '0.95',
+    transform: 'scale(1.03)',
+    zIndex: '9999'
+  });
+
+  drag.ghost = ghost;
+  drag.card.classList.add('dragging');   // hide original
+  document.body.appendChild(ghost);
+
+  // capture after the drag actually starts
+  drag.card.setPointerCapture?.(drag.pointerId);
+
+  drag.started = true;
+  startAutoscroll();
+}
+
+function onPointerMove(e){
+  if (!drag) return;
+
+  lastClient.x = e.clientX;
+  lastClient.y = e.clientY;
+
+  const dist = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
+  if (!drag.started && dist >= THRESHOLD){
+    maybeStartDrag();
   }
-  if (!dragState.started) return; // still a tap
+
+  if (!drag.started) return;      // allow natural scrolling
+  e.preventDefault();             // now we own the gesture
 
   // move ghost
-  const x = e.clientX - dragState.dx;
-  const y = e.clientY - dragState.dy;
-  dragState.ghost.style.left = `${x}px`;
-  dragState.ghost.style.top  = `${y}px`;
+  const x = e.clientX - drag.dx;
+  const y = e.clientY - drag.dy;
+  drag.ghost.style.left = `${x}px`;
+  drag.ghost.style.top  = `${y}px`;
 
-  // auto-scroll near edges
-  if (e.clientY < AUTOSCROLL_EDGE){
-    window.scrollBy(0, -AUTOSCROLL_SPEED);
-  } else if (e.clientY > window.innerHeight - AUTOSCROLL_EDGE){
-    window.scrollBy(0, AUTOSCROLL_SPEED);
-  }
+  updateOverPool();
+}
 
-  // highlight pool under finger
-  const el = document.elementFromPoint(e.clientX, e.clientY);
+function updateOverPool(){
+  const el = document.elementFromPoint(lastClient.x, lastClient.y);
   const pool = el && el.closest ? el.closest('.pool') : null;
-  if (pool !== dragState.overPool){
-    if (dragState.overPool) dragState.overPool.classList.remove('dragover');
+  if (pool !== drag.overPool){
+    if (drag.overPool) drag.overPool.classList.remove('dragover');
     if (pool) pool.classList.add('dragover');
-    dragState.overPool = pool;
+    drag.overPool = pool;
   }
 }
 
-function onTouchDragEnd(){
-  window.removeEventListener('pointermove', onTouchDragMove);
+function onPointerUp(){
+  stopAutoscroll();
 
-  if (dragState){
-    // only drop if a real drag started
-    if (dragState.started && dragState.overPool){
-      dragState.overPool.appendChild(dragState.card);
-      persist();
-      dragState.overPool.classList.remove('dragover');
-    }
-    if (dragState.ghost) dragState.ghost.remove();
-    dragState = null;
+  if (!drag) return;
+
+  if (drag.started && drag.overPool){
+    drag.overPool.appendChild(drag.card);
+    drag.overPool.classList.remove('dragover');
+    persist();
   }
+
+  cleanupDrag();
+}
+
+function onPointerCancel(){
+  stopAutoscroll();
+  cleanupDrag();
+}
+
+function cancelDragIfHidden(){
+  if (document.visibilityState === 'hidden'){
+    stopAutoscroll();
+    cleanupDrag();
+  }
+}
+
+function cleanupDrag(){
+  window.removeEventListener('pointermove', onPointerMove);
+  // pointerup/pointercancel/touchend listeners were {once:true}
+  document.removeEventListener('visibilitychange', cancelDragIfHidden);
+
+  if (!drag) return;
+  drag.card.classList.remove('dragging');
+  if (drag.ghost && drag.ghost.parentNode) drag.ghost.parentNode.removeChild(drag.ghost);
+  drag = null;
+}
+
+function startAutoscroll(){
+  if (rafId) return;
+  const step = () => {
+    if (!drag || !drag.started){ rafId = null; return; }
+    let dy = 0;
+    if (lastClient.y < EDGE) dy = -SPEED;
+    else if (lastClient.y > window.innerHeight - EDGE) dy = SPEED;
+    if (dy !== 0){
+      window.scrollBy(0, dy);
+      // after scrolling, recompute pool under finger
+      updateOverPool();
+    }
+    rafId = requestAnimationFrame(step);
+  };
+  rafId = requestAnimationFrame(step);
+}
+function stopAutoscroll(){
+  if (rafId){ cancelAnimationFrame(rafId); rafId = null; }
 }
 
 /* Collect + persist */
@@ -445,22 +471,21 @@ function collectState(){
   return state;
 }
 function persist(){
-  localStorage.setItem('ffws_tierlist', JSON.stringify(collectState()));
+  localStorage.setItem(LOCAL_KEY, JSON.stringify(collectState()));
 }
 
 /* Reset button */
 document.getElementById('resetBtn').addEventListener('click', ()=>{
-  localStorage.removeItem('ffws_tierlist');
+  localStorage.removeItem(LOCAL_KEY);
   Object.keys(saved).forEach(k=> delete saved[k]);
   render();
 });
 
-/* Export PNG (tiers only) — inject watermark in the cloned DOM, behind cards */
+/* Export PNG (tiers only) — inject watermark behind cards in the cloned DOM */
 async function exportPNG(){
   const target = document.getElementById('tiersPanel');
 
-  // Hide the CSS ::before watermark so we don't double-stamp it
-  target.classList.add('exporting');
+  target.classList.add('exporting'); // hide ::before
 
   // temporarily expand inner pools
   const pools = target.querySelectorAll('.pool');
@@ -470,10 +495,9 @@ async function exportPNG(){
   const canvas = await html2canvas(target, {
     useCORS: true,
     allowTaint: false,
-    backgroundColor: null,   // keep transparent; change to a color if you prefer a solid BG
+    backgroundColor: null,
     scale: Math.max(2.5, window.devicePixelRatio || 2),
     onclone: (doc) => {
-      // Add a watermark <img> inside cloned tiersPanel, under content
       const t = doc.getElementById('tiersPanel');
       const wm = doc.createElement('img');
       wm.src = 'https://i.imgur.com/C8hLztI.png';
@@ -500,7 +524,7 @@ async function exportPNG(){
   a.download = 'ffws-tier-list.png';
   a.href = dataUrl;
   if (typeof a.download === 'undefined') {
-    window.open(dataUrl, '_blank');  // iOS Safari fallback
+    window.open(dataUrl, '_blank');  // iOS fallback
   } else {
     a.click();
   }
