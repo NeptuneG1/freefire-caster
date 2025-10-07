@@ -6,21 +6,24 @@
 <title>FFWS Global Finals — Tier List</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
   :root{
     --ink:#0a0a0a;
-    --bg1:#FFD24B;      /* poster yellow */
-    --bg2:#FF8B2B;      /* orange sweep  */
-    --plate:#0d0d0f;    /* black plate   */
-    --edge:#ffbf2b;     /* gold edge     */
+    --bg1:#FFD24B;
+    --bg2:#FF8B2B;
+    --plate:#0d0d0f;
+    --edge:#ffbf2b;
     --edge-dim:#7a5a11;
     --muted:#bdbdbd;
-    --hdr:64px;         /* will be updated by JS */
-    --vh:100vh;         /* will be updated by JS */
+    --hdr:64px;
+    --vh:100vh;
+    --masthead-h: 136px;
+    --masthead-pad: 18px;
   }
   *{box-sizing:border-box}
-  html,body{height:100%; overflow:hidden;} /* no page scroll */
+  html,body{height:100%; overflow:hidden;}
   body{
     margin:0; color:#fff;
     font-family:Inter,system-ui,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;
@@ -32,24 +35,21 @@
   /* Header */
   header{
     position:sticky; top:0; z-index:5;
-    height:var(--hdr);
+    min-height:var(--masthead-h);
     display:flex; align-items:center;
     background:linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.15));
     border-bottom:3px solid var(--edge);
     backdrop-filter:saturate(120%) blur(2px);
+    padding-block: var(--masthead-pad);
   }
   .bar{max-width:1280px; width:100%; margin:0 auto; padding:0 12px; display:flex; gap:14px; align-items:center}
-  /* Bigger logo + gold frame + depth */
   .logo{
-    height:84px;                 /* was 44px */
+    height:calc(var(--masthead-h) - 34px);
     padding:10px;
     background:#0b0a07;
     border:2.5px solid var(--edge);
     border-radius:14px;
-    box-shadow:
-      0 6px 0 var(--edge-dim),
-      0 0 0 6px #000 inset,
-      0 18px 40px rgba(0,0,0,.35);
+    box-shadow:0 6px 0 var(--edge-dim), 0 0 0 6px #000 inset, 0 18px 40px rgba(0,0,0,.35);
   }
   .logo-wrap{ position:relative; display:inline-block }
   .logo-wrap::before{
@@ -63,20 +63,26 @@
     opacity:.55; pointer-events:none;
   }
 
-  .title{ font-size:clamp(28px,4vw,46px); } /* give the heading more weight next to the bigger crest */
-
   .title{
     font-family:"Bebas Neue", Inter, sans-serif;
     letter-spacing:.6px; font-size:clamp(22px, 3.6vw, 36px);
     color:#161616; text-shadow:0 1px 0 #ffd77a, 0 2px 0 #f9b93a, 0 2px 6px rgba(0,0,0,.25);
   }
-  .chip{margin-left:auto; font-weight:800; color:#1b1b1b; background:#ffe28f; border:2px solid #7a5a11; border-radius:999px; padding:6px 10px}
 
-  /* Workspace split: left UNRANKED, right TIERS */
+  /* auth buttons */
+  .auth{margin-left:auto; display:flex; align-items:center; gap:8px}
+  .btn{
+    appearance:none; border:2px solid #7a5a11; background:#ffe28f; color:#1b1b1b;
+    font-weight:800; padding:6px 10px; border-radius:999px; cursor:pointer;
+  }
+  .btn.secondary{ background:#232323; color:#ffd46d; border-color:#4e3f16 }
+  .user{color:#1b1b1b; background:#ffe28f; border:2px solid #7a5a11; border-radius:999px; padding:6px 10px; font-weight:800}
+
+  /* Workspace split */
   .workspace{
     height:calc(var(--vh) - var(--hdr));
     max-width:1280px; margin:12px auto; padding:0 12px;
-    display:grid; grid-template-columns: 340px 1fr; gap:12px;
+    display:grid; grid-template-columns: minmax(620px, 42vw) 1fr; gap:12px;
   }
   
   .panel{
@@ -84,7 +90,7 @@
     border:2px solid var(--edge);
     box-shadow:0 4px 0 var(--edge-dim), 0 10px 30px rgba(0,0,0,.25);
     border-radius:16px;
-    display:flex; flex-direction:column; min-height:0; /* important for nested overflow */
+    display:flex; flex-direction:column; min-height:0;
   }
   .head{
     display:flex; align-items:center; gap:10px;
@@ -99,10 +105,15 @@
   .head h2{margin:0; font-size:16px; letter-spacing:.4px; color:#ffe9b0}
   .sub{margin-left:6px; color:#c7b278; font-size:12px}
 
-  /* Pools (scroll inside panel if overflow) */
+  /* Pools */
   .pool{
     padding:10px; overflow:auto; min-height:0;
-    display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:10px;
+    display:grid; gap:10px;
+    grid-template-columns:repeat(auto-fill, minmax(200px,1fr));
+  }
+  /* LEFT pool specifically => 2 columns wide cards so badges never overflow */
+  #tier-UNRANKED{
+    grid-template-columns: repeat(2, minmax(300px,1fr));
   }
 
   /* Team card */
@@ -112,16 +123,17 @@
     border:2px solid #272727; border-radius:12px; padding:8px;
     cursor:grab; user-select:none;
     transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+    overflow:hidden;
   }
   .card:active{cursor:grabbing; transform:scale(.98)}
   .card:hover{border-color:#3b3b3b; box-shadow:0 0 0 2px #000 inset, 0 6px 18px rgba(0,0,0,.35)}
   .crest{width:36px; height:36px; border-radius:10px; object-fit:contain; background:#111; padding:6px; border:1px solid #2a2a2a}
-  .name{font-weight:800; color:#f6f6f6; letter-spacing:.2px; font-size:13px}
-  .tag{margin-left:auto; font-size:10px; font-weight:800; padding:2px 6px; border-radius:999px; border:1px solid #4e3f16; background:#2b240e; color:#ffd46d}
+  .name{font-weight:800; color:#f6f6f6; letter-spacing:.2px; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .tag{margin-left:auto; font-size:10px; font-weight:800; padding:2px 8px; border-radius:999px; border:1px solid #4e3f16; background:#2b240e; color:#ffd46d; flex:0 0 auto}
 
-  /* Tiers grid on the right */
+  /* Tiers grid */
   .tiers{
-    display:grid; gap:12px; padding:10px; min-height:0; /* allow grid to fill column */
+    display:grid; gap:12px; padding:10px; min-height:0;
     grid-template-columns: repeat(2, minmax(0,1fr));
     grid-template-rows: repeat(3, 1fr);
     height:100%;
@@ -129,15 +141,14 @@
       "S A"
       "B C"
       "D D";
+    position:relative;
   }
-  .tiers{ position:relative }
   .tiers::before{
     content:"";
     position:absolute; inset:6% 10%;
     background:url("https://i.imgur.com/C8hLztI.png") center/360px no-repeat;
     opacity:.07; mix-blend-mode:multiply; pointer-events:none;
   }
-
   .tier{min-height:0; display:flex; flex-direction:column}
   #tierwrap-S{grid-area:S}
   #tierwrap-A{grid-area:A}
@@ -145,95 +156,31 @@
   #tierwrap-C{grid-area:C}
   #tierwrap-D{grid-area:D}
 
-  /* Drag visuals */
   .pool.dragover{outline:2px dashed #ffcc55; outline-offset:4px; background:#14141480}
   @keyframes crestPulse{ 0%,100%{transform:translateZ(0) scale(1)} 50%{transform:scale(1.02)} }
   .logo-wrap:hover .logo{ animation:crestPulse .8s ease both }
-
-  /* --- Masthead: make logo breathe --- */
-  :root{
-    /* tune these if you want the header even taller/lower */
-    --masthead-h: 136px;   /* was ~96–110 */
-    --masthead-pad: 18px;
-  }
-  
-  .header, .masthead, header.header-bar{
-    min-height: var(--masthead-h);
-    padding-block: var(--masthead-pad);
-    overflow: visible;                 /* don't crop the badge */
-  }
-  .header .brand,
-  .masthead .brand,
-  .header .ffws-logo,
-  .masthead .ffws-logo,
-  .masthead-logo{
-    height: calc(var(--masthead-h) - 34px);   /* logo scales with header */
-    width: auto;
-    display: block;
-  }
-  
-  /* --- Pool: 2 columns, wider cards so region tag fits --- */
-  .pool { 
-    /* make the left panel wide enough for 2 cards + badges */
-    flex: 0 0 clamp(620px, 38vw, 760px);
-  }
-  
-  .pool-list, .pool .list {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(300px, 1fr));
-    gap: 12px;
-  }
-  
-  /* Team card layout: keep badge inside, name truncates nicely */
-  .team-card {
-    display: flex; align-items: center; gap: 12px;
-    padding: 12px 14px;
-    overflow: hidden;                 /* keeps everything inside the card */
-  }
-  .team-card .name { 
-    flex: 1 1 auto; 
-    overflow: hidden; 
-    text-overflow: ellipsis; 
-    white-space: nowrap; 
-  }
-  .team-card .meta { 
-    margin-left: auto; 
-    display: inline-flex; 
-    align-items: center; 
-    gap: 8px; 
-    flex-shrink: 0;                   /* don't let the badge shrink/overflow */
-  }
-  .team-card .badge, .team-card .region-badge {
-    padding: 4px 10px;
-    border-radius: 999px;
-    white-space: nowrap;
-    flex: 0 0 auto;                   /* stay within the card, not past it */
-  }
-  
-  /* Responsive fallback: 1 column when space is tight */
-  @media (max-width: 1200px){
-    .pool { flex-basis: 100%; }
-    .pool-list, .pool .list { grid-template-columns: 1fr; }
-  }
-
-  
 </style>
 </head>
 <body>
 
 <header>
   <div class="bar">
-    <!-- was: <img class="logo" src="https://i.imgur.com/C8hLztI.png" alt="FFWS"> -->
     <div class="logo-wrap">
       <img class="logo" src="https://i.imgur.com/C8hLztI.png" alt="FFWS Global Finals">
     </div>
-
     <div class="title">FFWS Global Finals 2025 — Tier List</div>
+
+    <!-- Auth area -->
+    <div class="auth" id="auth">
+      <button class="btn" id="signin">Sign in</button>
+      <button class="btn secondary" id="signout" hidden>Sign out</button>
+      <span class="user" id="user" hidden></span>
+    </div>
   </div>
 </header>
 
 <div class="workspace">
-  <!-- LEFT: UNRANKED rail -->
+  <!-- LEFT: UNRANKED -->
   <section class="panel">
     <div class="head">
       <div class="badge">POOL</div>
@@ -243,29 +190,25 @@
     <div class="pool" id="tier-UNRANKED"></div>
   </section>
 
-  <!-- RIGHT: TIERS grid -->
+  <!-- RIGHT: TIERS -->
   <section class="panel">
     <div class="tiers">
       <div class="tier" id="tierwrap-S">
         <div class="head"><div class="badge">S</div><h2>Championship Favorites</h2></div>
         <div class="pool" id="tier-S"></div>
       </div>
-
       <div class="tier" id="tierwrap-A">
         <div class="head"><div class="badge">A</div><h2>Contenders</h2></div>
         <div class="pool" id="tier-A"></div>
       </div>
-
       <div class="tier" id="tierwrap-B">
         <div class="head"><div class="badge">B</div><h2>Dark Horses</h2></div>
         <div class="pool" id="tier-B"></div>
       </div>
-
       <div class="tier" id="tierwrap-C">
         <div class="head"><div class="badge">C</div><h2>Outside Shots</h2></div>
         <div class="pool" id="tier-C"></div>
       </div>
-
       <div class="tier" id="tierwrap-D">
         <div class="head"><div class="badge">D</div><h2>Long Shots</h2></div>
         <div class="pool" id="tier-D"></div>
@@ -275,7 +218,7 @@
 </div>
 
 <script>
-/* Keep viewport perfectly sized even on mobile browser chrome changes */
+/* Keep viewport sized */
 function setVH(){
   document.documentElement.style.setProperty('--vh', window.innerHeight + 'px');
   const hdr = document.querySelector('header').offsetHeight || 64;
@@ -283,7 +226,7 @@ function setVH(){
 }
 setVH(); window.addEventListener('resize', setVH);
 
-/* ===== Teams (your logos) ===== */
+/* ===== Teams ===== */
 const TEAMS = [
   { name:"ALL GAMERS GLOBAL",   region:"SEA",   logo:"https://i.imgur.com/KVvhezz.png" },
   { name:"BURIRAM UNITED",      region:"SEA",   logo:"https://i.imgur.com/ngHig8q.png" },
@@ -305,7 +248,7 @@ const TEAMS = [
   { name:"WAG",                 region:"SEA",   logo:"https://i.imgur.com/EiRHnoW.png" },
 ];
 
-/* Pools */
+/* Lanes */
 const lanes = {
   UNRANKED: document.getElementById('tier-UNRANKED'),
   S: document.getElementById('tier-S'),
@@ -315,8 +258,9 @@ const lanes = {
   D: document.getElementById('tier-D'),
 };
 
-/* Persisted state */
-const saved = JSON.parse(localStorage.getItem('ffws_tierlist')||'{}');
+/* Local state */
+const LOCAL_KEY = 'ffws_tierlist';
+const saved = JSON.parse(localStorage.getItem(LOCAL_KEY)||'{}');
 function laneFor(team){
   for(const k of Object.keys(saved)){
     if((saved[k]||[]).includes(team.name)) return k;
@@ -324,7 +268,7 @@ function laneFor(team){
   return 'UNRANKED';
 }
 
-/* Card factory */
+/* Card */
 function card(team){
   const el = document.createElement('div');
   el.className = 'card';
@@ -350,7 +294,7 @@ function render(){
   Object.keys(order).forEach(k => order[k].forEach(t => lanes[k].appendChild(card(t))));
 }
 
-/* Drag & drop wiring */
+/* Drag & drop */
 document.querySelectorAll('.pool').forEach(pool=>{
   pool.addEventListener('dragover', e=>{
     e.preventDefault(); e.dataTransfer.dropEffect='move';
@@ -366,15 +310,91 @@ document.querySelectorAll('.pool').forEach(pool=>{
   });
 });
 
-function persist(){
+function collectState(){
   const state = {};
   Object.entries(lanes).forEach(([lane, el])=>{
     state[lane] = [...el.querySelectorAll('.card')].map(c=>c.dataset.team);
   });
-  localStorage.setItem('ffws_tierlist', JSON.stringify(state));
+  return state;
+}
+function persist(){
+  const state = collectState();
+  localStorage.setItem(LOCAL_KEY, JSON.stringify(state));
+  saveCloud(state); // no-op if not signed in
 }
 
+/* ---------- Supabase Auth + Cloud Save ---------- */
+const SB_URL = 'https://gkugecflfddkpitlrmws.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+const $signin = document.getElementById('signin');
+const $signout = document.getElementById('signout');
+const $user = document.getElementById('user');
+
+let currentUser = null;
+
+$signin.addEventListener('click', async ()=>{
+  await sb.auth.signInWithOAuth({ provider: 'google' }); // change provider if needed
+});
+$signout.addEventListener('click', async ()=>{
+  await sb.auth.signOut();
+  currentUser = null;
+  $user.hidden = true;
+  $signout.hidden = true;
+  $signin.hidden = false;
+});
+
+sb.auth.onAuthStateChange(async (_evt, session)=>{
+  currentUser = session?.user || null;
+  if(currentUser){
+    $user.textContent = currentUser.email || 'Signed in';
+    $user.hidden = false;
+    $signout.hidden = true; // show after we try to load (small visual polish)
+    await loadCloud();
+    $signout.hidden = false;
+    $signin.hidden = true;
+  }else{
+    $user.hidden = true; $signout.hidden = true; $signin.hidden = false;
+  }
+});
+
+/* Load cloud state (if exists), else keep local */
+async function loadCloud(){
+  try{
+    const { data, error } = await sb
+      .from('tierlists')
+      .select('data')
+      .eq('user_id', currentUser.id)
+      .single();
+    if(error && error.code !== 'PGRST116') console.error(error);
+    if(data?.data){
+      localStorage.setItem(LOCAL_KEY, JSON.stringify(data.data));
+      Object.assign(saved, data.data); // mutate in-place used by laneFor
+      render();
+    }
+  }catch(e){ console.error(e); }
+}
+
+/* Save to cloud (debounced) */
+let saveTimer=null;
+function saveCloud(state){
+  if(!currentUser) return;
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(async ()=>{
+    try{
+      const payload = { user_id: currentUser.id, data: state, updated_at: new Date().toISOString() };
+      const { error } = await sb.from('tierlists').upsert(payload, { onConflict:'user_id' });
+      if(error) console.error(error);
+    }catch(e){ console.error(e); }
+  }, 300);
+}
+
+/* Kick things off */
 render();
+sb.auth.getSession().then(({ data:{ session }})=>{
+  if(session?.user){ currentUser = session.user; $signin.hidden=true; $user.textContent=currentUser.email||'Signed in'; $user.hidden=false; $signout.hidden=false; loadCloud(); }
+});
 </script>
 </body>
 </html>
