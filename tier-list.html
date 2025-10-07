@@ -21,7 +21,7 @@
     --masthead-h: 136px; --masthead-pad: 18px;
   }
   *{box-sizing:border-box}
-  html,body{height:100%; overflow:hidden}      /* desktop: no scroll */
+  html,body{height:100%; overflow:auto}  /* single column -> page can scroll */
   body{
     margin:0; color:#fff; font-family:Inter,system-ui,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;
     background:
@@ -40,7 +40,7 @@
     padding-block: var(--masthead-pad);
   }
   .bar{
-    max-width: clamp(1280px, 92vw, 1680px);
+    max-width: clamp(980px, 92vw, 1200px);
     width:100%; margin:0 auto; padding:0 12px;
     display:flex; gap:14px; align-items:center
   }
@@ -50,7 +50,6 @@
     box-shadow:0 6px 0 var(--edge-dim), 0 0 0 6px #000 inset, 0 18px 40px rgba(0,0,0,.35);
   }
   .logo-wrap{ position:relative; display:inline-block }
-  .logo-wrap:hover .logo{ transform:translateY(-1px) }
   .title{
     font-family:"Bebas Neue", Inter, sans-serif;
     letter-spacing:.6px; font-size:clamp(22px, 3.6vw, 36px);
@@ -65,27 +64,19 @@
   .btn.primary{background:#ffe28f; color:#1b1b1b}
   .btn.dark{background:#232323; color:#ffd46d; border-color:#4e3f16}
 
-  /* ===== Layout =====
-     Tiers (left) and Pool (right) are ALWAYS side-by-side on desktop.
-     The left track is ~2/3, right track ~1/3, with sensible min widths. */
+  /* === Single-column canvas === */
   .workspace{
-    height:calc(var(--vh) - var(--hdr));
-    max-width: clamp(1280px, 92vw, 1680px);
-    margin:12px auto; padding:0 12px;
-    display:grid;
-    grid-template-columns: minmax(760px, 2fr) minmax(420px, 1fr);
-    column-gap:16px; row-gap:0;
-    align-items: stretch;
+    max-width: clamp(980px, 92vw, 1200px);
+    margin:12px auto 24px auto; padding:0 12px;
+    display:flex; flex-direction:column; gap:16px;
   }
-  #tiersPanel{ grid-column: 1; position:relative; padding:12px; min-height:0; height:100% }
-  #poolPanel { grid-column: 2; height:100% }
 
   .panel{
     background:linear-gradient(180deg, #191919, #0e0e10);
     border:2px solid var(--edge);
     box-shadow:0 4px 0 var(--edge-dim), 0 10px 30px rgba(0,0,0,.25);
     border-radius:16px;
-    display:flex; flex-direction:column; min-height:0; height:100%;
+    display:flex; flex-direction:column; min-height:0;
   }
 
   .head{display:flex; align-items:center; gap:10px; padding:10px 12px; border-bottom:1px dashed #4a3a14}
@@ -97,29 +88,34 @@
   .head h2{margin:0; font-size:16px; letter-spacing:.4px; color:#ffe9b0}
   .head .spacer{flex:1}
 
-  /* Pools */
+  /* Pools (grid lists) */
   .pool{
     padding:10px; overflow:auto; min-height:0;
-    display:grid; gap:10px; grid-template-columns:repeat(auto-fill, minmax(200px,1fr));
+    display:grid; gap:10px; grid-template-columns:repeat(2, minmax(240px,1fr));
   }
-  /* Unranked pool: 2 columns on desktop */
-  #tier-UNRANKED{grid-template-columns: repeat(2, minmax(250px,1fr))}
+  /* Unranked can expand to 3 columns on wide */
+  @media (min-width:1100px){
+    #tier-UNRANKED{ grid-template-columns:repeat(3, minmax(240px,1fr)); }
+  }
+  @media (max-width:640px){
+    .pool, #tier-UNRANKED{ grid-template-columns:1fr; }
+  }
 
   /* Team card */
   .card{
     display:flex; align-items:center; gap:8px; background:var(--plate);
-    border:2px solid #272727; border-radius:12px; padding:8px; cursor:grab; user-select:none; overflow:hidden;
+    border:2px solid #272727; border-radius:12px; padding:10px; cursor:grab; user-select:none; overflow:hidden;
     transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
-    min-height:48px;
+    min-height:56px;                                  /* comfy height on phones/PC */
   }
   .card:hover{border-color:#3b3b3b; box-shadow:0 0 0 2px #000 inset, 0 6px 18px rgba(0,0,0,.35)}
   .card:active{cursor:grabbing; transform:scale(.98)}
   .card.selected{ outline:3px solid #ffcc55; }
-  .crest{width:36px; height:36px; border-radius:10px; object-fit:contain; background:#111; padding:6px; border:1px solid #2a2a2a}
-  .name{font-weight:800; color:#f6f6f6; letter-spacing:.2px; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-  .tag{margin-left:auto; font-size:10px; font-weight:800; padding:2px 8px; border-radius:999px; border:1px solid #4e3f16; background:#2b240e; color:#ffd46d; flex:0 0 auto}
+  .crest{width:40px; height:40px; border-radius:10px; object-fit:contain; background:#111; padding:6px; border:1px solid #2a2a2a}
+  .name{font-weight:800; color:#f6f6f6; letter-spacing:.2px; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .tag{margin-left:auto; font-size:11px; font-weight:800; padding:3px 9px; border-radius:999px; border:1px solid #4e3f16; background:#2b240e; color:#ffd46d; flex:0 0 auto}
 
-  /* Tiers grid (with watermark BEHIND the content) */
+  /* Tiers grid (kept as 2x2 + wide D lane) */
   #tiersPanel{ position:relative; }
   #tiersPanel::before{
     content:""; position:absolute; inset:6% 10%;
@@ -130,59 +126,29 @@
   #tiersPanel.exporting::before{ content:none !important; }  /* hide watermark while exporting */
 
   .tiers{
-    position:relative; z-index:1;                /* above the watermark */
+    position:relative; z-index:1;
     display:grid; gap:12px; min-height:0;
     grid-template-columns: repeat(2, minmax(0,1fr));
     grid-template-rows: repeat(3, 1fr);
-    height:100%;
     grid-template-areas:"S A" "B C" "D D";
   }
   .tier{min-height:0; display:flex; flex-direction:column}
   #tierwrap-S{grid-area:S} #tierwrap-A{grid-area:A} #tierwrap-B{grid-area:B} #tierwrap-C{grid-area:C} #tierwrap-D{grid-area:D}
-  /* Roomier drop zones (desktop + mobile) */
-  #tiersPanel .pool{ min-height:120px; padding:12px; border-radius:12px; }
+
+  /* Roomy drop zones */
+  #tiersPanel .pool{ min-height:160px; padding:14px; border-radius:12px; }
 
   /* Drag/tap visuals */
   .pool.dragover, .pool.tap-target{
     outline:3px dashed #ffcc55; outline-offset:6px; background:#141414a6; border-radius:12px;
   }
 
-  /* ======= Mobile adaptations ======= */
-  @media (max-width: 900px){
-    html,body{ overflow:auto }                         /* allow page scroll on phones */
+  /* Header layout tweaks for narrow phones */
+  @media (max-width:900px){
     header .bar{ gap:10px; flex-wrap:wrap }
     .right-actions{ margin-left:0; width:100%; justify-content:flex-start }
-
-    .workspace{
-      height:auto; max-width:100%; margin:8px auto; padding:0 8px;
-      display:grid; grid-template-columns: 1fr; row-gap:14px;  /* stack with spacing */
-    }
-    #tiersPanel{ order:1 }
-    #poolPanel { order:2 }
-
-    #tier-UNRANKED{ grid-template-columns: 1fr }       /* pool becomes 1 column */
-
-    /* Bigger cards for fingers */
-    .card{ padding:12px 14px; min-height:58px; }
-    .crest{ width:40px; height:40px; border-radius:12px; }
-    .name{ font-size:14px; }
-    .tag{ font-size:11px; padding:3px 9px; }
-
-    /* Easier tier drop zones */
-    #tiersPanel .pool{ min-height:160px; padding:16px; }
-
     .title{ font-size: clamp(20px, 5.5vw, 28px) }
     .logo{ height:72px }
-  }
-
-  /* Slightly larger rows on very big screens so drop targets feel roomy */
-  @media (min-width: 1500px){
-    #tiersPanel .pool{ min-height:140px; padding:14px; }
-  }
-
-  /* Prefer modern viewport on mobile if supported */
-  @supports (height: 100dvh){
-    .workspace{ height:calc(100dvh - var(--hdr)); }
   }
 </style>
 </head>
@@ -196,29 +162,21 @@
     <div class="title">FFWS Global Finals 2025 — Tier List</div>
 
     <div class="right-actions">
-      <!-- Shows the logged-in email (if using auth) -->
       <span class="chip" id="user-info" title="logged-in email"></span>
       <button class="btn dark" onclick="exportPNG()">Save Tier PNG</button>
-      <!-- Logout only matters if you keep Supabase auth -->
       <button class="btn primary" onclick="logout()">Logout</button>
     </div>
   </div>
 </header>
 
 <div class="workspace">
-  <!-- POOL (right on desktop, second on mobile) -->
-  <section class="panel" id="poolPanel">
-    <div class="head">
-      <div class="badge">POOL</div>
-      <h2>Unranked Teams</h2>
-      <div class="spacer"></div>
-      <button class="btn dark" id="resetBtn">Reset</button>
-    </div>
-    <div class="pool" id="tier-UNRANKED"></div>
-  </section>
-
-  <!-- TIERS (left on desktop, first on mobile) -->
+  <!-- TIERS (always on top) -->
   <section class="panel" id="tiersPanel">
+    <div class="head">
+      <div class="badge">TIERS</div>
+      <h2>Drag teams into S → D</h2>
+    </div>
+
     <div class="tiers">
       <div class="tier" id="tierwrap-S">
         <div class="head"><div class="badge">S</div><h2>Championship Favorites</h2></div>
@@ -241,6 +199,17 @@
         <div class="pool" id="tier-D"></div>
       </div>
     </div>
+  </section>
+
+  <!-- POOL (always below) -->
+  <section class="panel" id="poolPanel">
+    <div class="head">
+      <div class="badge">POOL</div>
+      <h2>Unranked Teams</h2>
+      <div class="spacer"></div>
+      <button class="btn dark" id="resetBtn">Reset</button>
+    </div>
+    <div class="pool" id="tier-UNRANKED"></div>
   </section>
 </div>
 
@@ -270,7 +239,7 @@
 </script>
 
 <script>
-/* viewport helper */
+/* viewport helper (for potential future use) */
 function setVH(){
   document.documentElement.style.setProperty('--vh', window.innerHeight + 'px');
   const hdr = document.querySelector('header').offsetHeight || 64;
@@ -283,24 +252,24 @@ const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
 /* Teams */
 const TEAMS = [
-  { name:"ALL GAMERS GLOBAL",   region:"SEA",   logo:"https://i.imgur.com/KVvhezz.png" },
-  { name:"BURIRAM UNITED",      region:"SEA",   logo:"https://i.imgur.com/ngHig8q.png" },
-  { name:"CLEAR VISION ESPORTS",region:"MEA",   logo:"https://i.imgur.com/AXkfYHk.png" },
-  { name:"E1 SPORTS",           region:"BR",    logo:"https://i.imgur.com/bddVsgm.png" },
-  { name:"EVOS DIVINE",         region:"EWC",   logo:"https://i.imgur.com/xWCHSwf.png" },
-  { name:"FLUXO",               region:"BR",    logo:"https://i.imgur.com/OGJ5A7r.png" },
-  { name:"GOW ESPORTS",         region:"SEA",   logo:"https://i.imgur.com/CfmGEX6.png" },
-  { name:"HEAVY",               region:"SEA",   logo:"https://i.imgur.com/vqVyJSJ.png" },
-  { name:"HOTSHOT ESPORTS",     region:"PK",    logo:"https://i.imgur.com/f8ehquU.png" },
-  { name:"NOVA LEGION",         region:"LATAM", logo:"https://i.imgur.com/iZmL3FT.png" },
-  { name:"P ESPORTS",           region:"SEA",   logo:"https://i.imgur.com/kFcOez3.png" },
-  { name:"RAINBOW7",            region:"LATAM", logo:"https://i.imgur.com/95lg1Dp.png" },
-  { name:"RED CLIFF",           region:"BD",    logo:"https://i.imgur.com/kX5wBEZ.png" },
-  { name:"RED HAWKS",           region:"BD",    logo:"https://i.imgur.com/E2MJQdH.png" },
-  { name:"RRQ KAZU",            region:"SEA",   logo:"https://i.imgur.com/Afw7WMp.png" },
-  { name:"TEAM FALCONS",        region:"SEA",   logo:"https://i.imgur.com/DwPXnv1.png" },
-  { name:"TEAM SOLID",          region:"BR",    logo:"https://i.imgur.com/3Chm42Y.png" },
-  { name:"WAG",                 region:"SEA",   logo:"https://i.imgur.com/EiRHnoW.png" },
+  { name:"AG",     region:"SEA",   logo:"https://i.imgur.com/KVvhezz.png" },
+  { name:"BRU",    region:"SEA",   logo:"https://i.imgur.com/ngHig8q.png" },
+  { name:"CV",     region:"MEA",   logo:"https://i.imgur.com/AXkfYHk.png" },
+  { name:"E1",     region:"BR",    logo:"https://i.imgur.com/bddVsgm.png" },
+  { name:"EVOS",   region:"EWC",   logo:"https://i.imgur.com/xWCHSwf.png" },
+  { name:"FX",     region:"BR",    logo:"https://i.imgur.com/OGJ5A7r.png" },
+  { name:"GOW",    region:"SEA",   logo:"https://i.imgur.com/CfmGEX6.png" },
+  { name:"HEV",    region:"SEA",   logo:"https://i.imgur.com/vqVyJSJ.png" },
+  { name:"HS",     region:"PK",    logo:"https://i.imgur.com/f8ehquU.png" },
+  { name:"NOVA",   region:"LATAM", logo:"https://i.imgur.com/iZmL3FT.png" },
+  { name:"PE",     region:"SEA",   logo:"https://i.imgur.com/kFcOez3.png" },
+  { name:"R7",     region:"LATAM", logo:"https://i.imgur.com/95lg1Dp.png" },
+  { name:"RC",     region:"BD",    logo:"https://i.imgur.com/kX5wBEZ.png" },
+  { name:"RHK",    region:"BD",    logo:"https://i.imgur.com/E2MJQdH.png" },
+  { name:"RRQ",    region:"SEA",   logo:"https://i.imgur.com/Afw7WMp.png" },
+  { name:"FLCN",   region:"SEA",   logo:"https://i.imgur.com/DwPXnv1.png" },
+  { name:"TS",     region:"BR",    logo:"https://i.imgur.com/3Chm42Y.png" },
+  { name:"WAG",    region:"SEA",   logo:"https://i.imgur.com/EiRHnoW.png" },
 ];
 
 /* Lanes + local storage */
@@ -349,7 +318,7 @@ function render(){
   const order = {S:[],A:[],B:[],C:[],D:[],UNRANKED:[]};
   TEAMS.forEach(t => order[laneFor(t)].push(t));
   Object.keys(order).forEach(k => order[k].forEach(t => lanes[k].appendChild(card(t))));
-  wireTapTargets();   // refresh tap targets after re-render
+  wireTapTargets();
 }
 
 /* Drag & drop (desktop) */
@@ -385,7 +354,7 @@ function clearSelection(){
 function wireTapTargets(){
   if(!isTouch) return;
   document.querySelectorAll('.pool').forEach(pool=>{
-    if(pool.dataset.tapwired === '1') return;   // avoid duplicate handlers
+    if(pool.dataset.tapwired === '1') return;
     pool.dataset.tapwired = '1';
     pool.addEventListener('click', () => {
       if(selectedCard){
@@ -420,7 +389,7 @@ document.getElementById('resetBtn').addEventListener('click', ()=>{
 async function exportPNG(){
   const target = document.getElementById('tiersPanel');
 
-  // Hide watermark (::before) while exporting so it never overlays cards
+  // Hide watermark while exporting so it can't overlay the cards
   target.classList.add('exporting');
 
   // temporarily expand inner pools
@@ -431,7 +400,7 @@ async function exportPNG(){
   const canvas = await html2canvas(target, {
     useCORS:true,
     allowTaint:false,
-    backgroundColor:null,                          // keep the panel background
+    backgroundColor:null,
     scale: Math.max(2.5, window.devicePixelRatio || 2)
   });
 
