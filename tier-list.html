@@ -6,7 +6,11 @@
 <title>FFWS Global Finals — Tier List</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@500;700&display=swap" rel="stylesheet">
+
+<!-- Supabase SDK  ✅  (REMOVE if you don't want auth) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- html2canvas for PNG export -->
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <style>
@@ -35,7 +39,11 @@
     backdrop-filter:saturate(120%) blur(2px);
     padding-block: var(--masthead-pad);
   }
-  .bar{max-width:1280px; width:100%; margin:0 auto; padding:0 12px; display:flex; gap:14px; align-items:center}
+  .bar{
+    max-width: clamp(1280px, 92vw, 1680px);     /* wider on large screens */
+    width:100%; margin:0 auto; padding:0 12px;
+    display:flex; gap:14px; align-items:center
+  }
   .logo{
     height:calc(var(--masthead-h) - 34px);
     padding:10px; background:#0b0a07; border:2.5px solid var(--edge); border-radius:14px;
@@ -60,20 +68,22 @@
   /* Layout: TIERS left (wide), POOL right (narrow) */
   .workspace{
     height:calc(var(--vh) - var(--hdr));
-    max-width:1280px; margin:12px auto; padding:0 12px;
+    max-width: clamp(1280px, 92vw, 1680px);   /* wider canvas on big screens */
+    margin:12px auto; padding:0 12px;
     display:grid;
-    grid-template-columns: 1fr minmax(520px, 34vw);
+    grid-template-columns: minmax(780px, 1fr) minmax(520px, 30%);
     gap:12px;
+    align-items: stretch;                      /* both panels same height */
   }
-  #tiersPanel{ grid-column: 1; position:relative; padding:10px; min-height:0 }
-  #poolPanel { grid-column: 2 }
+  #tiersPanel{ grid-column: 1; position:relative; padding:12px; min-height:0; height:100% }
+  #poolPanel { grid-column: 2; height:100% }
 
   .panel{
     background:linear-gradient(180deg, #191919, #0e0e10);
     border:2px solid var(--edge);
     box-shadow:0 4px 0 var(--edge-dim), 0 10px 30px rgba(0,0,0,.25);
     border-radius:16px;
-    display:flex; flex-direction:column; min-height:0;
+    display:flex; flex-direction:column; min-height:0; height:100%;
   }
 
   .head{display:flex; align-items:center; gap:10px; padding:10px 12px; border-bottom:1px dashed #4a3a14}
@@ -90,18 +100,19 @@
     padding:10px; overflow:auto; min-height:0;
     display:grid; gap:10px; grid-template-columns:repeat(auto-fill, minmax(200px,1fr));
   }
-  /* Pool rail = 2 columns wide with safe room for region chip */
-  #tier-UNRANKED{grid-template-columns: repeat(2, minmax(240px,1fr))}
+  /* Pool rail = 2 columns on desktop, with safe room for region chip */
+  #tier-UNRANKED{grid-template-columns: repeat(2, minmax(250px,1fr))}
 
   /* Team card */
   .card{
     display:flex; align-items:center; gap:8px; background:var(--plate);
     border:2px solid #272727; border-radius:12px; padding:8px; cursor:grab; user-select:none; overflow:hidden;
     transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+    min-height:48px;
   }
   .card:hover{border-color:#3b3b3b; box-shadow:0 0 0 2px #000 inset, 0 6px 18px rgba(0,0,0,.35)}
   .card:active{cursor:grabbing; transform:scale(.98)}
-  .card.selected{ outline:2px solid #ffcc55; }
+  .card.selected{ outline:3px solid #ffcc55; }
   .crest{width:36px; height:36px; border-radius:10px; object-fit:contain; background:#111; padding:6px; border:1px solid #2a2a2a}
   .name{font-weight:800; color:#f6f6f6; letter-spacing:.2px; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   .tag{margin-left:auto; font-size:10px; font-weight:800; padding:2px 8px; border-radius:999px; border:1px solid #4e3f16; background:#2b240e; color:#ffd46d; flex:0 0 auto}
@@ -123,7 +134,9 @@
   #tierwrap-S{grid-area:S} #tierwrap-A{grid-area:A} #tierwrap-B{grid-area:B} #tierwrap-C{grid-area:C} #tierwrap-D{grid-area:D}
 
   /* Drag/tap visuals */
-  .pool.dragover, .pool.tap-target{outline:2px dashed #ffcc55; outline-offset:4px; background:#14141480}
+  .pool.dragover, .pool.tap-target{
+    outline:3px dashed #ffcc55; outline-offset:6px; background:#141414a6; border-radius:12px;
+  }
 
   /* ======= Mobile adaptations ======= */
   @media (max-width: 900px){
@@ -138,9 +151,23 @@
     #tiersPanel{ grid-column:1; order:1 }
     #poolPanel { grid-column:1; order:2 }
     #tier-UNRANKED{ grid-template-columns: 1fr }       /* pool becomes 1 column */
-    .tiers{ grid-template-columns:1fr; grid-template-areas:"S" "A" "B" "C" "D" } /* tiers single column */
+
+    /* Bigger cards for fingers */
+    .card{ padding:12px 14px; min-height:56px; }
+    .crest{ width:40px; height:40px; border-radius:12px; }
+    .name{ font-size:14px; }
+    .tag{ font-size:11px; padding:3px 9px; }
+
+    /* Easier tier drop zones */
+    #tiersPanel .pool{ min-height:150px; padding:14px; }
+
     .title{ font-size: clamp(20px, 5.5vw, 28px) }
     .logo{ height:72px }
+  }
+
+  /* Slightly larger rows on very big screens so drop targets feel roomy */
+  @media (min-width: 1500px){
+    #tiersPanel .pool{ min-height:140px; padding:14px; }
   }
 
   /* Prefer modern viewport on mobile if supported */
@@ -159,15 +186,17 @@
     <div class="title">FFWS Global Finals 2025 — Tier List</div>
 
     <div class="right-actions">
+      <!-- Shows the logged-in email (if using auth) -->
       <span class="chip" id="user-info" title="logged-in email"></span>
       <button class="btn dark" onclick="exportPNG()">Save Tier PNG</button>
+      <!-- Logout only matters if you keep Supabase auth -->
       <button class="btn primary" onclick="logout()">Logout</button>
     </div>
   </div>
 </header>
 
 <div class="workspace">
-  <!-- RIGHT (on desktop) / SECOND (on mobile): UNRANKED -->
+  <!-- POOL (right on desktop, second on mobile) -->
   <section class="panel" id="poolPanel">
     <div class="head">
       <div class="badge">POOL</div>
@@ -178,7 +207,7 @@
     <div class="pool" id="tier-UNRANKED"></div>
   </section>
 
-  <!-- LEFT (on desktop) / FIRST (on mobile): TIERS -->
+  <!-- TIERS (left on desktop, first on mobile) -->
   <section class="panel" id="tiersPanel">
     <div class="tiers">
       <div class="tier" id="tierwrap-S">
@@ -205,13 +234,15 @@
   </section>
 </div>
 
-<!-- Supabase auth -->
+<!-- Supabase auth  ✅  (REMOVE this whole <script> block if you don't want auth) -->
 <script>
+  // Create the Supabase client
   const client = supabase.createClient(
     'https://gkugecflfddkpitlrmws.supabase.co',
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
   );
 
+  // Redirect to index.html if not logged in; otherwise show email
   client.auth.getSession().then(({ data: { session } }) => {
     if (!session) {
       window.location.href = "index.html";
@@ -238,6 +269,9 @@ function setVH(){
   document.documentElement.style.setProperty('--hdr', hdr + 'px');
 }
 setVH(); window.addEventListener('resize', setVH);
+
+/* Touch detection (used by card factory) */
+const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
 /* Teams */
 const TEAMS = [
@@ -329,9 +363,7 @@ document.querySelectorAll('.pool').forEach(pool=>{
 });
 
 /* Tap-to-move (mobile) */
-const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 let selectedCard = null;
-
 function selectCard(el){
   if (selectedCard === el){ clearSelection(); return; }
   clearSelection();
@@ -347,6 +379,8 @@ function clearSelection(){
 function wireTapTargets(){
   if(!isTouch) return;
   document.querySelectorAll('.pool').forEach(pool=>{
+    if(pool.dataset.tapwired === '1') return;   // avoid duplicate handlers
+    pool.dataset.tapwired = '1';
     pool.addEventListener('click', () => {
       if(selectedCard){
         pool.appendChild(selectedCard);
