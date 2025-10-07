@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FFWS Global Finals — Tier List</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@500;700&display=swap" rel="stylesheet">
+
+<!-- html2canvas for PNG export -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+  :root{
+    --bg1:#FFD24B; --bg2:#FF8B2B;
+    --plate:#0d0d0f; --edge:#ffbf2b; --edge-dim:#7a5a11;
+    --hdr:64px; --vh:100vh;
+    --masthead-h: 136px; --masthead-pad: 18px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%; overflow:auto}  /* single column -> page can scroll */
+  body{
+    margin:0; color:#fff; font-family:Inter,system-ui,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;
+    background:
+      radial-gradient(1200px 700px at 80% 85%, rgba(255,136,0,.25), transparent 60%),
+      linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 70%);
+  }
+
+  /* Header */
+  header{
+    position:sticky; top:0; z-index:5;
+    min-height:var(--masthead-h);
+    display:flex; align-items:center;
+    background:linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.15));
+    border-bottom:3px solid var(--edge);
+    backdrop-filter:saturate(120%) blur(2px);
+    padding-block: var(--masthead-pad);
+  }
+  .bar{
+    max-width: clamp(980px, 92vw, 1200px);
+    width:100%; margin:0 auto; padding:0 12px;
+    display:flex; gap:14px; align-items:center
+  }
+  .logo{
+    height:calc(var(--masthead-h) - 34px);
+    padding:10px; background:#0b0a07; border:2.5px solid var(--edge); border-radius:14px;
+    box-shadow:0 6px 0 var(--edge-dim), 0 0 0 6px #000 inset, 0 18px 40px rgba(0,0,0,.35);
+  }
+  .logo-wrap{ position:relative; display:inline-block }
+  .title{
+    font-family:"Bebas Neue", Inter, sans-serif;
+    letter-spacing:.6px; font-size:clamp(22px, 3.6vw, 36px);
+    color:#161616; text-shadow:0 1px 0 #ffd77a, 0 2px 0 #f9b93a, 0 2px 6px rgba(0,0,0,.25);
+  }
+  .right-actions{margin-left:auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+  .chip,.btn{
+    font-weight:800; border-radius:999px; padding:6px 10px; border:2px solid #7a5a11;
+  }
+  .chip{background:#ffe28f; color:#1b1b1b}
+  .btn{cursor:pointer}
+  .btn.primary{background:#ffe28f; color:#1b1b1b}
+  .btn.dark{background:#232323; color:#ffd46d; border-color:#4e3f16}
+
+  /* === Single-column canvas === */
+  .workspace{
+    max-width: clamp(980px, 92vw, 1200px);
+    margin:12px auto 24px auto; padding:0 12px;
+    display:flex; flex-direction:column; gap:16px;
+  }
+
+  .panel{
+    background:linear-gradient(180deg, #191919, #0e0e10);
+    border:2px solid var(--edge);
+    box-shadow:0 4px 0 var(--edge-dim), 0 10px 30px rgba(0,0,0,.25);
+    border-radius:16px;
+    display:flex; flex-direction:column; min-height:0;
+  }
+
+  .head{display:flex; align-items:center; gap:10px; padding:10px 12px; border-bottom:1px dashed #4a3a14}
+  .badge{
+    font-family:"Bebas Neue", Inter, sans-serif; font-size:26px; line-height:1;
+    padding:3px 10px 2px; border-radius:10px; border:2px solid var(--edge);
+    background:#201b0b; color:#ffd46d; text-shadow:0 1px 0 #000;
+  }
+  .head h2{margin:0; font-size:16px; letter-spacing:.4px; color:#ffe9b0}
+  .head .spacer{flex:1}
+
+  /* Pools (grid lists) */
+  .pool{
+    padding:10px; overflow:auto; min-height:0;
+    display:grid; gap:10px; grid-template-columns:repeat(2, minmax(240px,1fr));
+  }
+  /* Unranked can expand to 3 columns on wide */
+  @media (min-width:1100px){
+    #tier-UNRANKED{ grid-template-columns:repeat(3, minmax(240px,1fr)); }
+  }
+  @media (max-width:640px){
+    .pool, #tier-UNRANKED{ grid-template-columns:1fr; }
+  }
+
+  /* Team card */
+  .card{
+    display:flex; align-items:center; gap:8px; background:var(--plate);
+    border:2px solid #272727; border-radius:12px; padding:10px; cursor:grab; user-select:none; overflow:hidden;
+    transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+    min-height:56px;                                  /* comfy height on phones/PC */
+  }
+  .card:hover{border-color:#3b3b3b; box-shadow:0 0 0 2px #000 inset, 0 6px 18px rgba(0,0,0,.35)}
+  .card:active{cursor:grabbing; transform:scale(.98)}
+  .card.selected{ outline:3px solid #ffcc55; }
+  .crest{width:40px; height:40px; border-radius:10px; object-fit:contain; background:#111; padding:6px; border:1px solid #2a2a2a}
+  .name{font-weight:800; color:#f6f6f6; letter-spacing:.2px; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .tag{margin-left:auto; font-size:11px; font-weight:800; padding:3px 9px; border-radius:999px; border:1px solid #4e3f16; background:#2b240e; color:#ffd46d; flex:0 0 auto}
+
+  /* Tiers grid (kept as 2x2 + wide D lane) */
+  #tiersPanel{ position:relative; }
+  #tiersPanel::before{
+    content:""; position:absolute; inset:6% 10%;
+    background:url("https://i.imgur.com/C8hLztI.png") center/360px no-repeat;
+    opacity:.07; mix-blend-mode:multiply; pointer-events:none;
+    z-index:0;                                   /* behind */
+  }
+  #tiersPanel.exporting::before{ content:none !important; }  /* hide watermark while exporting */
+
+  .tiers{
+    position:relative; z-index:1;
+    display:grid; gap:12px; min-height:0;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    grid-template-rows: repeat(3, 1fr);
+    grid-template-areas:"S A" "B C" "D D";
+  }
+  .tier{min-height:0; display:flex; flex-direction:column}
+  #tierwrap-S{grid-area:S} #tierwrap-A{grid-area:A} #tierwrap-B{grid-area:B} #tierwrap-C{grid-area:C} #tierwrap-D{grid-area:D}
+
+  /* Roomy drop zones */
+  #tiersPanel .pool{ min-height:160px; padding:14px; border-radius:12px; }
+
+  /* Drag/tap visuals */
+  .pool.dragover, .pool.tap-target{
+    outline:3px dashed #ffcc55; outline-offset:6px; background:#141414a6; border-radius:12px;
+  }
+
+  /* Header layout tweaks for narrow phones */
+  @media (max-width:900px){
+    header .bar{ gap:10px; flex-wrap:wrap }
+    .right-actions{ margin-left:0; width:100%; justify-content:flex-start }
+    .title{ font-size: clamp(20px, 5.5vw, 28px) }
+    .logo{ height:72px }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <div class="logo-wrap">
+      <img class="logo" src="https://i.imgur.com/C8hLztI.png" alt="FFWS">
+    </div>
+    <div class="title">FFWS Global Finals 2025 — Tier List</div>
+
+    <div class="right-actions">
+      <span class="chip" id="user-info" title="logged-in email"></span>
+      <button class="btn dark" onclick="exportPNG()">Save Tier PNG</button>
+      <button class="btn primary" onclick="logout()">Logout</button>
+    </div>
+  </div>
+</header>
+
+<div class="workspace">
+  <!-- TIERS (always on top) -->
+  <section class="panel" id="tiersPanel">
+    <div class="head">
+      <div class="badge">TIERS</div>
+      <h2>Drag teams into S → D</h2>
+    </div>
+
+    <div class="tiers">
+      <div class="tier" id="tierwrap-S">
+        <div class="head"><div class="badge">S</div><h2>Championship Favorites</h2></div>
+        <div class="pool" id="tier-S"></div>
+      </div>
+      <div class="tier" id="tierwrap-A">
+        <div class="head"><div class="badge">A</div><h2>Contenders</h2></div>
+        <div class="pool" id="tier-A"></div>
+      </div>
+      <div class="tier" id="tierwrap-B">
+        <div class="head"><div class="badge">B</div><h2>Dark Horses</h2></div>
+        <div class="pool" id="tier-B"></div>
+      </div>
+      <div class="tier" id="tierwrap-C">
+        <div class="head"><div class="badge">C</div><h2>Outside Shots</h2></div>
+        <div class="pool" id="tier-C"></div>
+      </div>
+      <div class="tier" id="tierwrap-D">
+        <div class="head"><div class="badge">D</div><h2>Long Shots</h2></div>
+        <div class="pool" id="tier-D"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- POOL (always below) -->
+  <section class="panel" id="poolPanel">
+    <div class="head">
+      <div class="badge">POOL</div>
+      <h2>Unranked Teams</h2>
+      <div class="spacer"></div>
+      <button class="btn dark" id="resetBtn">Reset</button>
+    </div>
+    <div class="pool" id="tier-UNRANKED"></div>
+  </section>
+</div>
+
+<script>
+/* viewport helper (for potential future use) */
+function setVH(){
+  document.documentElement.style.setProperty('--vh', window.innerHeight + 'px');
+  const hdr = document.querySelector('header').offsetHeight || 64;
+  document.documentElement.style.setProperty('--hdr', hdr + 'px');
+}
+setVH(); window.addEventListener('resize', setVH);
+
+/* Touch detection */
+const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
+/* Teams */
+const TEAMS = [
+  { name:"AG",     region:"SEA",   logo:"https://i.imgur.com/KVvhezz.png" },
+  { name:"BRU",    region:"SEA",   logo:"https://i.imgur.com/ngHig8q.png" },
+  { name:"CV",     region:"MEA",   logo:"https://i.imgur.com/AXkfYHk.png" },
+  { name:"E1",     region:"BR",    logo:"https://i.imgur.com/bddVsgm.png" },
+  { name:"EVOS",   region:"EWC",   logo:"https://i.imgur.com/xWCHSwf.png" },
+  { name:"FX",     region:"BR",    logo:"https://i.imgur.com/OGJ5A7r.png" },
+  { name:"GOW",    region:"SEA",   logo:"https://i.imgur.com/CfmGEX6.png" },
+  { name:"HEV",    region:"SEA",   logo:"https://i.imgur.com/vqVyJSJ.png" },
+  { name:"HS",     region:"PK",    logo:"https://i.imgur.com/f8ehquU.png" },
+  { name:"NOVA",   region:"LATAM", logo:"https://i.imgur.com/iZmL3FT.png" },
+  { name:"PE",     region:"SEA",   logo:"https://i.imgur.com/kFcOez3.png" },
+  { name:"R7",     region:"LATAM", logo:"https://i.imgur.com/95lg1Dp.png" },
+  { name:"RC",     region:"BD",    logo:"https://i.imgur.com/kX5wBEZ.png" },
+  { name:"RHK",    region:"BD",    logo:"https://i.imgur.com/E2MJQdH.png" },
+  { name:"RRQ",    region:"SEA",   logo:"https://i.imgur.com/Afw7WMp.png" },
+  { name:"FLCN",   region:"SEA",   logo:"https://i.imgur.com/DwPXnv1.png" },
+  { name:"TS",     region:"BR",    logo:"https://i.imgur.com/3Chm42Y.png" },
+  { name:"WAG",    region:"SEA",   logo:"https://i.imgur.com/EiRHnoW.png" },
+];
+
+/* Lanes + local storage */
+const lanes = {
+  UNRANKED: document.getElementById('tier-UNRANKED'),
+  S: document.getElementById('tier-S'),
+  A: document.getElementById('tier-A'),
+  B: document.getElementById('tier-B'),
+  C: document.getElementById('tier-C'),
+  D: document.getElementById('tier-D'),
+};
+const LOCAL_KEY = 'ffws_tierlist';
+const saved = JSON.parse(localStorage.getItem(LOCAL_KEY)||'{}');
+
+function laneFor(team){
+  for(const k of Object.keys(saved)){
+    if((saved[k]||[]).includes(team.name)) return k;
+  }
+  return 'UNRANKED';
+}
+
+/* Card factory */
+function card(team){
+  const el = document.createElement('div');
+  el.className = 'card';
+  el.draggable = true;                            // desktop drag
+  el.dataset.team = team.name;
+  el.innerHTML = `
+    <img class="crest" src="${team.logo}" alt="${team.name}">
+    <div class="name">${team.name}</div>
+    <span class="tag">${team.region}</span>
+  `;
+  // desktop drag
+  el.addEventListener('dragstart', e=>{
+    e.dataTransfer.setData('text/team', team.name);
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  // touch: tap to select, then tap a pool to drop
+  if (isTouch) { el.addEventListener('click', () => selectCard(el)); }
+  return el;
+}
+
+/* Render */
+function render(){
+  Object.values(lanes).forEach(l=> l.innerHTML='');
+  const order = {S:[],A:[],B:[],C:[],D:[],UNRANKED:[]};
+  TEAMS.forEach(t => order[laneFor(t)].push(t));
+  Object.keys(order).forEach(k => order[k].forEach(t => lanes[k].appendChild(card(t))));
+  wireTapTargets();
+}
+
+/* Drag & drop (desktop) */
+document.querySelectorAll('.pool').forEach(pool=>{
+  pool.addEventListener('dragover', e=>{
+    e.preventDefault(); e.dataTransfer.dropEffect='move';
+    pool.classList.add('dragover');
+  });
+  pool.addEventListener('dragleave', ()=> pool.classList.remove('dragover'));
+  pool.addEventListener('drop', e=>{
+    e.preventDefault(); pool.classList.remove('dragover');
+    const name = e.dataTransfer.getData('text/team');
+    const el = document.querySelector(`.card[data-team="${CSS.escape(name)}"]`);
+    if(el) pool.appendChild(el);
+    persist();
+  });
+});
+
+/* Tap-to-move (mobile) */
+let selectedCard = null;
+function selectCard(el){
+  if (selectedCard === el){ clearSelection(); return; }
+  clearSelection();
+  selectedCard = el;
+  el.classList.add('selected');
+  document.querySelectorAll('.pool').forEach(p=> p.classList.add('tap-target'));
+}
+function clearSelection(){
+  if(selectedCard){ selectedCard.classList.remove('selected'); }
+  selectedCard = null;
+  document.querySelectorAll('.pool').forEach(p=> p.classList.remove('tap-target'));
+}
+function wireTapTargets(){
+  if(!isTouch) return;
+  document.querySelectorAll('.pool').forEach(pool=>{
+    if(pool.dataset.tapwired === '1') return;
+    pool.dataset.tapwired = '1';
+    pool.addEventListener('click', () => {
+      if(selectedCard){
+        pool.appendChild(selectedCard);
+        persist();
+        clearSelection();
+      }
+    });
+  });
+}
+
+/* Collect + persist */
+function collectState(){
+  const state = {};
+  Object.entries(lanes).forEach(([lane, el])=>{
+    state[lane] = [...el.querySelectorAll('.card')].map(c=>c.dataset.team);
+  });
+  return state;
+}
+function persist(){
+  localStorage.setItem(LOCAL_KEY, JSON.stringify(collectState()));
+}
+
+/* Reset button */
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  localStorage.removeItem(LOCAL_KEY);
+  for (const k of Object.keys(saved)) delete saved[k];
+  render();
+});
+
+/* Export PNG (tiers only) — watermark hidden during export */
+async function exportPNG(){
+  const target = document.getElementById('tiersPanel');
+
+  // Hide watermark while exporting so it can't overlay the cards
+  target.classList.add('exporting');
+
+  // temporarily expand inner pools
+  const pools = target.querySelectorAll('.pool');
+  const prev = [...pools].map(p=>p.style.overflow);
+  pools.forEach(p=> p.style.overflow='visible');
+
+  const canvas = await html2canvas(target, {
+    useCORS:true,
+    allowTaint:false,
+    backgroundColor:null,
+    scale: Math.max(2.5, window.devicePixelRatio || 2)
+  });
+
+  pools.forEach((p,i)=> p.style.overflow = prev[i]);
+  target.classList.remove('exporting');
+
+  const link = document.createElement('a');
+  link.download = 'ffws-tier-list.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+/* Boot */
+render();
+</script>
+</body>
+</html>
