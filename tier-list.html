@@ -1,180 +1,197 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>FFWS Global Finals — Tier List</title>
 
-<!-- Optional display font close to poster vibe -->
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@500;700&display=swap" rel="stylesheet">
 
 <style>
   :root{
     --ink:#0a0a0a;
-    --bg1:#FFD24B; /* poster yellow */
-    --bg2:#FF8B2B; /* orange sweep */
-    --plate:#0d0d0f; /* black plate */
-    --edge:#ffbf2b; /* gold edge */
+    --bg1:#FFD24B;      /* poster yellow */
+    --bg2:#FF8B2B;      /* orange sweep  */
+    --plate:#0d0d0f;    /* black plate   */
+    --edge:#ffbf2b;     /* gold edge     */
     --edge-dim:#7a5a11;
-    --accent:#ff3b2e; /* red accent (headers) */
     --muted:#bdbdbd;
+    --hdr:64px;         /* will be updated by JS */
+    --vh:100vh;         /* will be updated by JS */
   }
   *{box-sizing:border-box}
-  html,body{height:100%}
+  html,body{height:100%; overflow:hidden;} /* no page scroll */
   body{
-    margin:0;
+    margin:0; color:#fff;
     font-family:Inter,system-ui,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;
-    color:#fff;
-    /* Poster-like gradient sweep */
     background:
       radial-gradient(1200px 700px at 80% 85%, rgba(255,136,0,.25), transparent 60%),
       linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 70%);
-    min-height:100%;
   }
 
-  /* Header / brand */
+  /* Header */
   header{
     position:sticky; top:0; z-index:5;
+    height:var(--hdr);
+    display:flex; align-items:center;
     background:linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.15));
-    backdrop-filter:saturate(120%) blur(2px);
     border-bottom:3px solid var(--edge);
+    backdrop-filter:saturate(120%) blur(2px);
   }
-  .bar{
-    max-width:1200px; margin:0 auto; padding:12px 12px; display:flex; gap:14px; align-items:center;
-  }
+  .bar{max-width:1280px; width:100%; margin:0 auto; padding:0 12px; display:flex; gap:14px; align-items:center}
   .logo{height:44px; width:auto; border-radius:10px; background:#00000020; padding:6px}
   .title{
     font-family:"Bebas Neue", Inter, sans-serif;
-    letter-spacing:.6px;
-    font-size:clamp(22px, 3.6vw, 36px);
-    color:#161616;
-    text-shadow: 0 1px 0 #ffd77a, 0 2px 0 #f9b93a, 0 2px 6px rgba(0,0,0,.25);
+    letter-spacing:.6px; font-size:clamp(22px, 3.6vw, 36px);
+    color:#161616; text-shadow:0 1px 0 #ffd77a, 0 2px 0 #f9b93a, 0 2px 6px rgba(0,0,0,.25);
   }
-  .chip{margin-left:auto; font-weight:700; color:#1b1b1b; background:#ffe28f; border:2px solid #7a5a11; border-radius:999px; padding:6px 10px}
+  .chip{margin-left:auto; font-weight:800; color:#1b1b1b; background:#ffe28f; border:2px solid #7a5a11; border-radius:999px; padding:6px 10px}
 
-  /* Layout */
-  .shell{max-width:1200px; margin:16px auto 40px; padding:0 12px}
-  .grid{display:grid; gap:12px}
-  .tier{
+  /* Workspace split: left UNRANKED, right TIERS */
+  .workspace{
+    height:calc(var(--vh) - var(--hdr));
+    max-width:1280px; margin:12px auto; padding:0 12px;
+    display:grid; grid-template-columns: 340px 1fr; gap:12px;
+  }
+
+  .panel{
     background:linear-gradient(180deg, #191919, #0e0e10);
     border:2px solid var(--edge);
-    box-shadow: 0 4px 0 var(--edge-dim), 0 10px 30px rgba(0,0,0,.25);
+    box-shadow:0 4px 0 var(--edge-dim), 0 10px 30px rgba(0,0,0,.25);
     border-radius:16px;
-    padding:12px;
+    display:flex; flex-direction:column; min-height:0; /* important for nested overflow */
   }
-  .tier-head{
-    display:flex; align-items:center; gap:10px; margin-bottom:10px;
-    border-bottom:1px dashed #4a3a14; padding-bottom:8px;
+  .head{
+    display:flex; align-items:center; gap:10px;
+    padding:10px 12px; border-bottom:1px dashed #4a3a14;
   }
   .badge{
     font-family:"Bebas Neue", Inter, sans-serif;
-    font-size:28px; line-height:1; padding:4px 12px 2px;
-    border-radius:10px;
-    border:2px solid var(--edge); background:#201b0b; color:#ffd46d;
+    font-size:26px; line-height:1; padding:3px 10px 2px;
+    border-radius:10px; border:2px solid var(--edge); background:#201b0b; color:#ffd46d;
     text-shadow:0 1px 0 #000;
   }
-  .tier-head h2{
-    margin:0; letter-spacing:.5px; font-size:18px; font-weight:800; color:#ffe9b0;
+  .head h2{margin:0; font-size:16px; letter-spacing:.4px; color:#ffe9b0}
+  .sub{margin-left:6px; color:#c7b278; font-size:12px}
+
+  /* Pools (scroll inside panel if overflow) */
+  .pool{
+    padding:10px; overflow:auto; min-height:0;
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:10px;
   }
-  .pool{display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; min-height:120px}
-  .note{color:var(--muted); font-size:12px}
 
   /* Team card */
   .card{
-    display:flex; align-items:center; gap:10px;
+    display:flex; align-items:center; gap:8px;
     background:var(--plate);
-    border:2px solid #272727;
-    border-radius:12px;
-    padding:8px;
-    cursor:grab;
+    border:2px solid #272727; border-radius:12px; padding:8px;
+    cursor:grab; user-select:none;
     transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
-    user-select:none;
   }
   .card:active{cursor:grabbing; transform:scale(.98)}
   .card:hover{border-color:#3b3b3b; box-shadow:0 0 0 2px #000 inset, 0 6px 18px rgba(0,0,0,.35)}
-  .crest{width:42px; height:42px; border-radius:10px; object-fit:contain; background:#111; padding:6px; border:1px solid #2a2a2a}
-  .name{font-weight:800; color:#f6f6f6; letter-spacing:.2px}
-  .meta{display:flex; gap:6px; margin-left:auto}
-  .tag{
-    font-size:11px; font-weight:800; letter-spacing:.3px; padding:2px 6px; border-radius:999px;
-    border:1px solid #4e3f16; background:#2b240e; color:#ffd46d;
-  }
+  .crest{width:36px; height:36px; border-radius:10px; object-fit:contain; background:#111; padding:6px; border:1px solid #2a2a2a}
+  .name{font-weight:800; color:#f6f6f6; letter-spacing:.2px; font-size:13px}
+  .tag{margin-left:auto; font-size:10px; font-weight:800; padding:2px 6px; border-radius:999px; border:1px solid #4e3f16; background:#2b240e; color:#ffd46d}
 
-  /* DnD helpers */
+  /* Tiers grid on the right */
+  .tiers{
+    display:grid; gap:12px; padding:10px; min-height:0; /* allow grid to fill column */
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    grid-template-rows: repeat(3, 1fr);
+    height:100%;
+    grid-template-areas:
+      "S A"
+      "B C"
+      "D D";
+  }
+  .tier{min-height:0; display:flex; flex-direction:column}
+  #tierwrap-S{grid-area:S}
+  #tierwrap-A{grid-area:A}
+  #tierwrap-B{grid-area:B}
+  #tierwrap-C{grid-area:C}
+  #tierwrap-D{grid-area:D}
+
+  /* Drag visuals */
   .pool.dragover{outline:2px dashed #ffcc55; outline-offset:4px; background:#14141480}
-  .hidden{display:none}
-
-  /* Responsive */
-  @media (min-width:900px){
-    .grid{grid-template-columns:1fr}
-  }
 </style>
 </head>
 <body>
 
 <header>
   <div class="bar">
-    <!-- Event logo -->
     <img class="logo" src="https://i.imgur.com/C8hLztI.png" alt="FFWS Global Finals">
     <div class="title">FFWS Global Finals 2025 — Tier List</div>
-    <div class="chip">S → D • Drag & Drop</div>
+    <div class="chip">Drag teams into S → D</div>
   </div>
 </header>
 
-<div class="shell">
-  <!-- Unranked pool -->
-  <section class="tier" data-tier="UNRANKED">
-    <div class="tier-head">
+<div class="workspace">
+  <!-- LEFT: UNRANKED rail -->
+  <section class="panel">
+    <div class="head">
       <div class="badge">POOL</div>
       <h2>Unranked Teams</h2>
-      <div class="note">Drag teams into S, A, B, C or D tiers</div>
+      <span class="sub">Start here → drag to tiers</span>
     </div>
     <div class="pool" id="tier-UNRANKED"></div>
   </section>
 
-  <!-- S → D tiers -->
-  <section class="tier" data-tier="S">
-    <div class="tier-head"><div class="badge">S</div><h2>Championship Favorites</h2></div>
-    <div class="pool" id="tier-S"></div>
-  </section>
+  <!-- RIGHT: TIERS grid -->
+  <section class="panel">
+    <div class="tiers">
+      <div class="tier" id="tierwrap-S">
+        <div class="head"><div class="badge">S</div><h2>Championship Favorites</h2></div>
+        <div class="pool" id="tier-S"></div>
+      </div>
 
-  <section class="tier" data-tier="A">
-    <div class="tier-head"><div class="badge">A</div><h2>Contenders</h2></div>
-    <div class="pool" id="tier-A"></div>
-  </section>
+      <div class="tier" id="tierwrap-A">
+        <div class="head"><div class="badge">A</div><h2>Contenders</h2></div>
+        <div class="pool" id="tier-A"></div>
+      </div>
 
-  <section class="tier" data-tier="B">
-    <div class="tier-head"><div class="badge">B</div><h2>Dark Horses</h2></div>
-    <div class="pool" id="tier-B"></div>
-  </section>
+      <div class="tier" id="tierwrap-B">
+        <div class="head"><div class="badge">B</div><h2>Dark Horses</h2></div>
+        <div class="pool" id="tier-B"></div>
+      </div>
 
-  <section class="tier" data-tier="C">
-    <div class="tier-head"><div class="badge">C</div><h2>Outside Shots</h2></div>
-    <div class="pool" id="tier-C"></div>
-  </section>
+      <div class="tier" id="tierwrap-C">
+        <div class="head"><div class="badge">C</div><h2>Outside Shots</h2></div>
+        <div class="pool" id="tier-C"></div>
+      </div>
 
-  <section class="tier" data-tier="D">
-    <div class="tier-head"><div class="badge">D</div><h2>Long Shots</h2></div>
-    <div class="pool" id="tier-D"></div>
+      <div class="tier" id="tierwrap-D">
+        <div class="head"><div class="badge">D</div><h2>Long Shots</h2></div>
+        <div class="pool" id="tier-D"></div>
+      </div>
+    </div>
   </section>
 </div>
 
 <script>
-/** ====== Teams & logos (from your links) ====== */
+/* Keep viewport perfectly sized even on mobile browser chrome changes */
+function setVH(){
+  document.documentElement.style.setProperty('--vh', window.innerHeight + 'px');
+  const hdr = document.querySelector('header').offsetHeight || 64;
+  document.documentElement.style.setProperty('--hdr', hdr + 'px');
+}
+setVH(); window.addEventListener('resize', setVH);
+
+/* ===== Teams (your logos) ===== */
 const TEAMS = [
   { name:"EVOS DIVINE",        region:"EWC",  logo:"https://i.imgur.com/xWCHSwf.png" },
   { name:"TEAM FALCONS",       region:"SEA",  logo:"https://i.imgur.com/DwPXnv1.png" },
   { name:"HEAVY",              region:"SEA",  logo:"https://i.imgur.com/vqVyJSJ.png" },
   { name:"BURIRAM UNITED",     region:"SEA",  logo:"https://i.imgur.com/ngHig8q.png" },
   { name:"RRQ KAZU",           region:"SEA",  logo:"https://i.imgur.com/Afw7WMp.png" },
-  { name:"GOW ESPORTS",        region:"SEA",  logo:"https://i.imgur.com/CfmGEX6.png" },
   { name:"ALL GAMERS GLOBAL",  region:"SEA",  logo:"https://i.imgur.com/KVvhezz.png" },
+  { name:"GOW ESPORTS",        region:"SEA",  logo:"https://i.imgur.com/CfmGEX6.png" },
   { name:"P ESPORTS",          region:"SEA",  logo:"https://i.imgur.com/kFcOez3.png" },
   { name:"WAG",                region:"SEA",  logo:"https://i.imgur.com/EiRHnoW.png" },
   { name:"FLUXO",              region:"BR",   logo:"https://i.imgur.com/OGJ5A7r.png" },
   { name:"TEAM SOLID",         region:"BR",   logo:"https://i.imgur.com/3Chm42Y.png" },
   { name:"E1 SPORTS",          region:"BR",   logo:"https://i.imgur.com/bddVsgm.png" },
-  { name:"RAINBOW7",           region:"LATAM",logo:"https://i.imgur.com/95lg1Dp.png" },  // Movistar R7
+  { name:"RAINBOW7",           region:"LATAM",logo:"https://i.imgur.com/95lg1Dp.png" },
   { name:"NOVA LEGION",        region:"LATAM",logo:"https://i.imgur.com/iZmL3FT.png" },
   { name:"RED HAWKS",          region:"BD",   logo:"https://i.imgur.com/E2MJQdH.png" },
   { name:"RED CLIFF",          region:"BD",   logo:"https://i.imgur.com/kX5wBEZ.png" },
@@ -182,7 +199,7 @@ const TEAMS = [
   { name:"HOTSHOT ESPORTS",    region:"PK",   logo:"https://i.imgur.com/f8ehquU.png" },
 ];
 
-/** ====== Render cards ====== */
+/* Pools */
 const lanes = {
   UNRANKED: document.getElementById('tier-UNRANKED'),
   S: document.getElementById('tier-S'),
@@ -192,28 +209,26 @@ const lanes = {
   D: document.getElementById('tier-D'),
 };
 
-// load from localStorage if available; else drop everyone in UNRANKED
+/* Persisted state */
 const saved = JSON.parse(localStorage.getItem('ffws_tierlist')||'{}');
 function laneFor(team){
-  // find lane id containing team name
   for(const k of Object.keys(saved)){
     if((saved[k]||[]).includes(team.name)) return k;
   }
   return 'UNRANKED';
 }
 
+/* Card factory */
 function card(team){
   const el = document.createElement('div');
   el.className = 'card';
   el.draggable = true;
   el.dataset.team = team.name;
-
   el.innerHTML = `
     <img class="crest" src="${team.logo}" alt="${team.name}">
     <div class="name">${team.name}</div>
-    <div class="meta"><span class="tag">${team.region}</span></div>
+    <span class="tag">${team.region}</span>
   `;
-
   el.addEventListener('dragstart', e=>{
     e.dataTransfer.setData('text/team', team.name);
     e.dataTransfer.effectAllowed = 'move';
@@ -221,20 +236,15 @@ function card(team){
   return el;
 }
 
+/* Render */
 function render(){
-  // clear
   Object.values(lanes).forEach(l=> l.innerHTML='');
-
-  // if saved tiers exist, render in that order; otherwise UNRANKED
   const order = {S:[],A:[],B:[],C:[],D:[],UNRANKED:[]};
   TEAMS.forEach(t => order[laneFor(t)].push(t));
-
-  Object.keys(order).forEach(k=>{
-    order[k].forEach(t=> lanes[k].appendChild(card(t)));
-  });
+  Object.keys(order).forEach(k => order[k].forEach(t => lanes[k].appendChild(card(t))));
 }
 
-/** ====== DnD handlers ====== */
+/* Drag & drop wiring */
 document.querySelectorAll('.pool').forEach(pool=>{
   pool.addEventListener('dragover', e=>{
     e.preventDefault(); e.dataTransfer.dropEffect='move';
@@ -242,11 +252,8 @@ document.querySelectorAll('.pool').forEach(pool=>{
   });
   pool.addEventListener('dragleave', ()=> pool.classList.remove('dragover'));
   pool.addEventListener('drop', e=>{
-    e.preventDefault();
-    pool.classList.remove('dragover');
+    e.preventDefault(); pool.classList.remove('dragover');
     const name = e.dataTransfer.getData('text/team');
-    const laneId = pool.id.replace('tier-','');
-    // move element
     const el = document.querySelector(`.card[data-team="${CSS.escape(name)}"]`);
     if(el) pool.appendChild(el);
     persist();
@@ -263,6 +270,5 @@ function persist(){
 
 render();
 </script>
-
 </body>
 </html>
