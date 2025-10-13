@@ -79,6 +79,7 @@
         </select>
       </label>
       <button class="btn" id="applyBtn">Apply</button>
+      <button class="btn" id="resetBtn" title="Reset all filters">Reset</button>
     </div>
   </div>
 
@@ -176,7 +177,12 @@ function sum(arr, f){ let t=0; for(const r of arr) t+=n(f?r[f]:r); return t; }
 function groupBy(arr, keyFn){
   const m=new Map(); for(const r of arr){ const k=keyFn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r); } return m;
 }
-function selectDistinct(arr, key){ return [...new Set(arr.map(r=>r[key]).filter(x=>x!==null && x!==undefined && x!==''))]; }
+const norm = (v) => (v==null ? '' : String(v).trim());
+function selectDistinctFull(rows, key){
+  const s = new Set();
+  rows.forEach(r => { const v = norm(r[key]); if (v!=='' && v!==undefined && v!==null) s.add(v); });
+  return [...s];
+}
 
 /* ========= Filters init ========= */
 function initFiltersPlaceholders(){
@@ -196,12 +202,13 @@ function initFiltersPlaceholders(){
 initFiltersPlaceholders();
 
 /* ========= State ========= */
-let RAW = [];
+let ALL_ROWS = [];   // unfiltered full dataset
+let ROWS = [];       // filtered working set
 
-/* ========= Fetch ========= */
-async function fetchRecords(){
-  // Build query from filters
-  const q = client.from('ffbr_data')
+/* ========= Fetch (all rows) ========= */
+async function fetchAllRecords(){
+  const { data, error } = await client
+    .from('ffbr_data')
     .select('id, team, "group", stage, day, match, map, booyah, placement, elimination, drop, damage, total, played, top3, tag, week, tournament, year, season')
     .order('year', { ascending:true })
     .order('week', { ascending:true })
@@ -209,10 +216,12 @@ async function fetchRecords(){
     .order('match', { ascending:true })
     .order('id', { ascending:true });
 
-  let { data, error } = await q;
-  if (error){ console.error(error); alert('Failed to load ffbr_data: '+error.message); return []; }
+  if (error){ console.error('ffbr_data select failed:', error); alert('Failed to load ffbr_data: '+(error?.message||'Unknown error')); return []; }
+  return data || [];
+}
 
-  // Apply client-side filters (safer with text fields across projects)
+/* ========= Client-side filters (from UI) ========= */
+function applyFilters(rows){
   const filt = {
     tourn: el('fTourn').value,
     year:  el('fYear').value,
@@ -223,40 +232,39 @@ async function fetchRecords(){
     day:   el('fDay').value,
     map:   el('fMap').value,
   };
-
-  let rows = data || [];
-  if (filt.tourn !== '__ALL__') rows = rows.filter(r => r.tournament === filt.tourn);
-  if (filt.year  !== '__ALL__') rows = rows.filter(r => String(r.year) === String(filt.year));
-  if (filt.season!== '__ALL__') rows = rows.filter(r => String(r.season) === String(filt.season));
-  if (filt.stage !== '__ALL__') rows = rows.filter(r => String(r.stage) === String(filt.stage));
-  if (filt.group !== '__ALL__') rows = rows.filter(r => String(r.group) === String(filt.group));
-  if (filt.week  !== '__ALL__') rows = rows.filter(r => String(r.week) === String(filt.week));
-  if (filt.day   !== '__ALL__') rows = rows.filter(r => String(r.day) === String(filt.day));
-  if (filt.map   !== '__ALL__') rows = rows.filter(r => String(r.map) === String(filt.map));
-
-  return rows;
+  let out = rows;
+  if (filt.tourn !== '__ALL__') out = out.filter(r => norm(r.tournament) === norm(filt.tourn));
+  if (filt.year  !== '__ALL__') out = out.filter(r => String(r.year) === String(filt.year));
+  if (filt.season!== '__ALL__') out = out.filter(r => norm(r.season) === norm(filt.season));
+  if (filt.stage !== '__ALL__') out = out.filter(r => norm(r.stage) === norm(filt.stage));
+  if (filt.group !== '__ALL__') out = out.filter(r => norm(r.group) === norm(filt.group));
+  if (filt.week  !== '__ALL__') out = out.filter(r => String(r.week) === String(filt.week));
+  if (filt.day   !== '__ALL__') out = out.filter(r => String(r.day) === String(filt.day));
+  if (filt.map   !== '__ALL__') out = out.filter(r => norm(r.map) === norm(filt.map));
+  return out;
 }
 
-async function populateFilterDropdowns(rows){
-  // Build distinct lists from current dataset scope
+/* ========= Dropdowns from ALL_ROWS ========= */
+async function populateFilterDropdowns(){
   const set = (id, arr, all='All')=>{
     const dd = el(id), prev = dd.value || '__ALL__';
-    const opts = [`<option value="__ALL__">${all}</option>`, ...arr.sort().map(v=>`<option value="${v}">${v}</option>`)];
+    const opts = [`<option value="__ALL__">${all}</option>`, ...arr.sort((a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true})).map(v=>`<option value="${v}">${v}</option>`)];
     dd.innerHTML = opts.join('');
-    dd.value = prev && (prev==='__ALL__' || arr.includes(prev)) ? prev : '__ALL__';
+    dd.value = (prev && (prev==='__ALL__' || arr.includes(prev))) ? prev : '__ALL__';
   };
 
-  set('fTourn',  selectDistinct(rows, 'tournament'), 'All tournaments');
-  set('fYear',   selectDistinct(rows, 'year'),       'All years');
-  set('fSeason', selectDistinct(rows, 'season'),     'All seasons');
-  set('fStage',  selectDistinct(rows, 'stage'),      'All stages');
-  set('fGroup',  selectDistinct(rows, 'group'),      'All groups');
-  set('fWeek',   selectDistinct(rows, 'week'),       'All weeks');
-  set('fDay',    selectDistinct(rows, 'day'),        'All days');
+  set('fTourn',  selectDistinctFull(ALL_ROWS, 'tournament'), 'All tournaments');
+  set('fYear',   selectDistinctFull(ALL_ROWS, 'year'),       'All years');
+  set('fSeason', selectDistinctFull(ALL_ROWS, 'season'),     'All seasons');
+  set('fStage',  selectDistinctFull(ALL_ROWS, 'stage'),      'All stages');
+  set('fGroup',  selectDistinctFull(ALL_ROWS, 'group'),      'All groups');
+  set('fWeek',   selectDistinctFull(ALL_ROWS, 'week'),       'All weeks');
+  set('fDay',    selectDistinctFull(ALL_ROWS, 'day'),        'All days');
 }
 
+/* ========= Team dropdowns from filtered set ========= */
 function populateTeamDropdowns(rows){
-  const teams = selectDistinct(rows, 'team').sort();
+  const teams = [...new Set(rows.map(r=>r.team).filter(Boolean))].sort();
   const A = el('cmpTeamA'), B = el('cmpTeamB');
   const prevA=A.value, prevB=B.value;
   const opts = teams.map(t=>`<option value="${t}">${t}</option>`).join('');
@@ -266,7 +274,7 @@ function populateTeamDropdowns(rows){
 }
 
 /* ========= Team slices ========= */
-function rowsForTeam(team){ return RAW.filter(r => r.team === team); }
+function rowsForTeam(team){ return ROWS.filter(r => r.team === team); }
 
 /* ========= Aggregations ========= */
 function kpis(rows){
@@ -280,11 +288,11 @@ function kpis(rows){
   return {
     matches, total,
     total_per_match: matches ? total/matches : 0,
-    booyah_rate: matches ? booyah/matches : 0,
-    top3_rate: matches ? top3/matches : 0,
-    avg_elims: matches ? elim/matches : 0,
-    avg_damage: matches ? dmg/matches : 0,
-    avg_placement_pts: matches ? place/matches : 0
+    booyah_rate: matches ? (booyah/matches) : 0,
+    top3_rate: matches ? (top3/matches) : 0,
+    avg_elims: matches ? (elim/matches) : 0,
+    avg_damage: matches ? (dmg/matches) : 0,
+    avg_placement_pts: matches ? (place/matches) : 0
   };
 }
 
@@ -437,13 +445,9 @@ function tableLeaderboard(list){
 function buildAIPrompt(meta, A, B){
   const payload = {
     meta,
-    teamA:{
-      kpis:A.kpi, map_perf:A.map, drops:A.drop, trend:A.trend
-    },
-    teamB:{
-      kpis:B.kpi, map_perf:B.map, drops:B.drop, trend:B.trend
-    },
-    leaderboard: B.leader // just reuse prop container; same structure for both
+    teamA:{ kpis:A.kpi, map_perf:A.map, drops:A.drop, trend:A.trend },
+    teamB:{ kpis:B.kpi, map_perf:B.map, drops:B.drop, trend:B.trend },
+    leaderboard: B.leader
   };
   return `You are an esports analyst. Compare two Free Fire Battle Royale teams using the snapshot below.
 
@@ -463,30 +467,21 @@ ${JSON.stringify(payload,null,2)}`;
 /* ========= Render all ========= */
 function renderAll(){
   const Aname = el('cmpTeamA').value, Bname = el('cmpTeamB').value;
-  const m = {
-    tournament: el('fTourn').value,
-    year: el('fYear').value,
-    season: el('fSeason').value,
-    stage: el('fStage').value,
-    group: el('fGroup').value,
-    week: el('fWeek').value,
-    day: el('fDay').value,
-    map: el('fMap').value,
-    teamA: Aname, teamB: Bname
-  };
+
+  const labels = (id)=> (el(id).value==='__ALL__' ? 'All' : el(id).value);
+  const metaLbl = `Tourn: ${labels('fTourn')} • Stage: ${labels('fStage')} • Group: ${labels('fGroup')} • Week: ${labels('fWeek')} • Day: ${labels('fDay')} • Map: ${labels('fMap')} • Rows: ${ROWS.length}/${ALL_ROWS.length}`;
 
   if (!Aname || !Bname || Aname===Bname){
-    el('meta').textContent = 'Pick two different teams.';
+    el('meta').textContent = `Pick two different teams • ${metaLbl}`;
     ['kpiA','kpiB','tmA','tmB','dropA','dropB','trendA','trendB','leaderboard'].forEach(id=>{ if(el(id)) el(id).innerHTML = '<div class="muted">—</div>'; });
     el('aiPrompt').value = 'Pick two different teams.';
     return;
   }
-  const labels = (id)=> (el(id).value==='__ALL__' ? 'All' : el(id).value);
-  el('meta').textContent = `${Aname} vs ${Bname} • Tourn: ${labels('fTourn')} • Stage: ${labels('fStage')} • Group: ${labels('fGroup')} • Week: ${labels('fWeek')} • Day: ${labels('fDay')} • Map: ${labels('fMap')}`;
+
+  el('meta').textContent = `${Aname} vs ${Bname} • ${metaLbl}`;
 
   const rowsA = rowsForTeam(Aname), rowsB = rowsForTeam(Bname);
 
-  // Build slices
   const A = { 
     kpi: kpis(rowsA),
     map: mapPerformance(rowsA),
@@ -500,44 +495,61 @@ function renderAll(){
     trend: trendWD(rowsB)
   };
 
-  // Render KPIs
   el('kpiA').innerHTML = kpiCard(Aname, A.kpi);
   el('kpiB').innerHTML = kpiCard(Bname, B.kpi);
 
-  // Map perf
   el('labelTMA').textContent = Aname; el('labelTMB').textContent = Bname;
   el('tmA').innerHTML = tableMapPerf(A.map);
   el('tmB').innerHTML = tableMapPerf(B.map);
 
-  // Drop hotspots
   el('labelDropA').textContent = Aname; el('labelDropB').textContent = Bname;
   el('dropA').innerHTML = tableDrop(A.drop);
   el('dropB').innerHTML = tableDrop(B.drop);
 
-  // Trends
   el('labelTrendA').textContent = Aname; el('labelTrendB').textContent = Bname;
   el('trendA').innerHTML = tableTrend(A.trend);
   el('trendB').innerHTML = tableTrend(B.trend);
 
-  // Leaderboard for current filter
-  const lead = leaderboardAllTeams(RAW, 20);
+  const lead = leaderboardAllTeams(ROWS, 20);
   el('leaderboard').innerHTML = tableLeaderboard(lead);
-  B.leader = lead; // stash for prompt
+  B.leader = lead;
 
-  // AI Prompt
+  const m = {
+    tournament: el('fTourn').value,
+    year: el('fYear').value,
+    season: el('fSeason').value,
+    stage: el('fStage').value,
+    group: el('fGroup').value,
+    week: el('fWeek').value,
+    day: el('fDay').value,
+    map: el('fMap').value,
+    teamA: Aname, teamB: Bname
+  };
   el('aiPrompt').value = buildAIPrompt(m, A, B);
 }
 
 /* ========= Refresh flow ========= */
-async function refresh(){
-  RAW = await fetchRecords();
-  await populateFilterDropdowns(RAW);
-  populateTeamDropdowns(RAW);
+async function initialLoad(){
+  ALL_ROWS = await fetchAllRecords();
+  await populateFilterDropdowns();     // from ALL_ROWS (shows all seasons/tournaments)
+  ROWS = applyFilters(ALL_ROWS);       // apply current UI filters
+  populateTeamDropdowns(ROWS);         // teams from filtered scope
+  renderAll();
+}
+
+/* Apply button: do NOT refetch; filter locally */
+function applyAndRender(){
+  ROWS = applyFilters(ALL_ROWS);
+  populateTeamDropdowns(ROWS);
   renderAll();
 }
 
 /* ========= Events ========= */
-el('applyBtn').onclick = refresh;
+el('applyBtn').onclick = applyAndRender;
+el('resetBtn').onclick = ()=>{
+  ['fTourn','fYear','fSeason','fStage','fGroup','fWeek','fDay','fMap'].forEach(id=>{ if(el(id)) el(id).value='__ALL__'; });
+  applyAndRender();
+};
 ['cmpTeamA','cmpTeamB'].forEach(id=> el(id).addEventListener('change', renderAll));
 el('cmpSwap').addEventListener('click', ()=>{
   const A = el('cmpTeamA'), B = el('cmpTeamB'); const t = A.value; A.value = B.value; B.value = t; renderAll();
@@ -553,7 +565,7 @@ el('copyPromptBtn').addEventListener('click', async ()=>{
 });
 
 /* ========= First load ========= */
-refresh();
+initialLoad();
 </script>
 </body>
 </html>
