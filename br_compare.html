@@ -192,9 +192,10 @@ let ROWS = []; // filtered by UI
 
 /* ========= Paginated fetch (ensures ALL data is loaded) ========= */
 async function fetchAllRows(){
-  const PAGE = 2000; // bump as needed
-  let offset = 0; let out = []; let pageCount = 0;
-  while(true){
+  const CHUNK = 1000; // safe default for Supabase
+  let from = 0;
+  const out = [];
+  for(;;){
     const { data, error } = await client
       .from('ffbr_data')
       .select('id, team, "group", stage, day, match, map, booyah, placement, elimination, drop, damage, total, played, top3, tag, week, tournament, year, season')
@@ -202,17 +203,18 @@ async function fetchAllRows(){
       .order('week', { ascending:true })
       .order('day', { ascending:true })
       .order('match', { ascending:true })
-      .range(offset, offset + PAGE - 1);
-    if (error){ console.error('ffbr_data fetch failed:', error); alert('Failed to load ffbr_data: '+(error?.message||'Unknown error')); break; }
+      .range(from, from + CHUNK - 1);
+
+    if (error) { console.error('ffbr_data fetch failed:', error); alert('Failed to load ffbr_data: '+(error.message||'Unknown')); break; }
     const rows = data || [];
-    out = out.concat(rows);
-    pageCount++;
-    if (rows.length < PAGE) break; // last page reached
-    offset += PAGE;
+    if (!rows.length) break;           // no more pages
+    out.push(...rows);
+    from += rows.length;               // advance by what we actually got
   }
-  console.log(`Loaded ${out.length} rows in ${pageCount} page(s).`);
+  console.log(`Loaded ${out.length} rows total.`);
   return out;
 }
+
 
 /* ========= Filters ========= */
 function initDropdownsPlaceholders(){
