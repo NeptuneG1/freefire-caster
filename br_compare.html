@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FF BR — Performance Compare</title>
+  <title>FFBR — Full Table Analysis</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root{
@@ -19,17 +19,18 @@
     .chip{font-size:.85rem;color:#ddd}
     .btn{background:var(--brand);color:var(--panel);border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
     .btn:hover{background:#e6a74f}
-    .shell{max-width:1200px;margin:22px auto;padding:0 12px}
+    .btn.secondary{background:#2a2a2a;color:#ddd;border:1px solid #3a3a3a}
 
+    .shell{max-width:1280px;margin:22px auto;padding:0 12px}
     .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
     .controls{display:flex;flex-wrap:wrap;gap:8px}
     .controls label{display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);padding:6px 8px;border-radius:8px}
-    .controls select,.controls input[type="number"]{background:#212121;color:var(--brand);border:1px solid #3a3a3a;border-radius:6px;padding:6px 8px}
-    .muted{color:var(--muted);font-size:.9rem}
+    .controls select,.controls input[type="search"],.controls input[type="number"]{background:#212121;color:var(--brand);border:1px solid #3a3a3a;border-radius:6px;padding:6px 8px}
 
     .section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
     .section h2{margin:0 0 10px;color:var(--brand)}
     .grid2{display:grid;grid-template-columns:repeat(2,minmax(320px,1fr));gap:12px}
+    .grid3{display:grid;grid-template-columns:repeat(3,minmax(240px,1fr));gap:12px}
     .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px}
     .card h3{margin:0 0 6px;color:var(--brand2);font-size:1.0rem}
     .kpis{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
@@ -40,14 +41,23 @@
     thead th{background:#191919;text-align:left;position:sticky;top:0}
     .right{text-align:right}
     .mono{font-variant-numeric:tabular-nums}
+    .muted{color:var(--muted);font-size:.9rem}
     .caption{margin:4px 0 8px}
     .tight{line-height:1.25}
+
+    .barrow{display:flex;align-items:center;gap:8px}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#111;border:1px solid #2a2a2a;margin:2px;font-size:.85rem;color:#ddd}
+
+    .bar-rail{height:9px;background:#181818;border:1px solid #2a2a2a;border-radius:6px;overflow:hidden}
+    .bar-fill{height:100%;background:linear-gradient(90deg,var(--brand),var(--brand2))}
+
+    @media (max-width: 980px){ .grid3{grid-template-columns:1fr} }
     @media (max-width: 860px){ .grid2{grid-template-columns:1fr} }
   </style>
 </head>
 <body>
 <header>
-  <h1>FFBR — Performance Compare</h1>
+  <h1>FFBR — Full Table Analysis</h1>
   <div class="user-controls">
     <span class="chip" id="user-info">Checking login…</span>
     <button class="btn" id="logoutBtn">Logout</button>
@@ -78,73 +88,69 @@
           <option value="Purgatory Remastered">Purgatory Remastered</option>
         </select>
       </label>
+      <label>Team <select id="fTeam"></select></label>
+      <label>Search <input type="search" id="fSearch" placeholder="Team / Tournament / Drop"/></label>
       <button class="btn" id="applyBtn">Apply</button>
-      <button class="btn" id="resetBtn" title="Reset all filters">Reset</button>
+      <button class="btn secondary" id="resetBtn" title="Reset all filters">Reset</button>
+      <button class="btn secondary" id="exportBtn" title="Export current rows as CSV">Export CSV</button>
     </div>
   </div>
 
-  <!-- TEAM PICK -->
+  <!-- DATASET OVERVIEW -->
   <div class="section">
-    <h2>Pick two teams</h2>
-    <div class="controls">
-      <label>Team A <select id="cmpTeamA"></select></label>
-      <label>Team B <select id="cmpTeamB"></select></label>
-      <button class="btn" id="cmpSwap" title="Swap A/B">Swap</button>
+    <h2>Dataset Overview</h2>
+    <div class="grid3">
+      <div class="card" id="summaryA"><h3>Scope Summary</h3>Loading…</div>
+      <div class="card" id="summaryB"><h3>Coverage (Year × Season)</h3>Loading…</div>
+      <div class="card" id="summaryC"><h3>Coverage (Tournament)</h3>Loading…</div>
     </div>
     <div class="caption muted" id="meta">—</div>
   </div>
 
-  <!-- OVERVIEW KPIs -->
+  <!-- TEAM LEADERBOARDS -->
   <div class="section">
-    <h2>Overview KPIs</h2>
+    <h2>Team Leaderboards</h2>
     <div class="grid2">
-      <div class="card" id="kpiA"><h3>A</h3>Loading…</div>
-      <div class="card" id="kpiB"><h3>B</h3>Loading…</div>
+      <div class="card"><h3>Total Points</h3><div id="leadTotal">Loading…</div></div>
+      <div class="card"><h3>Booyah Rate</h3><div id="leadBooyah">Loading…</div></div>
+      <div class="card"><h3>Elims per Match</h3><div id="leadElims">Loading…</div></div>
+      <div class="card"><h3>Damage per Match</h3><div id="leadDamage">Loading…</div></div>
     </div>
   </div>
 
-  <!-- MAP PERFORMANCE -->
+  <!-- MAP & DROP ANALYSIS -->
   <div class="section">
-    <h2>Map Performance</h2>
+    <h2>Map and Drop Analysis (by Team)</h2>
     <div class="grid2">
-      <div class="card"><h3 id="labelTMA">Team A</h3><div id="tmA">Loading…</div></div>
-      <div class="card"><h3 id="labelTMB">Team B</h3><div id="tmB">Loading…</div></div>
+      <div class="card"><h3 id="labelMapTeam">Map Performance — Team</h3><div id="tblMapTeam">Loading…</div></div>
+      <div class="card"><h3 id="labelDropTeam">Drop Hotspots — Team</h3><div id="tblDropTeam">Loading…</div></div>
     </div>
   </div>
 
-  <!-- DROP HOTSPOTS -->
+  <!-- STAGE/GROUP/TIME TRENDS -->
   <div class="section">
-    <h2>Drop Hotspots (Top 10)</h2>
-    <div class="grid2">
-      <div class="card"><h3 id="labelDropA">Team A</h3><div id="dropA">Loading…</div></div>
-      <div class="card"><h3 id="labelDropB">Team B</h3><div id="dropB">Loading…</div></div>
+    <h2>Stage / Group / Time Trends</h2>
+    <div class="grid3">
+      <div class="card"><h3>By Stage</h3><div id="tblStage">Loading…</div></div>
+      <div class="card"><h3>By Group</h3><div id="tblGroup">Loading…</div></div>
+      <div class="card"><h3>By Week / Day</h3><div id="tblWD">Loading…</div></div>
     </div>
   </div>
 
-  <!-- TRENDS -->
+  <!-- RAW TABLE (current filters) -->
   <div class="section">
-    <h2>Trend by Week/Day</h2>
-    <div class="grid2">
-      <div class="card"><h3 id="labelTrendA">Team A</h3><div id="trendA">Loading…</div></div>
-      <div class="card"><h3 id="labelTrendB">Team B</h3><div id="trendB">Loading…</div></div>
-    </div>
-    <div class="caption muted tight">Totals = placement + elimination; Win% here is Booyah rate.</div>
+    <h2>Raw Rows (Current Filters)</h2>
+    <div id="rawTable">Loading…</div>
   </div>
 
-  <!-- TEAM LEADERBOARD (current filters) -->
-  <div class="section">
-    <h2>Leaderboard (Current Filters)</h2>
-    <div id="leaderboard">Loading…</div>
-  </div>
-
-  <!-- AI ANALYSIS PROMPT -->
+  <!-- AI PROMPT -->
   <div class="section">
     <h2>AI Analysis Prompt</h2>
-    <div class="ai-actions" style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+    <div class="barrow">
       <button class="btn" id="copyPromptBtn">Copy prompt</button>
-      <span class="muted">Copies a structured prompt + current data snapshot for ChatGPT.</span>
+      <span class="muted">Copies a structured prompt + data snapshot for ChatGPT.</span>
     </div>
-    <textarea id="aiPrompt" class="ai-text" readonly style="width:100%;min-height:220px;background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:10px;font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;font-size:.85rem;white-space:pre-wrap">Loading…</textarea>
+    <textarea id="aiPrompt" class="ai-text" readonly style="width:100%;min-height:260px;background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:10px;font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;font-size:.85rem;white-space:pre-wrap">Loading…</textarea>
   </div>
 
 </div>
@@ -158,364 +164,87 @@ const client = supabase.createClient(
 
 (async () => {
   const { data: { session } } = await client.auth.getSession();
-  if (!session) { window.location.href = "index.html"; return; }
+  if (!session) { window.location.href = 'index.html'; return; }
   const ui = document.getElementById('user-info');
   if (ui && session.user?.email) ui.textContent = `Logged in as: ${session.user.email}`;
 })();
+
 document.getElementById('logoutBtn').onclick = async () => {
   await client.auth.signOut();
-  window.location.href = "index.html";
+  window.location.href = 'index.html';
 };
 
 /* ========= Utilities ========= */
 const el = (id) => document.getElementById(id);
 const fmtPct = (x) => isFinite(x) ? (x*100).toFixed(1)+'%' : '—';
-const pct = (num, den) => den ? fmtPct(num/den) : '—';
 const n = (x) => Number(x ?? 0) || 0;
-const labelWD = (w,d) => `W${w||'-'}D${d||'-'}`;
-function sum(arr, f){ let t=0; for(const r of arr) t+=n(f?r[f]:r); return t; }
-function groupBy(arr, keyFn){
-  const m=new Map(); for(const r of arr){ const k=keyFn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r); } return m;
-}
 const norm = (v) => (v==null ? '' : String(v).trim());
-function selectDistinctFull(rows, key){
-  const s = new Set();
-  rows.forEach(r => { const v = norm(r[key]); if (v!=='' && v!==undefined && v!==null) s.add(v); });
-  return [...s];
-}
-
-/* ========= Filters init ========= */
-function initFiltersPlaceholders(){
-  const set = (id, vals, allLabel='All')=>{
-    const dd = el(id);
-    dd.innerHTML = `<option value="__ALL__">${allLabel}</option>` + (vals||[]).map(v=>`<option value="${v}">${v}</option>`).join('');
-    dd.value='__ALL__';
-  };
-  set('fTourn', []);
-  set('fYear', [], 'All years');
-  set('fSeason', [], 'All seasons');
-  set('fStage', [], 'All stages');
-  set('fGroup', [], 'All groups');
-  set('fWeek', [], 'All weeks');
-  set('fDay', [], 'All days');
-}
-initFiltersPlaceholders();
+const labelWD = (w,d) => `W${w||'-'}D${d||'-'}`;
+function sum(arr, key){ let t=0; for(const r of arr) t += n(r[key]); return t; }
+function avg(arr, key){ return arr.length ? sum(arr,key)/arr.length : 0; }
+function groupBy(arr, keyFn){ const m=new Map(); for(const r of arr){ const k=keyFn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r);} return m; }
+function distinct(rows, key){ return [...new Set(rows.map(r=>r[key]).filter(Boolean))]; }
+function csvEscape(s){ if(s==null) return ''; s=String(s); return /(,|\n|\"|\r)/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
 
 /* ========= State ========= */
-let ALL_ROWS = [];   // unfiltered full dataset
-let ROWS = [];       // filtered working set
+let ALL = [];  // all rows from Supabase (paginated fetch)
+let ROWS = []; // filtered by UI
 
-/* ========= Fetch (all rows) ========= */
-async function fetchAllRecords(){
-  const { data, error } = await client
-    .from('ffbr_data')
-    .select('id, team, "group", stage, day, match, map, booyah, placement, elimination, drop, damage, total, played, top3, tag, week, tournament, year, season')
-    .order('year', { ascending:true })
-    .order('week', { ascending:true })
-    .order('day', { ascending:true })
-    .order('match', { ascending:true })
-    .order('id', { ascending:true });
-
-  if (error){ console.error('ffbr_data select failed:', error); alert('Failed to load ffbr_data: '+(error?.message||'Unknown error')); return []; }
-  return data || [];
-}
-
-/* ========= Client-side filters (from UI) ========= */
-function applyFilters(rows){
-  const filt = {
-    tourn: el('fTourn').value,
-    year:  el('fYear').value,
-    season:el('fSeason').value,
-    stage: el('fStage').value,
-    group: el('fGroup').value,
-    week:  el('fWeek').value,
-    day:   el('fDay').value,
-    map:   el('fMap').value,
-  };
-  let out = rows;
-  if (filt.tourn !== '__ALL__') out = out.filter(r => norm(r.tournament) === norm(filt.tourn));
-  if (filt.year  !== '__ALL__') out = out.filter(r => String(r.year) === String(filt.year));
-  if (filt.season!== '__ALL__') out = out.filter(r => norm(r.season) === norm(filt.season));
-  if (filt.stage !== '__ALL__') out = out.filter(r => norm(r.stage) === norm(filt.stage));
-  if (filt.group !== '__ALL__') out = out.filter(r => norm(r.group) === norm(filt.group));
-  if (filt.week  !== '__ALL__') out = out.filter(r => String(r.week) === String(filt.week));
-  if (filt.day   !== '__ALL__') out = out.filter(r => String(r.day) === String(filt.day));
-  if (filt.map   !== '__ALL__') out = out.filter(r => norm(r.map) === norm(filt.map));
+/* ========= Paginated fetch (ensures ALL data is loaded) ========= */
+async function fetchAllRows(){
+  const PAGE = 2000; // bump as needed
+  let offset = 0; let out = []; let pageCount = 0;
+  while(true){
+    const { data, error } = await client
+      .from('ffbr_data')
+      .select('id, team, "group", stage, day, match, map, booyah, placement, elimination, drop, damage, total, played, top3, tag, week, tournament, year, season')
+      .order('year', { ascending:true })
+      .order('week', { ascending:true })
+      .order('day', { ascending:true })
+      .order('match', { ascending:true })
+      .range(offset, offset + PAGE - 1);
+    if (error){ console.error('ffbr_data fetch failed:', error); alert('Failed to load ffbr_data: '+(error?.message||'Unknown error')); break; }
+    const rows = data || [];
+    out = out.concat(rows);
+    pageCount++;
+    if (rows.length < PAGE) break; // last page reached
+    offset += PAGE;
+  }
+  console.log(`Loaded ${out.length} rows in ${pageCount} page(s).`);
   return out;
 }
 
-/* ========= Dropdowns from ALL_ROWS ========= */
-async function populateFilterDropdowns(){
-  const set = (id, arr, all='All')=>{
-    const dd = el(id), prev = dd.value || '__ALL__';
+/* ========= Filters ========= */
+function initDropdownsPlaceholders(){
+  const set = (id, all='All')=>{ el(id).innerHTML = `<option value="__ALL__">${all}</option>`; };
+  set('fTourn','All tournaments'); set('fYear','All years'); set('fSeason','All seasons');
+  set('fStage','All stages'); set('fGroup','All groups'); set('fWeek','All weeks'); set('fDay','All days');
+  el('fTeam').innerHTML = `<option value="__ALL__">All teams</option>`;
+}
+initDropdownsPlaceholders();
+
+function populateFilterDropdowns(){
+  // always from ALL so coverage shows everything
+  const set = (id, arr, all) => {
+    const dd = el(id); const prev = dd.value || '__ALL__';
     const opts = [`<option value="__ALL__">${all}</option>`, ...arr.sort((a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true})).map(v=>`<option value="${v}">${v}</option>`)];
     dd.innerHTML = opts.join('');
     dd.value = (prev && (prev==='__ALL__' || arr.includes(prev))) ? prev : '__ALL__';
   };
-
-  set('fTourn',  selectDistinctFull(ALL_ROWS, 'tournament'), 'All tournaments');
-  set('fYear',   selectDistinctFull(ALL_ROWS, 'year'),       'All years');
-  set('fSeason', selectDistinctFull(ALL_ROWS, 'season'),     'All seasons');
-  set('fStage',  selectDistinctFull(ALL_ROWS, 'stage'),      'All stages');
-  set('fGroup',  selectDistinctFull(ALL_ROWS, 'group'),      'All groups');
-  set('fWeek',   selectDistinctFull(ALL_ROWS, 'week'),       'All weeks');
-  set('fDay',    selectDistinctFull(ALL_ROWS, 'day'),        'All days');
+  set('fTourn',  distinct(ALL,'tournament'), 'All tournaments');
+  set('fYear',   distinct(ALL,'year'),       'All years');
+  set('fSeason', distinct(ALL,'season'),     'All seasons');
+  set('fStage',  distinct(ALL,'stage'),      'All stages');
+  set('fGroup',  distinct(ALL,'group'),      'All groups');
+  set('fWeek',   distinct(ALL,'week'),       'All weeks');
+  set('fDay',    distinct(ALL,'day'),        'All days');
+  const teams = distinct(ALL,'team');
+  const teamDD = el('fTeam'); const prevT = teamDD.value||'__ALL__'; teamDD.innerHTML = ['<option value="__ALL__">All teams</option>', ...teams.sort().map(t=>`<option value="${t}">${t}</option>`)].join(''); teamDD.value = (prevT==='__ALL__'||teams.includes(prevT))?prevT:'__ALL__';
 }
 
-/* ========= Team dropdowns from filtered set ========= */
-function populateTeamDropdowns(rows){
-  const teams = [...new Set(rows.map(r=>r.team).filter(Boolean))].sort();
-  const A = el('cmpTeamA'), B = el('cmpTeamB');
-  const prevA=A.value, prevB=B.value;
-  const opts = teams.map(t=>`<option value="${t}">${t}</option>`).join('');
-  A.innerHTML = opts; B.innerHTML = opts;
-  A.value = teams.includes(prevA) ? prevA : (teams[0]||'');
-  B.value = teams.includes(prevB) ? prevB : (teams[1]||teams[0]||'');
-}
-
-/* ========= Team slices ========= */
-function rowsForTeam(team){ return ROWS.filter(r => r.team === team); }
-
-/* ========= Aggregations ========= */
-function kpis(rows){
-  const matches = rows.length || sum(rows, 'played') || 0;
-  const booyah  = sum(rows, 'booyah');
-  const top3    = sum(rows, 'top3');
-  const elim    = sum(rows, 'elimination');
-  const dmg     = sum(rows, 'damage');
-  const place   = sum(rows, 'placement');
-  const total   = sum(rows, 'total');
-  return {
-    matches, total,
-    total_per_match: matches ? total/matches : 0,
-    booyah_rate: matches ? (booyah/matches) : 0,
-    top3_rate: matches ? (top3/matches) : 0,
-    avg_elims: matches ? (elim/matches) : 0,
-    avg_damage: matches ? (dmg/matches) : 0,
-    avg_placement_pts: matches ? (place/matches) : 0
-  };
-}
-
-function mapPerformance(rows){
-  const byMap = groupBy(rows, r=>r.map||'—');
-  const out=[];
-  for(const [map, list] of byMap.entries()){
-    const matches=list.length;
-    out.push({
-      map,
-      matches,
-      booyah: sum(list,'booyah'),
-      booyah_rate: matches? sum(list,'booyah')/matches : 0,
-      avg_elims: matches? sum(list,'elimination')/matches : 0,
-      avg_total: matches? sum(list,'total')/matches : 0
-    });
-  }
-  return out.sort((a,b)=> b.matches-a.matches || b.avg_total-a.avg_total || a.map.localeCompare(b.map));
-}
-
-function dropHotspots(rows, limit=10){
-  const byDrop = groupBy(rows, r=>r.drop||'—');
-  const out=[];
-  for(const [drop, list] of byDrop.entries()){
-    const matches=list.length;
-    out.push({
-      drop,
-      matches,
-      booyah: sum(list,'booyah'),
-      booyah_rate: matches? sum(list,'booyah')/matches : 0,
-      avg_elims: matches? sum(list,'elimination')/matches : 0,
-      avg_total: matches? sum(list,'total')/matches : 0
-    });
-  }
-  return out
-    .sort((a,b)=> b.matches-a.matches || b.avg_total-a.avg_total || b.booyah_rate-a.booyah_rate)
-    .slice(0, limit);
-}
-
-function trendWD(rows){
-  const byWD = groupBy(rows, r=>labelWD(r.week,r.day));
-  const out=[];
-  for(const [wd, list] of byWD.entries()){
-    const matches=list.length;
-    out.push({
-      wd,
-      matches,
-      total: sum(list,'total'),
-      total_per_match: matches? sum(list,'total')/matches : 0,
-      booyah_rate: matches? sum(list,'booyah')/matches : 0,
-      avg_elims: matches? sum(list,'elimination')/matches : 0
-    });
-  }
-  return out.sort((a,b)=> a.wd.localeCompare(b.wd, undefined, {numeric:true}));
-}
-
-function leaderboardAllTeams(rows, limit=20){
-  const byTeam = groupBy(rows, r=>r.team);
-  const out=[];
-  for(const [team, list] of byTeam.entries()){
-    const kp=kpis(list);
-    out.push({ team, matches:kp.matches, total:kp.total, total_per_match:kp.total_per_match, booyah_rate:kp.booyah_rate });
-  }
-  return out.sort((a,b)=> b.total - a.total || b.total_per_match - a.total_per_match).slice(0,limit);
-}
-
-/* ========= Renderers ========= */
-function kpiCard(name, k){
-  if (!k || !k.matches) return `<div class="muted">No data.</div>`;
-  return `
-    <h3>${name}</h3>
-    <div class="kpis">
-      <div class="kpi">Matches <strong>${k.matches}</strong></div>
-      <div class="kpi">Total pts <strong>${k.total}</strong> <span class="muted">(${k.total_per_match.toFixed(1)}/match)</span></div>
-      <div class="kpi">Booyah <strong>${fmtPct(k.booyah_rate)}</strong></div>
-      <div class="kpi">Top 3 <strong>${fmtPct(k.top3_rate)}</strong></div>
-      <div class="kpi">Elims <strong>${k.avg_elims.toFixed(1)}</strong>/match</div>
-      <div class="kpi">Damage <strong>${k.avg_damage.toFixed(0)}</strong>/match</div>
-      <div class="kpi">Placement pts <strong>${k.avg_placement_pts.toFixed(1)}</strong>/match</div>
-    </div>`;
-}
-function tableMapPerf(list){
-  if (!list.length) return `<div class="muted">No map stats.</div>`;
-  return `
-    <table>
-      <thead><tr><th>Map</th><th class="right">Matches</th><th class="right">Booyah %</th><th class="right">Elims / m</th><th class="right">Total / m</th></tr></thead>
-      <tbody>
-        ${list.map(r=>`<tr>
-          <td>${r.map}</td>
-          <td class="right">${r.matches}</td>
-          <td class="right">${fmtPct(r.booyah_rate)}</td>
-          <td class="right">${r.avg_elims.toFixed(1)}</td>
-          <td class="right">${r.avg_total.toFixed(1)}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table>`;
-}
-function tableDrop(list){
-  if (!list.length) return `<div class="muted">No drops for selection.</div>`;
-  return `
-    <table>
-      <thead><tr><th>Drop</th><th class="right">Matches</th><th class="right">Booyah %</th><th class="right">Elims / m</th><th class="right">Total / m</th></tr></thead>
-      <tbody>
-        ${list.map(r=>`<tr>
-          <td>${r.drop}</td>
-          <td class="right">${r.matches}</td>
-          <td class="right">${fmtPct(r.booyah_rate)}</td>
-          <td class="right">${r.avg_elims.toFixed(1)}</td>
-          <td class="right">${r.avg_total.toFixed(1)}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table>`;
-}
-function tableTrend(list){
-  if (!list.length) return `<div class="muted">No trend rows.</div>`;
-  return `
-    <table>
-      <thead><tr><th>Week/Day</th><th class="right">Matches</th><th class="right">Booyah %</th><th class="right">Elims / m</th><th class="right">Total / m</th><th class="right">Total</th></tr></thead>
-      <tbody>
-        ${list.map(r=>`<tr>
-          <td>${r.wd}</td>
-          <td class="right">${r.matches}</td>
-          <td class="right">${fmtPct(r.booyah_rate)}</td>
-          <td class="right">${r.avg_elims.toFixed(1)}</td>
-          <td class="right">${r.total_per_match.toFixed(1)}</td>
-          <td class="right">${r.total}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table>`;
-}
-function tableLeaderboard(list){
-  if (!list.length) return `<div class="muted">No teams for current filters.</div>`;
-  return `
-    <table>
-      <thead><tr><th>#</th><th>Team</th><th class="right">Matches</th><th class="right">Total</th><th class="right">Total / m</th><th class="right">Booyah %</th></tr></thead>
-      <tbody>
-        ${list.map((r,i)=>`<tr>
-          <td class="right">${i+1}</td>
-          <td>${r.team}</td>
-          <td class="right">${r.matches}</td>
-          <td class="right">${r.total}</td>
-          <td class="right">${r.total_per_match.toFixed(1)}</td>
-          <td class="right">${fmtPct(r.booyah_rate)}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table>`;
-}
-
-/* ========= AI Prompt ========== */
-function buildAIPrompt(meta, A, B){
-  const payload = {
-    meta,
-    teamA:{ kpis:A.kpi, map_perf:A.map, drops:A.drop, trend:A.trend },
-    teamB:{ kpis:B.kpi, map_perf:B.map, drops:B.drop, trend:B.trend },
-    leaderboard: B.leader
-  };
-  return `You are an esports analyst. Compare two Free Fire Battle Royale teams using the snapshot below.
-
-Context:
-- Teams: ${meta.teamA} vs ${meta.teamB}
-- Filters: Tournament=${meta.tournament||'All'}, Year=${meta.year||'All'}, Season=${meta.season||'All'}, Stage=${meta.stage||'All'}, Group=${meta.group||'All'}, Week=${meta.week||'All'}, Day=${meta.day||'All'}, Map=${meta.map||'All'}
-Tasks:
-1) Summarize overall performance (matches, total points, Booyah rate, elims/m, damage/m, placement pts/m).
-2) Identify best/worst maps and drops (use volume + per-match totals).
-3) Describe trends across week/day (hot/cold streaks). 
-4) Finish with 3 actionable prep notes vs each team.
-
-JSON:
-${JSON.stringify(payload,null,2)}`;
-}
-
-/* ========= Render all ========= */
-function renderAll(){
-  const Aname = el('cmpTeamA').value, Bname = el('cmpTeamB').value;
-
-  const labels = (id)=> (el(id).value==='__ALL__' ? 'All' : el(id).value);
-  const metaLbl = `Tourn: ${labels('fTourn')} • Stage: ${labels('fStage')} • Group: ${labels('fGroup')} • Week: ${labels('fWeek')} • Day: ${labels('fDay')} • Map: ${labels('fMap')} • Rows: ${ROWS.length}/${ALL_ROWS.length}`;
-
-  if (!Aname || !Bname || Aname===Bname){
-    el('meta').textContent = `Pick two different teams • ${metaLbl}`;
-    ['kpiA','kpiB','tmA','tmB','dropA','dropB','trendA','trendB','leaderboard'].forEach(id=>{ if(el(id)) el(id).innerHTML = '<div class="muted">—</div>'; });
-    el('aiPrompt').value = 'Pick two different teams.';
-    return;
-  }
-
-  el('meta').textContent = `${Aname} vs ${Bname} • ${metaLbl}`;
-
-  const rowsA = rowsForTeam(Aname), rowsB = rowsForTeam(Bname);
-
-  const A = { 
-    kpi: kpis(rowsA),
-    map: mapPerformance(rowsA),
-    drop: dropHotspots(rowsA, 10),
-    trend: trendWD(rowsA)
-  };
-  const B = { 
-    kpi: kpis(rowsB),
-    map: mapPerformance(rowsB),
-    drop: dropHotspots(rowsB, 10),
-    trend: trendWD(rowsB)
-  };
-
-  el('kpiA').innerHTML = kpiCard(Aname, A.kpi);
-  el('kpiB').innerHTML = kpiCard(Bname, B.kpi);
-
-  el('labelTMA').textContent = Aname; el('labelTMB').textContent = Bname;
-  el('tmA').innerHTML = tableMapPerf(A.map);
-  el('tmB').innerHTML = tableMapPerf(B.map);
-
-  el('labelDropA').textContent = Aname; el('labelDropB').textContent = Bname;
-  el('dropA').innerHTML = tableDrop(A.drop);
-  el('dropB').innerHTML = tableDrop(B.drop);
-
-  el('labelTrendA').textContent = Aname; el('labelTrendB').textContent = Bname;
-  el('trendA').innerHTML = tableTrend(A.trend);
-  el('trendB').innerHTML = tableTrend(B.trend);
-
-  const lead = leaderboardAllTeams(ROWS, 20);
-  el('leaderboard').innerHTML = tableLeaderboard(lead);
-  B.leader = lead;
-
-  const m = {
-    tournament: el('fTourn').value,
+function applyFilters(){
+  const F = {
+    tourn: el('fTourn').value,
     year: el('fYear').value,
     season: el('fSeason').value,
     stage: el('fStage').value,
@@ -523,49 +252,337 @@ function renderAll(){
     week: el('fWeek').value,
     day: el('fDay').value,
     map: el('fMap').value,
-    teamA: Aname, teamB: Bname
+    team: el('fTeam').value,
+    search: norm(el('fSearch').value).toLowerCase()
   };
-  el('aiPrompt').value = buildAIPrompt(m, A, B);
-}
-
-/* ========= Refresh flow ========= */
-async function initialLoad(){
-  ALL_ROWS = await fetchAllRecords();
-  await populateFilterDropdowns();     // from ALL_ROWS (shows all seasons/tournaments)
-  ROWS = applyFilters(ALL_ROWS);       // apply current UI filters
-  populateTeamDropdowns(ROWS);         // teams from filtered scope
-  renderAll();
-}
-
-/* Apply button: do NOT refetch; filter locally */
-function applyAndRender(){
-  ROWS = applyFilters(ALL_ROWS);
-  populateTeamDropdowns(ROWS);
-  renderAll();
-}
-
-/* ========= Events ========= */
-el('applyBtn').onclick = applyAndRender;
-el('resetBtn').onclick = ()=>{
-  ['fTourn','fYear','fSeason','fStage','fGroup','fWeek','fDay','fMap'].forEach(id=>{ if(el(id)) el(id).value='__ALL__'; });
-  applyAndRender();
-};
-['cmpTeamA','cmpTeamB'].forEach(id=> el(id).addEventListener('change', renderAll));
-el('cmpSwap').addEventListener('click', ()=>{
-  const A = el('cmpTeamA'), B = el('cmpTeamB'); const t = A.value; A.value = B.value; B.value = t; renderAll();
-});
-el('copyPromptBtn').addEventListener('click', async ()=>{
-  const text = el('aiPrompt').value || '';
-  try{
-    await navigator.clipboard.writeText(text);
-    const btn = el('copyPromptBtn'); const orig=btn.textContent; btn.textContent='Copied!'; setTimeout(()=>btn.textContent=orig,1200);
-  }catch(e){
-    alert('Copy failed: '+e.message);
+  let rows = ALL;
+  if (F.tourn !== '__ALL__') rows = rows.filter(r=>norm(r.tournament)===norm(F.tourn));
+  if (F.year  !== '__ALL__') rows = rows.filter(r=>String(r.year)===String(F.year));
+  if (F.season!== '__ALL__') rows = rows.filter(r=>norm(r.season)===norm(F.season));
+  if (F.stage !== '__ALL__') rows = rows.filter(r=>norm(r.stage)===norm(F.stage));
+  if (F.group !== '__ALL__') rows = rows.filter(r=>norm(r.group)===norm(F.group));
+  if (F.week  !== '__ALL__') rows = rows.filter(r=>String(r.week)===String(F.week));
+  if (F.day   !== '__ALL__') rows = rows.filter(r=>String(r.day)===String(F.day));
+  if (F.map   !== '__ALL__') rows = rows.filter(r=>norm(r.map)===norm(F.map));
+  if (F.team  !== '__ALL__') rows = rows.filter(r=>norm(r.team)===norm(F.team));
+  if (F.search){
+    rows = rows.filter(r=>{
+      const hay = [r.team,r.tournament,r.drop,r.map,r.stage,r.season,r.group].map(x=>norm(x).toLowerCase()).join('|');
+      return hay.includes(F.search);
+    });
   }
-});
+  ROWS = rows;
+}
 
-/* ========= First load ========= */
-initialLoad();
+/* ========= Aggregations ========= */
+function kpiDataset(rows){
+  const matches = rows.length;
+  const teams = distinct(rows,'team').length;
+  const tourns = distinct(rows,'tournament').length;
+  const years = distinct(rows,'year').length;
+  const booyah = sum(rows,'booyah');
+  const total = sum(rows,'total');
+  const elims = sum(rows,'elimination');
+  const damage = sum(rows,'damage');
+  const top3 = sum(rows,'top3');
+  return {
+    matches, teams, tourns, years,
+    booyah_rate: matches? booyah/matches : 0,
+    total_per_match: matches? total/matches : 0,
+    elims_per_match: matches? elims/matches : 0,
+    dmg_per_match: matches? damage/matches : 0,
+    top3_rate: matches? top3/matches : 0
+  };
+}
+
+function byKeyStats(rows, key){
+  const g = groupBy(rows, r=>r[key]||'—');
+  const out = [];
+  for(const [val, list] of g.entries()){
+    const m = list.length;
+    out.push({
+      key: val,
+      matches: m,
+      booyah_rate: m? sum(list,'booyah')/m : 0,
+      elims_pm: m? sum(list,'elimination')/m : 0,
+      total_pm: m? sum(list,'total')/m : 0
+    });
+  }
+  return out.sort((a,b)=> b.matches - a.matches || b.total_pm - a.total_pm || String(a.key).localeCompare(String(b.key)));
+}
+
+function leaderboard(rows, metric){
+  const g = groupBy(rows, r=>r.team);
+  const out = [];
+  for(const [team, list] of g.entries()){
+    const m = list.length;
+    const obj = { team, matches:m };
+    obj.total = sum(list,'total');
+    obj.total_pm = m? obj.total/m : 0;
+    obj.booyah_rate = m? sum(list,'booyah')/m : 0;
+    obj.elims_pm = m? sum(list,'elimination')/m : 0;
+    obj.damage_pm = m? sum(list,'damage')/m : 0;
+    out.push(obj);
+  }
+  const sorters = {
+    total: (a,b)=> b.total - a.total || b.total_pm - a.total_pm,
+    booyah: (a,b)=> b.booyah_rate - a.booyah_rate || b.total_pm - a.total_pm,
+    elims: (a,b)=> b.elims_pm - a.elims_pm || b.total - a.total,
+    damage: (a,b)=> b.damage_pm - a.damage_pm || b.total - a.total
+  };
+  const sorter = sorters[metric] || sorters.total;
+  return out.sort(sorter).slice(0, 30);
+}
+
+function teamMapPerf(rows){
+  const g = groupBy(rows, r=>r.map||'—');
+  const out=[];
+  for(const [map, list] of g.entries()){
+    const m = list.length;
+    out.push({ map, matches:m, booyah_rate:m?sum(list,'booyah')/m:0, elims_pm:m?sum(list,'elimination')/m:0, total_pm:m?sum(list,'total')/m:0 });
+  }
+  return out.sort((a,b)=> b.matches-a.matches || b.total_pm-a.total_pm || a.map.localeCompare(b.map));
+}
+
+function teamDropPerf(rows, limit=15){
+  const g = groupBy(rows, r=>r.drop||'—');
+  const out=[];
+  for(const [drop, list] of g.entries()){
+    const m = list.length;
+    out.push({ drop, matches:m, booyah_rate:m?sum(list,'booyah')/m:0, elims_pm:m?sum(list,'elimination')/m:0, total_pm:m?sum(list,'total')/m:0 });
+  }
+  return out.sort((a,b)=> b.matches-a.matches || b.total_pm-a.total_pm || b.booyah_rate-a.booyah_rate).slice(0,limit);
+}
+
+function weekDayTrend(rows){
+  const g = groupBy(rows, r=>labelWD(r.week,r.day));
+  const out=[];
+  for(const [wd, list] of g.entries()){
+    const m = list.length;
+    out.push({ wd, matches:m, booyah_rate:m?sum(list,'booyah')/m:0, elims_pm:m?sum(list,'elimination')/m:0, total_pm:m?sum(list,'total')/m:0, total:sum(list,'total') });
+  }
+  return out.sort((a,b)=> String(a.wd).localeCompare(String(b.wd),undefined,{numeric:true}));
+}
+
+/* ========= Render helpers ========= */
+function renderKPIBox(k){
+  if (!k || !k.matches) return '<div class="muted">No rows in scope.</div>';
+  return `
+    <div class="kpis">
+      <div class="kpi">Rows <strong>${k.matches}</strong></div>
+      <div class="kpi">Teams <strong>${k.teams}</strong></div>
+      <div class="kpi">Tournaments <strong>${k.tourns}</strong></div>
+      <div class="kpi">Years <strong>${k.years}</strong></div>
+      <div class="kpi">Booyah <strong>${fmtPct(k.booyah_rate)}</strong></div>
+      <div class="kpi">Elims <strong>${k.elims_per_match.toFixed(1)}</strong>/m</div>
+      <div class="kpi">Damage <strong>${k.dmg_per_match.toFixed(0)}</strong>/m</div>
+      <div class="kpi">Total <strong>${k.total_per_match.toFixed(1)}</strong>/m</div>
+      <div class="kpi">Top3 <strong>${fmtPct(k.top3_rate)}</strong></div>
+    </div>`;
+}
+
+function renderCoverageMatrix(rows){
+  // Year × Season matrix
+  const years = [...new Set(rows.map(r=>r.year))].filter(Boolean).sort((a,b)=>a-b);
+  const seasons = [...new Set(rows.map(r=>r.season))].filter(Boolean).sort();
+  if (!years.length || !seasons.length) return '<div class="muted">No year/season coverage.</div>';
+  const g = groupBy(rows, r=>`${r.year}|${r.season}`);
+  const td = (y,s)=>{ const list = g.get(`${y}|${s}`)||[]; const m=list.length; const pct = Math.min(100, (m? 10+Math.log10(1+m)*30 : 0)); return `<td title="${m} rows"><div class="bar-rail"><div class="bar-fill" style="width:${pct}%"></div></div></td>`; };
+  return `
+    <table>
+      <thead><tr><th>Year ↓ / Season →</th>${seasons.map(s=>`<th>${s}</th>`).join('')}</tr></thead>
+      <tbody>
+        ${years.map(y=>`<tr><td>${y}</td>${seasons.map(s=>td(y,s)).join('')}</tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+function renderCoverageTournaments(rows){
+  const list = byKeyStats(rows,'tournament').slice(0,12);
+  if (!list.length) return '<div class="muted">No tournaments.</div>';
+  return `
+    <table>
+      <thead><tr><th>Tournament</th><th class="right">Rows</th><th class="right">Booyah %</th><th class="right">Elims / m</th><th class="right">Total / m</th></tr></thead>
+      <tbody>
+        ${list.map(r=>`<tr><td>${r.key}</td><td class="right">${r.matches}</td><td class="right">${fmtPct(r.booyah_rate)}</td><td class="right">${r.elims_pm.toFixed(1)}</td><td class="right">${r.total_pm.toFixed(1)}</td></tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+function renderLeaderboard(list, mode){
+  if (!list.length) return '<div class="muted">No teams in scope.</div>';
+  const cols = {
+    total: ['Total','total','total_pm'],
+    booyah: ['Booyah %','booyah_rate','total_pm'],
+    elims: ['Elims / m','elims_pm','total'],
+    damage: ['Damage / m','damage_pm','total']
+  }[mode] || ['Total','total','total_pm'];
+  const [labMain, keyMain, keyAux] = cols;
+  return `
+    <table>
+      <thead><tr><th>#</th><th>Team</th><th class="right">Matches</th><th class="right">${labMain}</th><th class="right">Aux</th></tr></thead>
+      <tbody>
+        ${list.map((r,i)=>`<tr>
+          <td class="right">${i+1}</td><td>${r.team}</td><td class="right">${r.matches}</td>
+          <td class="right">${keyMain.includes('rate')?fmtPct(r[keyMain]):(keyMain.includes('_pm')?r[keyMain].toFixed(1):r[keyMain])}</td>
+          <td class="right">${keyAux.includes('rate')?fmtPct(r[keyAux]):(keyAux.includes('_pm')?r[keyAux].toFixed(1):r[keyAux])}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+function renderSimpleTable(list, cols){
+  if (!list.length) return '<div class="muted">No rows.</div>';
+  const head = `<thead><tr>${cols.map(c=>`<th class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
+  const body = `<tbody>${list.map(r=>`<tr>${cols.map(c=>{
+    let v = r[c.key];
+    if (c.format==='pct') v = fmtPct(v);
+    else if (c.format==='1d') v = Number(v).toFixed(1);
+    else if (c.format==='0d') v = Number(v).toFixed(0);
+    return `<td class="${c.right?'right':''}">${v==null?'—':v}</td>`;
+  }).join('')}</tr>`).join('')}</tbody>`;
+  return `<table>${head}${body}</table>`;
+}
+
+function renderRawTable(rows){
+  if (!rows.length) return '<div class="muted">No rows for current filters.</div>';
+  const cols = ['id','team','group','stage','week','day','match','map','drop','booyah','placement','elimination','damage','total','top3','tournament','year','season'];
+  const head = `<thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>`;
+  const body = `<tbody>${rows.slice(0,300).map(r=>`<tr>${cols.map(c=>`<td>${r[c]??''}</td>`).join('')}</tr>`).join('')}</tbody>`;
+  const note = rows.length>300? `<div class="muted">Showing first 300 of ${rows.length} rows.</div>`:'';
+  return `<div style="overflow:auto"> <table>${head}${body}</table> </div>${note}`;
+}
+
+/* ========= AI Prompt ========= */
+function buildPrompt(meta, snapshot){
+  return `You are an esports analyst. Analyze this Free Fire Battle Royale dataset snapshot.\n\n`+
+  `Filters: Tournament=${meta.tournament||'All'}, Year=${meta.year||'All'}, Season=${meta.season||'All'}, Stage=${meta.stage||'All'}, Group=${meta.group||'All'}, Week=${meta.week||'All'}, Day=${meta.day||'All'}, Map=${meta.map||'All'}, Team=${meta.team||'All'}, Search=${meta.search||''}.\n`+
+  `Tasks: 1) Summarize dataset KPIs. 2) Identify teams overperforming on Booyah/Elims/Damage. 3) Call out best/worst maps & drops by volume and per-match totals. 4) Stage/Group trends. 5) Weekly consistency and spikes. 6) 5 actionable prep notes.\n\n`+
+  `JSON:\n`+JSON.stringify(snapshot,null,2);
+}
+
+/* ========= Export CSV ========= */
+function exportCSV(filename, rows){
+  if (!rows || !rows.length){ alert('No rows to export.'); return; }
+  const cols = Object.keys(rows[0]);
+  const head = cols.map(csvEscape).join(',');
+  const lines = rows.map(r=> cols.map(c=>csvEscape(r[c])).join(','));
+  const blob = new Blob([head+'\n'+lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
+}
+
+/* ========= Render All ========= */
+function renderAll(){
+  // Meta label
+  const labels = (id)=> (el(id).value==='__ALL__' ? 'All' : el(id).value);
+  const metaLbl = `Tourn: ${labels('fTourn')} • Year: ${labels('fYear')} • Season: ${labels('fSeason')} • Stage: ${labels('fStage')} • Group: ${labels('fGroup')} • Week: ${labels('fWeek')} • Day: ${labels('fDay')} • Map: ${labels('fMap')} • Team: ${labels('fTeam')} • Rows: ${ROWS.length}/${ALL.length}`;
+  el('meta').textContent = metaLbl;
+
+  // Overview
+  const k = kpiDataset(ROWS);
+  el('summaryA').innerHTML = `<h3>Scope Summary</h3>${renderKPIBox(k)}`;
+  el('summaryB').innerHTML = `<h3>Coverage (Year × Season)</h3>${renderCoverageMatrix(ALL)}`;
+  el('summaryC').innerHTML = `<h3>Coverage (Tournament)</h3>${renderCoverageTournaments(ALL)}`;
+
+  // Leaderboards
+  el('leadTotal').innerHTML  = renderLeaderboard(leaderboard(ROWS,'total'),'total');
+  el('leadBooyah').innerHTML = renderLeaderboard(leaderboard(ROWS,'booyah'),'booyah');
+  el('leadElims').innerHTML  = renderLeaderboard(leaderboard(ROWS,'elims'),'elims');
+  el('leadDamage').innerHTML = renderLeaderboard(leaderboard(ROWS,'damage'),'damage');
+
+  // Map/Drop by team (if a team is selected, use that; otherwise, use top by matches)
+  let teamSel = el('fTeam').value;
+  if (teamSel==='__ALL__'){
+    const topTeam = leaderboard(ROWS,'total')[0]?.team || distinct(ROWS,'team')[0] || '';
+    teamSel = topTeam;
+  }
+  const teamRows = ROWS.filter(r=>r.team===teamSel);
+  el('labelMapTeam').textContent = `Map Performance — ${teamSel||'—'}`;
+  el('labelDropTeam').textContent = `Drop Hotspots — ${teamSel||'—'}`;
+  el('tblMapTeam').innerHTML = renderSimpleTable(
+    teamMapPerf(teamRows),
+    [ {label:'Map',key:'map'}, {label:'Matches',key:'matches',right:true}, {label:'Booyah %',key:'booyah_rate',format:'pct',right:true}, {label:'Elims / m',key:'elims_pm',format:'1d',right:true}, {label:'Total / m',key:'total_pm',format:'1d',right:true} ]
+  );
+  el('tblDropTeam').innerHTML = renderSimpleTable(
+    teamDropPerf(teamRows, 15),
+    [ {label:'Drop',key:'drop'}, {label:'Matches',key:'matches',right:true}, {label:'Booyah %',key:'booyah_rate',format:'pct',right:true}, {label:'Elims / m',key:'elims_pm',format:'1d',right:true}, {label:'Total / m',key:'total_pm',format:'1d',right:true} ]
+  );
+
+  // Stage / Group / Week-Day trends (from current ROWS)
+  el('tblStage').innerHTML = renderSimpleTable(
+    byKeyStats(ROWS,'stage'),
+    [ {label:'Stage',key:'key'}, {label:'Rows',key:'matches',right:true}, {label:'Booyah %',key:'booyah_rate',format:'pct',right:true}, {label:'Elims / m',key:'elims_pm',format:'1d',right:true}, {label:'Total / m',key:'total_pm',format:'1d',right:true} ]
+  );
+  el('tblGroup').innerHTML = renderSimpleTable(
+    byKeyStats(ROWS,'group'),
+    [ {label:'Group',key:'key'}, {label:'Rows',key:'matches',right:true}, {label:'Booyah %',key:'booyah_rate',format:'pct',right:true}, {label:'Elims / m',key:'elims_pm',format:'1d',right:true}, {label:'Total / m',key:'total_pm',format:'1d',right:true} ]
+  );
+  el('tblWD').innerHTML = renderSimpleTable(
+    weekDayTrend(ROWS),
+    [ {label:'Week/Day',key:'wd'}, {label:'Rows',key:'matches',right:true}, {label:'Booyah %',key:'booyah_rate',format:'pct',right:true}, {label:'Elims / m',key:'elims_pm',format:'1d',right:true}, {label:'Total / m',key:'total_pm',format:'1d',right:true}, {label:'Total',key:'total',right:true} ]
+  );
+
+  // Raw table
+  el('rawTable').innerHTML = renderRawTable(ROWS);
+
+  // AI prompt snapshot
+  const snapshot = {
+    scope_kpis: k,
+    leaderboards: {
+      total: leaderboard(ROWS,'total'),
+      booyah: leaderboard(ROWS,'booyah'),
+      elims: leaderboard(ROWS,'elims'),
+      damage: leaderboard(ROWS,'damage')
+    },
+    team_examples: {
+      team: teamSel,
+      map_perf: teamMapPerf(teamRows),
+      drop_perf: teamDropPerf(teamRows, 15)
+    },
+    stage_stats: byKeyStats(ROWS,'stage'),
+    group_stats: byKeyStats(ROWS,'group'),
+    week_day: weekDayTrend(ROWS)
+  };
+  const meta = {
+    tournament: el('fTourn').value, year: el('fYear').value, season: el('fSeason').value,
+    stage: el('fStage').value, group: el('fGroup').value, week: el('fWeek').value, day: el('fDay').value,
+    map: el('fMap').value, team: el('fTeam').value, search: el('fSearch').value
+  };
+  el('aiPrompt').value = buildPrompt(meta, snapshot);
+}
+
+/* ========= Wiring ========= */
+async function initial(){
+  ALL = await fetchAllRows();
+  populateFilterDropdowns();
+  applyFilters();
+  renderAll();
+}
+
+el('applyBtn').onclick = ()=>{ applyFilters(); renderAll(); };
+
+el('resetBtn').onclick = ()=>{
+  ['fTourn','fYear','fSeason','fStage','fGroup','fWeek','fDay','fMap','fTeam','fSearch'].forEach(id=>{ if(el(id)) el(id).value='__ALL__'; });
+  el('fSearch').value = '';
+  applyFilters(); renderAll();
+};
+
+el('exportBtn').onclick = ()=>{
+  exportCSV('ffbr_scope.csv', ROWS);
+};
+
+el('copyPromptBtn').onclick = async ()=>{
+  try{
+    await navigator.clipboard.writeText(el('aiPrompt').value||'');
+    const btn = el('copyPromptBtn'); const orig=btn.textContent; btn.textContent='Copied!'; setTimeout(()=>btn.textContent=orig,1200);
+  }catch(e){ alert('Copy failed: '+e.message); }
+};
+
+['fTourn','fYear','fSeason','fStage','fGroup','fWeek','fDay','fMap','fTeam'].forEach(id=> el(id).addEventListener('change', ()=>{ applyFilters(); renderAll(); }));
+el('fSearch').addEventListener('input', ()=>{ applyFilters(); renderAll(); });
+
+initial();
 </script>
 </body>
 </html>
