@@ -926,14 +926,14 @@ function renderCoverageTournaments(rows){
 
 function renderLeaderboard(list, mode){
   if (!list.length) return '<div class="muted">No teams in scope.</div>';
-  const cols = {
-    total:  ['Total','total','total_pm'],
-    booyah: ['Booyah %','booyah_rate','total_pm'],
-    elims:  ['Elims / m','elims_pm','total'],
-    damage: ['Damage / m','damage_pm','total']
-  }[mode] || ['Total','total','total_pm'];
 
-  const [labMain, keyMain, keyAux] = cols;
+  const cfg = {
+    total:  { labMain:'Total',      keyMain:'total',      labAux:'Total / m',   keyAux:'total_pm' },
+    booyah: { labMain:'Booyah %',   keyMain:'booyah_rate',labAux:'Total / m',   keyAux:'total_pm' },
+    elims:  { labMain:'Elims / m',  keyMain:'elims_pm',   labAux:'Total',       keyAux:'total' },
+    damage: { labMain:'Damage / m', keyMain:'damage_pm',  labAux:'Total',       keyAux:'total' }
+  }[mode] || { labMain:'Total', keyMain:'total', labAux:'Total / m', keyAux:'total_pm' };
+
   const fmt = (key, v) =>
     key.includes('rate') ? fmtPct(v)
     : key.includes('_pm') ? Number(v).toFixed(1)
@@ -941,19 +941,27 @@ function renderLeaderboard(list, mode){
 
   return `
     <table>
-      <thead><tr><th>#</th><th>Team</th><th class="right">Matches</th><th class="right">${labMain}</th><th class="right">Aux</th></tr></thead>
+      <thead>
+        <tr>
+          <th>#</th><th>Team</th>
+          <th class="right">Matches</th>
+          <th class="right">${cfg.labMain}</th>
+          <th class="right">${cfg.labAux}</th>
+        </tr>
+      </thead>
       <tbody>
         ${list.map((r,i)=>`
           <tr>
             <td class="right">${i+1}</td>
             <td>${r.team ?? '—'}</td>
             <td class="right">${r.matches ?? 0}</td>
-            <td class="right">${fmt(keyMain, r[keyMain])}</td>
-            <td class="right">${fmt(keyAux, r[keyAux])}</td>
+            <td class="right">${fmt(cfg.keyMain, r[cfg.keyMain])}</td>
+            <td class="right">${fmt(cfg.keyAux,  r[cfg.keyAux])}</td>
           </tr>`).join('')}
       </tbody>
     </table>`;
 }
+
 
 function exportCSV(filename, rows){
   if (!rows || !rows.length){ alert('No rows to export.'); return; }
