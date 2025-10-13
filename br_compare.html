@@ -137,6 +137,69 @@
     </div>
   </div>
 
+  <!-- ===== NEW: POI CONTESTATION ===== -->
+  <div class="section">
+    <h2>POI Contestation</h2>
+    <div class="grid2">
+      <div class="card"><h3 id="labelContestTeam">Team — Contest Rate & Outcomes</h3><div id="tblContestTeam">Loading…</div></div>
+      <div class="card"><h3>Most Contested Drops (field)</h3><div id="tblContestField">Loading…</div></div>
+    </div>
+    <div class="caption muted tight">Contested = ≥2 teams same (tournament, stage, group, week, day, match, map, drop).</div>
+  </div>
+
+  <!-- ===== NEW: DROP LOYALTY / FLEX ===== -->
+  <div class="section">
+    <h2>Drop Loyalty & Flex Performance</h2>
+    <div class="grid2">
+      <div class="card"><h3 id="labelLoyal">Team — Loyalty</h3><div id="tblLoyal">Loading…</div></div>
+      <div class="card"><h3 id="labelFlex">Team — Flex vs Home</h3><div id="tblFlex">Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- ===== NEW: CONSISTENCY / CONVERSION / EFFICIENCY ===== -->
+  <div class="section">
+    <h2>Consistency, Conversion & Efficiency</h2>
+    <div class="grid3">
+      <div class="card"><h3>Consistency / Volatility</h3><div id="tblConsist">Loading…</div></div>
+      <div class="card"><h3>Booyah Conversion (from Top-3)</h3><div id="tblConv">Loading…</div></div>
+      <div class="card"><h3>Damage Efficiency</h3><div id="tblEff">Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- ===== NEW: FRAG VS PLACEMENT ===== -->
+  <div class="section">
+    <h2>Frag vs Placement Profile</h2>
+    <div class="grid2">
+      <div class="card"><h3 id="labelProfileTeam">Team — Points Split</h3><div id="tblProfileTeam">Loading…</div></div>
+      <div class="card"><h3>Field Comparison</h3><div id="tblProfileField">Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- ===== NEW: MOMENTUM & MAP SPECIALIZATION ===== -->
+  <div class="section">
+    <h2>Momentum (3-Match Rolling) & Map Specialization</h2>
+    <div class="grid2">
+      <div class="card"><h3 id="labelMomentumTeam">Team — Rolling Total</h3><div id="tblMomentum">Loading…</div></div>
+      <div class="card"><h3>Map Specialization</h3><div id="tblSpec">Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- ===== NEW: CLUTCH / SCUFFED ===== -->
+  <div class="section">
+    <h2>Clutch & Scuffed Buckets</h2>
+    <div class="grid2">
+      <div class="card"><h3 id="labelClutchTeam">Team — Rates</h3><div id="tblClutch">Loading…</div></div>
+      <div class="card"><h3>Examples (last 10)</h3><div id="tblClutchEx">Loading…</div></div>
+    </div>
+    <div class="caption muted tight">Quartiles computed within current filter scope for each team.</div>
+  </div>
+
+  <!-- RAW ROWS -->
+  <div class="section">
+    <h2>Raw Rows (Filtered)</h2>
+    <div id="rawTable">Loading…</div>
+  </div>
+
   <!-- AI PROMPT -->
   <div class="section">
     <h2>AI Analysis Prompt</h2>
@@ -180,6 +243,39 @@ function groupBy(arr, keyFn){ const m=new Map(); for(const r of arr){ const k=ke
 function distinct(rows, key){ return [...new Set(rows.map(r=>r[key]).filter(Boolean))]; }
 function csvEscape(s){ if(s==null) return ''; s=String(s); return /(,|\n|\"|\r)/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
 
+/* Extra helpers (for new analyses) */
+function variance(arr, key){
+  if (!arr.length) return 0;
+  const mean = arr.reduce((a,r)=>a+n(r[key]),0)/arr.length;
+  const v = arr.reduce((a,r)=>a+Math.pow(n(r[key])-mean,2),0)/arr.length;
+  return v;
+}
+function stddev(arr, key){ return Math.sqrt(variance(arr,key)); }
+function quantile(values, q){
+  const a = values.map(n).filter(x=>isFinite(x)).sort((x,y)=>x-y);
+  if (!a.length) return 0;
+  const pos = (a.length-1)*q;
+  const base = Math.floor(pos), rest = pos - base;
+  return a[base] + (a[base+1]!==undefined ? rest*(a[base+1]-a[base]) : 0);
+}
+function renderSimpleTable(list, cols){
+  if (!list.length) return '<div class="muted">No rows.</div>';
+  const head = `<thead><tr>${cols.map(c=>`<th class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
+  const body = `<tbody>${list.map(r=>`<tr>${cols.map(c=>{
+    let v = r[c.key];
+    if (c.format==='pct') v = fmtPct(v);
+    else if (c.format==='1d') v = Number(v).toFixed(1);
+    else if (c.format==='2d') v = Number(v).toFixed(2);
+    else if (c.format==='0d') v = Number(v).toFixed(0);
+    return `<td class="${c.right?'right':''}">${v==null?'—':v}</td>`;
+  }).join('')}</tr>`).join('')}</tbody>`;
+  return `<table>${head}${body}</table>`;
+}
+// Build unique match key across teams for contestation calc
+function matchKey(r){
+  return [r.tournament,r.stage,r.group,r.week,r.day,r.match,r.map].map(x=>String(x??'')).join('|');
+}
+
 /* ========= State ========= */
 let ALL = [];  // all rows from Supabase (paginated fetch)
 let ROWS = []; // filtered by UI
@@ -209,7 +305,6 @@ async function fetchAllRows(){
   return out;
 }
 
-
 /* ========= Filters ========= */
 function initDropdownsPlaceholders(){
   const set = (id, all='All')=>{ el(id).innerHTML = `<option value="__ALL__">${all}</option>`; };
@@ -220,7 +315,6 @@ function initDropdownsPlaceholders(){
 initDropdownsPlaceholders();
 
 function populateFilterDropdowns(){
-  // always from ALL so coverage shows everything
   const set = (id, arr, all) => {
     const dd = el(id); const prev = dd.value || '__ALL__';
     const opts = [`<option value="__ALL__">${all}</option>`, ...arr.sort((a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true})).map(v=>`<option value="${v}">${v}</option>`)];
@@ -235,7 +329,9 @@ function populateFilterDropdowns(){
   set('fWeek',   distinct(ALL,'week'),       'All weeks');
   set('fDay',    distinct(ALL,'day'),        'All days');
   const teams = distinct(ALL,'team');
-  const teamDD = el('fTeam'); const prevT = teamDD.value||'__ALL__'; teamDD.innerHTML = ['<option value="__ALL__">All teams</option>', ...teams.sort().map(t=>`<option value="${t}">${t}</option>`)].join(''); teamDD.value = (prevT==='__ALL__'||teams.includes(prevT))?prevT:'__ALL__';
+  const teamDD = el('fTeam'); const prevT = teamDD.value||'__ALL__';
+  teamDD.innerHTML = ['<option value="__ALL__">All teams</option>', ...teams.sort().map(t=>`<option value="${t}">${t}</option>`)].join('');
+  teamDD.value = (prevT==='__ALL__'||teams.includes(prevT))?prevT:'__ALL__';
 }
 
 function applyFilters(){
@@ -360,6 +456,287 @@ function weekDayTrend(rows){
   return out.sort((a,b)=> String(a.wd).localeCompare(String(b.wd),undefined,{numeric:true}));
 }
 
+/* ========= BR Analysis: Contestation, Loyalty/Flex, Consistency, Frag/Placement, Momentum, Clutch ========= */
+
+// POI Contestation
+function contestMetrics(allRows, team){
+  const byMatch = groupBy(allRows, matchKey);
+  let contested=0, uncontested=0, pointsCont=0, pointsUn=0;
+  const fieldContest = new Map(); // drop -> {contestedMatches, teamsSeen}
+
+  for(const [k, list] of byMatch.entries()){
+    const byDrop = groupBy(list, r=>r.drop||'—');
+    for(const [drop, teams] of byDrop.entries()){
+      if (teams.length>1){
+        const key = drop||'—';
+        const F = fieldContest.get(key) || { contestedMatches:0, teamsSeen:0 };
+        F.contestedMatches += 1;
+        F.teamsSeen += teams.length;
+        fieldContest.set(key, F);
+      }
+    }
+    const my = list.filter(r=>r.team===team);
+    if (!my.length) continue;
+    const r = my[0];
+    const d = r.drop||'—';
+    const isCont = (byDrop.get(d)?.length||0) > 1;
+    if (isCont){ contested++; pointsCont += n(r.total); }
+    else { uncontested++; pointsUn += n(r.total); }
+  }
+  return {
+    contested, uncontested,
+    total: contested+uncontested,
+    total_pm_contested: contested ? pointsCont/contested : 0,
+    total_pm_uncontested: uncontested ? pointsUn/uncontested : 0,
+    fieldTop: [...fieldContest.entries()]
+       .map(([drop,v])=>({ drop, contestedMatches:v.contestedMatches, avgTeams:(v.teamsSeen/v.contestedMatches) }))
+       .sort((a,b)=> b.contestedMatches-a.contestedMatches || b.avgTeams-a.avgTeams)
+       .slice(0,10)
+  };
+}
+function renderContestation(allRows, team){
+  const m = contestMetrics(allRows, team);
+  el('labelContestTeam').textContent = `Team — Contest Rate & Outcomes (${team})`;
+  el('tblContestTeam').innerHTML = renderSimpleTable([{
+    contested: m.contested, uncontested: m.uncontested,
+    rate: m.total? m.contested/m.total : 0,
+    tpmC: m.total_pm_contested, tpmU: m.total_pm_uncontested
+  }],[
+    {label:'Contested',key:'contested',right:true},
+    {label:'Uncontested',key:'uncontested',right:true},
+    {label:'Contest Rate',key:'rate',format:'pct',right:true},
+    {label:'Total / m (Contested)',key:'tpmC',format:'1d',right:true},
+    {label:'Total / m (Uncontested)',key:'tpmU',format:'1d',right:true}
+  ]);
+  el('tblContestField').innerHTML = renderSimpleTable(m.fieldTop, [
+    {label:'Drop',key:'drop'},
+    {label:'Contested Matches',key:'contestedMatches',right:true},
+    {label:'Avg Teams in Contest',key:'avgTeams',format:'1d',right:true},
+  ]);
+}
+
+// Drop Loyalty & Flex
+function loyaltyFlex(rows){
+  if (!rows.length) return null;
+  const byDrop = groupBy(rows, r=>r.drop||'—');
+  const entries = [...byDrop.entries()].map(([d,list])=>({ drop:d, matches:list.length, total:sum(list,'total') }));
+  entries.sort((a,b)=> b.matches-a.matches || b.total-a.total);
+  const home = entries[0];
+  const stay = byDrop.get(home.drop) || [];
+  const flex = rows.filter(r => (r.drop||'—') !== home.drop);
+  return {
+    homeDrop: home.drop, homeShare: rows.length? (stay.length/rows.length) : 0,
+    stay_tpm: stay.length? sum(stay,'total')/stay.length : 0,
+    flex_tpm: flex.length? sum(flex,'total')/flex.length : 0,
+    drops: entries.map(d=>({...d, total_pm: d.matches? d.total/d.matches : 0})).slice(0,10)
+  };
+}
+function renderLoyalFlex(rows, team){
+  const L = loyaltyFlex(rows);
+  el('labelLoyal').textContent = `Team — Loyalty (${team})`;
+  if (!L){ el('tblLoyal').innerHTML = '<div class="muted">No rows.</div>'; el('tblFlex').innerHTML=''; return; }
+  el('tblLoyal').innerHTML = renderSimpleTable([{
+    home: L.homeDrop, share: L.homeShare, stay:L.stay_tpm, flex:L.flex_tpm
+  }],[
+    {label:'Home Drop',key:'home'},
+    {label:'Home Share',key:'share',format:'pct',right:true},
+    {label:'Total / m — Stay',key:'stay',format:'1d',right:true},
+    {label:'Total / m — Flex',key:'flex',format:'1d',right:true},
+  ]);
+  el('labelFlex').textContent = `Team — Flex vs Home (${team})`;
+  el('tblFlex').innerHTML = renderSimpleTable(L.drops, [
+    {label:'Drop',key:'drop'},
+    {label:'Matches',key:'matches',right:true},
+    {label:'Total',key:'total',right:true},
+    {label:'Total / m',key:'total_pm',format:'1d',right:true}
+  ]);
+}
+
+// Consistency / Conversion / Efficiency
+function consistency(rows){
+  if (!rows.length) return null;
+  const mean = avg(rows,'total');
+  const sd   = stddev(rows,'total');
+  const cv   = mean ? sd/mean : 0;
+  const t = rows.map(r=>n(r.total)).sort((a,b)=>a-b);
+  const iqr = quantile(t,0.75) - quantile(t,0.25);
+  return { matches: rows.length, mean, sd, cv, iqr };
+}
+function conversion(rows){
+  const m = rows.length;
+  const booy = sum(rows,'booyah');
+  const t3   = sum(rows,'top3');
+  return { booyah_rate: m? booy/m : 0, top3_rate: m? t3/m : 0, conv: t3? booy/t3 : 0 };
+}
+function efficiency(rows){
+  const elims = sum(rows,'elimination');
+  const dmg   = sum(rows,'damage');
+  const dpe   = elims? (dmg/elims) : 0;
+  const zeroElim = rows.filter(r=>n(r.elimination)===0).length;
+  const hiDamageNoElim = rows.filter(r=>n(r.elimination)===0 && n(r.damage) >= quantile(rows.map(r=>n(r.damage)),0.75)).length;
+  return { dpe, zeroElimRate: rows.length? zeroElim/rows.length : 0, hiDmgNoElimRate: rows.length? hiDamageNoElim/rows.length : 0 };
+}
+function renderConsConvEff(rows){
+  const C = consistency(rows);
+  el('tblConsist').innerHTML = C ? renderSimpleTable([{
+    matches:C.matches, mean:C.mean, sd:C.sd, cv:C.cv, iqr:C.iqr
+  }],[
+    {label:'Matches',key:'matches',right:true},
+    {label:'Mean Total',key:'mean',format:'1d',right:true},
+    {label:'Std Dev',key:'sd',format:'1d',right:true},
+    {label:'Coeff. Variation',key:'cv',format:'2d',right:true},
+    {label:'IQR (Total)',key:'iqr',format:'1d',right:true},
+  ]) : '<div class="muted">No rows.</div>';
+
+  const V = conversion(rows);
+  el('tblConv').innerHTML = renderSimpleTable([V],[
+    {label:'Booyah %',key:'booyah_rate',format:'pct',right:true},
+    {label:'Top-3 %',key:'top3_rate',format:'pct',right:true},
+    {label:'Booyah ÷ Top-3',key:'conv',format:'2d',right:true},
+  ]);
+
+  const E = efficiency(rows);
+  el('tblEff').innerHTML = renderSimpleTable([E],[
+    {label:'Damage / Elim',key:'dpe',format:'1d',right:true},
+    {label:'Zero-Elim %',key:'zeroElimRate',format:'pct',right:true},
+    {label:'Hi-Damage No-Elim %',key:'hiDmgNoElimRate',format:'pct',right:true},
+  ]);
+}
+
+// Frag vs Placement
+function fragPlacement(rows){
+  const elim = sum(rows,'elimination');
+  const place= sum(rows,'placement');
+  const total= sum(rows,'total');
+  const elimPts = elim; // adjust if elim point weight differs
+  const placePts = total - elimPts;
+  const shareE = total? elimPts/total : 0;
+  const shareP = total? placePts/total : 0;
+  return { elimPts, placePts, total, shareE, shareP };
+}
+function renderFragPlacement(rows, fieldRows, team){
+  el('labelProfileTeam').textContent = `Team — Points Split (${team})`;
+  const T = fragPlacement(rows);
+  el('tblProfileTeam').innerHTML = renderSimpleTable([T],[
+    {label:'Elim Pts',key:'elimPts',right:true},
+    {label:'Placement Pts',key:'placePts',right:true},
+    {label:'Total Pts',key:'total',right:true},
+    {label:'Elim Share',key:'shareE',format:'pct',right:true},
+    {label:'Placement Share',key:'shareP',format:'pct',right:true},
+  ]);
+  // Field comparison by team
+  const byTeam = groupBy(fieldRows, r=>r.team);
+  const list = [...byTeam.entries()].map(([nm,list])=>{
+    const s=fragPlacement(list);
+    return { team:nm, total:s.total, elimShare:s.shareE, total_pm: list.length? s.total/list.length:0 };
+  }).sort((a,b)=> b.elimShare-a.elimShare || b.total_pm-a.total_pm).slice(0,20);
+  el('tblProfileField').innerHTML = renderSimpleTable(list,[
+    {label:'Team',key:'team'},
+    {label:'Elim Share',key:'elimShare',format:'pct',right:true},
+    {label:'Total',key:'total',right:true},
+    {label:'Total / m',key:'total_pm',format:'1d',right:true},
+  ]);
+}
+
+// Momentum & Map Specialization
+function rollingTotal(rows, k=3){
+  if (!rows.length) return [];
+  const s = [...rows].sort((a,b)=>
+    String(a.year).localeCompare(String(b.year),undefined,{numeric:true}) ||
+    String(a.week).localeCompare(String(b.week),undefined,{numeric:true}) ||
+    String(a.day).localeCompare(String(b.day),undefined,{numeric:true}) ||
+    String(a.match).localeCompare(String(b.match),undefined,{numeric:true}) ||
+    a.id-b.id
+  );
+  const out=[];
+  let window=[]; let sumT=0;
+  for (const r of s){
+    window.push(r); sumT += n(r.total);
+    if (window.length>k){ sumT -= n(window.shift().total); }
+    out.push({ wd: labelWD(r.week,r.day), match:r.match, total:r.total, roll_k: window.length>=k ? (sumT/k) : null });
+  }
+  return out.filter(x=>x.roll_k!=null);
+}
+function mapSpecialization(rows){
+  const byMap = groupBy(rows, r=>r.map||'—');
+  const totals = [...byMap.values()].map(list=>sum(list,'total'));
+  const all = sum(rows,'total') || 1;
+  const shares = totals.map(t=>t/all);
+  const hhi = shares.reduce((a,x)=>a+x*x,0);
+  const perf = [...byMap.entries()].map(([map,list])=>{
+    const tpm = list.length? sum(list,'total')/list.length : 0;
+    return { map, tpm };
+  });
+  const teamAvg = rows.length? sum(rows,'total')/rows.length : 0;
+  perf.forEach(p=> p.delta = p.tpm - teamAvg);
+  perf.sort((a,b)=> b.delta-a.delta || b.tpm-a.tpm);
+  return { hhi, teamAvg, perfTop: perf.slice(0,5), perfBot: perf.slice(-5).reverse() };
+}
+function renderMomentumSpec(rows, team){
+  el('labelMomentumTeam').textContent = `Team — Rolling Total (${team})`;
+  const roll = rollingTotal(rows, 3);
+  el('tblMomentum').innerHTML = renderSimpleTable(roll.slice(-20),[
+    {label:'Week/Day',key:'wd'},
+    {label:'Match',key:'match',right:true},
+    {label:'3-match Avg',key:'roll_k',format:'1d',right:true},
+  ]);
+  const S = mapSpecialization(rows);
+  el('tblSpec').innerHTML = renderSimpleTable([{
+    hhi:S.hhi, avg:S.teamAvg, best:S.perfTop[0]?.map||'—', bestDelta:S.perfTop[0]?.delta||0,
+    worst:S.perfBot[0]?.map||'—', worstDelta:S.perfBot[0]?.delta||0
+  }],[
+    {label:'Specialization (HHI)',key:'hhi',format:'2d',right:true},
+    {label:'Team Avg / m',key:'avg',format:'1d',right:true},
+    {label:'Best Map',key:'best'},
+    {label:'Δ Best vs Avg',key:'bestDelta',format:'1d',right:true},
+    {label:'Worst Map',key:'worst'},
+    {label:'Δ Worst vs Avg',key:'worstDelta',format:'1d',right:true},
+  ]);
+}
+
+// Clutch / Scuffed
+function clutchScuffed(rows){
+  if (!rows.length) return { rateClutch:0, rateScuff:0, exClutch:[], exScuff:[] };
+  const P = rows.map(r=>n(r.placement)), E = rows.map(r=>n(r.elimination));
+  const pQ1 = quantile(P,0.25), eQ3 = quantile(E,0.75), eQ1 = quantile(E,0.25);
+  const exC = [], exS = [];
+  let c=0,s=0;
+  for (const r of rows){
+    const isClutch = n(r.placement) <= pQ1 && n(r.elimination) >= eQ3;
+    const isScuff  = n(r.placement) <= pQ1 && n(r.elimination) <= eQ1;
+    if (isClutch){ c++; exC.push(r); }
+    if (isScuff){ s++; exS.push(r); }
+  }
+  return {
+    rateClutch: rows.length? c/rows.length : 0,
+    rateScuff: rows.length? s/rows.length : 0,
+    exClutch: exC.slice(-10), exScuff: exS.slice(-10)
+  };
+}
+function renderClutch(rows, team){
+  el('labelClutchTeam').textContent = `Team — Rates (${team})`;
+  const C = clutchScuffed(rows);
+  el('tblClutch').innerHTML = renderSimpleTable([{
+    clutch:C.rateClutch, scuffed:C.rateScuff
+  }],[
+    {label:'Clutch %',key:'clutch',format:'pct',right:true},
+    {label:'Scuffed %',key:'scuffed',format:'pct',right:true},
+  ]);
+  const ex = [
+    ...C.exClutch.map(r=>({type:'Clutch', wd:labelWD(r.week,r.day), map:r.map, drop:r.drop, place:r.placement, elim:r.elimination, total:r.total})),
+    ...C.exScuff.map(r=>({type:'Scuffed', wd:labelWD(r.week,r.day), map:r.map, drop:r.drop, place:r.placement, elim:r.elimination, total:r.total}))
+  ].slice(-10);
+  el('tblClutchEx').innerHTML = renderSimpleTable(ex,[
+    {label:'Type',key:'type'},
+    {label:'Wk/Day',key:'wd'},
+    {label:'Map',key:'map'},
+    {label:'Drop',key:'drop'},
+    {label:'Placement',key:'place',right:true},
+    {label:'Elims',key:'elim',right:true},
+    {label:'Total',key:'total',right:true},
+  ]);
+}
+
 /* ========= Render helpers ========= */
 function renderKPIBox(k){
   if (!k || !k.matches) return '<div class="muted">No rows in scope.</div>';
@@ -378,7 +755,6 @@ function renderKPIBox(k){
 }
 
 function renderCoverageMatrix(rows){
-  // Year × Season matrix
   const years = [...new Set(rows.map(r=>r.year))].filter(Boolean).sort((a,b)=>a-b);
   const seasons = [...new Set(rows.map(r=>r.season))].filter(Boolean).sort();
   if (!years.length || !seasons.length) return '<div class="muted">No year/season coverage.</div>';
@@ -425,19 +801,6 @@ function renderLeaderboard(list, mode){
         </tr>`).join('')}
       </tbody>
     </table>`;
-}
-
-function renderSimpleTable(list, cols){
-  if (!list.length) return '<div class="muted">No rows.</div>';
-  const head = `<thead><tr>${cols.map(c=>`<th class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
-  const body = `<tbody>${list.map(r=>`<tr>${cols.map(c=>{
-    let v = r[c.key];
-    if (c.format==='pct') v = fmtPct(v);
-    else if (c.format==='1d') v = Number(v).toFixed(1);
-    else if (c.format==='0d') v = Number(v).toFixed(0);
-    return `<td class="${c.right?'right':''}">${v==null?'—':v}</td>`;
-  }).join('')}</tr>`).join('')}</tbody>`;
-  return `<table>${head}${body}</table>`;
 }
 
 function renderRawTable(rows){
@@ -519,6 +882,14 @@ function renderAll(){
     [ {label:'Week/Day',key:'wd'}, {label:'Rows',key:'matches',right:true}, {label:'Booyah %',key:'booyah_rate',format:'pct',right:true}, {label:'Elims / m',key:'elims_pm',format:'1d',right:true}, {label:'Total / m',key:'total_pm',format:'1d',right:true}, {label:'Total',key:'total',right:true} ]
   );
 
+  // ===== NEW ANALYSES =====
+  renderContestation(ROWS, teamSel);
+  renderLoyalFlex(teamRows, teamSel);
+  renderConsConvEff(teamRows);
+  renderFragPlacement(teamRows, ROWS, teamSel);
+  renderMomentumSpec(teamRows, teamSel);
+  renderClutch(teamRows, teamSel);
+
   // Raw table
   el('rawTable').innerHTML = renderRawTable(ROWS);
 
@@ -559,14 +930,12 @@ async function initial(){
 el('applyBtn').onclick = ()=>{ applyFilters(); renderAll(); };
 
 el('resetBtn').onclick = ()=>{
-  ['fTourn','fYear','fSeason','fStage','fGroup','fWeek','fDay','fMap','fTeam','fSearch'].forEach(id=>{ if(el(id)) el(id).value='__ALL__'; });
+  ['fTourn','fYear','fSeason','fStage','fGroup','fWeek','fDay','fMap','fTeam'].forEach(id=>{ if(el(id)) el(id).value='__ALL__'; });
   el('fSearch').value = '';
   applyFilters(); renderAll();
 };
 
-el('exportBtn').onclick = ()=>{
-  exportCSV('ffbr_scope.csv', ROWS);
-};
+el('exportBtn').onclick = ()=>{ exportCSV('ffbr_scope.csv', ROWS); };
 
 el('copyPromptBtn').onclick = async ()=>{
   try{
