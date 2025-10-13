@@ -775,6 +775,54 @@ function renderCoverageTournaments(rows){
     </table>`;
 }
 
+/* === Missing helpers added back === */
+function renderLeaderboard(list, mode){
+  if (!list.length) return '<div class="muted">No teams in scope.</div>';
+  const cols = {
+    total:  ['Total','total','total_pm'],
+    booyah: ['Booyah %','booyah_rate','total_pm'],
+    elims:  ['Elims / m','elims_pm','total'],
+    damage: ['Damage / m','damage_pm','total']
+  }[mode] || ['Total','total','total_pm'];
+
+  const [labMain, keyMain, keyAux] = cols;
+  const fmt = (key, v) =>
+    key.includes('rate') ? fmtPct(v)
+    : key.includes('_pm') ? Number(v).toFixed(1)
+    : Number.isFinite(v) ? v : (v ?? '—');
+
+  return `
+    <table>
+      <thead><tr><th>#</th><th>Team</th><th class="right">Matches</th><th class="right">${labMain}</th><th class="right">Aux</th></tr></thead>
+      <tbody>
+        ${list.map((r,i)=>`
+          <tr>
+            <td class="right">${i+1}</td>
+            <td>${r.team ?? '—'}</td>
+            <td class="right">${r.matches ?? 0}</td>
+            <td class="right">${fmt(keyMain, r[keyMain])}</td>
+            <td class="right">${fmt(keyAux, r[keyAux])}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+function exportCSV(filename, rows){
+  if (!rows || !rows.length){ alert('No rows to export.'); return; }
+  const cols = Object.keys(rows[0]);
+  const escape = (s)=> {
+    if (s == null) return '';
+    s = String(s);
+    return /(,|\n|\"|\r)/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+  };
+  const head = cols.map(escape).join(',');
+  const lines = rows.map(r=> cols.map(c=>escape(r[c])).join(','));
+  const blob = new Blob([head+'\n'+lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
 /* ========= Render All ========= */
 function renderAll(){
   // Meta label
