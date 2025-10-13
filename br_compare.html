@@ -137,7 +137,7 @@
     </div>
   </div>
 
-  <!-- ===== NEW: POI CONTESTATION ===== -->
+  <!-- ===== POI CONTESTATION ===== -->
   <div class="section">
     <h2>POI Contestation</h2>
     <div class="grid2">
@@ -147,7 +147,7 @@
     <div class="caption muted tight">Contested = ≥2 teams same (tournament, stage, group, week, day, match, map, drop).</div>
   </div>
 
-  <!-- ===== NEW: DROP LOYALTY / FLEX ===== -->
+  <!-- ===== DROP LOYALTY / FLEX ===== -->
   <div class="section">
     <h2>Drop Loyalty & Flex Performance</h2>
     <div class="grid2">
@@ -156,7 +156,7 @@
     </div>
   </div>
 
-  <!-- ===== NEW: CONSISTENCY / CONVERSION / EFFICIENCY ===== -->
+  <!-- ===== CONSISTENCY / CONVERSION / EFFICIENCY ===== -->
   <div class="section">
     <h2>Consistency, Conversion & Efficiency</h2>
     <div class="grid3">
@@ -166,7 +166,7 @@
     </div>
   </div>
 
-  <!-- ===== NEW: FRAG VS PLACEMENT ===== -->
+  <!-- ===== FRAG VS PLACEMENT ===== -->
   <div class="section">
     <h2>Frag vs Placement Profile</h2>
     <div class="grid2">
@@ -175,7 +175,7 @@
     </div>
   </div>
 
-  <!-- ===== NEW: MOMENTUM & MAP SPECIALIZATION ===== -->
+  <!-- ===== MOMENTUM & MAP SPECIALIZATION ===== -->
   <div class="section">
     <h2>Momentum (3-Match Rolling) & Map Specialization</h2>
     <div class="grid2">
@@ -184,7 +184,7 @@
     </div>
   </div>
 
-  <!-- ===== NEW: CLUTCH / SCUFFED ===== -->
+  <!-- ===== CLUTCH / SCUFFED ===== -->
   <div class="section">
     <h2>Clutch & Scuffed Buckets</h2>
     <div class="grid2">
@@ -192,12 +192,6 @@
       <div class="card"><h3>Examples (last 10)</h3><div id="tblClutchEx">Loading…</div></div>
     </div>
     <div class="caption muted tight">Quartiles computed within current filter scope for each team.</div>
-  </div>
-
-  <!-- RAW ROWS -->
-  <div class="section">
-    <h2>Raw Rows (Filtered)</h2>
-    <div id="rawTable">Loading…</div>
   </div>
 
   <!-- AI PROMPT -->
@@ -456,7 +450,7 @@ function weekDayTrend(rows){
   return out.sort((a,b)=> String(a.wd).localeCompare(String(b.wd),undefined,{numeric:true}));
 }
 
-/* ========= BR Analysis: Contestation, Loyalty/Flex, Consistency, Frag/Placement, Momentum, Clutch ========= */
+/* ========= BR Analysis blocks ========= */
 
 // POI Contestation
 function contestMetrics(allRows, team){
@@ -737,7 +731,7 @@ function renderClutch(rows, team){
   ]);
 }
 
-/* ========= Render helpers ========= */
+/* ========= Overview render helpers ========= */
 function renderKPIBox(k){
   if (!k || !k.matches) return '<div class="muted">No rows in scope.</div>';
   return `
@@ -779,56 +773,6 @@ function renderCoverageTournaments(rows){
         ${list.map(r=>`<tr><td>${r.key}</td><td class="right">${r.matches}</td><td class="right">${fmtPct(r.booyah_rate)}</td><td class="right">${r.elims_pm.toFixed(1)}</td><td class="right">${r.total_pm.toFixed(1)}</td></tr>`).join('')}
       </tbody>
     </table>`;
-}
-
-function renderLeaderboard(list, mode){
-  if (!list.length) return '<div class="muted">No teams in scope.</div>';
-  const cols = {
-    total: ['Total','total','total_pm'],
-    booyah: ['Booyah %','booyah_rate','total_pm'],
-    elims: ['Elims / m','elims_pm','total'],
-    damage: ['Damage / m','damage_pm','total']
-  }[mode] || ['Total','total','total_pm'];
-  const [labMain, keyMain, keyAux] = cols;
-  return `
-    <table>
-      <thead><tr><th>#</th><th>Team</th><th class="right">Matches</th><th class="right">${labMain}</th><th class="right">Aux</th></tr></thead>
-      <tbody>
-        ${list.map((r,i)=>`<tr>
-          <td class="right">${i+1}</td><td>${r.team}</td><td class="right">${r.matches}</td>
-          <td class="right">${keyMain.includes('rate')?fmtPct(r[keyMain]):(keyMain.includes('_pm')?r[keyMain].toFixed(1):r[keyMain])}</td>
-          <td class="right">${keyAux.includes('rate')?fmtPct(r[keyAux]):(keyAux.includes('_pm')?r[keyAux].toFixed(1):r[keyAux])}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table>`;
-}
-
-function renderRawTable(rows){
-  if (!rows.length) return '<div class="muted">No rows for current filters.</div>';
-  const cols = ['id','team','group','stage','week','day','match','map','drop','booyah','placement','elimination','damage','total','top3','tournament','year','season'];
-  const head = `<thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>`;
-  const body = `<tbody>${rows.slice(0,300).map(r=>`<tr>${cols.map(c=>`<td>${r[c]??''}</td>`).join('')}</tr>`).join('')}</tbody>`;
-  const note = rows.length>300? `<div class="muted">Showing first 300 of ${rows.length} rows.</div>`:'';
-  return `<div style="overflow:auto"> <table>${head}${body}</table> </div>${note}`;
-}
-
-/* ========= AI Prompt ========= */
-function buildPrompt(meta, snapshot){
-  return `You are an esports analyst. Analyze this Free Fire Battle Royale dataset snapshot.\n\n`+
-  `Filters: Tournament=${meta.tournament||'All'}, Year=${meta.year||'All'}, Season=${meta.season||'All'}, Stage=${meta.stage||'All'}, Group=${meta.group||'All'}, Week=${meta.week||'All'}, Day=${meta.day||'All'}, Map=${meta.map||'All'}, Team=${meta.team||'All'}, Search=${meta.search||''}.\n`+
-  `Tasks: 1) Summarize dataset KPIs. 2) Identify teams overperforming on Booyah/Elims/Damage. 3) Call out best/worst maps & drops by volume and per-match totals. 4) Stage/Group trends. 5) Weekly consistency and spikes. 6) 5 actionable prep notes.\n\n`+
-  `JSON:\n`+JSON.stringify(snapshot,null,2);
-}
-
-/* ========= Export CSV ========= */
-function exportCSV(filename, rows){
-  if (!rows || !rows.length){ alert('No rows to export.'); return; }
-  const cols = Object.keys(rows[0]);
-  const head = cols.map(csvEscape).join(',');
-  const lines = rows.map(r=> cols.map(c=>csvEscape(r[c])).join(','));
-  const blob = new Blob([head+'\n'+lines.join('\n')], {type:'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
 }
 
 /* ========= Render All ========= */
@@ -882,16 +826,13 @@ function renderAll(){
     [ {label:'Week/Day',key:'wd'}, {label:'Rows',key:'matches',right:true}, {label:'Booyah %',key:'booyah_rate',format:'pct',right:true}, {label:'Elims / m',key:'elims_pm',format:'1d',right:true}, {label:'Total / m',key:'total_pm',format:'1d',right:true}, {label:'Total',key:'total',right:true} ]
   );
 
-  // ===== NEW ANALYSES =====
+  // BR analyses
   renderContestation(ROWS, teamSel);
   renderLoyalFlex(teamRows, teamSel);
   renderConsConvEff(teamRows);
   renderFragPlacement(teamRows, ROWS, teamSel);
   renderMomentumSpec(teamRows, teamSel);
   renderClutch(teamRows, teamSel);
-
-  // Raw table
-  el('rawTable').innerHTML = renderRawTable(ROWS);
 
   // AI prompt snapshot
   const snapshot = {
@@ -916,7 +857,10 @@ function renderAll(){
     stage: el('fStage').value, group: el('fGroup').value, week: el('fWeek').value, day: el('fDay').value,
     map: el('fMap').value, team: el('fTeam').value, search: el('fSearch').value
   };
-  el('aiPrompt').value = buildPrompt(meta, snapshot);
+  el('aiPrompt').value = `You are an esports analyst. Analyze this Free Fire Battle Royale dataset snapshot.\n\n`+
+    `Filters: Tournament=${meta.tournament||'All'}, Year=${meta.year||'All'}, Season=${meta.season||'All'}, Stage=${meta.stage||'All'}, Group=${meta.group||'All'}, Week=${meta.week||'All'}, Day=${meta.day||'All'}, Map=${meta.map||'All'}, Team=${meta.team||'All'}, Search=${meta.search||''}.\n`+
+    `Tasks: 1) Summarize dataset KPIs. 2) Identify teams overperforming on Booyah/Elims/Damage. 3) Call out best/worst maps & drops by volume and per-match totals. 4) Stage/Group trends. 5) Weekly consistency and spikes. 6) 5 actionable prep notes.\n\n`+
+    `JSON:\n`+JSON.stringify(snapshot,null,2);
 }
 
 /* ========= Wiring ========= */
