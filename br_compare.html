@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>FFBR — Full Table Analysis</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Chart.js for charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <style>
     :root{
       --bg:#0e0e0e; --panel:#1b1b1b; --panel2:#141414;
@@ -137,6 +139,17 @@
     </div>
   </div>
 
+  <!-- ===== COMPARISON CHARTS ===== -->
+  <div class="section">
+    <h2>Comparison Charts</h2>
+    <div class="grid2">
+      <div class="card"><h3>Top Teams — Total / Match</h3><canvas id="chartTopTotalPM" height="200"></canvas></div>
+      <div class="card"><h3>Team vs Field — Elims vs Placement</h3><canvas id="chartScatter" height="200"></canvas></div>
+      <div class="card"><h3 id="labelTrendLine">Team Trend — Total / Match by Week/Day</h3><canvas id="chartTrend" height="200"></canvas></div>
+      <div class="card"><h3>Map Performance — Team vs Field</h3><canvas id="chartMapComp" height="200"></canvas></div>
+    </div>
+  </div>
+
   <!-- ===== POI CONTESTATION ===== -->
   <div class="section">
     <h2>POI Contestation</h2>
@@ -237,12 +250,26 @@ function groupBy(arr, keyFn){ const m=new Map(); for(const r of arr){ const k=ke
 function distinct(rows, key){ return [...new Set(rows.map(r=>r[key]).filter(Boolean))]; }
 function csvEscape(s){ if(s==null) return ''; s=String(s); return /(,|\n|\"|\r)/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
 
-/* Extra helpers (for new analyses) */
+/* Color helpers for charts */
+const css = getComputedStyle(document.documentElement);
+const C_BRAND  = css.getPropertyValue('--brand').trim() || '#ffbd59';
+const C_BRAND2 = css.getPropertyValue('--brand2').trim() || '#ff7733';
+const C_MUTED  = css.getPropertyValue('--muted').trim() || '#b9b9b9';
+const C_LINE   = css.getPropertyValue('--line').trim() || '#313131';
+const C_INK    = css.getPropertyValue('--ink').trim() || '#f5f5f5';
+
+function hexToRgba(hex, a=1){
+  const s = hex.replace('#','').trim();
+  const b = s.length===3 ? s.split('').map(x=>x+x).join('') : s;
+  const [r,g,b2] = [parseInt(b.slice(0,2),16), parseInt(b.slice(2,4),16), parseInt(b.slice(4,6),16)];
+  return `rgba(${r},${g},${b2},${a})`;
+}
+
+/* Extra helpers (for stats) */
 function variance(arr, key){
   if (!arr.length) return 0;
   const mean = arr.reduce((a,r)=>a+n(r[key]),0)/arr.length;
-  const v = arr.reduce((a,r)=>a+Math.pow(n(r[key])-mean,2),0)/arr.length;
-  return v;
+  return arr.reduce((a,r)=>a+Math.pow(n(r[key])-mean,2),0)/arr.length;
 }
 function stddev(arr, key){ return Math.sqrt(variance(arr,key)); }
 function quantile(values, q){
@@ -266,9 +293,7 @@ function renderSimpleTable(list, cols){
   return `<table>${head}${body}</table>`;
 }
 // Build unique match key across teams for contestation calc
-function matchKey(r){
-  return [r.tournament,r.stage,r.group,r.week,r.day,r.match,r.map].map(x=>String(x??'')).join('|');
-}
+function matchKey(r){ return [r.tournament,r.stage,r.group,r.week,r.day,r.match,r.map].map(x=>String(x??'')).join('|'); }
 
 /* ========= State ========= */
 let ALL = [];  // all rows from Supabase (paginated fetch)
@@ -276,7 +301,7 @@ let ROWS = []; // filtered by UI
 
 /* ========= Paginated fetch (ensures ALL data is loaded) ========= */
 async function fetchAllRows(){
-  const CHUNK = 1000; // safe default for Supabase
+  const CHUNK = 1000;
   let from = 0;
   const out = [];
   for(;;){
@@ -291,9 +316,9 @@ async function fetchAllRows(){
 
     if (error) { console.error('ffbr_data fetch failed:', error); alert('Failed to load ffbr_data: '+(error.message||'Unknown')); break; }
     const rows = data || [];
-    if (!rows.length) break;           // no more pages
+    if (!rows.length) break;
     out.push(...rows);
-    from += rows.length;               // advance by what we actually got
+    from += rows.length;
   }
   console.log(`Loaded ${out.length} rows total.`);
   return out;
@@ -330,16 +355,9 @@ function populateFilterDropdowns(){
 
 function applyFilters(){
   const F = {
-    tourn: el('fTourn').value,
-    year: el('fYear').value,
-    season: el('fSeason').value,
-    stage: el('fStage').value,
-    group: el('fGroup').value,
-    week: el('fWeek').value,
-    day: el('fDay').value,
-    map: el('fMap').value,
-    team: el('fTeam').value,
-    search: norm(el('fSearch').value).toLowerCase()
+    tourn: el('fTourn').value, year: el('fYear').value, season: el('fSeason').value,
+    stage: el('fStage').value, group: el('fGroup').value, week: el('fWeek').value, day: el('fDay').value,
+    map: el('fMap').value, team: el('fTeam').value, search: norm(el('fSearch').value).toLowerCase()
   };
   let rows = ALL;
   if (F.tourn !== '__ALL__') rows = rows.filter(r=>norm(r.tournament)===norm(F.tourn));
@@ -386,9 +404,7 @@ function byKeyStats(rows, key){
   const out = [];
   for(const [val, list] of g.entries()){
     const m = list.length;
-    out.push({
-      key: val,
-      matches: m,
+    out.push({ key: val, matches: m,
       booyah_rate: m? sum(list,'booyah')/m : 0,
       elims_pm: m? sum(list,'elimination')/m : 0,
       total_pm: m? sum(list,'total')/m : 0
@@ -408,6 +424,7 @@ function leaderboard(rows, metric){
     obj.booyah_rate = m? sum(list,'booyah')/m : 0;
     obj.elims_pm = m? sum(list,'elimination')/m : 0;
     obj.damage_pm = m? sum(list,'damage')/m : 0;
+    obj.place_pm  = m? sum(list,'placement')/m : 0;
     out.push(obj);
   }
   const sorters = {
@@ -417,7 +434,7 @@ function leaderboard(rows, metric){
     damage: (a,b)=> b.damage_pm - a.damage_pm || b.total - a.total
   };
   const sorter = sorters[metric] || sorters.total;
-  return out.sort(sorter).slice(0, 30);
+  return out.sort(sorter).slice(0, 50);
 }
 
 function teamMapPerf(rows){
@@ -450,13 +467,145 @@ function weekDayTrend(rows){
   return out.sort((a,b)=> String(a.wd).localeCompare(String(b.wd),undefined,{numeric:true}));
 }
 
+/* ========= CHARTS ========= */
+const CHARTS = {};
+Chart.defaults.color = C_INK;
+Chart.defaults.borderColor = C_LINE;
+Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+
+function upsertChart(id, cfg){
+  const elc = document.getElementById(id);
+  if (!elc) return;
+  if (CHARTS[id]) CHARTS[id].destroy();
+  CHARTS[id] = new Chart(elc.getContext('2d'), cfg);
+}
+
+// Build charts
+function renderCharts(fieldRows, teamSel){
+  const top = leaderboard(fieldRows,'total').slice(0,12);
+  // 1) Top Teams — Total / Match
+  upsertChart('chartTopTotalPM', {
+    type: 'bar',
+    data: {
+      labels: top.map(r=>r.team),
+      datasets: [{
+        label: 'Total / match',
+        data: top.map(r=>r.total_pm),
+        backgroundColor: top.map(r=> r.team===teamSel ? hexToRgba(C_BRAND2,0.9) : hexToRgba(C_BRAND,0.6)),
+        borderColor: top.map(r=> r.team===teamSel ? C_BRAND2 : C_BRAND),
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display:false }, tooltip:{ mode:'index', intersect:false } },
+      scales: { x: { grid:{display:false} }, y: { beginAtZero:true } }
+    }
+  });
+
+  // 2) Team vs Field — Elims vs Placement (scatter)
+  const pts = leaderboard(fieldRows,'total').map(r=>({
+    team: r.team,
+    x: r.place_pm || 0,
+    y: r.elims_pm || 0,
+    total_pm: r.total_pm || 0,
+    isMe: r.team===teamSel
+  }));
+  upsertChart('chartScatter', {
+    type: 'scatter',
+    data: {
+      datasets: [
+        {
+          label: 'Field',
+          data: pts.filter(p=>!p.isMe),
+          parsing: false,
+          showLine: false,
+          pointRadius: ctx => Math.max(2, Math.min(8, (ctx.raw.total_pm||0)/2)),
+          backgroundColor: hexToRgba(C_MUTED,0.5),
+          borderColor: hexToRgba(C_MUTED,0.8)
+        },
+        {
+          label: teamSel || 'Team',
+          data: pts.filter(p=>p.isMe),
+          parsing: false,
+          pointRadius: ctx => Math.max(6, Math.min(10, (ctx.raw.total_pm||0)/2)),
+          backgroundColor: hexToRgba(C_BRAND2,0.9),
+          borderColor: C_BRAND2
+        }
+      ]
+    },
+    options: {
+      plugins: { tooltip:{ callbacks:{ label: ctx => {
+        const r = ctx.raw;
+        return `${r.team}: placement/m ${r.x.toFixed(1)}, elims/m ${r.y.toFixed(1)}, total/m ${r.total_pm.toFixed(1)}`;
+      }}} },
+      scales: {
+        x: { title:{display:true, text:'Placement points / match'} },
+        y: { title:{display:true, text:'Eliminations / match'}, beginAtZero:true }
+      }
+    }
+  });
+
+  // 3) Team Trend — Total / Match by Week/Day
+  const teamRows = fieldRows.filter(r=>r.team===teamSel);
+  const wd = weekDayTrend(teamRows);
+  el('labelTrendLine').textContent = `Team Trend — Total / Match by Week/Day (${teamSel||'—'})`;
+  upsertChart('chartTrend', {
+    type: 'line',
+    data: {
+      labels: wd.map(r=>r.wd),
+      datasets: [{
+        label: 'Total / match',
+        data: wd.map(r=>r.total_pm),
+        tension: 0.25,
+        borderWidth: 2,
+        borderColor: C_BRAND2,
+        backgroundColor: hexToRgba(C_BRAND2,0.2),
+        pointRadius: 2
+      }]
+    },
+    options: {
+      plugins: { legend: { display:false } },
+      scales: { x: { grid:{display:false} }, y: { beginAtZero:true } }
+    }
+  });
+
+  // 4) Map Performance — Team vs Field
+  const maps = distinct(fieldRows,'map').filter(Boolean).sort();
+  const byMapField = groupBy(fieldRows, r=>r.map);
+  const byMapTeam  = groupBy(teamRows,  r=>r.map);
+  const fieldTPM = maps.map(m => {
+    const list = byMapField.get(m)||[];
+    return list.length ? sum(list,'total')/list.length : 0;
+  });
+  const teamTPM  = maps.map(m => {
+    const list = byMapTeam.get(m)||[];
+    return list.length ? sum(list,'total')/list.length : 0;
+  });
+  upsertChart('chartMapComp', {
+    type: 'bar',
+    data: {
+      labels: maps,
+      datasets: [
+        { label: 'Field total/m', data: fieldTPM, backgroundColor: hexToRgba(C_MUTED,0.4), borderColor: C_MUTED, borderWidth:1 },
+        { label: (teamSel||'Team')+' total/m', data: teamTPM, backgroundColor: hexToRgba(C_BRAND,0.7), borderColor: C_BRAND, borderWidth:1 }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { tooltip:{ mode:'index', intersect:false } },
+      scales: { x: { stacked:false, grid:{display:false} }, y: { beginAtZero:true } }
+    }
+  });
+}
+
 /* ========= BR Analysis blocks ========= */
 
 // POI Contestation
 function contestMetrics(allRows, team){
   const byMatch = groupBy(allRows, matchKey);
   let contested=0, uncontested=0, pointsCont=0, pointsUn=0;
-  const fieldContest = new Map(); // drop -> {contestedMatches, teamsSeen}
+  const fieldContest = new Map();
 
   for(const [k, list] of byMatch.entries()){
     const byDrop = groupBy(list, r=>r.drop||'—');
@@ -775,7 +924,6 @@ function renderCoverageTournaments(rows){
     </table>`;
 }
 
-/* === Missing helpers added back === */
 function renderLeaderboard(list, mode){
   if (!list.length) return '<div class="muted">No teams in scope.</div>';
   const cols = {
@@ -873,6 +1021,9 @@ function renderAll(){
     weekDayTrend(ROWS),
     [ {label:'Week/Day',key:'wd'}, {label:'Rows',key:'matches',right:true}, {label:'Booyah %',key:'booyah_rate',format:'pct',right:true}, {label:'Elims / m',key:'elims_pm',format:'1d',right:true}, {label:'Total / m',key:'total_pm',format:'1d',right:true}, {label:'Total',key:'total',right:true} ]
   );
+
+  // Charts
+  renderCharts(ROWS, teamSel);
 
   // BR analyses
   renderContestation(ROWS, teamSel);
