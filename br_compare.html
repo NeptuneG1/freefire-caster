@@ -298,7 +298,8 @@ function matchKey(r){ return [r.tournament,r.stage,r.group,r.week,r.day,r.match,
 /* ========= State ========= */
 let ALL = [];  // all rows from Supabase (paginated fetch)
 let ROWS = []; // filtered by UI
-
+let FIRST_LOAD_TOURN = true;  // default tournament only on first load
+  
 /* ========= Paginated fetch (ensures ALL data is loaded) ========= */
 async function fetchAllRows(){
   const CHUNK = 1000;
@@ -334,24 +335,53 @@ function initDropdownsPlaceholders(){
 initDropdownsPlaceholders();
 
 function populateFilterDropdowns(){
+  // Helper to fill a <select>
   const set = (id, arr, all) => {
     const dd = el(id); const prev = dd.value || '__ALL__';
-    const opts = [`<option value="__ALL__">${all}</option>`, ...arr.sort((a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true})).map(v=>`<option value="${v}">${v}</option>`)];
+    const opts = [`<option value="__ALL__">${all}</option>`,
+      ...arr
+        .sort((a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true}))
+        .map(v=>`<option value="${v}">${v}</option>`)];
     dd.innerHTML = opts.join('');
+    // keep previous if still valid; otherwise fall back (we'll also handle tournament below)
     dd.value = (prev && (prev==='__ALL__' || arr.includes(prev))) ? prev : '__ALL__';
   };
-  set('fTourn',  distinct(ALL,'tournament'), 'All tournaments');
-  set('fYear',   distinct(ALL,'year'),       'All years');
-  set('fSeason', distinct(ALL,'season'),     'All seasons');
-  set('fStage',  distinct(ALL,'stage'),      'All stages');
-  set('fGroup',  distinct(ALL,'group'),      'All groups');
-  set('fWeek',   distinct(ALL,'week'),       'All weeks');
-  set('fDay',    distinct(ALL,'day'),        'All days');
-  const teams = distinct(ALL,'team');
-  const teamDD = el('fTeam'); const prevT = teamDD.value||'__ALL__';
+
+  // Build distincts from ALL (full dataset)
+  const distinctVals = (k) => [...new Set(ALL.map(r=>r[k]).filter(Boolean))];
+  set('fTourn',  distinctVals('tournament'), 'All tournaments');
+  set('fYear',   distinctVals('year'),       'All years');
+  set('fSeason', distinctVals('season'),     'All seasons');
+  set('fStage',  distinctVals('stage'),      'All stages');
+  set('fGroup',  distinctVals('group'),      'All groups');
+  set('fWeek',   distinctVals('week'),       'All weeks');
+  set('fDay',    distinctVals('day'),        'All days');
+
+  // Teams
+  const teams = distinctVals('team');
+  const teamDD = el('fTeam'); const prevT = teamDD.value || '__ALL__';
   teamDD.innerHTML = ['<option value="__ALL__">All teams</option>', ...teams.sort().map(t=>`<option value="${t}">${t}</option>`)].join('');
-  teamDD.value = (prevT==='__ALL__'||teams.includes(prevT))?prevT:'__ALL__';
+  teamDD.value = (prevT==='__ALL__'||teams.includes(prevT)) ? prevT : '__ALL__';
+
+  // ----- New: default Tournament to the most recent by highest id (first load only) -----
+  if (FIRST_LOAD_TOURN && ALL.length){
+    // find the row with max id, then take its tournament
+    let maxRow = null;
+    for (const r of ALL){
+      if (!maxRow || Number(r.id||0) > Number(maxRow.id||0)) maxRow = r;
+    }
+    const latestTourn = maxRow?.tournament || null;
+    if (latestTourn){
+      const dd = el('fTourn');
+      // only set if the option exists
+      if ([...dd.options].some(o=>o.value===latestTourn)){
+        dd.value = latestTourn;
+      }
+    }
+    FIRST_LOAD_TOURN = false; // don’t override user choice later
+  }
 }
+
 
 function applyFilters(){
   const F = {
