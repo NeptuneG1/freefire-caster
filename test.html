@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FFBR — Standings → Rows (Day builder)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{--bg:#0e0e0e;--ink:#f5f5f5;--muted:#b9b9b9;--panel:#151515;--line:#2a2a2a;--brand:#ffbd59}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif}
+  header{padding:14px 16px;border-bottom:3px solid var(--brand);background:#1c1c1c}
+  h1{margin:0;font-size:1.1rem;color:var(--brand)}
+  .shell{max-width:1100px;margin:20px auto;padding:0 12px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  label{font-size:.9rem;color:var(--muted)}
+  input,select,textarea{background:#111;color:#eaeaea;border:1px solid #333;border-radius:8px;padding:8px;font:inherit}
+  textarea{min-height:160px;width:100%;white-space:pre;tab-size:12}
+  .btn{background:var(--brand);color:#111;font-weight:700;border:0;border-radius:10px;padding:8px 12px;cursor:pointer}
+  .muted{color:var(--muted);font-size:.9rem}
+  table{width:100%;border-collapse:collapse;font-size:.92rem}
+  th,td{border-bottom:1px solid #2a2a2a;padding:6px 6px;vertical-align:top}
+  th{color:#ffd28d}
+  .mono{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<header><h1>FFBR — Standings → ffbr_data rows</h1></header>
+<div class="shell">
+
+  <div class="card">
+    <div class="row">
+      <label>Group <input id="fGroup" value="F" style="width:80px"></label>
+      <label>Stage <input id="fStage" value="Finals" style="width:120px"></label>
+      <label>Day <input id="fDay" value="3" type="number" style="width:80px"></label>
+      <label>Week <input id="fWeek" value="" style="width:80px" placeholder=""></label>
+      <label>Tournament <input id="fTourn" value="FFWS LATAM 2025" style="width:220px"></label>
+      <label>Year <input id="fYear" value="2025" type="number" style="width:100px"></label>
+      <label>Season <input id="fSeason" value="" style="width:120px" placeholder=""></label>
+      <span class="muted">Tip: set Day = 3 for your Day 3 screenshots.</span>
+    </div>
+  </div>
+
+  <div class="grid" id="games"></div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <div>
+        <button class="btn" id="build">Build table</button>
+        <button class="btn" id="copy">Copy CSV</button>
+        <button class="btn" id="download">Download CSV</button>
+      </div>
+      <span class="muted">Paste standings as rows: <em>Team, Total, Placement, Kill</em>. First row is the winner (Booyah=1).</span>
+    </div>
+    <div id="outTable" style="overflow:auto"></div>
+  </div>
+
+</div>
+
+<script>
+const MAPS = ["Bermuda","Purgatory","Alpine","Nexterra","Kalahari","Solara"]; // Day-3 order you provided
+const games = document.getElementById('games');
+
+function gameCard(i){
+  const id = 'g'+(i+1);
+  const el = document.createElement('div');
+  el.className='card';
+  el.innerHTML = `
+    <div class="row">
+      <strong>Game ${i+1}</strong>
+      <label>Map
+        <select id="${id}-map">
+          ${MAPS.map(m=>`<option ${m===MAPS[i]?'selected':''}>${m}</option>`).join('')}
+        </select>
+      </label>
+      <label>Match #
+        <input id="${id}-match" type="number" value="${i+1}" style="width:90px">
+      </label>
+    </div>
+    <textarea id="${id}-txt" placeholder="Team, Total, Placement, Kill&#10;Nova Legion, 26, 12, 14"></textarea>
+  `;
+  return el;
+}
+for(let i=0;i<6;i++) games.appendChild(gameCard(i));
+
+const norm = v => (v==null?'':String(v).trim());
+const n = v => Number(String(v).replace(/[^0-9.-]/g,''))||0;
+
+function parseBlock(txt){
+  const rows=[];
+  for (const raw of txt.split(/\r?\n/)){
+    const line = raw.trim();
+    if (!line) continue;
+    const parts = line.split(',').map(s=>s.trim());
+    const team = parts[0]||'';
+    const total = n(parts[1]);
+    const placement = n(parts[2]);
+    const elim = n(parts[3]);
+    // disregard “no scores”: skip if all numeric fields are empty
+    if (!team || (total===0 && placement===0 && elim===0 && !/[0-9]/.test(parts.slice(1).join('')))) continue;
+    rows.push({team,total,placement,elimination:elim});
+  }
+  return rows;
+}
+
+function buildRows(){
+  const meta = {
+    group: norm(document.getElementById('fGroup').value)||'',
+    stage: norm(document.getElementById('fStage').value)||'',
+    day:   norm(document.getElementById('fDay').value)||'',
+    week:  norm(document.getElementById('fWeek').value)||'',
+    tournament: norm(document.getElementById('fTourn').value)||'',
+    year:  norm(document.getElementById('fYear').value)||'',
+    season:norm(document.getElementById('fSeason').value)||'',
+  };
+
+  const out=[];
+  for(let i=0;i<6;i++){
+    const id='g'+(i+1);
+    const map = norm(document.getElementById(id+'-map').value);
+    const match = n(document.getElementById(id+'-match').value)|| (i+1);
+    const rows = parseBlock(document.getElementById(id+'-txt').value);
+    rows.forEach((r,idx)=>{
+      const booyah = idx===0 ? 1 : 0; // first line per game is winner
+      out.push({
+        team:r.team, group:meta.group, stage:meta.stage, day:meta.day, match,
+        map, booyah, placement:r.placement, elimination:r.elimination, drop:'',
+        damage:0, total:r.total, played:1, top3: (idx<3?1:0), tag:'',
+        week: meta.week, tournament: meta.tournament, year: meta.year, season: meta.season
+      });
+    });
+  }
+  return out;
+}
+
+function toCSV(rows){
+  if (!rows.length) return '';
+  const cols = ["team","group","stage","day","match","map","booyah","placement","elimination","drop","damage","total","played","top3","tag","week","tournament","year","season"];
+  const esc = s => {
+    if (s==null) return '';
+    s=String(s);
+    return /[,\n\"\r]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+  };
+  const head = cols.join(',');
+  const lines = rows.map(r=> cols.map(c=>esc(r[c])).join(','));
+  return head+'\n'+lines.join('\n');
+}
+
+function renderTable(rows){
+  const cols = ["team","group","stage","day","match","map","booyah","placement","elimination","drop","damage","total","played","top3","tag","week","tournament","year","season"];
+  const head = `<thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>`;
+  const body = `<tbody>${rows.map(r=>`<tr>${cols.map(c=>`<td class="mono">${r[c]==null?'':r[c]}</td>`).join('')}</tr>`).join('')}</tbody>`;
+  document.getElementById('outTable').innerHTML = `<table>${head}${body}</table>`;
+}
+
+document.getElementById('build').onclick = ()=>{
+  const rows = buildRows();
+  renderTable(rows);
+  window._csv = toCSV(rows);
+};
+
+document.getElementById('copy').onclick = async ()=>{
+  const csv = window._csv || toCSV(buildRows());
+  await navigator.clipboard.writeText(csv);
+  alert('CSV copied to clipboard!');
+};
+
+document.getElementById('download').onclick = ()=>{
+  const csv = window._csv || toCSV(buildRows());
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'ffbr_day.csv'; a.click();
+  URL.revokeObjectURL(url);
+};
+</script>
+</body>
+</html>
