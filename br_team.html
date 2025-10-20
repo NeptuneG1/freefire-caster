@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FFBR — Teams & Detail</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    :root{
+      --bg:#0e0e0e; --panel:#1b1b1b; --panel2:#141414;
+      --ink:#f5f5f5; --muted:#b9b9b9; --brand:#ffbd59; --brand2:#ff7733;
+      --line:#313131; --good:#71d083; --bad:#ff6b6b;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif}
+    header{position:sticky;top:0;z-index:5;background:#1f1f1f;border-bottom:3px solid var(--brand);padding:14px 16px}
+    h1{margin:0;font-size:1.1rem;letter-spacing:.3px;color:var(--brand)}
+    .user-controls{position:absolute;right:16px;top:12px;display:flex;gap:10px;align-items:center}
+    .chip{font-size:.85rem;color:#ddd}
+    .btn{background:var(--brand);color:var(--panel);border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
+    .btn:hover{background:#e6a74f}
+    .btn.secondary{background:#2a2a2a;color:#ddd;border:1px solid #3a3a3a}
+
+    .shell{max-width:1280px;margin:22px auto;padding:0 12px}
+    .section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
+    .section h2{margin:0 0 10px;color:var(--brand)}
+    .grid2{display:grid;grid-template-columns:repeat(2,minmax(320px,1fr));gap:12px}
+    .grid3{display:grid;grid-template-columns:repeat(3,minmax(240px,1fr));gap:12px}
+    .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px}
+    .card h3{margin:0 0 6px;color:var(--brand2);font-size:1.0rem}
+    .kpis{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+    .kpi{background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:5px 8px;font-size:.9rem}
+
+    /* Logo grid */
+    .team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px}
+    .team-tile{background:#131313;border:1px solid #2a2a2a;border-radius:12px;padding:10px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:transform .1s ease, border-color .1s ease}
+    .team-tile:hover{transform:translateY(-2px);border-color:#444}
+    .team-tile.active{outline:2px solid var(--brand2)}
+    .team-logo{width:72px;height:72px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(0,0,0,.4))}
+    .team-code{font-weight:800;font-size:.9rem}
+    .team-name{font-size:.8rem;color:var(--muted);text-align:center}
+
+    /* Filters row */
+    .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+    .controls{display:flex;flex-wrap:wrap;gap:8px}
+    .controls label{display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);padding:6px 8px;border-radius:8px}
+    .controls select,.controls input[type="search"]{background:#212121;color:var(--brand);border:1px solid #3a3a3a;border-radius:6px;padding:6px 8px}
+    .muted{color:var(--muted);font-size:.9rem}
+    .right{text-align:right}
+
+    table{width:100%;border-collapse:collapse;font-size:.92rem}
+    th,td{border-bottom:1px solid #2a2a2a;padding:6px 6px;vertical-align:top}
+    thead th{background:#191919;position:sticky;top:0;text-align:left}
+
+    .bar-rail{height:9px;background:#181818;border:1px solid #2a2a2a;border-radius:6px;overflow:hidden}
+    .bar-fill{height:100%;background:linear-gradient(90deg,var(--brand),var(--brand2))}
+
+    @media (max-width: 980px){ .grid3{grid-template-columns:1fr} }
+    @media (max-width: 860px){ .grid2{grid-template-columns:1fr} }
+  </style>
+</head>
+<body>
+<header>
+  <h1>FFBR — Teams & Detail</h1>
+  <div class="user-controls">
+    <a class="btn secondary" href="dashboard.html">← Dashboard</a>
+    <span class="chip" id="user-info">Checking login…</span>
+    <button class="btn" id="logoutBtn">Logout</button>
+  </div>
+</header>
+
+<div class="shell">
+
+  <!-- TEAMS PICKER -->
+  <div class="section">
+    <h2>Select a Team</h2>
+    <div class="bar">
+      <input type="search" id="teamSearch" placeholder="Search team / region…" style="flex:1;max-width:420px;background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:8px">
+    </div>
+    <div id="teamGrid" class="team-grid">Loading teams…</div>
+    <div class="muted" id="teamGridHint">Tip: Click a logo to load the team’s details below.</div>
+  </div>
+
+  <!-- FILTERS (applied within the selected team scope) -->
+  <div class="section">
+    <h2>Filters</h2>
+    <div class="bar">
+      <div class="controls" style="flex:1">
+        <label>Tournament <select id="fTourn"></select></label>
+        <label>Year <select id="fYear"></select></label>
+        <label>Season <select id="fSeason"></select></label>
+        <label>Stage <select id="fStage"></select></label>
+        <label>Group <select id="fGroup"></select></label>
+        <label>Week <select id="fWeek"></select></label>
+        <label>Day <select id="fDay"></select></label>
+        <label>Map
+          <select id="fMap">
+            <option value="__ALL__">All maps</option>
+            <option value="Bermuda">Bermuda</option>
+            <option value="Purgatory">Purgatory</option>
+            <option value="Alpine">Alpine</option>
+            <option value="Kalahari">Kalahari</option>
+            <option value="Nexterra">Nexterra</option>
+            <option value="Solara">Solara</option>
+          </select>
+        </label>
+      </div>
+      <button class="btn" id="applyBtn">Apply</button>
+      <button class="btn secondary" id="resetBtn">Reset</button>
+      <button class="btn secondary" id="exportBtn">Export CSV</button>
+    </div>
+    <div class="muted" id="meta">—</div>
+  </div>
+
+  <!-- TEAM HEADER -->
+  <div class="section" id="teamHeader">
+    <h2 id="teamTitle">Team Overview</h2>
+    <div class="grid3">
+      <div class="card" id="teamIdentity">
+        <h3>Identity</h3>
+        <div id="identityBody">Select a team.</div>
+      </div>
+      <div class="card" id="teamKPIs">
+        <h3>Key KPIs (current scope)</h3>
+        <div id="kpiBody">—</div>
+      </div>
+      <div class="card" id="teamCoverage">
+        <h3>Coverage (Year × Season)</h3>
+        <div id="coverageBody">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPARISON & TRENDS -->
+  <div class="section">
+    <h2>Charts</h2>
+    <div class="grid2">
+      <div class="card"><h3 id="labelTrendLine">Team Trend — Total / Match by Week/Day</h3><canvas id="chartTrend" height="200"></canvas></div>
+      <div class="card"><h3>Map Performance — Team vs Field</h3><canvas id="chartMapComp" height="200"></canvas></div>
+      <div class="card"><h3>Elims vs Placement — Team vs Field</h3><canvas id="chartScatter" height="200"></canvas></div>
+      <div class="card"><h3>Top Teams (Field) — Total / Match</h3><canvas id="chartTopTotalPM" height="200"></canvas></div>
+    </div>
+  </div>
+
+  <!-- TABLES -->
+  <div class="section">
+    <h2>Tables</h2>
+    <div class="grid3">
+      <div class="card"><h3>Map Performance</h3><div id="tblMapTeam">—</div></div>
+      <div class="card"><h3>Drop Hotspots</h3><div id="tblDropTeam">—</div></div>
+      <div class="card"><h3>By Week / Day (latest 15)</h3><div id="tblWD">—</div></div>
+    </div>
+    <div class="grid3">
+      <div class="card"><h3>Consistency / Volatility</h3><div id="tblConsist">—</div></div>
+      <div class="card"><h3>Booyah Conversion</h3><div id="tblConv">—</div></div>
+      <div class="card"><h3>Damage Efficiency</h3><div id="tblEff">—</div></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><h3>Points Split (Frag vs Placement)</h3><div id="tblProfileTeam">—</div></div>
+      <div class="card"><h3>Momentum (3-Match Rolling)</h3><div id="tblMomentum">—</div></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><h3>POI Contestation</h3><div id="tblContestTeam">—</div></div>
+      <div class="card"><h3>Clutch & Scuffed (last 10)</h3><div id="tblClutchEx">—</div></div>
+    </div>
+  </div>
+
+  <!-- ROSTER & ACCOLADES -->
+  <div class="section">
+    <h2>Roster & Player Accolades</h2>
+    <div class="grid2">
+      <div class="card">
+        <h3>Roster</h3>
+        <div id="tblRoster">—</div>
+      </div>
+      <div class="card">
+        <h3>Accolades</h3>
+        <div id="tblAccolades">—</div>
+      </div>
+    </div>
+    <div class="muted">Note: This section reads optional tables <code>ffbr_roster</code> and <code>ffbr_player_accolades</code> if present.</div>
+  </div>
+
+  <!-- AI PROMPT -->
+  <div class="section">
+    <h2>AI Analysis Prompt</h2>
+    <div class="bar">
+      <button class="btn" id="copyPromptBtn">Copy prompt</button>
+      <span class="muted">Copies a structured prompt + team snapshot for ChatGPT.</span>
+    </div>
+    <textarea id="aiPrompt" readonly style="width:100%;min-height:260px;background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:10px;font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;font-size:.85rem;white-space:pre-wrap">—</textarea>
+  </div>
+
+</div>
+
+<script>
+/* ========= Supabase init + auth ========= */
+const client = supabase.createClient(
+  'https://gkugecflfddkpitlrmws.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
+);
+
+(async () => {
+  const { data: { session } } = await client.auth.getSession();
+  if (!session) { window.location.href = 'index.html'; return; }
+  const ui = document.getElementById('user-info');
+  if (ui && session.user?.email) ui.textContent = `Logged in as: ${session.user.email}`;
+})();
+
+document.getElementById('logoutBtn').onclick = async () => {
+  await client.auth.signOut();
+  window.location.href = 'index.html';
+};
+
+/* ========= Team Reference ========= */
+/* (fixed minor quote typo in RED HAWKS line) */
+const TEAMS = [
+  { name:"AG",   fullname:"ALL GAMERS",                 region:"SEA",   logo:"https://i.imgur.com/KVvhezz.png" },
+  { name:"BRU",  fullname:"BURIRAM UNITED ESPORTS",     region:"SEA",   logo:"https://i.imgur.com/ngHig8q.png" },
+  { name:"CLVS", fullname:"CLEAR VISION ESPORTS",       region:"MEA",   logo:"https://i.imgur.com/AXkfYHk.png" },
+  { name:"E1",   fullname:"E1 SPORTS",                  region:"BR",    logo:"https://i.imgur.com/bddVsgm.png" },
+  { name:"EVOS", fullname:"EVOS DIVINE",                region:"SEA",   logo:"https://i.imgur.com/xWCHSwf.png" },
+  { name:"FX",   fullname:"FLUXO",                      region:"BR",    logo:"https://i.imgur.com/OGJ5A7r.png" },
+  { name:"GOW",  fullname:"GOW",                        region:"SEA",   logo:"https://i.imgur.com/CfmGEX6.png" },
+  { name:"HEV",  fullname:"HEAVY",                      region:"SEA",   logo:"https://i.imgur.com/vqVyJSJ.png" },
+  { name:"HS",   fullname:"HOTSHOT ESPORTS",            region:"PK",    logo:"https://i.imgur.com/f8ehquU.png" },
+  { name:"NVL",  fullname:"NOVA LEGION",                region:"LATAM", logo:"https://i.imgur.com/iZmL3FT.png" },
+  { name:"PE",   fullname:"P ESPORTS",                  region:"SEA",   logo:"https://i.imgur.com/kFcOez3.png" },
+  { name:"R7",   fullname:"MOVISTAR R7",                region:"LATAM", logo:"https://i.imgur.com/95lg1Dp.png" },
+  { name:"RC",   fullname:"RED CLIFF",                  region:"BD",    logo:"https://i.imgur.com/kX5wBEZ.png" },
+  { name:"RHK",  fullname:"RED HAWKS",                  region:"BD",    logo:"https://i.imgur.com/E2MJQdH.png" },
+  { name:"RRQ",  fullname:"RRQ KAZU",                   region:"SEA",   logo:"https://i.imgur.com/Afw7WMp.png" },
+  { name:"FLCN", fullname:"TEAM FALCONS",               region:"SEA",   logo:"https://i.imgur.com/DwPXnv1.png" },
+  { name:"TS",   fullname:"TEAM SOLID",                 region:"BR",    logo:"https://i.imgur.com/3Chm42Y.png" },
+  { name:"WAG",  fullname:"WAG",                        region:"SEA",   logo:"https://i.imgur.com/EiRHnoW.png" },
+];
+const TEAM_BY_CODE = Object.fromEntries(TEAMS.map(t => [t.name.toLowerCase(), t]));
+const TEAM_BY_NAME = Object.fromEntries(TEAMS.map(t => [t.fullname.toLowerCase(), t]));
+const ALLOWED_SET = new Set(TEAMS.map(t => t.fullname.toLowerCase()));
+
+/* ========= Utilities ========= */
+const el = (id) => document.getElementById(id);
+const fmtPct = (x) => isFinite(x) ? (x*100).toFixed(1)+'%' : '—';
+const n = (x) => Number(x ?? 0) || 0;
+const norm = (v) => (v==null ? '' : String(v).trim());
+const labelWD = (w,d) => `W${w||'-'}D${d||'-'}`;
+function sum(arr, key){ let t=0; for(const r of arr) t += n(r[key]); return t; }
+function avg(arr, key){ return arr.length ? sum(arr,key)/arr.length : 0; }
+function groupBy(arr, keyFn){ const m=new Map(); for(const r of arr){ const k=keyFn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r);} return m; }
+function distinct(rows, key){ return [...new Set(rows.map(r=>r[key]).filter(Boolean))]; }
+function renderSimpleTable(list, cols){
+  if (!list.length) return '<div class="muted">No rows.</div>';
+  const head = `<thead><tr>${cols.map(c=>`<th class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
+  const body = `<tbody>${list.map(r=>`<tr>${cols.map(c=>{
+    let v = r[c.key];
+    if (c.format==='pct') v = fmtPct(v);
+    else if (c.format==='1d') v = Number(v).toFixed(1);
+    else if (c.format==='2d') v = Number(v).toFixed(2);
+    else if (c.format==='0d') v = Number(v).toFixed(0);
+    return `<td class="${c.right?'right':''}">${v==null?'—':v}</td>`;
+  }).join('')}</tr>`).join('')}</tbody>`;
+  return `<table>${head}${body}</table>`;
+}
+function matchKey(r){ return [r.tournament,r.stage,r.group,r.week,r.day,r.match,r.map].map(x=>String(x??'')).join('|'); }
+function quantile(values, q){
+  const a = values.map(n).filter(x=>isFinite(x)).sort((x,y)=>x-y);
+  if (!a.length) return 0;
+  const pos = (a.length-1)*q;
+  const base = Math.floor(pos), rest = pos - base;
+  return a[base] + (a[base+1]!==undefined ? rest*(a[base+1]-a[base]) : 0);
+}
+function stddev(arr, key){
+  if (!arr.length) return 0;
+  const mean = arr.reduce((a,r)=>a+n(r[key]),0)/arr.length;
+  const v = arr.reduce((a,r)=>a+Math.pow(n(r[key])-mean,2),0)/arr.length;
+  return Math.sqrt(v);
+}
+
+/* Color helpers for charts */
+const css = getComputedStyle(document.documentElement);
+const C_BRAND  = css.getPropertyValue('--brand').trim() || '#ffbd59';
+const C_BRAND2 = css.getPropertyValue('--brand2').trim() || '#ff7733';
+const C_MUTED  = css.getPropertyValue('--muted').trim() || '#b9b9b9';
+const C_LINE   = css.getPropertyValue('--line').trim() || '#313131';
+const C_INK    = css.getPropertyValue('--ink').trim() || '#f5f5f5';
+function hexToRgba(hex, a=1){
+  const s = hex.replace('#','').trim();
+  const b = s.length===3 ? s.split('').map(x=>x+x).join('') : s;
+  const [r,g,b2] = [parseInt(b.slice(0,2),16), parseInt(b.slice(2,4),16), parseInt(b.slice(4,6),16)];
+  return `rgba(${r},${g},${b2},${a})`;
+}
+
+/* ========= State ========= */
+let ALL = [];       // full whitelisted dataset
+let FIELD = [];     // current field scope (filters but not team)
+let TEAM_ROWS = []; // filtered to selected team
+let CURRENT_TEAM = null; // TEAMS entry (object)
+
+/* ========= Fetch ffbr_data (paginated) ========= */
+async function fetchAllRows(){
+  const CHUNK = 1000;
+  let from = 0;
+  const out = [];
+  for(;;){
+    const { data, error } = await client
+      .from('ffbr_data')
+      .select('id, team, "group", stage, day, match, map, booyah, placement, elimination, drop, damage, total, played, top3, tag, week, tournament, year, season')
+      .order('year', { ascending:true })
+      .order('week', { ascending:true })
+      .order('day', { ascending:true })
+      .order('match', { ascending:true })
+      .range(from, from + CHUNK - 1);
+    if (error){ console.error('ffbr_data fetch failed:', error); break; }
+    const rows = data || [];
+    if (!rows.length) break;
+    out.push(...rows);
+    from += rows.length;
+  }
+  // Restrict to teams in TEAMS list
+  return out.filter(r => ALLOWED_SET.has((norm(r.team)||'').toLowerCase()));
+}
+
+/* ========= Simple aggregations ========= */
+function kpiDataset(rows){
+  const matches = rows.length;
+  const booyah = sum(rows,'booyah');
+  const total = sum(rows,'total');
+  const elims = sum(rows,'elimination');
+  const damage = sum(rows,'damage');
+  const top3 = sum(rows,'top3');
+  const teams = distinct(rows,'team').length;
+  const tourns = distinct(rows,'tournament').length;
+  const years = distinct(rows,'year').length;
+  return {
+    matches, teams, tourns, years,
+    booyah_rate: matches? booyah/matches : 0,
+    total_per_match: matches? total/matches : 0,
+    elims_per_match: matches? elims/matches : 0,
+    dmg_per_match: matches? damage/matches : 0,
+    top3_rate: matches? top3/matches : 0
+  };
+}
+function teamMapPerf(rows){
+  const g = groupBy(rows, r=>r.map||'—');
+  const out=[];
+  for(const [map, list] of g.entries()){
+    const m = list.length;
+    out.push({ map, matches:m, booyah_rate:m?sum(list,'booyah')/m:0, elims_pm:m?sum(list,'elimination')/m:0, total_pm:m?sum(list,'total')/m:0 });
+  }
+  return out.sort((a,b)=> b.matches-a.matches || b.total_pm-a.total_pm || a.map.localeCompare(b.map));
+}
+function teamDropPerf(rows, limit=15){
+  const g = groupBy(rows, r=>r.drop||'—');
+  const out=[];
+  for(const [drop, list] of g.entries()){
+    const m = list.length;
+    out.push({ drop, matches:m, booyah_rate:m?sum(list,'booyah')/m:0, elims_pm:m?sum(list,'elimination')/m:0, total_pm:m?sum(list,'total')/m:0 });
+  }
+  return out.sort((a,b)=> b.matches-a.matches || b.total_pm-a.total_pm || b.booyah_rate-a.booyah_rate).slice(0,limit);
+}
+function weekDayTrend(rows){
+  const g = groupBy(rows, r=>labelWD(r.week,r.day));
+  const out=[];
+  for(const [wd, list] of g.entries()){
+    const m = list.length;
+    out.push({ wd, matches:m, booyah_rate:m?sum(list,'booyah')/m:0, elims_pm:m?sum(list,'elimination')/m:0, total_pm:m?sum(list,'total')/m:0, total:sum(list,'total') });
+  }
+  return out.sort((a,b)=> String(a.wd).localeCompare(String(b.wd),undefined,{numeric:true}));
+}
+function fragPlacement(rows){
+  const elim = sum(rows,'elimination');
+  const place= sum(rows,'placement');
+  const total= sum(rows,'total');
+  const elimPts = elim;
+  const placePts = total - elimPts;
+  return { elimPts, placePts, total, shareE: total? elimPts/total : 0, shareP: total? placePts/total : 0 };
+}
+function consistency(rows){
+  if (!rows.length) return null;
+  const mean = avg(rows,'total');
+  const sd   = stddev(rows,'total');
+  const cv   = mean ? sd/mean : 0;
+  const t = rows.map(r=>n(r.total)).sort((a,b)=>a-b);
+  const iqr = quantile(t,0.75) - quantile(t,0.25);
+  return { matches: rows.length, mean, sd, cv, iqr };
+}
+function conversion(rows){
+  const m = rows.length, booy=sum(rows,'booyah'), t3=sum(rows,'top3');
+  return { booyah_rate: m?booy/m:0, top3_rate: m?t3/m:0, conv: t3? booy/t3 : 0 };
+}
+function efficiency(rows){
+  const elims = sum(rows,'elimination');
+  const dmg = sum(rows,'damage');
+  const dpe = elims? (dmg/elims) : 0;
+  const zeroElim = rows.filter(r=>n(r.elimination)===0).length;
+  const hiDamageNoElim = rows.filter(r=>n(r.elimination)===0 && n(r.damage) >= quantile(rows.map(r=>n(r.damage)),0.75)).length;
+  return { dpe, zeroElimRate: rows.length? zeroElim/rows.length : 0, hiDmgNoElimRate: rows.length? hiDamageNoElim/rows.length : 0 };
+}
+function rollingTotal(rows, k=3){
+  if (!rows.length) return [];
+  const s = [...rows].sort((a,b)=>
+    String(a.year).localeCompare(String(b.year),undefined,{numeric:true}) ||
+    String(a.week).localeCompare(String(b.week),undefined,{numeric:true}) ||
+    String(a.day).localeCompare(String(b.day),undefined,{numeric:true}) ||
+    String(a.match).localeCompare(String(b.match),undefined,{numeric:true}) ||
+    a.id-b.id
+  );
+  const out=[];
+  let window=[]; let sumT=0;
+  for (const r of s){
+    window.push(r); sumT += n(r.total);
+    if (window.length>k){ sumT -= n(window.shift().total); }
+    out.push({ wd: labelWD(r.week,r.day), match:r.match, roll_k: window.length>=k ? (sumT/k) : null });
+  }
+  return out.filter(x=>x.roll_k!=null);
+}
+function contestMetrics(allRows, team){
+  const byMatch = groupBy(allRows, matchKey);
+  let contested=0, uncontested=0, pointsCont=0, pointsUn=0;
+  for(const [, list] of byMatch.entries()){
+    const byDrop = groupBy(list, r=>r.drop||'—');
+    const my = list.filter(r=>r.team===team);
+    if (!my.length) continue;
+    const r = my[0]; const d = r.drop||'—';
+    const isCont = (byDrop.get(d)?.length||0) > 1;
+    if (isCont){ contested++; pointsCont += n(r.total); }
+    else { uncontested++; pointsUn += n(r.total); }
+  }
+  return {
+    contested, uncontested, total:contested+uncontested,
+    tpmC: contested? pointsCont/contested : 0,
+    tpmU: uncontested? pointsUn/uncontested : 0
+  };
+}
+
+/* ========= Charts ========= */
+const CHARTS = {};
+Chart.defaults.color = C_INK;
+Chart.defaults.borderColor = C_LINE;
+Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+
+function upsertChart(id, cfg){
+  const elc = document.getElementById(id);
+  if (!elc) return;
+  if (CHARTS[id]) CHARTS[id].destroy();
+  CHARTS[id] = new Chart(elc.getContext('2d'), cfg);
+}
+function renderCharts(fieldRows, teamRows, teamName){
+  // Trend (line)
+  const wd = weekDayTrend(teamRows);
+  el('labelTrendLine').textContent = `Team Trend — Total / Match by Week/Day (${teamName})`;
+  upsertChart('chartTrend',{
+    type:'line',
+    data:{ labels: wd.map(x=>x.wd),
+      datasets:[{ label:'Total / match', data: wd.map(x=>x.total_pm), tension:.25, borderWidth:2, borderColor:C_BRAND2, backgroundColor:hexToRgba(C_BRAND2,.2), pointRadius:2 }] },
+    options:{ plugins:{legend:{display:false}}, scales:{x:{grid:{display:false}}, y:{beginAtZero:true}} }
+  });
+
+  // Map comparison
+  const maps = distinct(fieldRows,'map').filter(Boolean).sort();
+  const byMapField = groupBy(fieldRows, r=>r.map);
+  const byMapTeam  = groupBy(teamRows,  r=>r.map);
+  const fieldTPM = maps.map(m => { const list = byMapField.get(m)||[]; return list.length ? sum(list,'total')/list.length : 0; });
+  const teamTPM  = maps.map(m => { const list = byMapTeam.get(m)||[];  return list.length ? sum(list,'total')/list.length : 0; });
+  upsertChart('chartMapComp',{
+    type:'bar',
+    data:{ labels:maps, datasets:[
+      { label:'Field total/m', data:fieldTPM, backgroundColor:hexToRgba(C_MUTED,.4), borderColor:C_MUTED, borderWidth:1 },
+      { label:`${teamName} total/m`, data:teamTPM, backgroundColor:hexToRgba(C_BRAND,.7), borderColor:C_BRAND, borderWidth:1 }
+    ]},
+    options:{ responsive:true, plugins:{tooltip:{mode:'index',intersect:false}}, scales:{x:{grid:{display:false}}, y:{beginAtZero:true}} }
+  });
+
+  // Scatter: Elims vs Placement (field + team centroid)
+  const byTeam = groupBy(fieldRows, r=>r.team);
+  const pts = [...byTeam.entries()].map(([nm,list])=>({
+    team:nm,
+    x: list.length? sum(list,'placement')/list.length : 0,
+    y: list.length? sum(list,'elimination')/list.length : 0,
+    total_pm: list.length? sum(list,'total')/list.length : 0
+  }));
+  upsertChart('chartScatter',{
+    type:'scatter',
+    data:{ datasets:[
+      { label:'Field', data: pts.filter(p=>p.team!==teamName), parsing:false, pointRadius: ctx => Math.max(2, Math.min(8, (ctx.raw.total_pm||0)/2)), backgroundColor: hexToRgba(C_MUTED,.5), borderColor: hexToRgba(C_MUTED,.8) },
+      { label:teamName, data: pts.filter(p=>p.team===teamName), parsing:false, pointRadius: ctx => Math.max(6, Math.min(10, (ctx.raw.total_pm||0)/2)), backgroundColor: hexToRgba(C_BRAND2,.9), borderColor: C_BRAND2 }
+    ]},
+    options:{ plugins:{ tooltip:{ callbacks:{ label: ctx => {
+      const r=ctx.raw; return `${r.team}: placement/m ${r.x.toFixed(1)}, elims/m ${r.y.toFixed(1)}, total/m ${r.total_pm.toFixed(1)}`; }} } },
+      scales:{ x:{ title:{display:true,text:'Placement / match'} }, y:{ title:{display:true,text:'Elims / match'}, beginAtZero:true } } }
+  });
+
+  // Top Teams — Total/m (field, highlight our team)
+  const ranks = pts.sort((a,b)=> b.total_pm-a.total_pm).slice(0,12);
+  upsertChart('chartTopTotalPM',{
+    type:'bar',
+    data:{ labels:ranks.map(r=>r.team),
+      datasets:[{ label:'Total / match', data:ranks.map(r=>r.total_pm), backgroundColor:ranks.map(r=> r.team===teamName ? hexToRgba(C_BRAND2,.9) : hexToRgba(C_BRAND,.6)), borderColor:ranks.map(r=> r.team===teamName ? C_BRAND2 : C_BRAND), borderWidth:1 }]},
+    options:{ plugins:{legend:{display:false}}, scales:{x:{grid:{display:false}}, y:{beginAtZero:true}} }
+  });
+}
+
+/* ========= UI: Team grid ========= */
+function renderTeamGrid(filter=''){
+  const grid = el('teamGrid');
+  const q = filter.trim().toLowerCase();
+  const items = TEAMS.filter(t =>
+    !q || t.name.toLowerCase().includes(q) || t.fullname.toLowerCase().includes(q) || (t.region||'').toLowerCase().includes(q)
+  );
+  if (!items.length){ grid.innerHTML = '<div class="muted">No matches.</div>'; return; }
+  grid.innerHTML = items.map(t=>`
+    <div class="team-tile" data-code="${t.name}">
+      <img class="team-logo" src="${t.logo}" alt="${t.fullname} logo" loading="lazy">
+      <div class="team-code">${t.name}</div>
+      <div class="team-name">${t.fullname}</div>
+      <div class="muted">${t.region||''}</div>
+    </div>`).join('');
+  [...grid.querySelectorAll('.team-tile')].forEach(tile=>{
+    tile.onclick = ()=>{
+      const code = tile.getAttribute('data-code').toLowerCase();
+      const info = TEAM_BY_CODE[code];
+      if (info) selectTeam(info);
+    };
+  });
+  highlightActiveTile();
+}
+function highlightActiveTile(){
+  const grid = el('teamGrid');
+  if (!grid) return;
+  [...grid.querySelectorAll('.team-tile')].forEach(div=>{
+    const code = div.getAttribute('data-code');
+    div.classList.toggle('active', !!CURRENT_TEAM && CURRENT_TEAM.name===code);
+  });
+}
+
+/* ========= Filters ========= */
+function initDropdownsPlaceholders(){
+  const set = (id, all='All')=>{ el(id).innerHTML = `<option value="__ALL__">${all}</option>`; };
+  set('fTourn','All tournaments'); set('fYear','All years'); set('fSeason','All seasons');
+  set('fStage','All stages'); set('fGroup','All groups'); set('fWeek','All weeks'); set('fDay','All days');
+}
+initDropdownsPlaceholders();
+
+function populateFilterDropdowns(sourceRows){
+  const set = (id, arr, all) => {
+    const dd = el(id); const prev = dd.value || '__ALL__';
+    const opts = [`<option value="__ALL__">${all}</option>`,
+      ...arr
+        .sort((a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true}))
+        .map(v=>`<option value="${v}">${v}</option>`)];
+    dd.innerHTML = opts.join('');
+    dd.value = (prev && (prev==='__ALL__' || arr.includes(prev))) ? prev : '__ALL__';
+  };
+  const distinctVals = (k) => [...new Set(sourceRows.map(r=>r[k]).filter(Boolean))];
+  set('fTourn',  distinctVals('tournament'), 'All tournaments');
+  set('fYear',   distinctVals('year'),       'All years');
+  set('fSeason', distinctVals('season'),     'All seasons');
+  set('fStage',  distinctVals('stage'),      'All stages');
+  set('fGroup',  distinctVals('group'),      'All groups');
+  set('fWeek',   distinctVals('week'),       'All weeks');
+  set('fDay',    distinctVals('day'),        'All days');
+}
+
+function applyFilters(){
+  if (!CURRENT_TEAM){ FIELD=[]; TEAM_ROWS=[]; return; }
+  const F = {
+    tourn: el('fTourn').value, year: el('fYear').value, season: el('fSeason').value,
+    stage: el('fStage').value, group: el('fGroup').value, week: el('fWeek').value, day: el('fDay').value,
+    map: el('fMap').value
+  };
+  let fieldRows = ALL;
+  if (F.tourn !== '__ALL__') fieldRows = fieldRows.filter(r=>norm(r.tournament)===norm(F.tourn));
+  if (F.year  !== '__ALL__') fieldRows = fieldRows.filter(r=>String(r.year)===String(F.year));
+  if (F.season!== '__ALL__') fieldRows = fieldRows.filter(r=>norm(r.season)===norm(F.season));
+  if (F.stage !== '__ALL__') fieldRows = fieldRows.filter(r=>norm(r.stage)===norm(F.stage));
+  if (F.group !== '__ALL__') fieldRows = fieldRows.filter(r=>norm(r.group)===norm(F.group));
+  if (F.week  !== '__ALL__') fieldRows = fieldRows.filter(r=>String(r.week)===String(F.week));
+  if (F.day   !== '__ALL__') fieldRows = fieldRows.filter(r=>String(r.day)===String(F.day));
+  if (F.map   !== '__ALL__') fieldRows = fieldRows.filter(r=>norm(r.map)===norm(F.map));
+  FIELD = fieldRows;
+  TEAM_ROWS = fieldRows.filter(r=>norm(r.team).toLowerCase()===CURRENT_TEAM.fullname.toLowerCase());
+}
+
+/* ========= Roster & Accolades (optional tables) ========= */
+async function fetchRoster(team){
+  try{
+    const { data, error } = await client.from('ffbr_roster')
+      .select('player, role, ign, country').eq('team', team).order('player');
+    if (error){ console.warn('ffbr_roster:', error.message); return []; }
+    return data||[];
+  }catch(e){ console.warn('roster fetch failed', e); return []; }
+}
+async function fetchAccolades(team){
+  try{
+    const { data, error } = await client.from('ffbr_player_accolades')
+      .select('player, accolade, value, year, tournament').eq('team', team).order('year',{ascending:false});
+    if (error){ console.warn('ffbr_player_accolades:', error.message); return []; }
+    return data||[];
+  }catch(e){ console.warn('accolades fetch failed', e); return []; }
+}
+
+/* ========= Render ========= */
+function renderKPIBox(k){
+  if (!k || !k.matches) return '<div class="muted">No rows in scope.</div>';
+  return `
+    <div class="kpis">
+      <div class="kpi">Rows <strong>${k.matches}</strong></div>
+      <div class="kpi">Tournaments <strong>${k.tourns}</strong></div>
+      <div class="kpi">Years <strong>${k.years}</strong></div>
+      <div class="kpi">Booyah <strong>${fmtPct(k.booyah_rate)}</strong></div>
+      <div class="kpi">Elims <strong>${k.elims_per_match.toFixed(1)}</strong>/m</div>
+      <div class="kpi">Damage <strong>${k.dmg_per_match.toFixed(0)}</strong>/m</div>
+      <div class="kpi">Total <strong>${k.total_per_match.toFixed(1)}</strong>/m</div>
+      <div class="kpi">Top3 <strong>${fmtPct(k.top3_rate)}</strong></div>
+    </div>`;
+}
+function renderCoverageMatrix(rows){
+  const years = [...new Set(rows.map(r=>r.year))].filter(Boolean).sort((a,b)=>a-b);
+  const seasons = [...new Set(rows.map(r=>r.season))].filter(Boolean).sort();
+  if (!years.length || !seasons.length) return '<div class="muted">No year/season coverage.</div>';
+  const g = groupBy(rows, r=>`${r.year}|${r.season}`);
+  const td = (y,s)=>{ const list = g.get(`${y}|${s}`)||[]; const m=list.length; const pct = Math.min(100, (m? 10+Math.log10(1+m)*30 : 0)); return `<td title="${m} rows"><div class="bar-rail"><div class="bar-fill" style="width:${pct}%"></div></div></td>`; };
+  return `
+    <table>
+      <thead><tr><th>Year ↓ / Season →</th>${seasons.map(s=>`<th>${s}</th>`).join('')}</tr></thead>
+      <tbody>
+        ${years.map(y=>`<tr><td>${y}</td>${seasons.map(s=>td(y,s)).join('')}</tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+function renderAll(){
+  if (!CURRENT_TEAM){ 
+    el('teamTitle').textContent = 'Team Overview';
+    el('identityBody').innerHTML = 'Select a team.';
+    el('kpiBody').innerHTML = '—';
+    el('coverageBody').innerHTML = '—';
+    ['tblMapTeam','tblDropTeam','tblWD','tblConsist','tblConv','tblEff','tblProfileTeam','tblMomentum','tblContestTeam','tblClutchEx','tblRoster','tblAccolades'].forEach(id=> el(id).innerHTML='—');
+    el('aiPrompt').value = '—';
+    return;
+  }
+  // Meta label
+  const labels = (id)=> (el(id).value==='__ALL__' ? 'All' : el(id).value);
+  const metaLbl = `Team: ${CURRENT_TEAM.fullname} • Tourn: ${labels('fTourn')} • Year: ${labels('fYear')} • Season: ${labels('fSeason')} • Stage: ${labels('fStage')} • Group: ${labels('fGroup')} • Week: ${labels('fWeek')} • Day: ${labels('fDay')} • Map: ${labels('fMap')} • Rows: ${TEAM_ROWS.length}/${FIELD.length}`;
+  el('meta').textContent = metaLbl;
+
+  // Identity
+  el('teamTitle').textContent = `Team Overview — ${CURRENT_TEAM.fullname}`;
+  el('identityBody').innerHTML = `
+    <div style="display:flex;gap:12px;align-items:center">
+      <img src="${CURRENT_TEAM.logo}" alt="${CURRENT_TEAM.fullname} logo" style="width:84px;height:84px;object-fit:contain">
+      <div>
+        <div style="font-size:1.25rem;font-weight:800">${CURRENT_TEAM.fullname} <span class="muted">(${CURRENT_TEAM.name})</span></div>
+        <div class="muted">Region: ${CURRENT_TEAM.region||'—'}</div>
+      </div>
+    </div>`;
+
+  // KPIs + Coverage (team scope)
+  const k = kpiDataset(TEAM_ROWS);
+  el('kpiBody').innerHTML = renderKPIBox(k);
+  el('coverageBody').innerHTML = renderCoverageMatrix(TEAM_ROWS);
+
+  // Tables
+  el('tblMapTeam').innerHTML = renderSimpleTable(
+    teamMapPerf(TEAM_ROWS),
+    [ {label:'Map',key:'map'}, {label:'Matches',key:'matches',right:true}, {label:'Booyah %',key:'booyah_rate',format:'pct',right:true}, {label:'Elims / m',key:'elims_pm',format:'1d',right:true}, {label:'Total / m',key:'total_pm',format:'1d',right:true} ]
+  );
+  el('tblDropTeam').innerHTML = renderSimpleTable(
+    teamDropPerf(TEAM_ROWS, 15),
+    [ {label:'Drop',key:'drop'}, {label:'Matches',key:'matches',right:true}, {label:'Booyah %',key:'booyah_rate',format:'pct',right:true}, {label:'Elims / m',key:'elims_pm',format:'1d',right:true}, {label:'Total / m',key:'total_pm',format:'1d',right:true} ]
+  );
+  const wdLimited = weekDayTrend(TEAM_ROWS).slice(-15);
+  el('tblWD').innerHTML = renderSimpleTable(
+    wdLimited,
+    [ {label:'Week/Day',key:'wd'}, {label:'Rows',key:'matches',right:true}, {label:'Booyah %',key:'booyah_rate',format:'pct',right:true}, {label:'Elims / m',key:'elims_pm',format:'1d',right:true}, {label:'Total / m',key:'total_pm',format:'1d',right:true}, {label:'Total',key:'total',right:true} ]
+  );
+
+  const C = consistency(TEAM_ROWS);
+  el('tblConsist').innerHTML = C ? renderSimpleTable([{
+    matches:C.matches, mean:C.mean, sd:C.sd, cv:C.cv, iqr:C.iqr
+  }],[
+    {label:'Matches',key:'matches',right:true},
+    {label:'Mean Total',key:'mean',format:'1d',right:true},
+    {label:'Std Dev',key:'sd',format:'1d',right:true},
+    {label:'Coeff. Variation',key:'cv',format:'2d',right:true},
+    {label:'IQR (Total)',key:'iqr',format:'1d',right:true},
+  ]) : '<div class="muted">No rows.</div>';
+
+  const V = conversion(TEAM_ROWS);
+  el('tblConv').innerHTML = renderSimpleTable([V],[
+    {label:'Booyah %',key:'booyah_rate',format:'pct',right:true},
+    {label:'Top-3 %',key:'top3_rate',format:'pct',right:true},
+    {label:'Booyah ÷ Top-3',key:'conv',format:'2d',right:true},
+  ]);
+  const E = efficiency(TEAM_ROWS);
+  el('tblEff').innerHTML = renderSimpleTable([E],[
+    {label:'Damage / Elim',key:'dpe',format:'1d',right:true},
+    {label:'Zero-Elim %',key:'zeroElimRate',format:'pct',right:true},
+    {label:'Hi-Damage No-Elim %',key:'hiDmgNoElimRate',format:'pct',right:true},
+  ]);
+
+  const FP = fragPlacement(TEAM_ROWS);
+  el('tblProfileTeam').innerHTML = renderSimpleTable([FP],[
+    {label:'Elim Pts',key:'elimPts',right:true},
+    {label:'Placement Pts',key:'placePts',right:true},
+    {label:'Total Pts',key:'total',right:true},
+    {label:'Elim Share',key:'shareE',format:'pct',right:true},
+    {label:'Placement Share',key:'shareP',format:'pct',right:true},
+  ]);
+
+  const roll = rollingTotal(TEAM_ROWS,3);
+  el('tblMomentum').innerHTML = renderSimpleTable(roll.slice(-20),[
+    {label:'Week/Day',key:'wd'},
+    {label:'3-match Avg',key:'roll_k',format:'1d',right:true},
+  ]);
+
+  const cont = contestMetrics(FIELD, CURRENT_TEAM.fullname);
+  el('tblContestTeam').innerHTML = renderSimpleTable([{
+    contested: cont.contested, uncontested:cont.uncontested,
+    rate: cont.total? cont.contested/cont.total : 0,
+    tpmC: cont.tpmC, tpmU: cont.tpmU
+  }],[
+    {label:'Contested',key:'contested',right:true},
+    {label:'Uncontested',key:'uncontested',right:true},
+    {label:'Contest Rate',key:'rate',format:'pct',right:true},
+    {label:'Total / m (Contested)',key:'tpmC',format:'1d',right:true},
+    {label:'Total / m (Uncontested)',key:'tpmU',format:'1d',right:true}
+  ]);
+
+  // Simple clutch/scuffed examples: pick extreme rows by quartiles
+  const P = TEAM_ROWS.map(r=>n(r.placement)), E2 = TEAM_ROWS.map(r=>n(r.elimination));
+  const pQ1 = quantile(P,0.25), eQ3 = quantile(E2,0.75), eQ1 = quantile(E2,0.25);
+  const examples = TEAM_ROWS
+    .filter(r => (n(r.placement)<=pQ1 && (n(r.elimination)>=eQ3 || n(r.elimination)<=eQ1)))
+    .slice(-10)
+    .map(r=>({ type: n(r.elimination)>=eQ3 ? 'Clutch' : 'Scuffed', wd: labelWD(r.week,r.day), map:r.map, drop:r.drop, place:r.placement, elim:r.elimination, total:r.total }));
+  el('tblClutchEx').innerHTML = renderSimpleTable(examples,[
+    {label:'Type',key:'type'},
+    {label:'Wk/Day',key:'wd'},
+    {label:'Map',key:'map'},
+    {label:'Drop',key:'drop'},
+    {label:'Placement',key:'place',right:true},
+    {label:'Elims',key:'elim',right:true},
+    {label:'Total',key:'total',right:true},
+  ]);
+
+  // Charts
+  renderCharts(FIELD, TEAM_ROWS, CURRENT_TEAM.fullname);
+
+  // AI prompt snapshot
+  const snapshot = {
+    team: CURRENT_TEAM,
+    kpis: k,
+    map_perf: teamMapPerf(TEAM_ROWS),
+    drop_perf: teamDropPerf(TEAM_ROWS, 15),
+    week_day: weekDayTrend(TEAM_ROWS).slice(-15),
+    consistency: C, conversion: V, efficiency: E,
+    frag_place: FP, momentum: roll.slice(-20)
+  };
+  el('aiPrompt').value =
+    `You are an esports analyst. Analyze the team snapshot below.\n\n`+
+    `Team: ${CURRENT_TEAM.fullname} (${CURRENT_TEAM.name}) | Region: ${CURRENT_TEAM.region}\n`+
+    `Filters: ${el('meta').textContent}\n`+
+    `Tasks: KPIs, map & drop strengths, consistency, contestation, and 3 actionable prep notes.\n\n`+
+    `JSON:\n`+JSON.stringify(snapshot,null,2);
+}
+
+/* ========= Team selection ========= */
+async function selectTeam(teamObj){
+  CURRENT_TEAM = teamObj;
+  // Update URL (code or name)
+  const url = new URL(window.location.href);
+  url.searchParams.set('team', CURRENT_TEAM.name);
+  history.replaceState(null, '', url.toString());
+
+  // Populate filter dropdowns from TEAM rows only (for available values)
+  populateFilterDropdowns(ALL.filter(r=>norm(r.team).toLowerCase()===teamObj.fullname.toLowerCase()));
+
+  applyFilters();
+  renderAll();
+  highlightActiveTile();
+
+  // Load roster & accolades (optional)
+  const [ roster, acc ] = await Promise.all([ fetchRoster(CURRENT_TEAM.fullname), fetchAccolades(CURRENT_TEAM.fullname) ]);
+
+  el('tblRoster').innerHTML = roster.length
+    ? renderSimpleTable(roster,[
+        {label:'Player',key:'player'},
+        {label:'IGN',key:'ign'},
+        {label:'Role',key:'role'},
+        {label:'Country',key:'country'}
+      ])
+    : '<div class="muted">No roster data found.</div>';
+
+  el('tblAccolades').innerHTML = acc.length
+    ? renderSimpleTable(acc,[
+        {label:'Player',key:'player'},
+        {label:'Accolade',key:'accolade'},
+        {label:'Value',key:'value'},
+        {label:'Year',key:'year',right:true},
+        {label:'Tournament',key:'tournament'}
+      ])
+    : '<div class="muted">No player accolades found.</div>';
+}
+
+/* ========= Export ========= */
+function exportCSV(filename, rows){
+  if (!rows || !rows.length){ alert('No rows to export.'); return; }
+  const cols = Object.keys(rows[0]);
+  const escape = (s)=> {
+    if (s == null) return '';
+    s = String(s);
+    return /(,|\n|\"|\r)/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+  };
+  const head = cols.map(escape).join(',');
+  const lines = rows.map(r=> cols.map(c=>escape(r[c])).join(','));
+  const blob = new Blob([head+'\n'+lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ========= Wiring ========= */
+async function initial(){
+  // Build team grid
+  renderTeamGrid('');
+  el('teamSearch').addEventListener('input', e => renderTeamGrid(e.target.value||''));
+
+  // Load all rows
+  ALL = await fetchAllRows();
+
+  // If URL has ?team= (code or name) select it
+  const url = new URL(window.location.href);
+  const qTeam = (url.searchParams.get('team')||'').trim().toLowerCase();
+  if (qTeam){
+    const found = TEAM_BY_CODE[qTeam] || TEAM_BY_NAME[qTeam];
+    if (found) await selectTeam(found);
+  }
+
+  // Default to first tile if none selected
+  if (!CURRENT_TEAM && TEAMS.length) await selectTeam(TEAMS[0]);
+}
+
+el('applyBtn').onclick = ()=>{ applyFilters(); renderAll(); };
+el('resetBtn').onclick = ()=>{
+  ['fTourn','fYear','fSeason','fStage','fGroup','fWeek','fDay','fMap'].forEach(id=>{ if(el(id)) el(id).value='__ALL__'; });
+  applyFilters(); renderAll();
+};
+el('exportBtn').onclick = ()=>{ exportCSV(`${CURRENT_TEAM?.name||'team'}_scope.csv`, TEAM_ROWS); };
+
+el('copyPromptBtn').onclick = async ()=>{
+  try{
+    await navigator.clipboard.writeText(el('aiPrompt').value||'');
+    const btn = el('copyPromptBtn'); const orig=btn.textContent; btn.textContent='Copied!'; setTimeout(()=>btn.textContent=orig,1200);
+  }catch(e){ alert('Copy failed: '+e.message); }
+};
+
+initial();
+</script>
+</body>
+</html>
