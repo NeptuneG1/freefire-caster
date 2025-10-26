@@ -84,7 +84,6 @@
       <input type="search" id="teamSearch" placeholder="Search team / region…" style="flex:1;max-width:420px;background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:8px">
     </div>
     <div id="teamGrid" class="team-grid">Loading teams…</div>
-    <div class="muted" id="loadStatus">—</div>
   </div>
 
   <!-- TEAM OVERVIEW -->
@@ -156,7 +155,6 @@ const TEAM_BY_NAME = Object.fromEntries(TEAMS.map(t => [t.fullname.toLowerCase()
 const ALLOWED_SET = new Set(TEAMS.map(t => t.fullname.toLowerCase()));
 
 /* ========= Utilities ========= */
-function showStatus(msg){ const s=el('loadStatus'); if(s) s.textContent = msg; }
 const el = (id) => document.getElementById(id);
 const fmtPct = (x) => isFinite(x) ? (x*100).toFixed(1)+'%' : '—';
 const n = (x) => Number(x ?? 0) || 0;
@@ -186,17 +184,14 @@ function kpiDataset(rows){
   const elims = sum(rows,'elimination');
   const damage = sum(rows,'damage');
   const top3 = sum(rows,'top3');
-  const placePts = total - elims; // placement points assume total = elim + placement
   return {
     matches,
     booyah_rate: matches? booyah/matches : 0,
     total_per_match: matches? total/matches : 0,
     elims_per_match: matches? elims/matches : 0,
-    place_per_match: matches? placePts/matches : 0,
     dmg_per_match: matches? damage/matches : 0,
     top3_rate: matches? top3/matches : 0
   };
-};
 }
 function teamMapPerf(rows){
   const g = groupBy(rows, r=>r.map||'—');
@@ -220,27 +215,6 @@ async function fetchAllRows(){
   const out = [];
   for(;;){
     const { data, error } = await client
-      .from('ffbr_data')
-      .select('id, team, "group", stage, day, match, map, booyah, placement, elimination, drop, damage, total, played, top3, tag, week, tournament, year, season')
-      .order('year', { ascending:true })
-      .order('week', { ascending:true })
-      .order('day', { ascending:true })
-      .order('match', { ascending:true })
-      .range(from, from + CHUNK - 1);
-    if (error){ showStatus('⚠️ Data error: '+error.message); console.error('ffbr_data fetch failed:', error); break; }
-    const rows = data || [];
-    if (!rows.length) break;
-    out.push(...rows);
-    from += rows.length;
-  }
-  // Whitelist filter with safe fallback
-  let filtered = out.filter(r => ALLOWED_SET.has((norm(r.team)||'').toLowerCase()));
-  if (out.length && !filtered.length){
-    showStatus('⚠️ No rows matched whitelist; showing all rows.');
-    filtered = out;
-  }
-  return filtered;
-} = await client
       .from('ffbr_data')
       .select('id, team, "group", stage, day, match, map, booyah, placement, elimination, drop, damage, total, played, top3, tag, week, tournament, year, season')
       .order('year', { ascending:true })
@@ -281,8 +255,7 @@ function renderOverview(){
     <div class="kpis">
       <div class="kpi">Rows <strong>${k.matches}</strong></div>
       <div class="kpi">Booyah <strong>${fmtPct(k.booyah_rate)}</strong></div>
-      <div class=\"kpi\">Elims <strong>${k.elims_per_match.toFixed(1)}</strong>/m</div>
-      <div class=\"kpi\">Placement <strong>${k.place_per_match.toFixed(1)}</strong>/m</div>
+      <div class="kpi">Elims <strong>${k.elims_per_match.toFixed(1)}</strong>/m</div>
       <div class="kpi">Damage <strong>${k.dmg_per_match.toFixed(0)}</strong>/m</div>
       <div class="kpi">Total <strong>${k.total_per_match.toFixed(1)}</strong>/m</div>
       <div class="kpi">Top3 <strong>${fmtPct(k.top3_rate)}</strong></div>
@@ -332,13 +305,7 @@ async function selectTeam(teamObj){
   url.searchParams.set('team', CURRENT_TEAM.name);
   history.replaceState(null, '', url.toString());
 
-  const targetFull = teamObj.fullname.toLowerCase();
-  const targetCode = teamObj.name.toLowerCase();
-  TEAM_ROWS = ALL.filter(r => {
-    const t = (r.team||'').trim().toLowerCase();
-    return t===targetFull || t===targetCode || t.includes(targetFull) || t.includes(targetCode);
-  });
-  showStatus(`Rows loaded: ${ALL.length} • Team rows: ${TEAM_ROWS.length}`);
+  TEAM_ROWS = ALL.filter(r => (r.team||'').trim().toLowerCase() === teamObj.fullname.toLowerCase());
   renderOverview();
   highlightActiveTile();
 }
@@ -348,7 +315,6 @@ async function initial(){
   renderTeamGrid('');
   el('teamSearch').addEventListener('input', e => renderTeamGrid(e.target.value||''));
   ALL = await fetchAllRows();
-  showStatus(ALL.length ? `Loaded ${ALL.length} rows` : '⚠️ No rows returned. Check RLS or table name.');
 
   // If URL has ?team= (code or name) select it
   const url = new URL(window.location.href);
