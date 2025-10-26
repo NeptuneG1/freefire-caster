@@ -195,15 +195,25 @@ function kpiDataset(rows){
     top3_rate: matches? top3/matches : 0
   };
 }
+
 function teamMapPerf(rows){
   const g = groupBy(rows, r=>r.map||'—');
   const out=[];
-  for(const [map, list] of g.entries()){
+  for (const [map, list] of g.entries()){
     const m = list.length;
-    out.push({ map, matches:m, booyah_rate:m?sum(list,'booyah')/m:0, elims_pm:m?sum(list,'elimination')/m:0, placement_pm:m?sum(list,'placement')/m:0, total_pm:m?sum(list,'total')/m:0 });
+    out.push({
+      map,
+      matches: m,
+      booyah_rate: m ? sum(list,'booyah')/m : 0,
+      elims_pm:    m ? sum(list,'elimination')/m : 0,
+      placement_pm:m ? sum(list,'placement')/m : 0,
+      total_pm:    m ? sum(list,'total')/m : 0
+    });
   }
-  return out.sort((a,b)=> b.matches-a.matches || b.total_pm-a.total_pm || a.map.localeCompare(b.map));
+  // Sort by Total/m (desc), then Matches (desc), then Map (A→Z)
+  return out.sort((a,b) => b.total_pm - a.total_pm || b.matches - a.matches || a.map.localeCompare(b.map));
 }
+
 
 /* ========= State ========= */
 let ALL = [];
