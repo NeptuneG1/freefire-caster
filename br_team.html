@@ -143,6 +143,29 @@
       <div id="tblOverall">Loading…</div>
     </div>
   </div>
+
+  <!-- PER-MAP BREAKDOWN (All Teams) -->
+  <div class="section" id="perMapSection">
+    <h2>Per-Map Breakdown (All Teams)</h2>
+    <div class="bar">
+      <label for="perMapSortKey">Sort by</label>
+      <select id="perMapSortKey" class="input">
+        <option value="total_pm" selected>Total / m</option>
+        <option value="booyah_rate">Booyah %</option>
+        <option value="elims_pm">Elims / m</option>
+        <option value="placement_pm">Placement / m</option>
+        <option value="top3_rate">Top-3 %</option>
+        <option value="matches">Matches</option>
+        <option value="map">Map (A→Z)</option>
+      </select>
+      <button class="btn secondary" id="perMapSortDir" data-dir="desc" title="Toggle ascending/descending">Desc</button>
+      <button class="btn secondary" id="perMapReset">Reset</button>
+      <span class="chip">Tournament filter applies.</span>
+    </div>
+    <div class="card">
+      <div id="tblPerMap">Loading…</div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -250,10 +273,10 @@ function teamMapPerf(rows){
       booyah_rate: m ? sum(list,'booyah')/m : 0,
       elims_pm:    m ? sum(list,'elimination')/m : 0,
       placement_pm:m ? sum(list,'placement')/m : 0,
-      total_pm:    m ? sum(list,'total')/m : 0
+      total_pm:    m ? sum(list,'total')/m : 0,
+      top3_rate:   m ? sum(list,'top3')/m : 0
     });
   }
-  // Default sort: Total/m desc
   return out.sort((a,b) => b.total_pm - a.total_pm || b.matches - a.matches || a.map.localeCompare(b.map));
 }
 
@@ -289,15 +312,12 @@ async function fetchAllRows(){
 
 /* ========= Overall Performance (limited to 18 teams) ========= */
 function aggregateOverall(rows){
-  // Group strictly by the 18-team short code (canonical key)
   const grouped = new Map();
-
   for (const r of rows){
     const raw = (r.team || '').trim().toLowerCase();
-    const meta = ALLOWED.get(raw);     // match either short code or full name
-    if (!meta) continue;               // skip anything not in the 18 teams
-
-    const code = meta.name.toLowerCase(); // canonical key
+    const meta = ALLOWED.get(raw);
+    if (!meta) continue;
+    const code = meta.name.toLowerCase();
     if (!grouped.has(code)) grouped.set(code, []);
     grouped.get(code).push(r);
   }
@@ -323,9 +343,27 @@ function aggregateOverall(rows){
   return out;
 }
 
+/* ========= Per-Map (all teams) aggregation ========= */
+function aggregatePerMap(rows){
+  const g = groupBy(rows.filter(r => norm(r.map)), r => r.map);
+  const out = [];
+  for (const [map, list] of g.entries()){
+    const m = list.length;
+    out.push({
+      map,
+      matches: m,
+      booyah_rate:   m ? sum(list,'booyah')/m : 0,
+      elims_pm:      m ? sum(list,'elimination')/m : 0,
+      placement_pm:  m ? sum(list,'placement')/m : 0,
+      total_pm:      m ? sum(list,'total')/m : 0,
+      top3_rate:     m ? sum(list,'top3')/m : 0
+    });
+  }
+  return out;
+}
+
 /* ========= Tournament options (auto) ========= */
 function uniqueTournaments(rows){
-  // Only consider tournaments present in rows for the 18 teams
   const map = new Map(); // name -> {name, yearMax, count}
   for (const r of rows){
     const t = norm(r.tournament);
@@ -339,30 +377,26 @@ function uniqueTournaments(rows){
       o.count += 1;
     }
   }
-  // Sort by most recent year desc, then name
   return Array.from(map.values()).sort((a,b)=> (b.yearMax - a.yearMax) || a.name.localeCompare(b.name));
 }
 
 function populateOverallTournament(){
   const sel = el('overallTournament');
   if (!sel) return;
-  // Build from ALL rows (already limited to 18 teams)
   const opts = uniqueTournaments(ALL);
-  // Keep current selection if possible
   const current = sel.value || '__all__';
   sel.innerHTML = `<option value="__all__">All tournaments</option>` +
     opts.map(o => `<option value="${o.name.replaceAll('"','&quot;')}">${o.name}</option>`).join('');
-  // Restore selection if still present
   const exists = [...sel.options].some(op => op.value === current);
   sel.value = exists ? current : '__all__';
 }
 
 /* ========= Sort helpers ========= */
-function sortOverall(rows, key, dir){
+function sortRows(rows, key, dir){
   const mult = dir === 'asc' ? 1 : -1;
   return rows.sort((a,b)=>{
-    if (key === 'team' || key === 'region' || key === 'code'){
-      return mult * a[key].localeCompare(b[key]);
+    if (['team','region','code','map'].includes(key)){
+      return mult * String(a[key]).localeCompare(String(b[key]));
     }
     const av = Number(a[key]);
     const bv = Number(b[key]);
@@ -383,7 +417,6 @@ function renderOverall(){
   const dir = dirBtn?.dataset?.dir || 'desc';
   const tFilter = (tSel?.value || '__all__').trim();
 
-  // Filter by tournament if selected
   let base = ALL;
   if (tFilter !== '__all__'){
     const lf = tFilter.toLowerCase();
@@ -391,7 +424,7 @@ function renderOverall(){
   }
 
   const rows = aggregateOverall(base);
-  sortOverall(rows, sortKey, dir);
+  sortRows(rows, sortKey, dir);
 
   el('tblOverall').innerHTML = renderSimpleTable(rows, [
     {label:'Team',           key:'team'},
@@ -403,6 +436,36 @@ function renderOverall(){
     {label:'Placement / m',  key:'placement_pm',format:'1d',  right:true},
     {label:'Total / m',      key:'total_pm',    format:'1d',  right:true},
     {label:'Top-3 %',        key:'top3_rate',   format:'pct', right:true},
+  ]);
+}
+
+/* ========= Render Per-Map with Tournament filter + sorting ========= */
+function renderPerMap(){
+  const keySel = el('perMapSortKey');
+  const dirBtn = el('perMapSortDir');
+  const tSel   = el('overallTournament'); // same tournament filter
+
+  const sortKey = keySel?.value || 'total_pm';
+  const dir = dirBtn?.dataset?.dir || 'desc';
+  const tFilter = (tSel?.value || '__all__').trim();
+
+  let base = ALL;
+  if (tFilter !== '__all__'){
+    const lf = tFilter.toLowerCase();
+    base = ALL.filter(r => norm(r.tournament).toLowerCase() === lf);
+  }
+
+  const rows = aggregatePerMap(base);
+  sortRows(rows, sortKey, dir);
+
+  el('tblPerMap').innerHTML = renderSimpleTable(rows, [
+    {label:'Map',           key:'map'},
+    {label:'Matches',       key:'matches',     right:true},
+    {label:'Booyah %',      key:'booyah_rate', format:'pct', right:true},
+    {label:'Elims / m',     key:'elims_pm',    format:'1d',  right:true},
+    {label:'Placement / m', key:'placement_pm',format:'1d',  right:true},
+    {label:'Total / m',     key:'total_pm',    format:'1d',  right:true},
+    {label:'Top-3 %',       key:'top3_rate',   format:'pct', right:true},
   ]);
 }
 
@@ -505,35 +568,54 @@ async function initial(){
   renderTeamGrid('');
   el('teamSearch').addEventListener('input', e => renderTeamGrid(e.target.value||''));
 
-  // Sort + Tournament UI events
+  // Overall controls
   const sortKey = el('overallSortKey');
   const sortDir = el('overallSortDir');
   const reset   = el('overallReset');
   const tourn   = el('overallTournament');
 
-  sortKey.addEventListener('change', renderOverall);
+  sortKey.addEventListener('change', ()=>{ renderOverall(); renderPerMap(); });
   sortDir.addEventListener('click', ()=>{
     const cur = sortDir.dataset.dir === 'desc' ? 'asc' : 'desc';
     sortDir.dataset.dir = cur;
     sortDir.textContent = cur === 'desc' ? 'Desc' : 'Asc';
-    renderOverall();
+    renderOverall(); renderPerMap();
   });
   reset.addEventListener('click', ()=>{
     sortKey.value = 'total_pm';
     sortDir.dataset.dir = 'desc';
     sortDir.textContent = 'Desc';
     tourn.value = '__all__';
-    renderOverall();
+    renderOverall(); renderPerMap();
   });
-  tourn.addEventListener('change', renderOverall);
+  tourn.addEventListener('change', ()=>{ renderOverall(); renderPerMap(); });
+
+  // Per-map controls
+  const pmKey  = el('perMapSortKey');
+  const pmDir  = el('perMapSortDir');
+  const pmRst  = el('perMapReset');
+  pmKey.addEventListener('change', renderPerMap);
+  pmDir.addEventListener('click', ()=>{
+    const cur = pmDir.dataset.dir === 'desc' ? 'asc' : 'desc';
+    pmDir.dataset.dir = cur;
+    pmDir.textContent = cur === 'desc' ? 'Desc' : 'Asc';
+    renderPerMap();
+  });
+  pmRst.addEventListener('click', ()=>{
+    pmKey.value = 'total_pm';
+    pmDir.dataset.dir = 'desc';
+    pmDir.textContent = 'Desc';
+    renderPerMap();
+  });
 
   ALL = await fetchAllRows();
 
   // Populate tournament filter from data (limited to 18 teams)
   populateOverallTournament();
 
-  // Overall table (18-team limited) with filter + sorting
+  // Initial renders
   renderOverall();
+  renderPerMap();
 
   // If URL has ?team= (code or name) select it
   const url = new URL(window.location.href);
