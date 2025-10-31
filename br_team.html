@@ -3,14 +3,10 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Free Fire — OB51 Update (Flame Arena)</title>
-  <link rel="preconnect" href="https://dl.dir.freefiremobile.com"/>
+  <title>FFBR — Teams (Overview, Info, Roster, Maps)</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    :root{
-      --bg:#0e0e0e; --panel:#1b1b1b; --panel2:#141414;
-      --ink:#f5f5f5; --muted:#b9b9b9;
-      --brand:#ffbd59; --brand2:#ff7733; --line:#313131;
-    }
+    :root{--bg:#0e0e0e; --panel:#1b1b1b; --panel2:#141414; --ink:#f5f5f5; --muted:#b9b9b9; --brand:#ffbd59; --brand2:#ff7733; --line:#313131; --cols:6;}
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif}
     header{position:sticky;top:0;z-index:5;background:#1f1f1f;border-bottom:3px solid var(--brand);padding:14px 16px}
@@ -19,234 +15,697 @@
     .chip{font-size:.85rem;color:#ddd}
     .btn{background:var(--brand);color:var(--panel);border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
     .btn.secondary{background:#2a2a2a;color:#ddd;border:1px solid #3a3a3a}
+    .input{background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:7px 10px}
 
     .shell{max-width:1100px;margin:22px auto;padding:0 12px}
     .section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
     .section h2{margin:0 0 10px;color:var(--brand)}
     .grid2{display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:12px}
-    .grid3{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:12px}
-    .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px}
+    .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px}
     .card h3{margin:0 0 6px;color:var(--brand2);font-size:1.0rem}
-    .muted{color:var(--muted)}
-    .hero{border-radius:12px;overflow:hidden;border:1px solid var(--line)}
-    .hero img{width:100%;display:block}
-
     .kpis{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
-    .kpi{background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:6px 10px;font-size:.9rem}
+    .kpi{background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:5px 8px;font-size:.9rem}
 
-    .pillnav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
-    .pillnav a{padding:6px 10px;border-radius:999px;border:1px solid #2a2a2a;background:#141414;color:#e8e8e8;text-decoration:none;font-size:.9rem}
-    .pillnav a:hover{border-color:#484848}
-
-    table{width:100%;border-collapse:collapse;font-size:.95rem}
+    table{width:100%;border-collapse:collapse;font-size:.92rem}
     th,td{border-bottom:1px solid #2a2a2a;padding:6px 6px;vertical-align:top}
     thead th{background:#191919;position:sticky;top:0;text-align:left}
 
-    .img{width:100%;border-radius:10px;border:1px solid var(--line)}
-    .note{font-size:.9rem;color:var(--muted)}
+    /* Team grid */
+    .team-grid{
+      --cols: 9;
+      display: grid;
+      grid-template-columns: repeat(var(--cols), 1fr);
+      grid-auto-rows: 160px;
+      gap: 8px;
+      align-items: stretch;
+    }
+    @media (max-width: 1600px){ .team-grid{ --cols:8; } }
+    @media (max-width: 1400px){ .team-grid{ --cols:7; } }
+    @media (max-width: 1220px){ .team-grid{ --cols:6; } }
+    @media (max-width: 1060px){ .team-grid{ --cols:5; } }
+    @media (max-width: 920px){  .team-grid{ --cols:4; } }
+    @media (max-width: 740px){  .team-grid{ --cols:3; } }
+    @media (max-width: 560px){  .team-grid{ --cols:2; } }
+    .team-tile{background:#131313;border:1px solid #2a2a2a;border-radius:10px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;transition:transform .1s ease, border-color .1s ease;height:100%;overflow:hidden;}
+    .team-tile:hover{transform:translateY(-2px);border-color:#444}
+    .team-tile.active{outline:2px solid var(--brand2)}
+    .team-logo{width:72px;height:72px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(0,0,0,.4))}
+    .team-code{font-weight:800;font-size:.8rem;line-height:1.1}
+    .team-name{
+      font-size:.72rem; line-height:1.1; color:var(--muted); text-align:center;
+      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+      overflow: hidden; white-space: normal;
+    }
+    .team-tile .muted{font-size:.68rem}
 
-    @media (max-width: 860px){ .grid2,.grid3{grid-template-columns:1fr} }
+    /* Avatar */
+    .avatar{width:36px;height:36px;border-radius:6px;object-fit:cover;border:1px solid #2a2a2a;margin-right:8px;vertical-align:middle}
+
+    /* Bars & filters */
+    .bar{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+    .bar label{color:var(--muted);font-size:.9rem}
+
+    @media (max-width: 860px){ .grid2{grid-template-columns:1fr} }
   </style>
 </head>
 <body>
 <header>
-  <h1>Free Fire — OB51 Update (Flame Arena)</h1>
+  <h1>FFBR — Teams</h1>
   <div class="user-controls">
     <a class="btn secondary" href="dashboard.html">← Dashboard</a>
+    <span class="chip" id="user-info">Checking login…</span>
+    <button class="btn" id="logoutBtn">Logout</button>
   </div>
 </header>
 
 <div class="shell">
-  <!-- HERO / SUMMARY -->
+  <!-- TEAMS PICKER -->
   <div class="section">
-    <div class="hero">
-      <img src="https://dl.dir.freefiremobile.com/common/web_event/official2/dist/client/img/banner.8540265.png" alt="Free Fire OB51 banner">
+    <h2>Select a Team</h2>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+      <input type="search" id="teamSearch" placeholder="Search team / region…" class="input" style="flex:1;max-width:420px">
     </div>
-    <div class="kpis" style="margin-top:10px">
-      <div class="kpi"><strong>Version:</strong> OB51 (Flame Arena)</div>
-      <div class="kpi"><strong>Modes touched:</strong> BR • Clash Squad • Training Grounds</div>
-      <div class="kpi"><strong>Headline:</strong> New character <em>Nero</em>, new weapons <em>Winchester</em> & <em>Thompson‑X</em>, loadout rework, BR/CS balance + QoL</div>
-    </div>
-    <div class="pillnav">
-      <a href="#highlights">Highlights</a>
-      <a href="#characters">Characters</a>
-      <a href="#weapons">Weapons & Balancing</a>
-      <a href="#clashsquad">Clash Squad</a>
-      <a href="#battle-royale">Battle Royale</a>
-      <a href="#system">System & QoL</a>
-      <a href="#links">Links</a>
-    </div>
+    <div id="teamGrid" class="team-grid">Loading teams…</div>
   </div>
 
-  <!-- HIGHLIGHTS -->
-  <div class="section" id="highlights">
-    <h2>Highlights</h2>
-    <div class="grid3">
-      <div class="card">
-        <h3>New Character: Nero</h3>
-        <p>Nero brings a tactical buff that helps squads push or hold by converting Gloo usage into temporary combat advantages. Great for coordinated rushes and late‑circle skirmishes.</p>
+  <!-- TEAM OVERVIEW -->
+  <div class="section" id="teamHeader">
+    <h2 id="teamTitle">Team Overview</h2>
+    <div class="grid2">
+      <div class="card" id="teamIdentity">
+        <h3>Identity</h3>
+        <div id="identityBody">Select a team.</div>
       </div>
-      <div class="card">
-        <h3>New Guns: Winchester & Thompson‑X</h3>
-        <p>Classic <b>Winchester</b> returns reworked for mid‑range precision. <b>Thompson‑X</b> is a controllable SMG built for aggressive entry fragging.</p>
-      </div>
-      <div class="card">
-        <h3>Loadout Rework</h3>
-        <p>Team utilities like <em>Team Booster</em>, <em>Enhance Hammer</em>, <em>Tactical Market</em>, and <em>Super Leg Pockets</em> streamline BR setup with clearer choices and stronger identities.</p>
-      </div>
-      <div class="card">
-        <h3>BR Quality‑of‑Life</h3>
-        <p>Waypoint pings, improved Weapon Rack info, and new utility items such as <em>Gloo Mushroom</em> and <em>Gloo UAV‑Lite</em> make rotations and scouting more readable.</p>
-      </div>
-      <div class="card">
-        <h3>Clash Squad Tuning</h3>
-        <p>Purchase flow refinements, Gloo and grenade adjustments, and pacing tweaks to reduce early snowball and encourage counterplay.</p>
-      </div>
-      <div class="card">
-        <h3>Solara Map Balance</h3>
-        <p>Cover, loot, and landing adjustments across key POIs to increase fair fights and diversify rotations.</p>
+      <div class="card" id="teamKPIs">
+        <h3>Key KPIs</h3>
+        <div id="kpiBody">—</div>
       </div>
     </div>
   </div>
 
-  <!-- CHARACTERS -->
-  <div class="section" id="characters">
-    <h2>Characters</h2>
+  <!-- TEAM INFO & ROSTER (from br_team_info & br_player_info) -->
+  <div class="section" id="teamMeta">
+    <h2>Team Info & Roster</h2>
     <div class="grid2">
       <div class="card">
-        <h3>Nero — Featured Character</h3>
-        <p>Nero’s skill rewards smart utility usage and team play. It triggers a short‑window buff around Gloo interactions so your squad can breach, trade, and reset more safely. Best paired with entry SMGs/shotguns and a support running extra Gloo.</p>
-        <ul class="muted">
-          <li>Pairs well with aggressive brawlers and revive‑centric comps.</li>
-          <li>Synergizes with utility‑heavy rotations and late‑circle holds.</li>
-        </ul>
+        <h3>Team Info</h3>
+        <div id="teamInfoBody">—</div>
       </div>
       <div class="card">
-        <img class="img" alt="Characters Update" src="https://ff.garena.com/images/news/2025/10/30/0056004900338/Characters%20Update.jpeg"/>
-        <p class="note">Official character update art.</p>
+        <h3>Roster & Accolades</h3>
+        <div id="teamRosterBody">—</div>
       </div>
     </div>
   </div>
 
-  <!-- WEAPONS & BALANCING -->
-  <div class="section" id="weapons">
-    <h2>Weapons & Balancing</h2>
-    <div class="grid2">
-      <div class="card">
-        <h3>New</h3>
-        <ul>
-          <li><b>Winchester</b> — precision rifle tuned for reliable mid‑range picks with a rewarding headshot profile.</li>
-          <li><b>Thompson‑X</b> — stable SMG variant with strong time‑to‑damage in close quarters.</li>
-        </ul>
-        <h3>Adjustments</h3>
-        <ul>
-          <li><b>M1917</b> & <b>AC80</b> rebalanced to tighten dueling fairness.</li>
-          <li>SMG class pass for handling and consistency improvements.</li>
-          <li>Attachment and upgrade curves reviewed to match weapon roles.</li>
-        </ul>
-      </div>
-      <div class="card">
-        <img class="img" alt="Weapon Update" src="https://ff.garena.com/images/news/2025/10/30/0056004900338/Weapon%20Update.jpg"/>
-        <p class="note">Official weapon update art.</p>
-      </div>
+  <!-- MAP PERFORMANCE (selected team) -->
+  <div class="section">
+    <h2>Map Performance</h2>
+    <div class="card">
+      <div id="tblMapTeam">—</div>
     </div>
   </div>
 
-  <!-- CLASH SQUAD -->
-  <div class="section" id="clashsquad">
-    <h2>Clash Squad</h2>
-    <div class="grid2">
-      <div class="card">
-        <h3>Economy & Buy‑Phase</h3>
-        <ul>
-          <li>Purchase interface streamlined for faster, clearer rounds.</li>
-          <li>Gloo Wall and Fire Grenade quantities adjusted per round to reduce spam and open counterplay windows.</li>
-        </ul>
-        <h3>Combat Feel</h3>
-        <ul>
-          <li>Weapon upgrade pacing tuned; round‑over flow tightened.</li>
-          <li>Quality‑of‑life fixes across HUD hints and item feedback.</li>
-        </ul>
-      </div>
-      <div class="card">
-        <p class="muted">Tip: Nero’s utility buff can set up entry paths—chain with smoke denial and quick trades.</p>
-      </div>
+  <!-- OVERALL PERFORMANCE (All Teams / Limited to 18) -->
+  <div class="section" id="overallSection">
+    <h2>Overall Performance (All Teams)</h2>
+    <div class="bar">
+      <label for="overallTournament">Tournament</label>
+      <select id="overallTournament" class="input" style="min-width:220px">
+        <option value="__all__" selected>All tournaments</option>
+      </select>
+
+      <label for="overallSortKey">Sort by</label>
+      <select id="overallSortKey" class="input">
+        <option value="total_pm" selected>Total / m</option>
+        <option value="elims_pm">Elims / m</option>
+        <option value="booyah_rate">Booyah %</option>
+        <option value="matches">Matches</option>
+        <option value="placement_pm">Placement / m</option>
+        <option value="top3_rate">Top-3 %</option>
+        <option value="team">Team (A→Z)</option>
+      </select>
+      <button class="btn secondary" id="overallSortDir" data-dir="desc" title="Toggle ascending/descending">Desc</button>
+      <button class="btn secondary" id="overallReset">Reset</button>
+    </div>
+    <div class="card">
+      <div id="tblOverall">Loading…</div>
     </div>
   </div>
 
-  <!-- BATTLE ROYALE -->
-  <div class="section" id="battle-royale">
-    <h2>Battle Royale</h2>
-    <div class="grid3">
-      <div class="card">
-        <h3>Loadout Rework</h3>
-        <ul>
-          <li><b>Team Booster</b>: squad‑wide early advantage for momentum starts.</li>
-          <li><b>Enhance Hammer</b>: accelerates weapon upgrade timings.</li>
-          <li><b>Tactical Market</b>: smarter access to key utilities mid‑match.</li>
-          <li><b>Super Leg Pockets</b>: expanded carry to support utility play.</li>
-        </ul>
-      </div>
-      <div class="card">
-        <h3>Loot & Revives</h3>
-        <ul>
-          <li><b>Advanced Revival Point</b> UI and rhythm made clearer.</li>
-          <li>Loot table clarity improved across rarities and drops.</li>
-        </ul>
-      </div>
-      <div class="card">
-        <h3>New Utilities</h3>
-        <ul>
-          <li><b>Gloo Mushroom</b>: mushroom pickup that contributes to Gloo availability.</li>
-          <li><b>Gloo UAV‑Lite</b>: intel ping that highlights nearby enemy Gloo placements.</li>
-        </ul>
-      </div>
-      <div class="card">
-        <h3>Navigation & Info</h3>
-        <ul>
-          <li><b>Waypoint</b> pings for clearer squad pathing.</li>
-          <li><b>Weapon Rack</b> now shows exact available guns for faster decisions.</li>
-        </ul>
-      </div>
-      <div class="card">
-        <h3>Solara Adjustments</h3>
-        <p>POI tuning for cover, loot density, and travel lanes; encourages wider rotations and fair engagements.</p>
-      </div>
-      <div class="card">
-        <p class="muted">Also includes miscellaneous balance and polish passes to reduce frustration moments and reward smart rotations.</p>
-      </div>
+  <!-- ALL TEAMS — PER MAP BREAKDOWN -->
+  <div class="section">
+    <h2>All Teams — Per Map Breakdown</h2>
+    <div class="bar">
+      <label for="allMap">Map</label>
+      <select id="allMap" class="input" style="min-width:180px">
+        <option value="__all__" selected>All maps</option>
+      </select>
     </div>
-  </div>
-
-  <!-- SYSTEM / QOL -->
-  <div class="section" id="system">
-    <h2>System & QoL</h2>
-    <div class="grid2">
-      <div class="card">
-        <h3>Controls & Sensitivity</h3>
-        <p>Global sensitivity logic refined; long‑requested feel improvements for aim consistency and micro adjustments.</p>
-      </div>
-      <div class="card">
-        <h3>Training Grounds Revamp</h3>
-        <p>Layout and interactions refreshed so you can test the OB51 weapon balance faster and with more realistic scenarios.</p>
-      </div>
+    <div class="card">
+      <div id="tblAllTeamsMap">Loading…</div>
     </div>
-  </div>
-
-  <!-- LINKS -->
-  <div class="section" id="links">
-    <h2>Official Links</h2>
-    <table>
-      <thead><tr><th>Item</th><th>URL</th></tr></thead>
-      <tbody>
-        <tr><td>OB51 Patch Notes (Garena)</td><td><a href="https://ff.garena.com/news/en/patch-notes-ob51/" target="_blank" rel="noopener">ff.garena.com/news/en/patch-notes-ob51/</a></td></tr>
-        <tr><td>Characters Update image</td><td><a href="https://ff.garena.com/images/news/2025/10/30/0056004900338/Characters%20Update.jpeg" target="_blank" rel="noopener">Characters Update (Garena)</a></td></tr>
-        <tr><td>Weapons Update image</td><td><a href="https://ff.garena.com/images/news/2025/10/30/0056004900338/Weapon%20Update.jpg" target="_blank" rel="noopener">Weapons Update (Garena)</a></td></tr>
-      </tbody>
-    </table>
-    <p class="note">All art and logos © Garena. This fan page summarizes the key changes with links to the official notes.</p>
   </div>
 </div>
 
+<script>
+/* ========= Supabase init + auth ========= */
+const client = supabase.createClient(
+  'https://gkugecflfddkpitlrmws.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
+);
+
+(async () => {
+  const { data: { session } } = await client.auth.getSession();
+  if (!session) { window.location.href = 'index.html'; return; }
+  const ui = document.getElementById('user-info');
+  if (ui && session.user?.email) ui.textContent = `Logged in as: ${session.user.email}`;
+})();
+
+document.getElementById('logoutBtn').onclick = async () => {
+  await client.auth.signOut();
+  window.location.href = 'index.html';
+};
+
+/* ========= Team Reference (18 teams) ========= */
+const TEAMS = [
+  { name:"AG",   fullname:"ALL GAMERS",                 region:"SEA",   logo:"https://i.imgur.com/KVvhezz.png" },
+  { name:"BRU",  fullname:"BURIRAM UNITED ESPORTS",     region:"SEA",   logo:"https://i.imgur.com/ngHig8q.png" },
+  { name:"CLVS", fullname:"CLEAR VISION ESPORTS",       region:"MEA",   logo:"https://i.imgur.com/AXkfYHk.png" },
+  { name:"E1",   fullname:"E1 SPORTS",                  region:"BR",    logo:"https://i.imgur.com/bddVsgm.png" },
+  { name:"EVOS", fullname:"EVOS DIVINE",                region:"SEA",   logo:"https://i.imgur.com/xWCHSwf.png" },
+  { name:"FX",   fullname:"FLUXO",                      region:"BR",    logo:"https://i.imgur.com/OGJ5A7r.png" },
+  { name:"GOW",  fullname:"GOW",                        region:"SEA",   logo:"https://i.imgur.com/CfmGEX6.png" },
+  { name:"HEV",  fullname:"HEAVY",                      region:"SEA",   logo:"https://i.imgur.com/vqVyJSJ.png" },
+  { name:"HS",   fullname:"HOTSHOT ESPORTS",            region:"PK",    logo:"https://i.imgur.com/f8ehquU.png" },
+  { name:"NVL",  fullname:"NOVA LEGION",                region:"LATAM", logo:"https://i.imgur.com/iZmL3FT.png" },
+  { name:"PE",   fullname:"P ESPORTS",                  region:"SEA",   logo:"https://i.imgur.com/kFcOez3.png" },
+  { name:"R7",   fullname:"MOVISTAR R7",                region:"LATAM", logo:"https://i.imgur.com/95lg1Dp.png" },
+  { name:"RC",   fullname:"RED CLIFF",                  region:"BD",    logo:"https://i.imgur.com/kX5wBEZ.png" },
+  { name:"RHK",  fullname:"RED HAWKS",                  region:"BD",    logo:"https://i.imgur.com/E2MJQdH.png" },
+  { name:"RRQ",  fullname:"RRQ KAZU",                   region:"SEA",   logo:"https://i.imgur.com/Afw7WMp.png" },
+  { name:"FLCN", fullname:"TEAM FALCONS",               region:"SEA",   logo:"https://i.imgur.com/DwPXnv1.png" },
+  { name:"TS",   fullname:"TEAM SOLID",                 region:"BR",    logo:"https://i.imgur.com/3Chm42Y.png" },
+  { name:"WAG",  fullname:"WAG",                        region:"SEA",   logo:"https://i.imgur.com/EiRHnoW.png" },
+];
+
+const TEAM_BY_CODE = Object.fromEntries(TEAMS.map(t => [t.name.toLowerCase(), t]));
+const TEAM_BY_NAME = Object.fromEntries(TEAMS.map(t => [t.fullname.toLowerCase(), t]));
+const ALLOWED_SET  = new Set(TEAMS.map(t => t.fullname.toLowerCase())); // dataset filter (ffbr_data)
+
+/* ========= Utilities ========= */
+const el = (id) => document.getElementById(id);
+const fmtPct = (x) => isFinite(x) ? (x*100).toFixed(1)+'%' : '—';
+const n = (x) => Number(x ?? 0) || 0;
+const norm = (v) => (v==null ? '' : String(v).trim());
+function sum(arr, key){ let t=0; for(const r of arr) t += n(r[key]); return t; }
+function groupBy(arr, keyFn){ const m=new Map(); for(const r of arr){ const k=keyFn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r);} return m; }
+function uniq(arr){ return Array.from(new Set(arr)); }
+function looksLikeURL(v){ return /^https?:\/\//i.test(String(v||'')); }
+
+function renderSimpleTable(list, cols){
+  if (!list.length) return '<div class="muted">No rows.</div>';
+  const head = `<thead><tr>${cols.map(c=>`<th class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
+  const body = `<tbody>${list.map(r=>`<tr>${cols.map(c=>{
+    let v = r[c.key];
+    if (c.format==='pct') v = fmtPct(v);
+    else if (c.format==='1d') v = Number(v).toFixed(1);
+    else if (c.format==='2d') v = Number(v).toFixed(2);
+    else if (c.format==='0d') v = Number(v).toFixed(0);
+    if (c.link && v && looksLikeURL(v)) v = `<a href="${v}" target="_blank" rel="noopener">${v}</a>`;
+    return `<td class="${c.right?'right':''}">${v==null?'—':v}</td>`;
+  }).join('')}</tr>`).join('')}</tbody>`;
+  return `<table>${head}${body}</table>`;
+}
+
+/* ========= Simple aggregations ========= */
+function kpiDataset(rows){
+  const matches = rows.length;
+  const booyah = sum(rows,'booyah');
+  const total = sum(rows,'total');
+  const elims = sum(rows,'elimination');
+  const place = sum(rows, 'placement');
+  const damage = sum(rows,'damage');
+  const top3 = sum(rows,'top3');
+  return {
+    matches,
+    booyah_rate: matches? booyah/matches : 0,
+    total_per_match: matches? total/matches : 0,
+    elims_per_match: matches? elims/matches : 0,
+    place_per_match: matches? place/matches : 0,
+    dmg_per_match: matches? damage/matches : 0,
+    top3_rate: matches? top3/matches : 0
+  };
+}
+
+function teamMapPerf(rows){
+  const g = groupBy(rows, r=>r.map||'—');
+  const out=[];
+  for (const [map, list] of g.entries()){
+    const m = list.length;
+    out.push({
+      map,
+      matches: m,
+      booyah_rate: m ? sum(list,'booyah')/m : 0,
+      elims_pm:    m ? sum(list,'elimination')/m : 0,
+      placement_pm:m ? sum(list,'placement')/m : 0,
+      total_pm:    m ? sum(list,'total')/m : 0
+    });
+  }
+  return out.sort((a,b) => b.total_pm - a.total_pm || b.matches - a.matches || a.map.localeCompare(b.map));
+}
+
+/* ========= State ========= */
+let ALL = [];           // ffbr_data rows (only 18 teams)
+let TEAM_ROWS = [];     // selected team rows
+let CURRENT_TEAM = null;
+
+/* ========= Fetch ffbr_data (paginated) ========= */
+async function fetchAllRows(){
+  const CHUNK = 1000;
+  let from = 0;
+  const out = [];
+  for(;;){
+    const { data, error } = await client
+      .from('ffbr_data')
+      .select('id, team, "group", stage, day, match, map, booyah, placement, elimination, drop, damage, total, played, top3, tag, week, tournament, year, season')
+      .order('year', { ascending:true })
+      .order('week', { ascending:true })
+      .order('day', { ascending:true })
+      .order('match', { ascending:true })
+      .range(from, from + CHUNK - 1);
+
+    if (error){ console.error('ffbr_data fetch failed:', error); break; }
+    const rows = data || [];
+    if (!rows.length) break;
+    out.push(...rows);
+    from += rows.length;
+  }
+  // Keep only rows for the 18 teams (by fullname in your table)
+  return out.filter(r => ALLOWED_SET.has((norm(r.team)||'').toLowerCase()));
+}
+
+/* ========= Tournament options (auto) ========= */
+function uniqueTournaments(rows){
+  const map = new Map();
+  for (const r of rows){
+    const t = norm(r.tournament);
+    if (!t) continue;
+    const key = t.toLowerCase();
+    const yr = Number(r.year)||0;
+    if (!map.has(key)) map.set(key, { name:t, yearMax: yr, count:1 });
+    else { const o = map.get(key); o.yearMax = Math.max(o.yearMax, yr); o.count += 1; }
+  }
+  return Array.from(map.values()).sort((a,b)=> (b.yearMax - a.yearMax) || a.name.localeCompare(b.name));
+}
+
+/* ========= Overall Performance (limited to 18 teams) ========= */
+function aggregateOverall(rows){
+  // Group by displayed fullname (from dataset)
+  const byTeam = groupBy(rows, r => norm(r.team));
+  const out = [];
+  for (const [teamName, list] of byTeam.entries()){
+    const meta = TEAM_BY_NAME[teamName.toLowerCase()];
+    if (!meta) continue;
+    const m = list.length;
+    out.push({
+      team: meta.fullname,
+      code: meta.name,
+      region: meta.region || '—',
+      matches: m,
+      booyah_rate:   sum(list,'booyah')/m,
+      elims_pm:      sum(list,'elimination')/m,
+      placement_pm:  sum(list,'placement')/m,
+      total_pm:      sum(list,'total')/m,
+      top3_rate:     sum(list,'top3')/m
+    });
+  }
+  return out;
+}
+
+function sortOverall(rows, key, dir){
+  const mult = dir === 'asc' ? 1 : -1;
+  return rows.sort((a,b)=>{
+    if (key === 'team' || key === 'region' || key === 'code'){
+      return mult * a[key].localeCompare(b[key]);
+    }
+    const av = Number(a[key]);
+    const bv = Number(b[key]);
+    if (isNaN(av) && isNaN(bv)) return 0;
+    if (isNaN(av)) return 1 * mult;
+    if (isNaN(bv)) return -1 * mult;
+    return mult * (av - bv);
+  });
+}
+
+function populateOverallTournament(){
+  const sel = el('overallTournament');
+  if (!sel) return;
+  const opts = uniqueTournaments(ALL);
+  const current = sel.value || '__all__';
+  sel.innerHTML = `<option value="__all__">All tournaments</option>` +
+    opts.map(o => `<option value="${o.name.replaceAll('"','&quot;')}">${o.name}</option>`).join('');
+  const exists = [...sel.options].some(op => op.value === current);
+  sel.value = exists ? current : '__all__';
+}
+
+function renderOverall(){
+  const keySel = el('overallSortKey');
+  const dirBtn = el('overallSortDir');
+  const tSel   = el('overallTournament');
+
+  const sortKey = keySel?.value || 'total_pm';
+  const dir = dirBtn?.dataset?.dir || 'desc';
+  const tFilter = (tSel?.value || '__all__').trim();
+
+  let base = ALL;
+  if (tFilter !== '__all__'){
+    const lf = tFilter.toLowerCase();
+    base = ALL.filter(r => norm(r.tournament).toLowerCase() === lf);
+  }
+
+  const rows = aggregateOverall(base);
+  sortOverall(rows, sortKey, dir);
+
+  el('tblOverall').innerHTML = renderSimpleTable(rows, [
+    {label:'Team',           key:'team'},
+    {label:'Code',           key:'code'},
+    {label:'Region',         key:'region'},
+    {label:'Matches',        key:'matches',     right:true},
+    {label:'Booyah %',       key:'booyah_rate', format:'pct', right:true},
+    {label:'Elims / m',      key:'elims_pm',    format:'1d',  right:true},
+    {label:'Placement / m',  key:'placement_pm',format:'1d',  right:true},
+    {label:'Total / m',      key:'total_pm',    format:'1d',  right:true},
+    {label:'Top-3 %',        key:'top3_rate',   format:'pct', right:true},
+  ]);
+}
+
+/* ========= All Teams — Per Map Breakdown ========= */
+function allTeamsMaps(rows){
+  const g = groupBy(rows, r => `${norm(r.team)}|${norm(r.map)}`);
+  const out = [];
+  for (const [key, list] of g.entries()){
+    const [team, map] = key.split('|');
+    const m = list.length;
+    out.push({
+      team, map,
+      matches: m,
+      booyah_rate:   sum(list,'booyah')/m,
+      elims_pm:      sum(list,'elimination')/m,
+      placement_pm:  sum(list,'placement')/m,
+      total_pm:      sum(list,'total')/m
+    });
+  }
+  return out.sort((a,b) =>
+    a.team.localeCompare(b.team) ||
+    b.total_pm - a.total_pm ||
+    a.map.localeCompare(b.map)
+  );
+}
+
+function populateMapFilter(rows){
+  const sel = el('allMap');
+  if (!sel) return;
+  const maps = ['__all__', ...uniq(rows.map(r => norm(r.map))).filter(Boolean).sort()];
+  const cur = sel.value || '__all__';
+  sel.innerHTML = maps.map(m => `<option value="${m}">${m==='__all__'?'All maps':m}</option>`).join('');
+  const exists = [...sel.options].some(op => op.value === cur);
+  sel.value = exists ? cur : '__all__';
+}
+
+function renderAllTeamsMap(){
+  const sel = el('allMap');
+  const filter = sel?.value || '__all__';
+  let rows = ALL;
+  if (filter !== '__all__'){
+    const lf = filter.toLowerCase();
+    rows = ALL.filter(r => norm(r.map).toLowerCase() === lf);
+  }
+  const agg = allTeamsMaps(rows);
+  el('tblAllTeamsMap').innerHTML = renderSimpleTable(agg, [
+    {label:'Team', key:'team'},
+    {label:'Map', key:'map'},
+    {label:'Matches', key:'matches', right:true},
+    {label:'Booyah %', key:'booyah_rate', format:'pct', right:true},
+    {label:'Elims / m', key:'elims_pm', format:'1d', right:true},
+    {label:'Placement / m', key:'placement_pm', format:'1d', right:true},
+    {label:'Total / m', key:'total_pm', format:'1d', right:true},
+  ]);
+}
+
+/* ========= TEAM INFO & ROSTER (br_team_info & br_player_info) ========= */
+async function fetchTeamInfoBy(code, name){
+  // Try multiple columns until we hit a row
+  const tries = [
+    {col:'code',      val:code},
+    {col:'team_code', val:code},
+    {col:'team',      val:name},
+    {col:'team_name', val:name},
+  ];
+  for (const t of tries){
+    const { data, error } = await client.from('br_team_info').select('*').eq(t.col, t.val).limit(1);
+    if (error){ console.warn('br_team_info error', t, error); continue; }
+    if (data && data.length) return data[0];
+  }
+  return null;
+}
+
+async function fetchPlayersBy(code, name){
+  // Try code first, then name
+  const tries = [
+    {col:'code',      val:code},
+    {col:'team_code', val:code},
+    {col:'team',      val:name},
+    {col:'team_name', val:name},
+  ];
+  for (const t of tries){
+    const { data, error } = await client.from('br_player_info').select('*').eq(t.col, t.val);
+    if (!error && data && data.length) return data;
+  }
+  return [];
+}
+
+function prettifyKey(k){
+  return String(k).replace(/_/g,' ').replace(/\b\w/g, s=>s.toUpperCase());
+}
+
+function renderTeamInfo(info){
+  const box = el('teamInfoBody');
+  if (!info){ box.innerHTML = '<div class="muted">No team info found.</div>'; return; }
+
+  const hide = new Set(['id','created_at','updated_at','code','team_code','team','team_name','logo','logo_url','photo','image','image_url']);
+  const preferred = ['country','region','founded','coach','manager','owner','org','sponsor','hq','tagline','website','twitter','facebook','youtube','instagram','tiktok','discord'];
+  const keys = Object.keys(info);
+  const picked = [...preferred.filter(k => keys.includes(k)), ...keys.filter(k => !preferred.includes(k) && !hide.has(k))];
+
+  const rows = picked.map(k=>{
+    let v = info[k];
+    if (v == null || v === '') return '';
+    if (typeof v === 'object'){ try{ v = JSON.stringify(v); }catch{} }
+    if (looksLikeURL(v)) v = `<a href="${v}" target="_blank" rel="noopener">${v}</a>`;
+    return `<tr><th style="width:160px;color:var(--muted);font-weight:600">${prettifyKey(k)}</th><td>${v}</td></tr>`;
+  }).filter(Boolean).join('');
+
+  const logoUrl = info.logo_url || info.logo || '';
+  const maybeLogo = logoUrl ? `<div style="margin-bottom:8px"><img src="${logoUrl}" alt="team logo" style="width:84px;height:84px;object-fit:contain;border:1px solid #2a2a2a;border-radius:8px;background:#111"></div>` : '';
+
+  box.innerHTML = `${maybeLogo}<table>${rows || '<tr><td class="muted">No visible fields.</td></tr>'}</table>`;
+}
+
+function renderRoster(players){
+  const box = el('teamRosterBody');
+  if (!players || !players.length){ box.innerHTML = '<div class="muted">No players found.</div>'; return; }
+
+  // Determine useful columns
+  const keys = Object.keys(players[0] || {});
+  const avatarKey = keys.find(k => /photo|avatar|image/i.test(k)) || null;
+  const ignKey    = keys.find(k => /ign|nickname|name/i.test(k)) || 'name';
+  const roleKey   = keys.find(k => /role|position/i.test(k)) || null;
+  const countryKey= keys.find(k => /country|nation/i.test(k)) || null;
+  const ageKey    = keys.find(k => /^age$/i.test(k)) || null;
+  const accolKey  = keys.find(k => /accolade|achievement|titles/i.test(k)) || null;
+
+  const rows = players
+    .slice()
+    .sort((a,b)=> String(a[roleKey]||'').localeCompare(String(b[roleKey]||'')) || String(a[ignKey]||'').localeCompare(String(b[ignKey]||'')))
+    .map(p=>{
+      const avatar = avatarKey && p[avatarKey] ? `<img class="avatar" src="${p[avatarKey]}" alt="">` : '';
+      const ign = p[ignKey] ?? '—';
+      const role = roleKey ? (p[roleKey] ?? '—') : '—';
+      const country = countryKey ? (p[countryKey] ?? '—') : '—';
+      const age = ageKey ? (p[ageKey] ?? '—') : '—';
+      let acc = accolKey ? (p[accolKey] ?? '—') : '—';
+      if (typeof acc === 'object'){ try { acc = JSON.stringify(acc); }catch{} }
+      return { avatar, ign, role, country, age, acc };
+    });
+
+  box.innerHTML = renderSimpleTable(rows, [
+    {label:'', key:'avatar'},
+    {label:'IGN', key:'ign'},
+    {label:'Role', key:'role'},
+    {label:'Country', key:'country'},
+    {label:'Age', key:'age', right:true},
+    {label:'Accolades', key:'acc'},
+  ]);
+}
+
+async function loadTeamMeta(teamObj){
+  const code = (teamObj.name||'').trim();
+  const name = (teamObj.fullname||'').trim();
+  const info = await fetchTeamInfoBy(code, name);
+  const players = await fetchPlayersBy(code, name);
+  renderTeamInfo(info);
+  renderRoster(players);
+}
+
+/* ========= Render (selected team) ========= */
+function renderTeamOverview(){
+  if (!CURRENT_TEAM){
+    el('teamTitle').textContent = 'Team Overview';
+    el('identityBody').innerHTML = 'Select a team.';
+    el('kpiBody').innerHTML = '—';
+    el('tblMapTeam').innerHTML = '—';
+    el('teamInfoBody').innerHTML = '—';
+    el('teamRosterBody').innerHTML = '—';
+    return;
+  }
+  el('teamTitle').textContent = `Team Overview — ${CURRENT_TEAM.fullname}`;
+  el('identityBody').innerHTML = `
+    <div style="display:flex;gap:12px;align-items:center">
+      <img src="${CURRENT_TEAM.logo}" alt="${CURRENT_TEAM.fullname} logo" style="width:84px;height:84px;object-fit:contain">
+      <div>
+        <div style="font-size:1.25rem;font-weight:800">${CURRENT_TEAM.fullname} <span class="muted">(${CURRENT_TEAM.name})</span></div>
+        <div class="muted">Region: ${CURRENT_TEAM.region||'—'}</div>
+      </div>
+    </div>`;
+
+  const k = kpiDataset(TEAM_ROWS);
+  el('kpiBody').innerHTML = k.matches ? `
+    <div class="kpis">
+      <div class="kpi">Rows <strong>${k.matches}</strong></div>
+      <div class="kpi">Booyah <strong>${fmtPct(k.booyah_rate)}</strong></div>
+      <div class="kpi">Elims <strong>${k.elims_per_match.toFixed(1)}</strong>/m</div>
+      <div class="kpi">Place <strong>${k.place_per_match.toFixed(1)}</strong>/m</div>
+      <div class="kpi">Damage <strong>${k.dmg_per_match.toFixed(0)}</strong>/m</div>
+      <div class="kpi">Total <strong>${k.total_per_match.toFixed(1)}</strong>/m</div>
+      <div class="kpi">Top3 <strong>${fmtPct(k.top3_rate)}</strong></div>
+    </div>` : '<div class="muted">No rows.</div>';
+
+  el('tblMapTeam').innerHTML = renderSimpleTable(
+    teamMapPerf(TEAM_ROWS),
+    [
+      {label:'Map',key:'map'},
+      {label:'Matches',key:'matches',right:true},
+      {label:'Booyah %',key:'booyah_rate',format:'pct',right:true},
+      {label:'Elims / m',key:'elims_pm',format:'1d',right:true},
+      {label:'Placement / m',key:'placement_pm',format:'1d',right:true},
+      {label:'Total / m',key:'total_pm',format:'1d',right:true}
+    ]
+  );
+}
+
+/* ========= UI: Team grid ========= */
+function renderTeamGrid(filter=''){
+  const grid = el('teamGrid');
+  const q = filter.trim().toLowerCase();
+  const items = TEAMS.filter(t =>
+    !q ||
+    t.name.toLowerCase().includes(q) ||
+    t.fullname.toLowerCase().includes(q) ||
+    (t.region||'').toLowerCase().includes(q)
+  );
+  if (!items.length){ grid.innerHTML = '<div class="muted">No matches.</div>'; return; }
+
+  grid.innerHTML = items.map(t=>`
+    <div class="team-tile" data-code="${t.name}">
+      <img class="team-logo" src="${t.logo}" alt="${t.fullname} logo" loading="lazy">
+      <div class="team-code">${t.name}</div>
+      <div class="team-name">${t.fullname}</div>
+      <div class="muted">${t.region||''}</div>
+    </div>`).join('');
+
+  [...grid.querySelectorAll('.team-tile')].forEach(tile=>{
+    tile.onclick = ()=>{
+      const code = tile.getAttribute('data-code').toLowerCase();
+      const info = TEAM_BY_CODE[code];
+      if (info) selectTeam(info);
+    };
+  });
+  highlightActiveTile();
+}
+function highlightActiveTile(){
+  const grid = el('teamGrid');
+  if (!grid) return;
+  [...grid.querySelectorAll('.team-tile')].forEach(div=>{
+    const code = div.getAttribute('data-code');
+    div.classList.toggle('active', !!CURRENT_TEAM && CURRENT_TEAM.name===code);
+  });
+}
+
+/* ========= Selection ========= */
+async function selectTeam(teamObj){
+  CURRENT_TEAM = teamObj;
+  const url = new URL(window.location.href);
+  url.searchParams.set('team', CURRENT_TEAM.name);
+  history.replaceState(null, '', url.toString());
+
+  TEAM_ROWS = ALL.filter(r => (r.team||'').trim().toLowerCase() === teamObj.fullname.toLowerCase());
+  renderTeamOverview();
+  highlightActiveTile();
+  // Load team info & roster
+  await loadTeamMeta(teamObj);
+}
+
+/* ========= Wiring ========= */
+async function initial(){
+  renderTeamGrid('');
+  el('teamSearch').addEventListener('input', e => renderTeamGrid(e.target.value||''));
+
+  // Sort + Tournament UI events
+  const sortKey = el('overallSortKey');
+  const sortDir = el('overallSortDir');
+  const reset   = el('overallReset');
+  const tourn   = el('overallTournament');
+  const mapSel  = el('allMap');
+
+  sortKey.addEventListener('change', renderOverall);
+  sortDir.addEventListener('click', ()=>{
+    const cur = sortDir.dataset.dir === 'desc' ? 'asc' : 'desc';
+    sortDir.dataset.dir = cur;
+    sortDir.textContent = cur === 'desc' ? 'Desc' : 'Asc';
+    renderOverall();
+  });
+  reset.addEventListener('click', ()=>{
+    sortKey.value = 'total_pm';
+    sortDir.dataset.dir = 'desc';
+    sortDir.textContent = 'Desc';
+    tourn.value = '__all__';
+    renderOverall();
+  });
+  tourn.addEventListener('change', renderOverall);
+  mapSel.addEventListener('change', renderAllTeamsMap);
+
+  ALL = await fetchAllRows();
+
+  // Populate tournament + map filters from data (limited to 18 teams)
+  populateOverallTournament();
+  populateMapFilter(ALL);
+
+  // Render overall + all-teams map
+  renderOverall();
+  renderAllTeamsMap();
+
+  // Handle deep link ?team=
+  const url = new URL(window.location.href);
+  const qTeam = (url.searchParams.get('team')||'').trim().toLowerCase();
+  if (qTeam){
+    const found = TEAM_BY_CODE[qTeam] || TEAM_BY_NAME[qTeam];
+    if (found) await selectTeam(found);
+  }
+  if (!CURRENT_TEAM && TEAMS.length) await selectTeam(TEAMS[0]);
+}
+
+initial();
+</script>
 </body>
 </html>
