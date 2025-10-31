@@ -76,6 +76,26 @@
     /* compact bullet lists in cells/cards */
     .list-compact{margin:0;padding-left:16px}
     .list-compact li{margin:2px 0}
+
+    /* Collapsible sections */
+    details.accordion{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:0;
+    }
+    details.accordion + details.accordion{ margin-top:12px; }
+    details.accordion > summary{
+      list-style:none;
+      cursor:pointer;
+      padding:12px 14px;
+      color:var(--brand);
+      font-weight:700;
+      border-bottom:1px solid var(--line);
+      user-select:none;
+    }
+    details.accordion[open] > summary{ border-bottom-color:var(--line); }
+    details.accordion > .accordion-body{ padding:12px; }
   </style>
 </head>
 <body>
@@ -113,20 +133,25 @@
     </div>
   </div>
 
-  <!-- TEAM INFO & ROSTER -->
-  <div class="section" id="teamInfoSection">
-    <h2>Team Info & Roster</h2>
-    <div class="grid2">
-      <div class="card">
-        <h3>Team Info</h3>
+  <!-- TEAM INFO (collapsible) -->
+  <details class="accordion" id="teamInfoSection" open>
+    <summary>Team Info</summary>
+    <div class="accordion-body">
+      <div class="card" style="margin:0">
         <div id="teamInfoBody" class="muted">—</div>
       </div>
-      <div class="card">
-        <h3>Roster & Accolades</h3>
+    </div>
+  </details>
+
+  <!-- ROSTER (collapsible) -->
+  <details class="accordion" id="teamRosterSection" open>
+    <summary>Roster & Accolades</summary>
+    <div class="accordion-body">
+      <div class="card" style="margin:0">
         <div id="teamRosterBody" class="muted">—</div>
       </div>
     </div>
-  </div>
+  </details>
 
   <!-- MAP PERFORMANCE (selected team) -->
   <div class="section">
@@ -433,7 +458,23 @@ function sortRowsGeneric(rows, key, dir){
   });
 }
 
-/* ========= Render Overall ========= */
+/* ========= Renderers ========= */
+function renderSimpleTable(list, cols){
+  if (!list.length) return '<div class="muted">No rows.</div>';
+  const head = `<thead><tr>${cols.map(c=>`<th class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
+  const body = `<tbody>${list.map(r=>`<tr>${cols.map(c=>{
+    let v = r[c.key];
+    if (c.format==='pct') v = isFinite(v) ? (v*100).toFixed(1)+'%' : '—';
+    else if (c.format==='1d') v = isFinite(v) ? Number(v).toFixed(1) : '—';
+    else if (c.format==='2d') v = isFinite(v) ? Number(v).toFixed(2) : '—';
+    else if (c.format==='0d') v = isFinite(v) ? Number(v).toFixed(0) : '—';
+    if (c.link && v && looksLikeURL(v)) v = `<a href="${v}" target="_blank" rel="noopener">${v}</a>`;
+    return `<td class="${c.right?'right':''}">${(v==null||v==='')?'—':v}</td>`;
+  }).join('')}</tr>`).join('')}</tbody>`;
+  return `<table>${head}${body}</table>`;
+}
+
+/* ========= Overall (table) ========= */
 function renderOverall(){
   const keySel = el('overallSortKey');
   const dirBtn = el('overallSortDir');
@@ -522,22 +563,6 @@ function renderPerMapAllTeams(){
   ]);
 }
 
-/* ========= Simple table renderer ========= */
-function renderSimpleTable(list, cols){
-  if (!list.length) return '<div class="muted">No rows.</div>';
-  const head = `<thead><tr>${cols.map(c=>`<th class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
-  const body = `<tbody>${list.map(r=>`<tr>${cols.map(c=>{
-    let v = r[c.key];
-    if (c.format==='pct') v = isFinite(v) ? (v*100).toFixed(1)+'%' : '—';
-    else if (c.format==='1d') v = isFinite(v) ? Number(v).toFixed(1) : '—';
-    else if (c.format==='2d') v = isFinite(v) ? Number(v).toFixed(2) : '—';
-    else if (c.format==='0d') v = isFinite(v) ? Number(v).toFixed(0) : '—';
-    if (c.link && v && looksLikeURL(v)) v = `<a href="${v}" target="_blank" rel="noopener">${v}</a>`;
-    return `<td class="${c.right?'right':''}">${(v==null||v==='')?'—':v}</td>`;
-  }).join('')}</tr>`).join('')}</tbody>`;
-  return `<table>${head}${body}</table>`;
-}
-
 /* ========= Team Info & Roster (uses TAG / Team Initials aliases) ========= */
 function uiShowTeamInfoError(msg){
   const box = document.getElementById('teamInfoBody');
@@ -567,7 +592,6 @@ async function fetchTeamInfoBy(codeRaw, nameRaw){
 
     // 2) Fallbacks
     const like = `*${name}*`;
-    // try team_name, team, team_code/code
     const tries = [
       ['team_name','ilike', like],
       ['team','ilike', like],
@@ -627,7 +651,7 @@ function renderTeamInfo(info){
   if (!info){ box.innerHTML = '<div class="muted">No team info found.</div>'; return; }
 
   const keys = Object.keys(info);
-  // rewards key (case-insensitive)
+  // Rewards key (case-insensitive)
   const rewardsKey = keys.find(k => k.toLowerCase() === 'rewards') || keys.find(k => /reward/i.test(k));
 
   const hide = new Set(['id','created_at','updated_at','code','team_code','team','team_name','logo','logo_url','photo','image','image_url']);
@@ -640,7 +664,7 @@ function renderTeamInfo(info){
     let v = info[k];
     if (v == null || v === '') return '';
     if (k === rewardsKey){
-      v = asListHTML(v); // one item per line
+      v = asListHTML(v); // one item per line for Rewards
     } else {
       if (typeof v === 'object'){ try{ v = JSON.stringify(v); }catch{} }
       if (looksLikeURL(v)) v = `<a href="${v}" target="_blank" rel="noopener">${v}</a>`;
@@ -671,32 +695,31 @@ function renderRoster(players){
   const countryKey= keys.find(k => /country|nation/i.test(k)) || null;
   const ageKey    = keys.find(k => /^age$/i.test(k)) || null;
 
-  // Prefer exact column names you mentioned
+  // Accolades + Former Team (line-by-line)
   const accolKey  = keys.includes('Accolades') ? 'Accolades' : (keys.find(k => /accolade|achievement|title|awards/i.test(k)) || null);
-  const formerKey = keys.includes('Former Team') ? 'Former Team' :
-                    (keys.find(k => k.toLowerCase().replace(/\s+/g,'') === 'formerteam') || null);
+  const formerKey = keys.find(k => /former(\s|_)?teams?/i.test(k.toLowerCase())) || null;
 
   const rows = players
     .slice()
     .sort((a,b)=> String(a[roleKey]||'').localeCompare(String(b[roleKey]||'')) || String(a[ignKey]||'').localeCompare(String(b[ignKey]||'')))
     .map(p=>{
-      const avatar  = avatarKey && p[avatarKey] ? `<img class="avatar" src="${p[avatarKey]}" alt="">` : '';
-      const ign     = p[ignKey] ?? '—';
-      const role    = roleKey ? (p[roleKey] ?? '—') : '—';
-      const former  = formerKey ? normalizeJoinValue(p[formerKey]) : '—';
-      const country = countryKey ? (p[countryKey] ?? '—') : '—';
-      const age     = ageKey ? (p[ageKey] ?? '—') : '—';
-      const accHTML = accolKey ? asListHTML(p[accolKey]) : '—'; // one item per line
-      return { avatar, ign, role, former, country, age, accHTML };
+      const avatar   = avatarKey && p[avatarKey] ? `<img class="avatar" src="${p[avatarKey]}" alt="">` : '';
+      const ign      = p[ignKey] ?? '—';
+      const role     = roleKey ? (p[roleKey] ?? '—') : '—';
+      const country  = countryKey ? (p[countryKey] ?? '—') : '—';
+      const age      = ageKey ? (p[ageKey] ?? '—') : '—';
+      const accHTML  = accolKey ? asListHTML(p[accolKey]) : '—';     // one per line
+      const formerHTML = formerKey ? asListHTML(p[formerKey]) : '—';  // one per line
+      return { avatar, ign, role, country, age, formerHTML, accHTML };
     });
 
   box.innerHTML = renderSimpleTable(rows, [
     {label:'', key:'avatar'},
     {label:'IGN', key:'ign'},
     {label:'Role', key:'role'},
-    {label:'Former Team', key:'former'},
     {label:'Country', key:'country'},
     {label:'Age', key:'age', right:true},
+    {label:'Former Team', key:'formerHTML'},
     {label:'Accolades', key:'accHTML'},
   ]);
 }
@@ -812,7 +835,6 @@ async function selectTeam(teamObj){
   url.searchParams.set('team', CURRENT_TEAM.name);
   history.replaceState(null, '', url.toString());
 
-  // Filter ffbr_data by full team name AND check tag alias if needed
   TEAM_ROWS = ALL.filter(r => (r.team||'').trim().toLowerCase() === teamObj.fullname.toLowerCase());
   renderTeamOverview();
   await loadTeamMeta(teamObj);
