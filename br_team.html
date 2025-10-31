@@ -25,21 +25,23 @@
     .kpis{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
     .kpi{background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:5px 8px;font-size:.9rem}
 
-    /* Logo grid */
+    /* === Compact Logo Grid (logo remains 72×72) === */
     .team-grid{
-      --cols: 9;
-      display:grid;
-      grid-template-columns:repeat(var(--cols),1fr);
-      grid-auto-rows:160px;
-      gap:8px; align-items:stretch;
+      --cols: 9; /* default desktop: 9 columns */
+      display: grid;
+      grid-template-columns: repeat(var(--cols), 1fr);
+      grid-auto-rows: 160px; /* equal height for all tiles */
+      gap: 8px;
+      align-items: stretch;
     }
-    @media (max-width:1600px){.team-grid{--cols:8}}
-    @media (max-width:1400px){.team-grid{--cols:7}}
-    @media (max-width:1220px){.team-grid{--cols:6}}
-    @media (max-width:1060px){.team-grid{--cols:5}}
-    @media (max-width:920px){ .team-grid{--cols:4}}
-    @media (max-width:740px){ .team-grid{--cols:3}}
-    @media (max-width:560px){ .team-grid{--cols:2}}
+    @media (max-width: 1600px){ .team-grid{ --cols:8; } }
+    @media (max-width: 1400px){ .team-grid{ --cols:7; } }
+    @media (max-width: 1220px){ .team-grid{ --cols:6; } }
+    @media (max-width: 1060px){ .team-grid{ --cols:5; } }
+    @media (max-width: 920px){  .team-grid{ --cols:4; } }
+    @media (max-width: 740px){  .team-grid{ --cols:3; } }
+    @media (max-width: 560px){  .team-grid{ --cols:2; } }
+
     .team-tile{background:#131313;border:1px solid #2a2a2a;border-radius:10px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;transition:transform .1s ease, border-color .1s ease;height:100%;overflow:hidden;}
     .team-tile:hover{transform:translateY(-2px);border-color:#444}
     .team-tile.active{outline:2px solid var(--brand2)}
@@ -47,24 +49,21 @@
     .team-code{font-weight:800;font-size:.8rem;line-height:1.1}
     .team-name{
       font-size:.72rem; line-height:1.1; color:var(--muted); text-align:center;
-      display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; white-space:normal;
+      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+      overflow: hidden; white-space: normal;
     }
     .team-tile .muted{font-size:.68rem}
 
     table{width:100%;border-collapse:collapse;font-size:.92rem}
     th,td{border-bottom:1px solid #2a2a2a;padding:6px 6px;vertical-align:top}
     thead th{background:#191919;position:sticky;top:0;text-align:left}
-    .right{text-align:right}
-    .muted{color:var(--muted)}
-    .rowlink{cursor:pointer;text-decoration:underline;text-decoration-style:dotted}
-    .rowlink:hover{opacity:.85}
 
-    @media (max-width:1100px){ :root{ --cols:5;} }
-    @media (max-width:900px){ :root{ --cols:4;} }
-    @media (max-width:700px){ :root{ --cols:3;} }
-    @media (max-width:520px){ :root{ --cols:2;} }
-    @media (max-width:360px){ :root{ --cols:1;} }
-    @media (max-width:860px){ .grid2{grid-template-columns:1fr} }
+    @media (max-width: 1100px){ :root{ --cols:5;} }
+    @media (max-width: 900px){ :root{ --cols:4;} }
+    @media (max-width: 700px){ :root{ --cols:3;} }
+    @media (max-width: 520px){ :root{ --cols:2;} }
+    @media (max-width: 360px){ :root{ --cols:1;} }
+    @media (max-width: 860px){ .grid2{grid-template-columns:1fr} }
   </style>
 </head>
 <body>
@@ -110,25 +109,11 @@
     </div>
   </div>
 
-  <!-- OVERALL PERFORMANCE (ALL TEAMS) -->
-  <div class="section">
+  <!-- OVERALL PERFORMANCE (All Teams / Limited to 18) -->
+  <div class="section" id="overallSection">
     <h2>Overall Performance (All Teams)</h2>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
-      <input type="search" id="overallSearch" placeholder="Search team / code / region…" style="flex:1;max-width:420px;background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:8px">
-      <label>Sort
-        <select id="overallSort" style="background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:6px 8px">
-          <option value="total_pm">Total / match (desc)</option>
-          <option value="booyah_rate">Booyah % (desc)</option>
-          <option value="elims_pm">Elims / match (desc)</option>
-          <option value="placement_pm">Placement / match (desc)</option>
-          <option value="top3_rate">Top3 % (desc)</option>
-          <option value="matches">Matches (desc)</option>
-          <option value="team_asc">Team (A→Z)</option>
-        </select>
-      </label>
-    </div>
     <div class="card">
-      <div id="tblOverall">—</div>
+      <div id="tblOverall">Loading…</div>
     </div>
   </div>
 </div>
@@ -152,7 +137,7 @@ document.getElementById('logoutBtn').onclick = async () => {
   window.location.href = 'index.html';
 };
 
-/* ========= Team Reference ========= */
+/* ========= Team Reference (18 teams) ========= */
 const TEAMS = [
   { name:"AG",   fullname:"ALL GAMERS",                 region:"SEA",   logo:"https://i.imgur.com/KVvhezz.png" },
   { name:"BRU",  fullname:"BURIRAM UNITED ESPORTS",     region:"SEA",   logo:"https://i.imgur.com/ngHig8q.png" },
@@ -175,6 +160,14 @@ const TEAMS = [
 ];
 const TEAM_BY_CODE = Object.fromEntries(TEAMS.map(t => [t.name.toLowerCase(), t]));
 const TEAM_BY_NAME = Object.fromEntries(TEAMS.map(t => [t.fullname.toLowerCase(), t]));
+const ALLOWED_SET  = new Set(TEAMS.map(t => t.fullname.toLowerCase())); // for dataset filter
+
+// Allow lookups by either short code or full name, case-insensitive
+const ALLOWED = new Map();
+TEAMS.forEach(t => {
+  ALLOWED.set(t.name.toLowerCase(), t);
+  ALLOWED.set(t.fullname.toLowerCase(), t);
+});
 
 /* ========= Utilities ========= */
 const el = (id) => document.getElementById(id);
@@ -184,6 +177,7 @@ const norm = (v) => (v==null ? '' : String(v).trim());
 function sum(arr, key){ let t=0; for(const r of arr) t += n(r[key]); return t; }
 function avg(arr, key){ return arr.length ? sum(arr,key)/arr.length : 0; }
 function groupBy(arr, keyFn){ const m=new Map(); for(const r of arr){ const k=keyFn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r);} return m; }
+
 function renderSimpleTable(list, cols){
   if (!list.length) return '<div class="muted">No rows.</div>';
   const head = `<thead><tr>${cols.map(c=>`<th class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
@@ -201,14 +195,20 @@ function renderSimpleTable(list, cols){
 /* ========= Simple aggregations ========= */
 function kpiDataset(rows){
   const matches = rows.length;
+  const booyah = sum(rows,'booyah');
+  const total = sum(rows,'total');
+  const elims = sum(rows,'elimination');
+  const place = sum(rows,'placement');
+  const damage = sum(rows,'damage');
+  const top3 = sum(rows,'top3');
   return {
     matches,
-    booyah_rate: matches? sum(rows,'booyah')/matches : 0,
-    total_per_match: matches? sum(rows,'total')/matches : 0,
-    elims_per_match: matches? sum(rows,'elimination')/matches : 0,
-    place_per_match: matches? sum(rows,'placement')/matches : 0,
-    dmg_per_match: matches? sum(rows,'damage')/matches : 0,
-    top3_rate:     matches? sum(rows,'top3')/matches     : 0
+    booyah_rate: matches? booyah/matches : 0,
+    total_per_match: matches? total/matches : 0,
+    elims_per_match: matches? elims/matches : 0,
+    place_per_match: matches? place/matches : 0,
+    dmg_per_match: matches? damage/matches : 0,
+    top3_rate: matches? top3/matches : 0
   };
 }
 
@@ -229,100 +229,8 @@ function teamMapPerf(rows){
   return out.sort((a,b) => b.total_pm - a.total_pm || b.matches - a.matches || a.map.localeCompare(b.map));
 }
 
-/* ========= Overall (all teams) ========= */
-function aggregateOverall(rows){
-  const g = groupBy(rows, r => (r.team||'—').trim());
-  const out = [];
-  for (const [rawTeam, list] of g.entries()){
-    const key = rawTeam.trim().toLowerCase();
-    // Try full name first then short code
-    const metaByName = TEAM_BY_NAME[key];
-    const metaByCode = TEAM_BY_CODE[key];
-    const meta = metaByName || metaByCode;
-    const teamName = meta?.fullname || rawTeam;
-    const code     = meta?.name || (metaByCode?.name ?? '');
-    const region   = meta?.region || '—';
-
-    const m = list.length;
-    if (!m) continue;
-
-    out.push({
-      team: teamName,
-      code,
-      region,
-      matches: m,
-      booyah_rate: sum(list,'booyah')/m,
-      elims_pm:    sum(list,'elimination')/m,
-      placement_pm:sum(list,'placement')/m,
-      total_pm:    sum(list,'total')/m,
-      top3_rate:   sum(list,'top3')/m
-    });
-  }
-  return out;
-}
-
-function renderOverallTable(list){
-  if (!list.length) return '<div class="muted">No rows.</div>';
-  const head = `
-    <thead><tr>
-      <th>Team</th><th>Code</th><th>Region</th>
-      <th class="right">Matches</th>
-      <th class="right">Booyah %</th>
-      <th class="right">Elims / m</th>
-      <th class="right">Placement / m</th>
-      <th class="right">Total / m</th>
-      <th class="right">Top3 %</th>
-    </tr></thead>`;
-  const body = `<tbody>${
-    list.map(r => {
-      const jumpCode = (r.code||'').toLowerCase();
-      const teamCell = jumpCode ? `<span class="rowlink" data-jump="${jumpCode}">${r.team}</span>` : r.team;
-      return `<tr>
-        <td>${teamCell}</td>
-        <td>${r.code||'—'}</td>
-        <td>${r.region||'—'}</td>
-        <td class="right">${r.matches}</td>
-        <td class="right">${(r.booyah_rate*100).toFixed(1)}%</td>
-        <td class="right">${r.elims_pm.toFixed(1)}</td>
-        <td class="right">${r.placement_pm.toFixed(1)}</td>
-        <td class="right">${r.total_pm.toFixed(1)}</td>
-        <td class="right">${(r.top3_rate*100).toFixed(1)}%</td>
-      </tr>`;
-    }).join('')
-  }</tbody>`;
-  return `<table>${head}${body}</table>`;
-}
-
-function sortOverall(list, key){
-  if (key === 'team_asc') return list.sort((a,b)=>a.team.localeCompare(b.team));
-  return list.sort((a,b)=> (b[key]??0) - (a[key]??0) || a.team.localeCompare(b.team));
-}
-
-function renderOverall(filter='', sortKey='total_pm'){
-  const q = (filter||'').trim().toLowerCase();
-  let rows = OVERALL.filter(r =>
-    !q ||
-    r.team.toLowerCase().includes(q) ||
-    (r.code||'').toLowerCase().includes(q) ||
-    (r.region||'').toLowerCase().includes(q)
-  );
-  rows = sortOverall(rows, sortKey);
-  el('tblOverall').innerHTML = renderOverallTable(rows);
-
-  // Jump to team when clicking team name
-  [...el('tblOverall').querySelectorAll('[data-jump]')].forEach(a=>{
-    a.onclick = ()=>{
-      const code = (a.getAttribute('data-jump')||'').toLowerCase();
-      const info = TEAM_BY_CODE[code];
-      if (info) selectTeam(info);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-  });
-}
-
 /* ========= State ========= */
 let ALL = [];
-let OVERALL = [];
 let TEAM_ROWS = [];
 let CURRENT_TEAM = null;
 
@@ -340,22 +248,71 @@ async function fetchAllRows(){
       .order('day', { ascending:true })
       .order('match', { ascending:true })
       .range(from, from + CHUNK - 1);
+
     if (error){ console.error('ffbr_data fetch failed:', error); break; }
     const rows = data || [];
     if (!rows.length) break;
     out.push(...rows);
     from += rows.length;
   }
-  // No whitelist: keep all rows
+  // Keep only rows for the 18 teams
+  return out.filter(r => ALLOWED_SET.has((norm(r.team)||'').toLowerCase()));
+}
+
+/* ========= Overall Performance (limited to 18 teams) ========= */
+function aggregateOverall(rows){
+  // Group strictly by the 18-team short code (canonical key)
+  const grouped = new Map();
+
+  for (const r of rows){
+    const raw = (r.team || '').trim().toLowerCase();
+    const meta = ALLOWED.get(raw);     // match either short code or full name
+    if (!meta) continue;               // skip anything not in the 18 teams
+
+    const code = meta.name.toLowerCase(); // canonical group key
+    if (!grouped.has(code)) grouped.set(code, []);
+    grouped.get(code).push(r);
+  }
+
+  const out = [];
+  for (const [code, list] of grouped.entries()){
+    const meta = TEAM_BY_CODE[code];
+    const m = list.length;
+    if (!m) continue;
+
+    out.push({
+      team: meta.fullname,
+      code: meta.name,
+      region: meta.region || '—',
+      matches: m,
+      booyah_rate:   sum(list,'booyah')/m,
+      elims_pm:      sum(list,'elimination')/m,
+      placement_pm:  sum(list,'placement')/m,
+      total_pm:      sum(list,'total')/m,
+      top3_rate:     sum(list,'top3')/m
+    });
+  }
   return out;
 }
 
-/* ========= Render ========= */
-function teamMatches(rowTeam, teamObj){
-  const t = (rowTeam||'').trim().toLowerCase();
-  return t === teamObj.fullname.toLowerCase() || t === teamObj.name.toLowerCase();
+function renderOverall(){
+  const rows = aggregateOverall(ALL)
+    .sort((a,b)=> b.total_pm - a.total_pm || b.elims_pm - a.elims_pm || a.team.localeCompare(b.team));
+
+  el('tblOverall').innerHTML = renderSimpleTable(rows, [
+    {label:'Team',           key:'team'},
+    {label:'Code',           key:'code'},
+    {label:'Region',         key:'region'},
+    {label:'Matches',        key:'matches',     right:true},
+    {label:'Booyah %',       key:'booyah_rate', format:'pct', right:true},
+    {label:'Elims / m',      key:'elims_pm',    format:'1d',  right:true},
+    {label:'Placement / m',  key:'placement_pm',format:'1d',  right:true},
+    {label:'Total / m',      key:'total_pm',    format:'1d',  right:true},
+    {label:'Top-3 %',        key:'top3_rate',   format:'pct', right:true},
+  ]);
 }
 
+/* ========= Render (team view) ========= */
 function renderOverview(){
   if (!CURRENT_TEAM){
     el('teamTitle').textContent = 'Team Overview';
@@ -410,6 +367,7 @@ function renderTeamGrid(filter=''){
     (t.region||'').toLowerCase().includes(q)
   );
   if (!items.length){ grid.innerHTML = '<div class="muted">No matches.</div>'; return; }
+
   grid.innerHTML = items.map(t=>`
     <div class="team-tile" data-code="${t.name}">
       <img class="team-logo" src="${t.logo}" alt="${t.fullname} logo" loading="lazy">
@@ -417,6 +375,7 @@ function renderTeamGrid(filter=''){
       <div class="team-name">${t.fullname}</div>
       <div class="muted">${t.region||''}</div>
     </div>`).join('');
+
   [...grid.querySelectorAll('.team-tile')].forEach(tile=>{
     tile.onclick = ()=>{
       const code = tile.getAttribute('data-code').toLowerCase();
@@ -442,7 +401,7 @@ async function selectTeam(teamObj){
   url.searchParams.set('team', CURRENT_TEAM.name);
   history.replaceState(null, '', url.toString());
 
-  TEAM_ROWS = ALL.filter(r => teamMatches(r.team, teamObj));
+  TEAM_ROWS = ALL.filter(r => (r.team||'').trim().toLowerCase() === teamObj.fullname.toLowerCase());
   renderOverview();
   highlightActiveTile();
 }
@@ -451,16 +410,12 @@ async function selectTeam(teamObj){
 async function initial(){
   renderTeamGrid('');
   el('teamSearch').addEventListener('input', e => renderTeamGrid(e.target.value||''));
-
   ALL = await fetchAllRows();
 
-  // Build and render overall aggregates
-  OVERALL = aggregateOverall(ALL);
-  renderOverall('', el('overallSort').value);
-  el('overallSearch').addEventListener('input', e => renderOverall(e.target.value||'', el('overallSort').value));
-  el('overallSort').addEventListener('change', e => renderOverall(el('overallSearch').value||'', e.target.value));
+  // Overall table (18-team limited)
+  renderOverall();
 
-  // URL param ?team= (code or full name)
+  // If URL has ?team= (code or name) select it
   const url = new URL(window.location.href);
   const qTeam = (url.searchParams.get('team')||'').trim().toLowerCase();
   if (qTeam){
