@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FFBR — Teams</title>
+  <title>FFBR — Teams (Overview + Map + Info + Roster)</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root{--bg:#0e0e0e; --panel:#1b1b1b; --panel2:#141414; --ink:#f5f5f5; --muted:#b9b9b9; --brand:#ffbd59; --brand2:#ff7733; --line:#313131; --cols:6;}
@@ -15,7 +15,6 @@
     .chip{font-size:.85rem;color:#ddd}
     .btn{background:var(--brand);color:var(--panel);border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
     .btn.secondary{background:#2a2a2a;color:#ddd;border:1px solid #3a3a3a}
-    .input{background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:7px 10px}
 
     .shell{max-width:1100px;margin:22px auto;padding:0 12px}
     .section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
@@ -25,10 +24,6 @@
     .card h3{margin:0 0 6px;color:var(--brand2);font-size:1.0rem}
     .kpis{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
     .kpi{background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:5px 8px;font-size:.9rem}
-
-    table{width:100%;border-collapse:collapse;font-size:.92rem}
-    th,td{border-bottom:1px solid #2a2a2a;padding:6px 6px;vertical-align:top}
-    thead th{background:#191919;position:sticky;top:0;text-align:left}
 
     /* Team grid */
     .team-grid{
@@ -46,6 +41,7 @@
     @media (max-width: 920px){  .team-grid{ --cols:4; } }
     @media (max-width: 740px){  .team-grid{ --cols:3; } }
     @media (max-width: 560px){  .team-grid{ --cols:2; } }
+
     .team-tile{background:#131313;border:1px solid #2a2a2a;border-radius:10px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;transition:transform .1s ease, border-color .1s ease;height:100%;overflow:hidden;}
     .team-tile:hover{transform:translateY(-2px);border-color:#444}
     .team-tile.active{outline:2px solid var(--brand2)}
@@ -58,14 +54,24 @@
     }
     .team-tile .muted{font-size:.68rem}
 
-    /* Avatar */
-    .avatar{width:36px;height:36px;border-radius:6px;object-fit:cover;border:1px solid #2a2a2a;margin-right:8px;vertical-align:middle}
+    table{width:100%;border-collapse:collapse;font-size:.92rem}
+    th,td{border-bottom:1px solid #2a2a2a;padding:6px 6px;vertical-align:top}
+    thead th{background:#191919;position:sticky;top:0;text-align:left}
 
-    /* Bars & filters */
+    @media (max-width: 1100px){ :root{ --cols:5;} }
+    @media (max-width: 900px){ :root{ --cols:4;} }
+    @media (max-width: 700px){ :root{ --cols:3;} }
+    @media (max-width: 520px){ :root{ --cols:2;} }
+    @media (max-width: 360px){ :root{ --cols:1;} }
+    @media (max-width: 860px){ .grid2{grid-template-columns:1fr} }
+
+    /* Controls */
     .bar{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
     .bar label{color:var(--muted);font-size:.9rem}
+    .input{background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:7px 10px}
 
-    @media (max-width: 860px){ .grid2{grid-template-columns:1fr} }
+    /* Roster avatars */
+    .avatar{width:36px;height:36px;border-radius:6px;object-fit:cover;border:1px solid #2a2a2a;background:#111}
   </style>
 </head>
 <body>
@@ -103,17 +109,17 @@
     </div>
   </div>
 
-  <!-- TEAM INFO & ROSTER (from br_team_info & br_player_info) -->
-  <div class="section" id="teamMeta">
+  <!-- NEW: TEAM INFO & ROSTER (from br_team_info / br_player_info) -->
+  <div class="section" id="teamInfoSection">
     <h2>Team Info & Roster</h2>
     <div class="grid2">
       <div class="card">
         <h3>Team Info</h3>
-        <div id="teamInfoBody">—</div>
+        <div id="teamInfoBody" class="muted">—</div>
       </div>
       <div class="card">
         <h3>Roster & Accolades</h3>
-        <div id="teamRosterBody">—</div>
+        <div id="teamRosterBody" class="muted">—</div>
       </div>
     </div>
   </div>
@@ -126,9 +132,11 @@
     </div>
   </div>
 
-  <!-- OVERALL PERFORMANCE (All Teams / Limited to 18) -->
+  <!-- OVERALL PERFORMANCE (18 teams) -->
   <div class="section" id="overallSection">
     <h2>Overall Performance (All Teams)</h2>
+
+    <!-- FILTERS + SORT -->
     <div class="bar">
       <label for="overallTournament">Tournament</label>
       <select id="overallTournament" class="input" style="min-width:220px">
@@ -148,22 +156,37 @@
       <button class="btn secondary" id="overallSortDir" data-dir="desc" title="Toggle ascending/descending">Desc</button>
       <button class="btn secondary" id="overallReset">Reset</button>
     </div>
+
     <div class="card">
       <div id="tblOverall">Loading…</div>
     </div>
   </div>
 
-  <!-- ALL TEAMS — PER MAP BREAKDOWN -->
-  <div class="section">
-    <h2>All Teams — Per Map Breakdown</h2>
+  <!-- ALL TEAMS — PER-MAP BREAKDOWN -->
+  <div class="section" id="perMapAllSection">
+    <h2>All Teams — Per-Map Breakdown</h2>
     <div class="bar">
-      <label for="allMap">Map</label>
-      <select id="allMap" class="input" style="min-width:180px">
+      <label for="mapFilter">Map</label>
+      <select id="mapFilter" class="input" style="min-width:220px">
         <option value="__all__" selected>All maps</option>
       </select>
+
+      <label for="perMapSortKey">Sort by</label>
+      <select id="perMapSortKey" class="input">
+        <option value="total_pm" selected>Total / m</option>
+        <option value="elims_pm">Elims / m</option>
+        <option value="booyah_rate">Booyah %</option>
+        <option value="matches">Matches</option>
+        <option value="placement_pm">Placement / m</option>
+        <option value="top3_rate">Top-3 %</option>
+        <option value="team">Team (A→Z)</option>
+      </select>
+      <button class="btn secondary" id="perMapSortDir" data-dir="desc" title="Toggle ascending/descending">Desc</button>
+      <button class="btn secondary" id="perMapReset">Reset</button>
     </div>
+
     <div class="card">
-      <div id="tblAllTeamsMap">Loading…</div>
+      <div id="tblPerMapAllTeams">Loading…</div>
     </div>
   </div>
 </div>
@@ -211,29 +234,35 @@ const TEAMS = [
 
 const TEAM_BY_CODE = Object.fromEntries(TEAMS.map(t => [t.name.toLowerCase(), t]));
 const TEAM_BY_NAME = Object.fromEntries(TEAMS.map(t => [t.fullname.toLowerCase(), t]));
-const ALLOWED_SET  = new Set(TEAMS.map(t => t.fullname.toLowerCase())); // dataset filter (ffbr_data)
+const ALLOWED_SET  = new Set(TEAMS.map(t => t.fullname.toLowerCase())); // dataset filter
+
+// Also allow lookup by short code or full name (for grouping)
+const ALLOWED = new Map();
+TEAMS.forEach(t => {
+  ALLOWED.set(t.name.toLowerCase(), t);
+  ALLOWED.set(t.fullname.toLowerCase(), t);
+});
 
 /* ========= Utilities ========= */
 const el = (id) => document.getElementById(id);
 const fmtPct = (x) => isFinite(x) ? (x*100).toFixed(1)+'%' : '—';
 const n = (x) => Number(x ?? 0) || 0;
 const norm = (v) => (v==null ? '' : String(v).trim());
+function looksLikeURL(v){ return /^https?:\/\//i.test(String(v||'')); }
 function sum(arr, key){ let t=0; for(const r of arr) t += n(r[key]); return t; }
 function groupBy(arr, keyFn){ const m=new Map(); for(const r of arr){ const k=keyFn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r);} return m; }
-function uniq(arr){ return Array.from(new Set(arr)); }
-function looksLikeURL(v){ return /^https?:\/\//i.test(String(v||'')); }
 
 function renderSimpleTable(list, cols){
   if (!list.length) return '<div class="muted">No rows.</div>';
   const head = `<thead><tr>${cols.map(c=>`<th class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
   const body = `<tbody>${list.map(r=>`<tr>${cols.map(c=>{
     let v = r[c.key];
-    if (c.format==='pct') v = fmtPct(v);
-    else if (c.format==='1d') v = Number(v).toFixed(1);
-    else if (c.format==='2d') v = Number(v).toFixed(2);
-    else if (c.format==='0d') v = Number(v).toFixed(0);
+    if (c.format==='pct') v = isFinite(v) ? (v*100).toFixed(1)+'%' : '—';
+    else if (c.format==='1d') v = isFinite(v) ? Number(v).toFixed(1) : '—';
+    else if (c.format==='2d') v = isFinite(v) ? Number(v).toFixed(2) : '—';
+    else if (c.format==='0d') v = isFinite(v) ? Number(v).toFixed(0) : '—';
     if (c.link && v && looksLikeURL(v)) v = `<a href="${v}" target="_blank" rel="noopener">${v}</a>`;
-    return `<td class="${c.right?'right':''}">${v==null?'—':v}</td>`;
+    return `<td class="${c.right?'right':''}">${(v==null||v==='')?'—':v}</td>`;
   }).join('')}</tr>`).join('')}</tbody>`;
   return `<table>${head}${body}</table>`;
 }
@@ -276,8 +305,8 @@ function teamMapPerf(rows){
 }
 
 /* ========= State ========= */
-let ALL = [];           // ffbr_data rows (only 18 teams)
-let TEAM_ROWS = [];     // selected team rows
+let ALL = [];
+let TEAM_ROWS = [];
 let CURRENT_TEAM = null;
 
 /* ========= Fetch ffbr_data (paginated) ========= */
@@ -305,29 +334,22 @@ async function fetchAllRows(){
   return out.filter(r => ALLOWED_SET.has((norm(r.team)||'').toLowerCase()));
 }
 
-/* ========= Tournament options (auto) ========= */
-function uniqueTournaments(rows){
-  const map = new Map();
-  for (const r of rows){
-    const t = norm(r.tournament);
-    if (!t) continue;
-    const key = t.toLowerCase();
-    const yr = Number(r.year)||0;
-    if (!map.has(key)) map.set(key, { name:t, yearMax: yr, count:1 });
-    else { const o = map.get(key); o.yearMax = Math.max(o.yearMax, yr); o.count += 1; }
-  }
-  return Array.from(map.values()).sort((a,b)=> (b.yearMax - a.yearMax) || a.name.localeCompare(b.name));
-}
-
 /* ========= Overall Performance (limited to 18 teams) ========= */
 function aggregateOverall(rows){
-  // Group by displayed fullname (from dataset)
-  const byTeam = groupBy(rows, r => norm(r.team));
-  const out = [];
-  for (const [teamName, list] of byTeam.entries()){
-    const meta = TEAM_BY_NAME[teamName.toLowerCase()];
+  const grouped = new Map();
+  for (const r of rows){
+    const raw = (r.team || '').trim().toLowerCase();
+    const meta = ALLOWED.get(raw);     // match either short code or full name
     if (!meta) continue;
+    const code = meta.name.toLowerCase(); // canonical key
+    if (!grouped.has(code)) grouped.set(code, []);
+    grouped.get(code).push(r);
+  }
+  const out = [];
+  for (const [code, list] of grouped.entries()){
+    const meta = TEAM_BY_CODE[code];
     const m = list.length;
+    if (!m) continue;
     out.push({
       team: meta.fullname,
       code: meta.name,
@@ -343,7 +365,36 @@ function aggregateOverall(rows){
   return out;
 }
 
-function sortOverall(rows, key, dir){
+/* ========= Tournament options (auto) ========= */
+function uniqueTournaments(rows){
+  const map = new Map(); // name -> {name, yearMax, count}
+  for (const r of rows){
+    const t = norm(r.tournament);
+    if (!t) continue;
+    const key = t.toLowerCase();
+    const yr = Number(r.year)||0;
+    if (!map.has(key)) map.set(key, { name:t, yearMax: yr, count:1 });
+    else {
+      const o = map.get(key);
+      o.yearMax = Math.max(o.yearMax, yr);
+      o.count += 1;
+    }
+  }
+  return Array.from(map.values()).sort((a,b)=> (b.yearMax - a.yearMax) || a.name.localeCompare(b.name));
+}
+function populateOverallTournament(){
+  const sel = el('overallTournament');
+  if (!sel) return;
+  const opts = uniqueTournaments(ALL);
+  const current = sel.value || '__all__';
+  sel.innerHTML = `<option value="__all__">All tournaments</option>` +
+    opts.map(o => `<option value="${o.name.replaceAll('"','&quot;')}">${o.name}</option>`).join('');
+  const exists = [...sel.options].some(op => op.value === current);
+  sel.value = exists ? current : '__all__';
+}
+
+/* ========= Sort helpers ========= */
+function sortRowsGeneric(rows, key, dir){
   const mult = dir === 'asc' ? 1 : -1;
   return rows.sort((a,b)=>{
     if (key === 'team' || key === 'region' || key === 'code'){
@@ -358,17 +409,7 @@ function sortOverall(rows, key, dir){
   });
 }
 
-function populateOverallTournament(){
-  const sel = el('overallTournament');
-  if (!sel) return;
-  const opts = uniqueTournaments(ALL);
-  const current = sel.value || '__all__';
-  sel.innerHTML = `<option value="__all__">All tournaments</option>` +
-    opts.map(o => `<option value="${o.name.replaceAll('"','&quot;')}">${o.name}</option>`).join('');
-  const exists = [...sel.options].some(op => op.value === current);
-  sel.value = exists ? current : '__all__';
-}
-
+/* ========= Render Overall with Tournament filter + sorting ========= */
 function renderOverall(){
   const keySel = el('overallSortKey');
   const dirBtn = el('overallSortDir');
@@ -378,6 +419,7 @@ function renderOverall(){
   const dir = dirBtn?.dataset?.dir || 'desc';
   const tFilter = (tSel?.value || '__all__').trim();
 
+  // Filter by tournament if selected
   let base = ALL;
   if (tFilter !== '__all__'){
     const lf = tFilter.toLowerCase();
@@ -385,7 +427,7 @@ function renderOverall(){
   }
 
   const rows = aggregateOverall(base);
-  sortOverall(rows, sortKey, dir);
+  sortRowsGeneric(rows, sortKey, dir);
 
   el('tblOverall').innerHTML = renderSimpleTable(rows, [
     {label:'Team',           key:'team'},
@@ -400,162 +442,75 @@ function renderOverall(){
   ]);
 }
 
-/* ========= All Teams — Per Map Breakdown ========= */
-function allTeamsMaps(rows){
-  const g = groupBy(rows, r => `${norm(r.team)}|${norm(r.map)}`);
+/* ========= All Teams — Per-Map Breakdown ========= */
+function uniqueMaps(rows){
+  const s = new Set();
+  for (const r of rows){ const m = norm(r.map); if (m) s.add(m); }
+  return Array.from(s).sort((a,b)=>a.localeCompare(b));
+}
+function populateMapFilter(){
+  const sel = el('mapFilter');
+  const current = sel.value || '__all__';
+  const items = uniqueMaps(ALL);
+  sel.innerHTML = `<option value="__all__">All maps</option>` + items.map(m=>`<option value="${m.replaceAll('"','&quot;')}">${m}</option>`).join('');
+  const exists = [...sel.options].some(op => op.value === current);
+  sel.value = exists ? current : '__all__';
+}
+function aggregateTeamsForMap(rows, mapValue){
+  const perTeam = new Map(); // code -> list rows
+  for (const r of rows){
+    if (mapValue && mapValue !== '__all__'){
+      if ((norm(r.map) || '').toLowerCase() !== mapValue.toLowerCase()) continue;
+    }
+    const raw = (r.team || '').trim().toLowerCase();
+    const meta = ALLOWED.get(raw);
+    if (!meta) continue;
+    const code = meta.name.toLowerCase();
+    if (!perTeam.has(code)) perTeam.set(code, []);
+    perTeam.get(code).push(r);
+  }
   const out = [];
-  for (const [key, list] of g.entries()){
-    const [team, map] = key.split('|');
+  for (const [code, list] of perTeam.entries()){
+    const meta = TEAM_BY_CODE[code];
     const m = list.length;
+    if (!m) continue;
     out.push({
-      team, map,
+      team: meta.fullname,
+      code: meta.name,
+      region: meta.region || '—',
       matches: m,
       booyah_rate:   sum(list,'booyah')/m,
       elims_pm:      sum(list,'elimination')/m,
       placement_pm:  sum(list,'placement')/m,
-      total_pm:      sum(list,'total')/m
+      total_pm:      sum(list,'total')/m,
+      top3_rate:     sum(list,'top3')/m
     });
   }
-  return out.sort((a,b) =>
-    a.team.localeCompare(b.team) ||
-    b.total_pm - a.total_pm ||
-    a.map.localeCompare(b.map)
-  );
+  return out;
 }
+function renderPerMapAllTeams(){
+  const mapSel = el('mapFilter');
+  const keySel = el('perMapSortKey');
+  const dirBtn = el('perMapSortDir');
 
-function populateMapFilter(rows){
-  const sel = el('allMap');
-  if (!sel) return;
-  const maps = ['__all__', ...uniq(rows.map(r => norm(r.map))).filter(Boolean).sort()];
-  const cur = sel.value || '__all__';
-  sel.innerHTML = maps.map(m => `<option value="${m}">${m==='__all__'?'All maps':m}</option>`).join('');
-  const exists = [...sel.options].some(op => op.value === cur);
-  sel.value = exists ? cur : '__all__';
-}
+  const mapVal = mapSel?.value || '__all__';
+  const sortKey = keySel?.value || 'total_pm';
+  const dir = dirBtn?.dataset?.dir || 'desc';
 
-function renderAllTeamsMap(){
-  const sel = el('allMap');
-  const filter = sel?.value || '__all__';
-  let rows = ALL;
-  if (filter !== '__all__'){
-    const lf = filter.toLowerCase();
-    rows = ALL.filter(r => norm(r.map).toLowerCase() === lf);
-  }
-  const agg = allTeamsMaps(rows);
-  el('tblAllTeamsMap').innerHTML = renderSimpleTable(agg, [
-    {label:'Team', key:'team'},
-    {label:'Map', key:'map'},
-    {label:'Matches', key:'matches', right:true},
-    {label:'Booyah %', key:'booyah_rate', format:'pct', right:true},
-    {label:'Elims / m', key:'elims_pm', format:'1d', right:true},
-    {label:'Placement / m', key:'placement_pm', format:'1d', right:true},
-    {label:'Total / m', key:'total_pm', format:'1d', right:true},
+  const rows = aggregateTeamsForMap(ALL, mapVal);
+  sortRowsGeneric(rows, sortKey, dir);
+
+  el('tblPerMapAllTeams').innerHTML = renderSimpleTable(rows, [
+    {label:'Team',           key:'team'},
+    {label:'Code',           key:'code'},
+    {label:'Region',         key:'region'},
+    {label:'Matches',        key:'matches',     right:true},
+    {label:'Booyah %',       key:'booyah_rate', format:'pct', right:true},
+    {label:'Elims / m',      key:'elims_pm',    format:'1d',  right:true},
+    {label:'Placement / m',  key:'placement_pm',format:'1d',  right:true},
+    {label:'Total / m',      key:'total_pm',    format:'1d',  right:true},
+    {label:'Top-3 %',        key:'top3_rate',   format:'pct', right:true},
   ]);
-}
-
-/* ========= TEAM INFO & ROSTER (br_team_info & br_player_info) ========= */
-async function fetchTeamInfoBy(code, name){
-  // Try multiple columns until we hit a row
-  const tries = [
-    {col:'code',      val:code},
-    {col:'team_code', val:code},
-    {col:'team',      val:name},
-    {col:'team_name', val:name},
-  ];
-  for (const t of tries){
-    const { data, error } = await client.from('br_team_info').select('*').eq(t.col, t.val).limit(1);
-    if (error){ console.warn('br_team_info error', t, error); continue; }
-    if (data && data.length) return data[0];
-  }
-  return null;
-}
-
-async function fetchPlayersBy(code, name){
-  // Try code first, then name
-  const tries = [
-    {col:'code',      val:code},
-    {col:'team_code', val:code},
-    {col:'team',      val:name},
-    {col:'team_name', val:name},
-  ];
-  for (const t of tries){
-    const { data, error } = await client.from('br_player_info').select('*').eq(t.col, t.val);
-    if (!error && data && data.length) return data;
-  }
-  return [];
-}
-
-function prettifyKey(k){
-  return String(k).replace(/_/g,' ').replace(/\b\w/g, s=>s.toUpperCase());
-}
-
-function renderTeamInfo(info){
-  const box = el('teamInfoBody');
-  if (!info){ box.innerHTML = '<div class="muted">No team info found.</div>'; return; }
-
-  const hide = new Set(['id','created_at','updated_at','code','team_code','team','team_name','logo','logo_url','photo','image','image_url']);
-  const preferred = ['country','region','founded','coach','manager','owner','org','sponsor','hq','tagline','website','twitter','facebook','youtube','instagram','tiktok','discord'];
-  const keys = Object.keys(info);
-  const picked = [...preferred.filter(k => keys.includes(k)), ...keys.filter(k => !preferred.includes(k) && !hide.has(k))];
-
-  const rows = picked.map(k=>{
-    let v = info[k];
-    if (v == null || v === '') return '';
-    if (typeof v === 'object'){ try{ v = JSON.stringify(v); }catch{} }
-    if (looksLikeURL(v)) v = `<a href="${v}" target="_blank" rel="noopener">${v}</a>`;
-    return `<tr><th style="width:160px;color:var(--muted);font-weight:600">${prettifyKey(k)}</th><td>${v}</td></tr>`;
-  }).filter(Boolean).join('');
-
-  const logoUrl = info.logo_url || info.logo || '';
-  const maybeLogo = logoUrl ? `<div style="margin-bottom:8px"><img src="${logoUrl}" alt="team logo" style="width:84px;height:84px;object-fit:contain;border:1px solid #2a2a2a;border-radius:8px;background:#111"></div>` : '';
-
-  box.innerHTML = `${maybeLogo}<table>${rows || '<tr><td class="muted">No visible fields.</td></tr>'}</table>`;
-}
-
-function renderRoster(players){
-  const box = el('teamRosterBody');
-  if (!players || !players.length){ box.innerHTML = '<div class="muted">No players found.</div>'; return; }
-
-  // Determine useful columns
-  const keys = Object.keys(players[0] || {});
-  const avatarKey = keys.find(k => /photo|avatar|image/i.test(k)) || null;
-  const ignKey    = keys.find(k => /ign|nickname|name/i.test(k)) || 'name';
-  const roleKey   = keys.find(k => /role|position/i.test(k)) || null;
-  const countryKey= keys.find(k => /country|nation/i.test(k)) || null;
-  const ageKey    = keys.find(k => /^age$/i.test(k)) || null;
-  const accolKey  = keys.find(k => /accolade|achievement|titles/i.test(k)) || null;
-
-  const rows = players
-    .slice()
-    .sort((a,b)=> String(a[roleKey]||'').localeCompare(String(b[roleKey]||'')) || String(a[ignKey]||'').localeCompare(String(b[ignKey]||'')))
-    .map(p=>{
-      const avatar = avatarKey && p[avatarKey] ? `<img class="avatar" src="${p[avatarKey]}" alt="">` : '';
-      const ign = p[ignKey] ?? '—';
-      const role = roleKey ? (p[roleKey] ?? '—') : '—';
-      const country = countryKey ? (p[countryKey] ?? '—') : '—';
-      const age = ageKey ? (p[ageKey] ?? '—') : '—';
-      let acc = accolKey ? (p[accolKey] ?? '—') : '—';
-      if (typeof acc === 'object'){ try { acc = JSON.stringify(acc); }catch{} }
-      return { avatar, ign, role, country, age, acc };
-    });
-
-  box.innerHTML = renderSimpleTable(rows, [
-    {label:'', key:'avatar'},
-    {label:'IGN', key:'ign'},
-    {label:'Role', key:'role'},
-    {label:'Country', key:'country'},
-    {label:'Age', key:'age', right:true},
-    {label:'Accolades', key:'acc'},
-  ]);
-}
-
-async function loadTeamMeta(teamObj){
-  const code = (teamObj.name||'').trim();
-  const name = (teamObj.fullname||'').trim();
-  const info = await fetchTeamInfoBy(code, name);
-  const players = await fetchPlayersBy(code, name);
-  renderTeamInfo(info);
-  renderRoster(players);
 }
 
 /* ========= Render (selected team) ========= */
@@ -602,6 +557,181 @@ function renderTeamOverview(){
       {label:'Total / m',key:'total_pm',format:'1d',right:true}
     ]
   );
+}
+
+/* ========= UI: Team Info & Roster (from br_team_info / br_player_info) ========= */
+function uiShowTeamInfoError(msg){
+  const box = document.getElementById('teamInfoBody');
+  box.innerHTML = `<div class="muted" style="white-space:pre-wrap">${msg}</div>`;
+}
+function uiShowRosterError(msg){
+  const box = document.getElementById('teamRosterBody');
+  box.innerHTML = `<div class="muted" style="white-space:pre-wrap">${msg}</div>`;
+}
+function prettifyKey(k){
+  return String(k).replace(/_/g,' ').replace(/\b\w/g, s=>s.toUpperCase());
+}
+function renderTeamInfo(info){
+  const box = document.getElementById('teamInfoBody');
+  if (!info){ box.innerHTML = '<div class="muted">No team info found.</div>'; return; }
+
+  const hide = new Set(['id','created_at','updated_at','code','team_code','team','team_name','logo','logo_url','photo','image','image_url']);
+  const preferred = ['country','region','founded','coach','manager','owner','org','sponsor','hq','tagline','website','twitter','facebook','youtube','instagram','tiktok','discord'];
+  const keys = Object.keys(info);
+  const picked = [...preferred.filter(k => keys.includes(k)), ...keys.filter(k => !preferred.includes(k) && !hide.has(k))];
+
+  const rows = picked.map(k=>{
+    let v = info[k];
+    if (v == null || v === '') return '';
+    if (typeof v === 'object'){ try{ v = JSON.stringify(v); }catch{} }
+    if (looksLikeURL(v)) v = `<a href="${v}" target="_blank" rel="noopener">${v}</a>`;
+    return `<tr><th style="width:160px;color:var(--muted);font-weight:600">${prettifyKey(k)}</th><td>${v}</td></tr>`;
+  }).filter(Boolean).join('');
+
+  const logoUrl = info.logo_url || info.logo || '';
+  const maybeLogo = logoUrl ? `<div style="margin-bottom:8px"><img src="${logoUrl}" alt="team logo" style="width:84px;height:84px;object-fit:contain;border:1px solid #2a2a2a;border-radius:8px;background:#111"></div>` : '';
+
+  box.innerHTML = `${maybeLogo}<table>${rows || '<tr><td class="muted">No visible fields.</td></tr>'}</table>`;
+}
+function renderRoster(players){
+  const box = document.getElementById('teamRosterBody');
+  if (!players || !players.length){ box.innerHTML = '<div class="muted">No players found.</div>'; return; }
+
+  const keys = Object.keys(players[0] || {});
+  const avatarKey = keys.find(k => /photo|avatar|image|picture/i.test(k)) || null;
+  const ignKey    = keys.find(k => /ign|nickname|in.?game.?name|player.?name/i.test(k)) || 'name';
+  const roleKey   = keys.find(k => /role|position/i.test(k)) || null;
+  const countryKey= keys.find(k => /country|nation/i.test(k)) || null;
+  const ageKey    = keys.find(k => /^age$/i.test(k)) || null;
+  const accolKey  = keys.find(k => /accolade|achievement|title|awards/i.test(k)) || null;
+
+  const rows = players
+    .slice()
+    .sort((a,b)=> String(a[roleKey]||'').localeCompare(String(b[roleKey]||'')) || String(a[ignKey]||'').localeCompare(String(b[ignKey]||'')))
+    .map(p=>{
+      const avatar = avatarKey && p[avatarKey] ? `<img class="avatar" src="${p[avatarKey]}" alt="">` : '';
+      const ign = p[ignKey] ?? '—';
+      const role = roleKey ? (p[roleKey] ?? '—') : '—';
+      const country = countryKey ? (p[countryKey] ?? '—') : '—';
+      const age = ageKey ? (p[ageKey] ?? '—') : '—';
+      let acc = accolKey ? (p[accolKey] ?? '—') : '—';
+      if (typeof acc === 'object'){ try { acc = JSON.stringify(acc); }catch{} }
+      return { avatar, ign, role, country, age, acc };
+    });
+
+  box.innerHTML = renderSimpleTable(rows, [
+    {label:'', key:'avatar'},
+    {label:'IGN', key:'ign'},
+    {label:'Role', key:'role'},
+    {label:'Country', key:'country'},
+    {label:'Age', key:'age', right:true},
+    {label:'Accolades', key:'acc'},
+  ]);
+}
+// Build an OR string for PostgREST `.or()`
+function buildOr(filters){
+  return filters
+    .filter(f => f.val)
+    .map(f => `${f.col}.${f.op}.${String(f.val).replaceAll(',', ' ')}`)
+    .join(',');
+}
+// Case-insensitive, multi-column search for team info
+async function fetchTeamInfoBy(codeRaw, nameRaw){
+  const code = norm(codeRaw);
+  const name = norm(nameRaw);
+  const codeUp = code.toUpperCase();
+  const nameLike = `*${name}*`;
+
+  let { data, error } = await client
+    .from('br_team_info')
+    .select('*')
+    .or(buildOr([
+      {col:'code',      op:'ilike', val:codeUp},
+      {col:'team_code', op:'ilike', val:codeUp},
+      {col:'team',      op:'ilike', val:name},
+      {col:'team_name', op:'ilike', val:name},
+    ]))
+    .limit(1);
+
+  if (error){
+    console.error('br_team_info error (exact-ish):', error);
+    uiShowTeamInfoError(`Team info error: ${error.message || error}`);
+    return null;
+  }
+  if (data && data.length) return data[0];
+
+  // Fallback contains
+  let fallback = await client
+    .from('br_team_info')
+    .select('*')
+    .or(buildOr([
+      {col:'team',      op:'ilike', val:nameLike},
+      {col:'team_name', op:'ilike', val:nameLike},
+    ]))
+    .limit(1);
+
+  if (fallback.error){
+    console.error('br_team_info error (contains):', fallback.error);
+    uiShowTeamInfoError(`Team info error: ${fallback.error.message || fallback.error}`);
+    return null;
+  }
+  return (fallback.data && fallback.data.length) ? fallback.data[0] : null;
+}
+// Case-insensitive, multi-column search for players (+team_id fallback)
+async function fetchPlayersBy(codeRaw, nameRaw, teamId){
+  const code = norm(codeRaw);
+  const name = norm(nameRaw);
+  const codeUp = code.toUpperCase();
+  const nameLike = `*${name}*`;
+
+  let { data, error } = await client
+    .from('br_player_info')
+    .select('*')
+    .or(buildOr([
+      {col:'code',      op:'ilike', val:codeUp},
+      {col:'team_code', op:'ilike', val:codeUp},
+      {col:'team',      op:'ilike', val:name},
+      {col:'team_name', op:'ilike', val:name},
+      {col:'team',      op:'ilike', val:nameLike},
+      {col:'team_name', op:'ilike', val:nameLike},
+    ]));
+
+  if (error){
+    console.error('br_player_info error (by code/name):', error);
+    uiShowRosterError(`Player info error: ${error.message || error}`);
+    return [];
+  }
+  if (data && data.length) return data;
+
+  if (teamId != null){
+    const res = await client.from('br_player_info').select('*').eq('team_id', teamId);
+    if (res.error){
+      console.error('br_player_info error (by team_id):', res.error);
+      uiShowRosterError(`Player info error: ${res.error.message || res.error}`);
+      return [];
+    }
+    if (res.data && res.data.length) return res.data;
+  }
+  return [];
+}
+async function loadTeamMeta(teamObj){
+  const code = (teamObj.name||'').trim();
+  const name = (teamObj.fullname||'').trim();
+
+  let info = null;
+  try{ info = await fetchTeamInfoBy(code, name); }
+  catch(e){ console.error('fetchTeamInfoBy threw:', e); uiShowTeamInfoError(`Team info error: ${e.message || e}`); }
+  renderTeamInfo(info);
+
+  let players = [];
+  try{
+    const teamId = info && (info.id ?? info.team_id);
+    players = await fetchPlayersBy(code, name, teamId);
+  }catch(e){
+    console.error('fetchPlayersBy threw:', e);
+    uiShowRosterError(`Player info error: ${e.message || e}`);
+  }
+  renderRoster(players);
 }
 
 /* ========= UI: Team grid ========= */
@@ -651,9 +781,8 @@ async function selectTeam(teamObj){
 
   TEAM_ROWS = ALL.filter(r => (r.team||'').trim().toLowerCase() === teamObj.fullname.toLowerCase());
   renderTeamOverview();
-  highlightActiveTile();
-  // Load team info & roster
   await loadTeamMeta(teamObj);
+  highlightActiveTile();
 }
 
 /* ========= Wiring ========= */
@@ -661,13 +790,11 @@ async function initial(){
   renderTeamGrid('');
   el('teamSearch').addEventListener('input', e => renderTeamGrid(e.target.value||''));
 
-  // Sort + Tournament UI events
+  // Overall controls
   const sortKey = el('overallSortKey');
   const sortDir = el('overallSortDir');
   const reset   = el('overallReset');
   const tourn   = el('overallTournament');
-  const mapSel  = el('allMap');
-
   sortKey.addEventListener('change', renderOverall);
   sortDir.addEventListener('click', ()=>{
     const cur = sortDir.dataset.dir === 'desc' ? 'asc' : 'desc';
@@ -683,19 +810,39 @@ async function initial(){
     renderOverall();
   });
   tourn.addEventListener('change', renderOverall);
-  mapSel.addEventListener('change', renderAllTeamsMap);
+
+  // Per-map controls
+  const mapSel = el('mapFilter');
+  const pmKey = el('perMapSortKey');
+  const pmDir = el('perMapSortDir');
+  const pmReset = el('perMapReset');
+  mapSel.addEventListener('change', renderPerMapAllTeams);
+  pmKey.addEventListener('change', renderPerMapAllTeams);
+  pmDir.addEventListener('click', ()=>{
+    const cur = pmDir.dataset.dir === 'desc' ? 'asc' : 'desc';
+    pmDir.dataset.dir = cur;
+    pmDir.textContent = cur === 'desc' ? 'Desc' : 'Asc';
+    renderPerMapAllTeams();
+  });
+  pmReset.addEventListener('click', ()=>{
+    mapSel.value = '__all__';
+    pmKey.value = 'total_pm';
+    pmDir.dataset.dir = 'desc';
+    pmDir.textContent = 'Desc';
+    renderPerMapAllTeams();
+  });
 
   ALL = await fetchAllRows();
 
-  // Populate tournament + map filters from data (limited to 18 teams)
+  // Populate tournament & map filters
   populateOverallTournament();
-  populateMapFilter(ALL);
+  populateMapFilter();
 
-  // Render overall + all-teams map
+  // Initial renders
   renderOverall();
-  renderAllTeamsMap();
+  renderPerMapAllTeams();
 
-  // Handle deep link ?team=
+  // If URL has ?team= (code or name) select it
   const url = new URL(window.location.href);
   const qTeam = (url.searchParams.get('team')||'').trim().toLowerCase();
   if (qTeam){
