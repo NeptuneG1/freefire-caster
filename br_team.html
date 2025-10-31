@@ -65,7 +65,7 @@
     @media (max-width: 360px){ :root{ --cols:1;} }
     @media (max-width: 860px){ .grid2{grid-template-columns:1fr} }
 
-    /* Sort controls */
+    /* Controls */
     .bar{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
     .bar label{color:var(--muted);font-size:.9rem}
     .input{background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:7px 10px}
@@ -118,8 +118,13 @@
   <div class="section" id="overallSection">
     <h2>Overall Performance (All Teams)</h2>
 
-    <!-- SORT BAR (restored) -->
+    <!-- FILTERS + SORT -->
     <div class="bar">
+      <label for="overallTournament">Tournament</label>
+      <select id="overallTournament" class="input" style="min-width:220px">
+        <option value="__all__" selected>All tournaments</option>
+      </select>
+
       <label for="overallSortKey">Sort by</label>
       <select id="overallSortKey" class="input">
         <option value="total_pm" selected>Total / m</option>
@@ -220,7 +225,7 @@ function kpiDataset(rows){
   const booyah = sum(rows,'booyah');
   const total = sum(rows,'total');
   const elims = sum(rows,'elimination');
-  const place = sum(rows,'placement');
+  const place = sum(rows, 'placement');
   const damage = sum(rows,'damage');
   const top3 = sum(rows,'top3');
   return {
@@ -292,7 +297,7 @@ function aggregateOverall(rows){
     const meta = ALLOWED.get(raw);     // match either short code or full name
     if (!meta) continue;               // skip anything not in the 18 teams
 
-    const code = meta.name.toLowerCase(); // canonical group key
+    const code = meta.name.toLowerCase(); // canonical key
     if (!grouped.has(code)) grouped.set(code, []);
     grouped.get(code).push(r);
   }
@@ -318,7 +323,41 @@ function aggregateOverall(rows){
   return out;
 }
 
-/* ========= Sort helpers (restored) ========= */
+/* ========= Tournament options (auto) ========= */
+function uniqueTournaments(rows){
+  // Only consider tournaments present in rows for the 18 teams
+  const map = new Map(); // name -> {name, yearMax, count}
+  for (const r of rows){
+    const t = norm(r.tournament);
+    if (!t) continue;
+    const key = t.toLowerCase();
+    const yr = Number(r.year)||0;
+    if (!map.has(key)) map.set(key, { name:t, yearMax: yr, count:1 });
+    else {
+      const o = map.get(key);
+      o.yearMax = Math.max(o.yearMax, yr);
+      o.count += 1;
+    }
+  }
+  // Sort by most recent year desc, then name
+  return Array.from(map.values()).sort((a,b)=> (b.yearMax - a.yearMax) || a.name.localeCompare(b.name));
+}
+
+function populateOverallTournament(){
+  const sel = el('overallTournament');
+  if (!sel) return;
+  // Build from ALL rows (already limited to 18 teams)
+  const opts = uniqueTournaments(ALL);
+  // Keep current selection if possible
+  const current = sel.value || '__all__';
+  sel.innerHTML = `<option value="__all__">All tournaments</option>` +
+    opts.map(o => `<option value="${o.name.replaceAll('"','&quot;')}">${o.name}</option>`).join('');
+  // Restore selection if still present
+  const exists = [...sel.options].some(op => op.value === current);
+  sel.value = exists ? current : '__all__';
+}
+
+/* ========= Sort helpers ========= */
 function sortOverall(rows, key, dir){
   const mult = dir === 'asc' ? 1 : -1;
   return rows.sort((a,b)=>{
@@ -334,14 +373,24 @@ function sortOverall(rows, key, dir){
   });
 }
 
-/* ========= Render Overall with sorting ========= */
+/* ========= Render Overall with Tournament filter + sorting ========= */
 function renderOverall(){
   const keySel = el('overallSortKey');
   const dirBtn = el('overallSortDir');
+  const tSel   = el('overallTournament');
+
   const sortKey = keySel?.value || 'total_pm';
   const dir = dirBtn?.dataset?.dir || 'desc';
+  const tFilter = (tSel?.value || '__all__').trim();
 
-  const rows = aggregateOverall(ALL);
+  // Filter by tournament if selected
+  let base = ALL;
+  if (tFilter !== '__all__'){
+    const lf = tFilter.toLowerCase();
+    base = ALL.filter(r => norm(r.tournament).toLowerCase() === lf);
+  }
+
+  const rows = aggregateOverall(base);
   sortOverall(rows, sortKey, dir);
 
   el('tblOverall').innerHTML = renderSimpleTable(rows, [
@@ -358,7 +407,7 @@ function renderOverall(){
 }
 
 /* ========= Render (team view) ========= */
-function renderOverview(){
+function renderTeamOverview(){
   if (!CURRENT_TEAM){
     el('teamTitle').textContent = 'Team Overview';
     el('identityBody').innerHTML = 'Select a team.';
@@ -447,7 +496,7 @@ async function selectTeam(teamObj){
   history.replaceState(null, '', url.toString());
 
   TEAM_ROWS = ALL.filter(r => (r.team||'').trim().toLowerCase() === teamObj.fullname.toLowerCase());
-  renderOverview();
+  renderTeamOverview();
   highlightActiveTile();
 }
 
@@ -456,10 +505,11 @@ async function initial(){
   renderTeamGrid('');
   el('teamSearch').addEventListener('input', e => renderTeamGrid(e.target.value||''));
 
-  // Sort UI events (restored)
+  // Sort + Tournament UI events
   const sortKey = el('overallSortKey');
   const sortDir = el('overallSortDir');
   const reset   = el('overallReset');
+  const tourn   = el('overallTournament');
 
   sortKey.addEventListener('change', renderOverall);
   sortDir.addEventListener('click', ()=>{
@@ -472,12 +522,17 @@ async function initial(){
     sortKey.value = 'total_pm';
     sortDir.dataset.dir = 'desc';
     sortDir.textContent = 'Desc';
+    tourn.value = '__all__';
     renderOverall();
   });
+  tourn.addEventListener('change', renderOverall);
 
   ALL = await fetchAllRows();
 
-  // Overall table (18-team limited) with sorting
+  // Populate tournament filter from data (limited to 18 teams)
+  populateOverallTournament();
+
+  // Overall table (18-team limited) with filter + sorting
   renderOverall();
 
   // If URL has ?team= (code or name) select it
