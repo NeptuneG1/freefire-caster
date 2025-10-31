@@ -158,9 +158,15 @@
         <option value="team">Team (A→Z)</option>
         <option value="map">Map (A→Z)</option>
       </select>
+
+      <label for="teamMapFilter">Map</label>
+      <select id="teamMapFilter" class="input" style="min-width:160px">
+        <option value="__all__" selected>All maps</option>
+      </select>
+
       <button class="btn secondary" id="teamMapSortDir" data-dir="desc" title="Toggle ascending/descending">Desc</button>
       <button class="btn secondary" id="teamMapReset">Reset</button>
-      <span class="chip">Tournament filter applies.</span>
+      <span class="chip">Tournament & Map filters apply.</span>
     </div>
     <div class="card">
       <div id="tblTeamMapAll">Loading…</div>
@@ -213,7 +219,7 @@ const TEAM_BY_CODE = Object.fromEntries(TEAMS.map(t => [t.name.toLowerCase(), t]
 const TEAM_BY_NAME = Object.fromEntries(TEAMS.map(t => [t.fullname.toLowerCase(), t]));
 const ALLOWED_SET  = new Set(TEAMS.map(t => t.fullname.toLowerCase())); // dataset filter
 
-// Allow lookups by either short code or full name (for grouping)
+// Allow lookups by short code or full name
 const ALLOWED = new Map();
 TEAMS.forEach(t => {
   ALLOWED.set(t.name.toLowerCase(), t);
@@ -376,7 +382,7 @@ function aggregateTeamMap(rows){
   return out;
 }
 
-/* ========= Tournament options (auto) ========= */
+/* ========= Tournament & Map options (auto) ========= */
 function uniqueTournaments(rows){
   const map = new Map(); // name -> {name, yearMax, count}
   for (const r of rows){
@@ -394,6 +400,15 @@ function uniqueTournaments(rows){
   return Array.from(map.values()).sort((a,b)=> (b.yearMax - a.yearMax) || a.name.localeCompare(b.name));
 }
 
+function uniqueMaps(rows){
+  const s = new Set();
+  for (const r of rows){
+    const m = norm(r.map);
+    if (m) s.add(m);
+  }
+  return Array.from(s).sort((a,b)=> a.localeCompare(b));
+}
+
 function populateOverallTournament(){
   const sel = el('overallTournament');
   if (!sel) return;
@@ -403,6 +418,27 @@ function populateOverallTournament(){
     opts.map(o => `<option value="${o.name.replaceAll('"','&quot;')}">${o.name}</option>`).join('');
   const exists = [...sel.options].some(op => op.value === current);
   sel.value = exists ? current : '__all__';
+}
+
+function populateMapFilter(){
+  const tSel = el('overallTournament');
+  const mSel = el('teamMapFilter');
+  if (!mSel) return;
+
+  // base rows reflect current tournament selection
+  let base = ALL;
+  const tFilter = (tSel?.value || '__all__').trim();
+  if (tFilter !== '__all__'){
+    const lf = tFilter.toLowerCase();
+    base = ALL.filter(r => norm(r.tournament).toLowerCase() === lf);
+  }
+
+  const maps = uniqueMaps(base);
+  const current = mSel.value || '__all__';
+  mSel.innerHTML = `<option value="__all__">All maps</option>` +
+    maps.map(m => `<option value="${m.replaceAll('"','&quot;')}">${m}</option>`).join('');
+  const exists = [...mSel.options].some(op => op.value === current);
+  mSel.value = exists ? current : '__all__';
 }
 
 /* ========= Sort helpers ========= */
@@ -453,20 +489,26 @@ function renderOverall(){
   ]);
 }
 
-/* ========= Render Team × Map (bottom) with Tournament filter + sorting ========= */
+/* ========= Render Team × Map (bottom) with Tournament + Map filter + sorting ========= */
 function renderTeamMapAll(){
   const keySel = el('teamMapSortKey');
   const dirBtn = el('teamMapSortDir');
   const tSel   = el('overallTournament'); // reuse same tournament filter
+  const mSel   = el('teamMapFilter');
 
   const sortKey = keySel?.value || 'total_pm';
   const dir = dirBtn?.dataset?.dir || 'desc';
   const tFilter = (tSel?.value || '__all__').trim();
+  const mFilter = (mSel?.value || '__all__').trim();
 
   let base = ALL;
   if (tFilter !== '__all__'){
     const lf = tFilter.toLowerCase();
-    base = ALL.filter(r => norm(r.tournament).toLowerCase() === lf);
+    base = base.filter(r => norm(r.tournament).toLowerCase() === lf);
+  }
+  if (mFilter !== '__all__'){
+    const lm = mFilter.toLowerCase();
+    base = base.filter(r => norm(r.map).toLowerCase() === lm);
   }
 
   const rows = aggregateTeamMap(base);
@@ -602,14 +644,22 @@ async function initial(){
     sortDir.dataset.dir = 'desc';
     sortDir.textContent = 'Desc';
     tourn.value = '__all__';
+    populateMapFilter();
+    el('teamMapFilter').value = '__all__';
     renderOverall(); renderTeamMapAll();
   });
-  tourn.addEventListener('change', ()=>{ renderOverall(); renderTeamMapAll(); });
+  tourn.addEventListener('change', ()=>{
+    populateMapFilter();
+    renderOverall();
+    renderTeamMapAll();
+  });
 
   // Team × Map controls
   const tmKey  = el('teamMapSortKey');
   const tmDir  = el('teamMapSortDir');
   const tmRst  = el('teamMapReset');
+  const tmFil  = el('teamMapFilter');
+
   tmKey.addEventListener('change', renderTeamMapAll);
   tmDir.addEventListener('click', ()=>{
     const cur = tmDir.dataset.dir === 'desc' ? 'asc' : 'desc';
@@ -621,13 +671,16 @@ async function initial(){
     tmKey.value = 'total_pm';
     tmDir.dataset.dir = 'desc';
     tmDir.textContent = 'Desc';
+    tmFil.value = '__all__';
     renderTeamMapAll();
   });
+  tmFil.addEventListener('change', renderTeamMapAll);
 
   ALL = await fetchAllRows();
 
-  // Populate tournament filter from data (limited to 18 teams)
+  // Populate tournament + map filters from data (limited to 18 teams)
   populateOverallTournament();
+  populateMapFilter();
 
   // Initial renders
   renderOverall();
