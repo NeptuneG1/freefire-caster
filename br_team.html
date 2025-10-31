@@ -24,6 +24,7 @@
     .card h3{margin:0 0 6px;color:var(--brand2);font-size:1.0rem}
     .kpis{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
     .kpi{background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:5px 8px;font-size:.9rem}
+    .muted{color:var(--muted)}
 
     /* Team grid */
     .team-grid{
@@ -69,6 +70,15 @@
     .bar{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
     .bar label{color:var(--muted);font-size:.9rem}
     .input{background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:7px 10px}
+
+    /* Team Details (br_player_info) */
+    .kv{display:grid;grid-template-columns:160px 1fr;gap:8px}
+    .kv .k{color:#bbb}
+    .pill{display:inline-block;border:1px solid #2a2a2a;border-radius:999px;padding:3px 8px;margin:2px 4px 0 0;font-size:.85rem;background:#111}
+    .list{margin:0;padding-left:18px}
+    .gallery{display:flex;flex-wrap:wrap;gap:8px}
+    .gallery img{width:120px;height:120px;object-fit:cover;border-radius:8px;border:1px solid #2a2a2a}
+    .monosmall{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; font-size:.85rem}
   </style>
 </head>
 <body>
@@ -106,7 +116,15 @@
     </div>
   </div>
 
-  <!-- MAP PERFORMANCE (selected team) -->
+  <!-- TEAM DETAILS (from br_player_info) -->
+  <div class="section" id="teamInfoSection">
+    <h2>Team Details</h2>
+    <div class="card">
+      <div id="teamInfoBody" class="muted">—</div>
+    </div>
+  </div>
+
+  <!-- MAP PERFORMANCE (per selected team) -->
   <div class="section">
     <h2>Map Performance</h2>
     <div class="card">
@@ -118,6 +136,7 @@
   <div class="section" id="overallSection">
     <h2>Overall Performance (All Teams)</h2>
 
+    <!-- FILTERS + SORT -->
     <div class="bar">
       <label for="overallTournament">Tournament</label>
       <select id="overallTournament" class="input" style="min-width:220px">
@@ -143,33 +162,28 @@
     </div>
   </div>
 
-  <!-- TEAM × MAP PERFORMANCE (All Teams, bottom) -->
-  <div class="section" id="teamMapAllSection">
-    <h2>Teams Performance per Map</h2>
+  <!-- PER MAP BREAKDOWN — ALL TEAMS -->
+  <div class="section" id="allMapSection">
+    <h2>Per Map Breakdown — All Teams</h2>
     <div class="bar">
-      <label for="teamMapSortKey">Sort by</label>
-      <select id="teamMapSortKey" class="input">
-        <option value="total_pm" selected>Total / m</option>
-        <option value="booyah_rate">Booyah %</option>
-        <option value="elims_pm">Elims / m</option>
-        <option value="placement_pm">Placement / m</option>
-        <option value="top3_rate">Top-3 %</option>
-        <option value="matches">Matches</option>
-        <option value="team">Team (A→Z)</option>
-        <option value="map">Map (A→Z)</option>
-      </select>
-
-      <label for="teamMapFilter">Map</label>
-      <select id="teamMapFilter" class="input" style="min-width:160px">
+      <label for="mapFilter">Map</label>
+      <select id="mapFilter" class="input" style="min-width:180px">
         <option value="__all__" selected>All maps</option>
       </select>
-
-      <button class="btn secondary" id="teamMapSortDir" data-dir="desc" title="Toggle ascending/descending">Desc</button>
-      <button class="btn secondary" id="teamMapReset">Reset</button>
-      <span class="chip">Tournament & Map filters apply.</span>
+      <label for="mapSortKey">Sort by</label>
+      <select id="mapSortKey" class="input">
+        <option value="total_pm" selected>Total / m</option>
+        <option value="elims_pm">Elims / m</option>
+        <option value="booyah_rate">Booyah %</option>
+        <option value="matches">Matches</option>
+        <option value="placement_pm">Placement / m</option>
+        <option value="team">Team (A→Z)</option>
+      </select>
+      <button class="btn secondary" id="mapSortDir" data-dir="desc">Desc</button>
+      <button class="btn secondary" id="mapReset">Reset</button>
     </div>
     <div class="card">
-      <div id="tblTeamMapAll">Loading…</div>
+      <div id="tblAllTeamsPerMap">Loading…</div>
     </div>
   </div>
 </div>
@@ -219,7 +233,7 @@ const TEAM_BY_CODE = Object.fromEntries(TEAMS.map(t => [t.name.toLowerCase(), t]
 const TEAM_BY_NAME = Object.fromEntries(TEAMS.map(t => [t.fullname.toLowerCase(), t]));
 const ALLOWED_SET  = new Set(TEAMS.map(t => t.fullname.toLowerCase())); // dataset filter
 
-// Allow lookups by short code or full name
+// Allow lookups by either short code or full name (for grouping)
 const ALLOWED = new Map();
 TEAMS.forEach(t => {
   ALLOWED.set(t.name.toLowerCase(), t);
@@ -233,6 +247,7 @@ const n = (x) => Number(x ?? 0) || 0;
 const norm = (v) => (v==null ? '' : String(v).trim());
 function sum(arr, key){ let t=0; for(const r of arr) t += n(r[key]); return t; }
 function groupBy(arr, keyFn){ const m=new Map(); for(const r of arr){ const k=keyFn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r);} return m; }
+function uniq(arr){ return Array.from(new Set(arr)); }
 
 function renderSimpleTable(list, cols){
   if (!list.length) return '<div class="muted">No rows.</div>';
@@ -279,8 +294,7 @@ function teamMapPerf(rows){
       booyah_rate: m ? sum(list,'booyah')/m : 0,
       elims_pm:    m ? sum(list,'elimination')/m : 0,
       placement_pm:m ? sum(list,'placement')/m : 0,
-      total_pm:    m ? sum(list,'total')/m : 0,
-      top3_rate:   m ? sum(list,'top3')/m : 0
+      total_pm:    m ? sum(list,'total')/m : 0
     });
   }
   return out.sort((a,b) => b.total_pm - a.total_pm || b.matches - a.matches || a.map.localeCompare(b.map));
@@ -333,7 +347,6 @@ function aggregateOverall(rows){
     const meta = TEAM_BY_CODE[code];
     const m = list.length;
     if (!m) continue;
-
     out.push({
       team: meta.fullname,
       code: meta.name,
@@ -349,64 +362,18 @@ function aggregateOverall(rows){
   return out;
 }
 
-/* ========= Team × Map aggregation (18 teams) ========= */
-function aggregateTeamMap(rows){
-  const grouped = new Map(); // key = code||map
-  for (const r of rows){
-    const rawTeam = (r.team || '').trim().toLowerCase();
-    const meta = ALLOWED.get(rawTeam);
-    const map = norm(r.map);
-    if (!meta || !map) continue;
-    const code = meta.name.toLowerCase();
-    const key = code + '||' + map;
-    if (!grouped.has(key)) grouped.set(key, { meta, map, rows: [] });
-    grouped.get(key).rows.push(r);
-  }
-
-  const out = [];
-  for (const { meta, map, rows: list } of grouped.values()){
-    const m = list.length || 0;
-    if (!m) continue;
-    out.push({
-      team: meta.fullname,
-      code: meta.name,
-      map,
-      matches: m,
-      booyah_rate:   sum(list,'booyah')/m,
-      elims_pm:      sum(list,'elimination')/m,
-      placement_pm:  sum(list,'placement')/m,
-      total_pm:      sum(list,'total')/m,
-      top3_rate:     sum(list,'top3')/m
-    });
-  }
-  return out;
-}
-
-/* ========= Tournament & Map options (auto) ========= */
+/* ========= Tournament options (auto) ========= */
 function uniqueTournaments(rows){
-  const map = new Map(); // name -> {name, yearMax, count}
+  const map = new Map();
   for (const r of rows){
     const t = norm(r.tournament);
     if (!t) continue;
     const key = t.toLowerCase();
     const yr = Number(r.year)||0;
     if (!map.has(key)) map.set(key, { name:t, yearMax: yr, count:1 });
-    else {
-      const o = map.get(key);
-      o.yearMax = Math.max(o.yearMax, yr);
-      o.count += 1;
-    }
+    else { const o = map.get(key); o.yearMax = Math.max(o.yearMax, yr); o.count += 1; }
   }
   return Array.from(map.values()).sort((a,b)=> (b.yearMax - a.yearMax) || a.name.localeCompare(b.name));
-}
-
-function uniqueMaps(rows){
-  const s = new Set();
-  for (const r of rows){
-    const m = norm(r.map);
-    if (m) s.add(m);
-  }
-  return Array.from(s).sort((a,b)=> a.localeCompare(b));
 }
 
 function populateOverallTournament(){
@@ -420,33 +387,12 @@ function populateOverallTournament(){
   sel.value = exists ? current : '__all__';
 }
 
-function populateMapFilter(){
-  const tSel = el('overallTournament');
-  const mSel = el('teamMapFilter');
-  if (!mSel) return;
-
-  // base rows reflect current tournament selection
-  let base = ALL;
-  const tFilter = (tSel?.value || '__all__').trim();
-  if (tFilter !== '__all__'){
-    const lf = tFilter.toLowerCase();
-    base = ALL.filter(r => norm(r.tournament).toLowerCase() === lf);
-  }
-
-  const maps = uniqueMaps(base);
-  const current = mSel.value || '__all__';
-  mSel.innerHTML = `<option value="__all__">All maps</option>` +
-    maps.map(m => `<option value="${m.replaceAll('"','&quot;')}">${m}</option>`).join('');
-  const exists = [...mSel.options].some(op => op.value === current);
-  mSel.value = exists ? current : '__all__';
-}
-
 /* ========= Sort helpers ========= */
 function sortRows(rows, key, dir){
   const mult = dir === 'asc' ? 1 : -1;
   return rows.sort((a,b)=>{
-    if (['team','region','code','map'].includes(key)){
-      return mult * String(a[key]).localeCompare(String(b[key]));
+    if (typeof a[key] === 'string' || typeof b[key] === 'string'){
+      return mult * String(a[key]??'').localeCompare(String(b[key]??''));
     }
     const av = Number(a[key]);
     const bv = Number(b[key]);
@@ -467,6 +413,7 @@ function renderOverall(){
   const dir = dirBtn?.dataset?.dir || 'desc';
   const tFilter = (tSel?.value || '__all__').trim();
 
+  // Filter by tournament if selected
   let base = ALL;
   if (tFilter !== '__all__'){
     const lf = tFilter.toLowerCase();
@@ -478,7 +425,7 @@ function renderOverall(){
 
   el('tblOverall').innerHTML = renderSimpleTable(rows, [
     {label:'Team',           key:'team'},
-    {label:'TAG',           key:'code'},
+    {label:'Code',           key:'code'},
     {label:'Region',         key:'region'},
     {label:'Matches',        key:'matches',     right:true},
     {label:'Booyah %',       key:'booyah_rate', format:'pct', right:true},
@@ -489,51 +436,73 @@ function renderOverall(){
   ]);
 }
 
-/* ========= Render Team × Map (bottom) with Tournament + Map filter + sorting ========= */
-function renderTeamMapAll(){
-  const keySel = el('teamMapSortKey');
-  const dirBtn = el('teamMapSortDir');
-  const tSel   = el('overallTournament'); // reuse same tournament filter
-  const mSel   = el('teamMapFilter');
-
-  const sortKey = keySel?.value || 'total_pm';
-  const dir = dirBtn?.dataset?.dir || 'desc';
-  const tFilter = (tSel?.value || '__all__').trim();
-  const mFilter = (mSel?.value || '__all__').trim();
-
-  let base = ALL;
-  if (tFilter !== '__all__'){
-    const lf = tFilter.toLowerCase();
-    base = base.filter(r => norm(r.tournament).toLowerCase() === lf);
+/* ========= Per map breakdown — All teams ========= */
+function perTeamPerMap(rows, mapFilter='__all__'){
+  // Build [team x map] aggregation but output per selected map or all maps
+  const byTeam = new Map();
+  for (const r of rows){
+    const meta = ALLOWED.get((r.team||'').trim().toLowerCase());
+    if (!meta) continue;
+    const map = norm(r.map) || '—';
+    if (mapFilter !== '__all__' && map.toLowerCase() !== mapFilter.toLowerCase()) continue;
+    const key = meta.name; // short code canonical
+    if (!byTeam.has(key)) byTeam.set(key, []);
+    byTeam.get(key).push(r);
   }
-  if (mFilter !== '__all__'){
-    const lm = mFilter.toLowerCase();
-    base = base.filter(r => norm(r.map).toLowerCase() === lm);
+  const out=[];
+  for (const [code, list] of byTeam.entries()){
+    const m = list.length;
+    if (!m) continue;
+    const meta = TEAM_BY_CODE[code.toLowerCase()];
+    out.push({
+      team: meta.fullname,
+      code: meta.name,
+      matches: m,
+      booyah_rate:   sum(list,'booyah')/m,
+      elims_pm:      sum(list,'elimination')/m,
+      placement_pm:  sum(list,'placement')/m,
+      total_pm:      sum(list,'total')/m
+    });
   }
+  return out;
+}
 
-  const rows = aggregateTeamMap(base);
-  sortRows(rows, sortKey, dir);
+function populateMapFilter(rows){
+  const sel = el('mapFilter');
+  if (!sel) return;
+  const maps = uniq(rows.map(r => norm(r.map)).filter(Boolean)).sort((a,b)=>a.localeCompare(b));
+  const cur = sel.value || '__all__';
+  sel.innerHTML = `<option value="__all__">All maps</option>` + maps.map(m => `<option value="${m}">${m}</option>`).join('');
+  const exists = [...sel.options].some(op => op.value === cur);
+  sel.value = exists ? cur : '__all__';
+}
 
-  el('tblTeamMapAll').innerHTML = renderSimpleTable(rows, [
-    {label:'Team',           key:'team'},
-    {label:'Code',           key:'code'},
-    {label:'Map',            key:'map'},
-    {label:'Matches',        key:'matches',     right:true},
-    {label:'Booyah %',       key:'booyah_rate', format:'pct', right:true},
-    {label:'Elims / m',      key:'elims_pm',    format:'1d',  right:true},
-    {label:'Placement / m',  key:'placement_pm',format:'1d',  right:true},
-    {label:'Total / m',      key:'total_pm',    format:'1d',  right:true},
-    {label:'Top-3 %',        key:'top3_rate',   format:'pct', right:true},
+function renderPerMapAllTeams(){
+  const mSel = el('mapFilter');
+  const sortKey = el('mapSortKey');
+  const sortDir = el('mapSortDir');
+  const mapValue = mSel?.value || '__all__';
+  const rows = perTeamPerMap(ALL, mapValue);
+  sortRows(rows, sortKey.value, sortDir.dataset.dir || 'desc');
+  el('tblAllTeamsPerMap').innerHTML = renderSimpleTable(rows, [
+    {label:'Team', key:'team'},
+    {label:'Code', key:'code'},
+    {label:'Matches', key:'matches', right:true},
+    {label:'Booyah %', key:'booyah_rate', format:'pct', right:true},
+    {label:'Elims / m', key:'elims_pm', format:'1d', right:true},
+    {label:'Placement / m', key:'placement_pm', format:'1d', right:true},
+    {label:'Total / m', key:'total_pm', format:'1d', right:true},
   ]);
 }
 
-/* ========= Render (selected team view) ========= */
+/* ========= Render (team view) ========= */
 function renderTeamOverview(){
   if (!CURRENT_TEAM){
     el('teamTitle').textContent = 'Team Overview';
     el('identityBody').innerHTML = 'Select a team.';
     el('kpiBody').innerHTML = '—';
     el('tblMapTeam').innerHTML = '—';
+    el('teamInfoBody').innerHTML = '—';
     return;
   }
   el('teamTitle').textContent = `Team Overview — ${CURRENT_TEAM.fullname}`;
@@ -569,6 +538,130 @@ function renderTeamOverview(){
       {label:'Total / m',key:'total_pm',format:'1d',right:true}
     ]
   );
+}
+
+/* ========= Team Details (br_player_info) ========= */
+/* Robust loader: tries several common columns to match CURRENT_TEAM */
+async function fetchTeamInfoByColumns(col, value){
+  const { data, error } = await client.from('br_player_info').select('*').eq(col, value).limit(1);
+  if (error){ console.warn('br_player_info error on', col, error); return []; }
+  return data || [];
+}
+
+async function loadTeamInfo(team){
+  const infoBox = el('teamInfoBody');
+  infoBox.innerHTML = '<span class="muted">Loading…</span>';
+
+  const tryPairs = [
+    ['team_code', team.name], ['code', team.name], ['short', team.name], ['abbr', team.name],
+    ['team', team.fullname], ['team_name', team.fullname], ['fullname', team.fullname], ['full_name', team.fullname]
+  ];
+  let row = null;
+  for (const [c,v] of tryPairs){
+    const got = await fetchTeamInfoByColumns(c, v);
+    if (got && got.length){ row = got[0]; break; }
+  }
+
+  if (!row){
+    infoBox.innerHTML = '<div class="muted">No team info found in <span class="monosmall">br_player_info</span>.</div>';
+    return;
+  }
+
+  // Parse helper (arrays or JSON-in-text)
+  const tryParse = (v)=>{
+    if (v==null) return null;
+    if (Array.isArray(v)) return v;
+    const s = String(v).trim();
+    if (!s) return null;
+    try{
+      const j = JSON.parse(s);
+      return j;
+    }catch(_){
+      // comma/line separated fallback
+      if (s.includes('\n')) return s.split('\n').map(x=>x.trim()).filter(Boolean);
+      if (s.includes(',')) return s.split(',').map(x=>x.trim()).filter(Boolean);
+      return s;
+    }
+  };
+
+  // Known buckets (optional)
+  const headline = row.headline || row.tagline || '';
+  const coach = row.coach || row.head_coach || '';
+  const manager = row.manager || row.team_manager || '';
+  const country = row.country || row.region || '';
+  const founded = row.founded || row.established || '';
+  const org = row.organization || row.org || '';
+  const socials = tryParse(row.socials) || null; // object or list of key→url
+  const roster = tryParse(row.roster) || tryParse(row.players) || null; // array of players, or string list
+  const accolades = tryParse(row.accolades) || tryParse(row.achievements) || null; // list
+  const images = tryParse(row.images) || null; // list of urls
+  const website = row.website || row.site || '';
+
+  // Build HTML
+  const kv = [];
+  if (org)     kv.push(['Organization', org]);
+  if (country) kv.push(['Country/Region', country]);
+  if (founded) kv.push(['Founded', founded]);
+  if (coach)   kv.push(['Coach', coach]);
+  if (manager) kv.push(['Manager', manager]);
+  if (website) kv.push(['Website', `<a href="${website}" target="_blank" rel="noopener">${website}</a>`]);
+
+  const kvHtml = kv.length ? `
+    <div class="kv">
+      ${kv.map(([k,v])=>`<div class="k">${k}</div><div>${v}</div>`).join('')}
+    </div>` : '<div class="muted">No org metadata.</div>';
+
+  const socialsHtml = socials ? (()=>{
+    if (Array.isArray(socials)){
+      return socials.map(s => `<a class="pill" href="${s}" target="_blank" rel="noopener">${s}</a>`).join('');
+    }else if (typeof socials === 'object'){
+      return Object.entries(socials).map(([k,u])=> `<a class="pill" href="${u}" target="_blank" rel="noopener">${k}</a>`).join('');
+    }else{
+      return `<a class="pill" href="${socials}" target="_blank" rel="noopener">${socials}</a>`;
+    }
+  })() : '';
+
+  const rosterHtml = roster ? (()=>{
+    if (Array.isArray(roster)){
+      return `<ul class="list">${roster.map(p=>{
+        if (typeof p === 'string') return `<li>${p}</li>`;
+        if (typeof p === 'object'){
+          const ign = p.ign || p.name || p.player || p.handle || 'Player';
+          const role = p.role ? ` — <span class="muted">${p.role}</span>` : '';
+          return `<li>${ign}${role}</li>`;
+        }
+        return `<li>${String(p)}</li>`;
+      }).join('')}</ul>`;
+    }
+    return `<div>${roster}</div>`;
+  })() : '<div class="muted">No roster listed.</div>';
+
+  const accHtml = accolades ? (()=>{
+    if (Array.isArray(accolades)){
+      return `<ul class="list">${accolades.map(a => `<li>${typeof a==='string' ? a : JSON.stringify(a)}</li>`).join('')}</ul>`;
+    }
+    return `<div>${accolades}</div>`;
+  })() : '<div class="muted">No accolades listed.</div>';
+
+  const galleryHtml = images ? (()=>{
+    const arr = Array.isArray(images) ? images : [images];
+    return `<div class="gallery">${arr.map(src => `<img src="${src}" alt="media">`).join('')}</div>`;
+  })() : '';
+
+  infoBox.innerHTML = `
+    ${headline ? `<div style="font-size:1rem;margin-bottom:8px">${headline}</div>` : ''}
+    ${kvHtml}
+    ${socialsHtml ? `<div style="margin-top:10px">${socialsHtml}</div>` : ''}
+    <div style="margin-top:12px">
+      <h3>Roster</h3>
+      ${rosterHtml}
+    </div>
+    <div style="margin-top:12px">
+      <h3>Accolades</h3>
+      ${accHtml}
+    </div>
+    ${galleryHtml ? `<div style="margin-top:12px"><h3>Gallery</h3>${galleryHtml}</div>` : ''}
+  `;
 }
 
 /* ========= UI: Team grid ========= */
@@ -618,6 +711,7 @@ async function selectTeam(teamObj){
 
   TEAM_ROWS = ALL.filter(r => (r.team||'').trim().toLowerCase() === teamObj.fullname.toLowerCase());
   renderTeamOverview();
+  loadTeamInfo(teamObj); // <- NEW: load details from br_player_info
   highlightActiveTile();
 }
 
@@ -626,65 +720,57 @@ async function initial(){
   renderTeamGrid('');
   el('teamSearch').addEventListener('input', e => renderTeamGrid(e.target.value||''));
 
-  // Overall controls
+  // Sort + Tournament UI (Overall)
   const sortKey = el('overallSortKey');
   const sortDir = el('overallSortDir');
   const reset   = el('overallReset');
   const tourn   = el('overallTournament');
 
-  sortKey.addEventListener('change', ()=>{ renderOverall(); renderTeamMapAll(); });
+  sortKey.addEventListener('change', renderOverall);
   sortDir.addEventListener('click', ()=>{
     const cur = sortDir.dataset.dir === 'desc' ? 'asc' : 'desc';
     sortDir.dataset.dir = cur;
     sortDir.textContent = cur === 'desc' ? 'Desc' : 'Asc';
-    renderOverall(); renderTeamMapAll();
+    renderOverall();
   });
   reset.addEventListener('click', ()=>{
     sortKey.value = 'total_pm';
     sortDir.dataset.dir = 'desc';
     sortDir.textContent = 'Desc';
     tourn.value = '__all__';
-    populateMapFilter();
-    el('teamMapFilter').value = '__all__';
-    renderOverall(); renderTeamMapAll();
-  });
-  tourn.addEventListener('change', ()=>{
-    populateMapFilter();
     renderOverall();
-    renderTeamMapAll();
   });
+  tourn.addEventListener('change', renderOverall);
 
-  // Team × Map controls
-  const tmKey  = el('teamMapSortKey');
-  const tmDir  = el('teamMapSortDir');
-  const tmRst  = el('teamMapReset');
-  const tmFil  = el('teamMapFilter');
-
-  tmKey.addEventListener('change', renderTeamMapAll);
-  tmDir.addEventListener('click', ()=>{
-    const cur = tmDir.dataset.dir === 'desc' ? 'asc' : 'desc';
-    tmDir.dataset.dir = cur;
-    tmDir.textContent = cur === 'desc' ? 'Desc' : 'Asc';
-    renderTeamMapAll();
+  // Per-map All Teams UI
+  const mSel = el('mapFilter');
+  const mKey = el('mapSortKey');
+  const mDir = el('mapSortDir');
+  const mReset = el('mapReset');
+  mSel.addEventListener('change', renderPerMapAllTeams);
+  mKey.addEventListener('change', renderPerMapAllTeams);
+  mDir.addEventListener('click', ()=>{
+    mDir.dataset.dir = (mDir.dataset.dir === 'desc' ? 'asc' : 'desc');
+    mDir.textContent = mDir.dataset.dir === 'desc' ? 'Desc' : 'Asc';
+    renderPerMapAllTeams();
   });
-  tmRst.addEventListener('click', ()=>{
-    tmKey.value = 'total_pm';
-    tmDir.dataset.dir = 'desc';
-    tmDir.textContent = 'Desc';
-    tmFil.value = '__all__';
-    renderTeamMapAll();
+  mReset.addEventListener('click', ()=>{
+    mSel.value = '__all__';
+    mKey.value = 'total_pm';
+    mDir.dataset.dir = 'desc';
+    mDir.textContent = 'Desc';
+    renderPerMapAllTeams();
   });
-  tmFil.addEventListener('change', renderTeamMapAll);
 
   ALL = await fetchAllRows();
 
-  // Populate tournament + map filters from data (limited to 18 teams)
+  // Populate tournament + map filters
   populateOverallTournament();
-  populateMapFilter();
+  populateMapFilter(ALL);
 
-  // Initial renders
+  // Render overall and per-map-all-teams once
   renderOverall();
-  renderTeamMapAll();
+  renderPerMapAllTeams();
 
   // If URL has ?team= (code or name) select it
   const url = new URL(window.location.href);
