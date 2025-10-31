@@ -115,7 +115,7 @@
         <div id="teamInfoBody" class="muted">—</div>
       </div>
       <div class="card">
-        <h3>Roster & Accolades</h3>
+        <h3>Roster & Details</h3>
         <div id="teamRosterBody" class="muted">—</div>
       </div>
     </div>
@@ -259,7 +259,7 @@ function kpiDataset(rows){
   const booyah = sum(rows,'booyah');
   const total = sum(rows,'total');
   const elims = sum(rows,'elimination');
-  const place = sum(rows,'placement');
+  const place = sum(rows, 'placement');
   const damage = sum(rows,'damage');
   const top3 = sum(rows,'top3');
   return {
@@ -293,7 +293,7 @@ function teamMapPerf(rows){
 let ALL = [];
 let TEAM_ROWS = [];
 let CURRENT_TEAM = null;
-let CURRENT_TAG = null; // <-- derived from ffbr_data.tag (mode)
+let CURRENT_TAG = null; // derived from ffbr_data.tag (mode)
 
 /* ========= Fetch ffbr_data (paginated) ========= */
 async function fetchAllRows(){
@@ -500,7 +500,7 @@ function renderPerMapAllTeams(){
   ]);
 }
 
-/* ========= UI: Team Info & Roster (TAG-based lookups) ========= */
+/* ========= UI: Team Info & Roster ========= */
 function uiShowTeamInfoError(msg){
   document.getElementById('teamInfoBody').innerHTML = `<div class="muted" style="white-space:pre-wrap">${msg}</div>`;
 }
@@ -530,35 +530,48 @@ function renderTeamInfo(info){
   const maybeLogo = logoUrl ? `<div style="margin-bottom:8px"><img src="${logoUrl}" alt="team logo" style="width:84px;height:84px;object-fit:contain;border:1px solid #2a2a2a;border-radius:8px;background:#111"></div>` : '';
   box.innerHTML = `${maybeLogo}<table>${rows || '<tr><td class="muted">No visible fields.</td></tr>'}</table>`;
 }
+
+/* ====== ROSTER: includes Accolades + Former Team ====== */
+function normalizeJoinValue(v){
+  if (v == null) return '—';
+  if (Array.isArray(v)) return v.join(', ');
+  if (typeof v === 'object'){ try { return JSON.stringify(v); } catch { return String(v); } }
+  return String(v);
+}
 function renderRoster(players){
   const box = document.getElementById('teamRosterBody');
   if (!players || !players.length){ box.innerHTML = '<div class="muted">No players found.</div>'; return; }
+
   const keys = Object.keys(players[0] || {});
   const avatarKey = keys.find(k => /photo|avatar|image|picture/i.test(k)) || null;
   const ignKey    = keys.find(k => /ign|nickname|in.?game.?name|player.?name/i.test(k)) || 'name';
   const roleKey   = keys.find(k => /role|position/i.test(k)) || null;
   const countryKey= keys.find(k => /country|nation/i.test(k)) || null;
   const ageKey    = keys.find(k => /^age$/i.test(k)) || null;
-  const accolKey  = keys.find(k => /accolade|achievement|title|awards/i.test(k)) || null;
+
+  // New: prefer exact 'Accolades' & 'Former Team', with smart fallbacks
+  const accolKey  = keys.find(k => k === 'Accolades' || /accolade|achievement|title|awards/i.test(k)) || null;
+  const formerKey = keys.find(k => k === 'Former Team' || k.toLowerCase().replace(/\s+/g,'') === 'formerteam') || null;
 
   const rows = players
     .slice()
     .sort((a,b)=> String(a[roleKey]||'').localeCompare(String(b[roleKey]||'')) || String(a[ignKey]||'').localeCompare(String(b[ignKey]||'')))
     .map(p=>{
-      const avatar = avatarKey && p[avatarKey] ? `<img class="avatar" src="${p[avatarKey]}" alt="">` : '';
-      const ign = p[ignKey] ?? '—';
-      const role = roleKey ? (p[roleKey] ?? '—') : '—';
+      const avatar  = avatarKey && p[avatarKey] ? `<img class="avatar" src="${p[avatarKey]}" alt="">` : '';
+      const ign     = p[ignKey] ?? '—';
+      const role    = roleKey ? (p[roleKey] ?? '—') : '—';
+      const former  = normalizeJoinValue(formerKey ? p[formerKey] : '—');
       const country = countryKey ? (p[countryKey] ?? '—') : '—';
-      const age = ageKey ? (p[ageKey] ?? '—') : '—';
-      let acc = accolKey ? (p[accolKey] ?? '—') : '—';
-      if (typeof acc === 'object'){ try { acc = JSON.stringify(acc); }catch{} }
-      return { avatar, ign, role, country, age, acc };
+      const age     = ageKey ? (p[ageKey] ?? '—') : '—';
+      const acc     = normalizeJoinValue(accolKey ? p[accolKey] : '—');
+      return { avatar, ign, role, former, country, age, acc };
     });
 
   box.innerHTML = renderSimpleTable(rows, [
     {label:'', key:'avatar'},
     {label:'IGN', key:'ign'},
     {label:'Role', key:'role'},
+    {label:'Former Team', key:'former'},
     {label:'Country', key:'country'},
     {label:'Age', key:'age', right:true},
     {label:'Accolades', key:'acc'},
@@ -568,17 +581,17 @@ function renderRoster(players){
 /* === TAG-first fetchers === */
 async function fetchTeamInfoByTAG(tag){
   if (!tag){ uiShowTeamInfoError('No TAG derived for this team.'); return null; }
-  // Try exact match on "Team Initials" first
+  // Exact on "Team Initials" first
   let res = await client
     .from('br_team_info')
     .select('*')
-    .filter('Team Initials','eq', tag)   // column with space handled via .filter
+    .filter('Team Initials','eq', tag)
     .limit(1);
   if (res.error){ console.error('br_team_info exact TAG error:', res.error); }
 
   if (!res.error && res.data && res.data.length) return res.data[0];
 
-  // Fallback to ilike
+  // Fallback ilike
   res = await client
     .from('br_team_info')
     .select('*')
@@ -661,7 +674,6 @@ function renderTeamOverview(){
 
 /* ========= Load Team Meta (derive TAG → fetch info/roster) ========= */
 async function loadTeamMeta(teamObj){
-  // Derive TAG from this team's match rows (ffbr_data.tag)
   CURRENT_TAG = deriveTagFromRows(TEAM_ROWS) || null;
 
   let info = null;
