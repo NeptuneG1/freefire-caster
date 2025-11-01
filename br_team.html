@@ -16,8 +16,9 @@
       /* Softer heatmap tint (brand-ish) */
       --heat-rgb: 255,189,89;   /* brand yellow */
       --heat-min: .06;          /* min alpha */
-      --heat-max: .24;          /* max alpha */
+      --heat-max: .22;          /* max alpha */
       --heat-top-outline: .42;  /* alpha for top outline */
+      --heat-radius: 8px;       /* rounded heatmap cells */
     }
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif}
@@ -80,11 +81,14 @@
     details.accordion > .accordion-body{ padding:12px; }
 
     /* Tables */
-    table{width:100%;border-collapse:collapse;font-size:.92rem}
-    thead th{background:#191919;position:sticky;top:0;text-align:left}
-    th,td{border-bottom:1px solid #2a2a2a;padding:6px 6px;vertical-align:top}
+    table{width:100%;border-collapse:separate;border-spacing:0 6px;font-size:.92rem} /* separate for rounded heat cells */
+    thead th{background:#191919;position:sticky;top:0;text-align:left;border-radius:8px;padding:8px 6px}
+    tbody tr td{border-bottom:none} /* spacing provides row separators now */
+    th,td{padding:6px 6px;vertical-align:top}
     .right{text-align:right}
-    td[data-key]{ transition: background-color .18s ease, box-shadow .18s ease; }
+
+    /* Rounded heat cells */
+    td[data-key]{ transition: background-color .18s ease, box-shadow .18s ease; border-radius: var(--heat-radius); background-clip: padding-box; }
     td.heat-top{ box-shadow: inset 0 0 0 1px rgba(var(--heat-rgb), var(--heat-top-outline)); }
 
     @media (max-width: 860px){ .grid2{grid-template-columns:1fr} }
@@ -198,7 +202,7 @@
   </details>
 
   <!-- ALL TEAMS — PER-MAP BREAKDOWN -->
-  <details class="accordion" id="perMapAllSection">
+  <details class="accordion" id="perMapAllSection" open>
     <summary>All Teams — Per-Map Breakdown</summary>
     <div class="accordion-body">
       <div class="bar">
@@ -286,21 +290,7 @@ function looksLikeURL(v){ return /^https?:\/\//i.test(String(v||'')); }
 function sum(arr, key){ let t=0; for(const r of arr) t += n(r[key]); return t; }
 function groupBy(arr, keyFn){ const m=new Map(); for(const r of arr){ const k=keyFn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r);} return m; }
 function cmpKey(a=[], b=[]){ const L=Math.max(a.length,b.length); for(let i=0;i<L;i++){ const av=a[i]??0, bv=b[i]??0; if(av>bv) return 1; if(av<bv) return -1; } return 0; }
-function splitToLines(val){
-  if (val == null) return [];
-  if (Array.isArray(val)) return val.flat().map(x=>String(x).trim()).filter(Boolean);
-  let s = String(val).trim();
-  try{ if (/^\s*\[/.test(s)){ const arr = JSON.parse(s); if (Array.isArray(arr)) return arr.flat().map(x=>String(x).trim()).filter(Boolean); } }catch{}
-  s = s.replace(/[•\u2022\u00b7]/g, '\n');
-  let parts = s.split(/\r?\n|;|\|/);
-  if (parts.length === 1 && s.includes(',')) parts = s.split(',');
-  return parts.map(x=>x.trim()).filter(Boolean);
-}
-function asListHTML(val){
-  const items = splitToLines(val);
-  if (!items.length) return '—';
-  return `<ul class="list-compact">${items.map(it=>`<li>${it}</li>`).join('')}</ul>`;
-}
+const parseTime = v => v ? (new Date(v)).getTime() || 0 : 0;
 
 /* ========= Aggregations ========= */
 function kpiDataset(rows){
@@ -366,11 +356,9 @@ async function fetchAllRows(){
   for(;;){
     const { data, error } = await client
       .from('ffbr_data')
-      .select('id, team, "group", stage, day, match, map, booyah, placement, elimination, drop, damage, total, played, top3, tag, week, tournament, year, season')
-      .order('year', { ascending:true })
-      .order('week', { ascending:true })
-      .order('day', { ascending:true })
-      .order('match', { ascending:true })
+      .select('id, created_at, team, "group", stage, day, match, map, booyah, placement, elimination, drop, damage, total, played, top3, tag, week, tournament, year, season')
+      .order('created_at', { ascending:true, nullsFirst:true })
+      .order('id', { ascending:true })
       .range(from, from + CHUNK - 1);
 
     if (error){ console.error('ffbr_data fetch failed:', error); break; }
@@ -385,24 +373,36 @@ async function fetchAllRows(){
 
 /* ========= Global tournament helpers ========= */
 function latestTournamentName(rows){
-  let best = null;
-  for (const r of rows){
-    const key = [Number(r.year)||0, Number(r.week)||0, Number(r.day)||0, Number(r.match)||0, Number(r.id)||0];
-    if (!best || cmpKey(key, best.key) > 0){ best = { key, t: norm(r.tournament) }; }
-  }
-  return best && best.t ? best.t : null;
-}
-function uniqueTournaments(rows){
-  const map = new Map();
+  // Prefer the tournament that has the most recent created_at among its rows.
+  const byT = new Map(); // key: lower(tournament) -> {name, maxTs}
   for (const r of rows){
     const t = norm(r.tournament); if (!t) continue;
     const k = t.toLowerCase();
-    const key = [Number(r.year)||0, Number(r.week)||0, Number(r.day)||0, Number(r.match)||0, Number(r.id)||0];
-    if (!map.has(k)) map.set(k, { name:t, key });
-    else { const o = map.get(k); if (cmpKey(key, o.key) > 0) o.key = key; }
+    const ts = parseTime(r.created_at);
+    if (!byT.has(k)) byT.set(k, { name:t, maxTs: ts });
+    else if (ts > byT.get(k).maxTs) byT.get(k).maxTs = ts;
   }
-  return Array.from(map.values()).sort((a,b)=> cmpKey(b.key, a.key) * -1);
+  if (byT.size){
+    return Array.from(byT.values()).sort((a,b)=> b.maxTs - a.maxTs)[0].name;
+  }
+  // Fallback: use tournament of the last row (by created_at/id asc fetch)
+  const last = rows.length ? rows[rows.length-1] : null;
+  return last ? norm(last.tournament) : null;
 }
+
+function uniqueTournaments(rows){
+  // Keep max created_at for ordering
+  const map = new Map();
+  for (const r of rows){
+    const t = norm(r.tournament); if (!t) continue;
+    const key = t.toLowerCase();
+    const ts = parseTime(r.created_at);
+    if (!map.has(key)) map.set(key, { name:t, maxTs: ts });
+    else map.get(key).maxTs = Math.max(map.get(key).maxTs, ts);
+  }
+  return Array.from(map.values()).sort((a,b)=> b.maxTs - a.maxTs || a.name.localeCompare(b.name));
+}
+
 function populateGlobalTournament(){
   const sel = el('gTournament');
   if (!sel) return;
@@ -544,7 +544,7 @@ function renderSimpleTable(list, cols){
   return `<table>${head}${body}</table>`;
 }
 
-/* ========= Soft Heatmap (subtle tint by rank) ========= */
+/* ========= Rounded Soft Heatmap ========= */
 function applyColumnHeatmap(containerId, keys){
   const wrap = el(containerId);
   const table = wrap?.querySelector('table'); if (!table) return;
@@ -575,11 +575,15 @@ function applyColumnHeatmap(containerId, keys){
     entries.forEach((e, idx)=>{
       const pctRank = n <= 1 ? 1 : 1 - (idx / (n - 1)); // 1 top → 0 bottom
       const eased = Math.pow(pctRank, 0.65);
-      const minA = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--heat-min')) || .06;
-      const maxA = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--heat-max')) || .24;
+      const styles = getComputedStyle(document.documentElement);
+      const minA = parseFloat(styles.getPropertyValue('--heat-min')) || .06;
+      const maxA = parseFloat(styles.getPropertyValue('--heat-max')) || .22;
       const alpha = minA + (maxA - minA) * eased;
+      const rgb = styles.getPropertyValue('--heat-rgb') || '255,189,89';
 
-      e.td.style.backgroundColor = `rgba(${getComputedStyle(document.documentElement).getPropertyValue('--heat-rgb') || '255,189,89'}, ${alpha.toFixed(3)})`;
+      e.td.style.backgroundColor = `rgba(${rgb}, ${alpha.toFixed(3)})`;
+      e.td.style.borderRadius = styles.getPropertyValue('--heat-radius') || '8px';
+      e.td.style.backgroundClip = 'padding-box';
       if (e.v === topVal) e.td.classList.add('heat-top');
     });
   }
@@ -962,7 +966,7 @@ async function initial(){
   // Load data (TAG-limited)
   ALL = await fetchAllRows();
 
-  // Populate global tournament (default to latest) & map list
+  // Populate global tournament (DEFAULT = last record in DB via created_at max) & map list
   populateGlobalTournament();
   populateMapFilter();
 
