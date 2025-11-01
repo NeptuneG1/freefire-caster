@@ -38,6 +38,7 @@
   .input::placeholder{color:#9fb0cf}
   .pill{background:#172033;padding:4px 8px;border-radius:999px;color:#c5d0e6;border:1px solid #2d3b57}
   .muted{color:var(--muted)}
+  .tag{display:inline-flex;align-items:center;gap:6px;background:#172033;border:1px solid #2e3b54;color:#cbd7f3;padding:4px 8px;border-radius:999px;font-size:.86rem}
 
   .grid2{display:grid;grid-template-columns:repeat(2,minmax(280px,1fr));gap:12px}
   .grid3{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:12px}
@@ -71,6 +72,12 @@
   }
   details.accordion[open] > summary{ border-bottom-color:var(--line); }
   details.accordion > .accordion-body{ padding:12px; }
+
+  /* Clickable player names */
+  .linklike{
+    background:transparent;border:0;padding:0;margin:0;
+    color:#7fd2ff;text-decoration:underline;cursor:pointer;font:inherit;
+  }
 </style>
 </head>
 <body>
@@ -111,7 +118,34 @@
     <div class="kpis" id="kpiWrap"></div>
   </div>
 
-  <!-- Per-Player Metrics (NEW) -->
+  <!-- NEW: Per-Player Mini Panel -->
+  <details class="accordion" id="playerMini">
+    <summary>Player Mini Panel — Pick Profile & Rates</summary>
+    <div class="accordion-body">
+      <div class="bar" style="margin-bottom:10px">
+        <label>Player
+          <select id="ppPlayerSelect" class="input" style="min-width:260px"></select>
+        </label>
+        <span id="ppTeamTag" class="tag" title="Dominant team for this player" hidden>—</span>
+        <button class="btn secondary" id="ppClear">Clear</button>
+      </div>
+
+      <div class="kpis" id="ppKPIs" style="margin-bottom:10px"></div>
+
+      <div class="grid2">
+        <div class="section" style="margin:0">
+          <h3 style="margin:0 0 8px;color:#ffd84a">Active Skills — Player Picks</h3>
+          <div id="ppActive">—</div>
+        </div>
+        <div class="section" style="margin:0">
+          <h3 style="margin:0 0 8px;color:#ffd84a">Pet Skills — Player Picks</h3>
+          <div id="ppPet">—</div>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <!-- Per-Player Metrics (Totals + per-match rates) -->
   <details class="accordion" open>
     <summary>Per-Player Metrics — Kills, Assists, Headshots, Damage, Grenade</summary>
     <div class="accordion-body">
@@ -307,43 +341,43 @@ let filter = { day:'__all__', match:'__all__', map:'__all__', team:'', player:''
 function normalizeRow(r){
   const o = {...r};
 
-  // EXACT columns you pointed out (case-insensitive, typo-friendly)
+  // columns you highlighted
   const KILLS_col       = getCI(o, 'KILLS','Kills','Kill','Total Kill');
   const ASSISTS_col     = getCI(o, 'ASSISTS','Assist','Assists');
-  const HEADSHOTRS_col  = getCI(o, 'HEADSHOTRS','HEADSHOTS','Headshots','Headshot','HS'); // typo supported
+  const HEADSHOTRS_col  = getCI(o, 'HEADSHOTRS','HEADSHOTS','Headshots','Headshot','HS');
   const DAMAGE_col      = getCI(o, 'DAMAGE','Damage');
   const GRENADE_col     = getCI(o, 'Grenade kill','Grenade Kill','Grenade Kills');
 
-  // Common meta
+  // meta
   o._team   = norm(getCI(o,'TeamName','Team','team','TAG','tag'));
   o._player = norm(getCI(o,'Player','IGN','Player IGN','InGameName','IGName','player','ign'));
   o._map    = norm(getCI(o,'Map','map'));
   o._day    = norm(getCI(o,'Day','day','WkDay','D'));
   o._match  = norm(getCI(o,'Match','match','Game','MatchNo'));
 
-  // Placement / points
+  // placement/points
   o._place   = n(getCI(o,'Placement','placement','Place'));
   const rankScore  = n(getCI(o,'RankingScore','Ranking Score'));
   const killScore  = n(getCI(o,'KillingScore','Killing Score'));
   const totalScore = n(getCI(o,'TotalScore','Total Score','Total','Total Points'));
   o._points = totalScore || (rankScore + killScore);
 
-  // Core stats
+  // core stats
   o._kills     = n(KILLS_col);
   o._assists   = n(ASSISTS_col);
   o._headshots = n(HEADSHOTRS_col);
   o._damage    = n(DAMAGE_col);
   o._nade      = n(GRENADE_col);
 
-  // Booyah
+  // booyah flag
   o._booyah = n(getCI(o,'Booyah','booyah'));
   if (!o._booyah) o._booyah = (o._place===1) ? 1 : 0;
 
-  // Picks
+  // picks
   o._active = norm(getCI(o,'Active Skill','SkillActive','Skill Active','Active'));
   o._pet    = norm(getCI(o,'Pet Skill Name','PetSkill','Pet'));
 
-  // per-player per-game key
+  // per-game key
   o._pgkey = `${low(o._day)}|${low(o._match)}|${low(o._map)}|${low(o._player)}`;
   return o;
 }
@@ -503,8 +537,13 @@ function renderTop10(){
     el('mvpSpot').hidden = true;
   }
 
-  renderExtraStatic(base);
-  renderExtraMetrics(base);
+  // make players clickable in these tables
+  makePlayerCellsClickable('top10Kills');
+  makePlayerCellsClickable('top10Assists');
+  makePlayerCellsClickable('top10Points');
+  makePlayerCellsClickable('top10KPM');
+  makePlayerCellsClickable('top10PPM');
+  makePlayerCellsClickable('top10MVP');
 }
 
 /* ===== Static extras from your named columns (per-player) ===== */
@@ -536,6 +575,7 @@ function renderExtraStatic(base){
   if (!rendered){
     wrap.innerHTML = '<div class="muted">No Headshots/Damage/Grenade metrics present.</div>';
   }
+  makePlayerCellsClickable('extraStaticWrap');
 }
 
 /* ===== Auto-detected extra metrics (optional) ===== */
@@ -588,9 +628,10 @@ function renderExtraMetrics(base){
   if (!rendered){
     wrap.innerHTML = '<div class="muted">No additional auto-detected metrics.</div>';
   }
+  makePlayerCellsClickable('extraMetricsWrap');
 }
 
-/* ===== Picks ===== */
+/* ===== Picks (overall) ===== */
 function tally(list){
   const m=new Map();
   for(const v of list){ const k=norm(v); if(!k) continue; m.set(k,(m.get(k)||0)+1); }
@@ -655,6 +696,8 @@ function renderPlayerTable(){
     {label:'Assists', key:'assists', right:true},
     {label:'MVPs', key:'mvp', right:true},
   ]);
+
+  makePlayerCellsClickable('tblPlayers');
 }
 
 /* ===== NEW: Per-Player Metrics Table ===== */
@@ -692,6 +735,8 @@ function renderPerPlayer(){
     {label:'Grenade', key:'nades', right:true},
     {label:'Nade / M', key:'nad_pm', right:true, fmt:'1d'}
   ]);
+
+  makePlayerCellsClickable('tblPerPlayer');
 }
 
 /* ===== Explorer ===== */
@@ -716,7 +761,165 @@ function populateFilters(){
   el('fMap').innerHTML    = maps.map(v=> `<option value="${escapeHtml(v)}">${v==='__all__'?'All':escapeHtml(v)}</option>`).join('');
 }
 
-/* ===== Wire UI ===== */
+/* ===== Player Mini Panel state + helpers ===== */
+let CURRENT_PLAYER = '';
+
+function playerNamesFromView(){
+  return uniq(VIEW.map(r=>r._player).filter(Boolean)).sort((a,b)=>a.localeCompare(b));
+}
+function dominantTeamForPlayer(player){
+  const m=new Map();
+  for (const r of VIEW){ if (r._player===player){ const t=r._team||'—'; m.set(t,(m.get(t)||0)+1); } }
+  let best='—',max=-1; for (const [t,c] of m){ if (c>max){ max=c; best=t; } }
+  return best;
+}
+function setCurrentPlayer(name){
+  CURRENT_PLAYER = name || '';
+  renderMiniPanel();
+}
+
+/* Make the 'Player' cells clickable in any rendered table inside a container */
+function makePlayerCellsClickable(containerId){
+  const wrap = el(containerId);
+  if (!wrap) return;
+  const tables = wrap.querySelectorAll('table');
+  tables.forEach(table=>{
+    const ths = Array.from(table.querySelectorAll('thead th'));
+    const idx = ths.findIndex(th => th.textContent.trim().toLowerCase() === 'player');
+    if (idx === -1) return;
+    table.querySelectorAll('tbody tr').forEach(tr=>{
+      const td = tr.children[idx];
+      if (!td) return;
+      const name = td.textContent.trim();
+      if (!name) return;
+      td.innerHTML = `<button class="linklike" data-player="${escapeHtml(name)}">${escapeHtml(name)}</button>`;
+    });
+  });
+}
+
+/* Wire global click to set player from any clickable name */
+document.addEventListener('click', (e)=>{
+  const b = e.target.closest('button.linklike[data-player]');
+  if (b){
+    setCurrentPlayer(b.dataset.player);
+    const pnl = el('playerMini'); pnl.open = true;
+    const sel = el('ppPlayerSelect');
+    if (sel){ sel.value = b.dataset.player; }
+  }
+});
+
+/* Render mini panel UI + data */
+function renderMiniPanel(){
+  // Populate dropdown from current VIEW
+  const players = playerNamesFromView();
+  const sel = el('ppPlayerSelect');
+  sel.innerHTML = `<option value="">— Select a player —</option>` + players.map(p=>`<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+  if (CURRENT_PLAYER && players.includes(CURRENT_PLAYER)) sel.value = CURRENT_PLAYER;
+
+  const teamTag = el('ppTeamTag');
+  const kpiMount = el('ppKPIs');
+  const actMount = el('ppActive');
+  const petMount = el('ppPet');
+
+  if (!CURRENT_PLAYER || !players.includes(CURRENT_PLAYER)){
+    teamTag.hidden = true; teamTag.textContent = '—';
+    kpiMount.innerHTML = '<div class="muted">Select a player to view KPIs & pick profile.</div>';
+    actMount.innerHTML = '—';
+    petMount.innerHTML = '—';
+    return;
+  }
+
+  const rows = VIEW.filter(r=>r._player===CURRENT_PLAYER);
+  const matches = uniq(rows.map(r=>r._pgkey)).length;
+
+  // Per-player KPIs
+  const points = rows.reduce((t,r)=> t + n(r._points), 0);
+  const kills  = rows.reduce((t,r)=> t + n(r._kills), 0);
+  const assists= rows.reduce((t,r)=> t + n(r._assists), 0);
+  const hshots = rows.reduce((t,r)=> t + n(r._headshots), 0);
+  const damage = rows.reduce((t,r)=> t + n(r._damage), 0);
+  const nades  = rows.reduce((t,r)=> t + n(r._nade), 0);
+
+  const ppm = matches? points/matches : 0;
+  const kpm = matches? kills/matches  : 0;
+  const apm = matches? assists/matches: 0;
+  const hspm= matches? hshots/matches : 0;
+  const dmgpm=matches? damage/matches : 0;
+  const nadpm=matches? nades/matches  : 0;
+
+  const domTeam = dominantTeamForPlayer(CURRENT_PLAYER);
+  teamTag.textContent = `Team: ${domTeam}`; teamTag.hidden = false;
+
+  kpiMount.innerHTML = [
+    ['Matches', matches],
+    ['Points', points],
+    ['PPM', ppm.toFixed(1)],
+    ['Kills', kills],
+    ['KPM', kpm.toFixed(1)],
+    ['Assists', assists],
+    ['APM', apm.toFixed(1)],
+    ['Headshots', hshots],
+    ['HS/M', hspm.toFixed(1)],
+    ['Damage', damage],
+    ['DMG/M', dmgpm.toFixed(1)],
+    ['Grenade', nades],
+    ['Nade/M', nadpm.toFixed(1)],
+  ].map(([t,v])=>`
+    <div class="kpi">
+      <div class="t">${t}</div>
+      <div class="v">${typeof v==='number'? v.toLocaleString(): v}</div>
+    </div>
+  `).join('');
+
+  // Per-player pick tallies
+  const act = rows.map(r=> r._active).filter(Boolean);
+  const pet = rows.map(r=> r._pet).filter(Boolean);
+
+  if (act.length){
+    const items = tally(act);
+    const total = items.reduce((t,x)=>t+x.count,0) || 1;
+    const rowsAct = items.sort((a,b)=> b.count-a.count || a.name.localeCompare(b.name))
+                         .slice(0,30)
+                         .map((x,i)=>({ rank:i+1, name:x.name, count:x.count, rate:x.count/total }));
+    actMount.innerHTML = renderTable(rowsAct, [
+      {label:'#', key:'rank', right:true},
+      {label:'Active Skill', key:'name'},
+      {label:'Count', key:'count', right:true},
+      {label:'Pick %', key:'rate', right:true, fmt:'pct'}
+    ]);
+  } else {
+    actMount.innerHTML = '<div class="muted">No Active Skill picks for this player.</div>';
+  }
+
+  if (pet.length){
+    const items = tally(pet);
+    const total = items.reduce((t,x)=>t+x.count,0) || 1;
+    const rowsPet = items.sort((a,b)=> b.count-a.count || a.name.localeCompare(b.name))
+                         .slice(0,30)
+                         .map((x,i)=>({ rank:i+1, name:x.name, count:x.count, rate:x.count/total }));
+    petMount.innerHTML = renderTable(rowsPet, [
+      {label:'#', key:'rank', right:true},
+      {label:'Pet Skill', key:'name'},
+      {label:'Count', key:'count', right:true},
+      {label:'Pick %', key:'rate', right:true, fmt:'pct'}
+    ]);
+  } else {
+    petMount.innerHTML = '<div class="muted">No Pet Skill picks for this player.</div>';
+  }
+}
+
+/* ===== Wire mini panel controls ===== */
+function wireMiniPanelUI(){
+  el('ppPlayerSelect').addEventListener('change', e=>{
+    setCurrentPlayer(e.target.value || '');
+  });
+  el('ppClear').addEventListener('click', ()=>{
+    setCurrentPlayer('');
+    el('ppPlayerSelect').value = '';
+  });
+}
+
+/* ===== Sorting / UI Wiring ===== */
 function wireUI(){
   el('fDay').addEventListener('change', e=>{ filter.day=e.target.value; refreshAll(); });
   el('fMatch').addEventListener('change', e=>{ filter.match=e.target.value; refreshAll(); });
@@ -743,17 +946,38 @@ function wireUI(){
   };
 
   el('explRefresh').onclick = renderExplorer;
+
+  wireMiniPanelUI();
 }
 
 /* ===== Refresh pipeline ===== */
 function refreshAll(){
+  const prevPlayer = CURRENT_PLAYER;
   applyFilters();
   renderKPIs();
-  renderPerPlayer();   // NEW core per-player view
-  renderTop10();       // Spotlights (per-player)
-  renderPickRates();
+  renderPerPlayer();   // per-player big table
+  renderTop10();       // spotlights
+  renderPickRates();   // global picks
   renderPlayerTable(); // legacy compact
+
+  // mini panel: re-populate list, keep selection if still visible
+  const players = playerNamesFromView();
+  if (!players.includes(prevPlayer)) {
+    CURRENT_PLAYER = '';
+  } else {
+    CURRENT_PLAYER = prevPlayer;
+  }
+  renderMiniPanel();
+
   if (el('explCols').options.length) renderExplorer();
+}
+
+/* ===== Explorer ===== */
+function populateExplorerCols(){
+  const expl = el('explCols');
+  const defaultCols = ['_day','_match','_map','_team','_player','_points','_kills','_assists','_place','_booyah','_active','_pet','_headshots','_damage','_nade'];
+  const items = uniq(defaultCols.concat(ALL_COLS)).filter(c=>!/^_pgkey$/.test(c));
+  expl.innerHTML = items.map(c=> `<option value="${escapeHtml(c)}" ${defaultCols.includes(c)?'selected':''}>${escapeHtml(c)}</option>`).join('');
 }
 
 /* ===== Init ===== */
@@ -762,12 +986,8 @@ async function init(){
   RAW = raw.map(normalizeRow);
   ALL_COLS = uniq(RAW.flatMap(r=>Object.keys(r)));
 
-  const expl = el('explCols');
-  const defaultCols = ['_day','_match','_map','_team','_player','_points','_kills','_assists','_place','_booyah','_active','_pet','_headshots','_damage','_nade'];
-  const items = uniq(defaultCols.concat(ALL_COLS)).filter(c=>!/^_pgkey$/.test(c));
-  expl.innerHTML = items.map(c=> `<option value="${escapeHtml(c)}" ${defaultCols.includes(c)?'selected':''}>${escapeHtml(c)}</option>`).join('');
-
   populateFilters();
+  populateExplorerCols();
   wireUI();
   refreshAll();
 }
