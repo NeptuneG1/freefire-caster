@@ -89,12 +89,12 @@
     </div>
   </div>
 
-  <!-- RECENT ENTRIES (Top 10 for selected player) -->
+  <!-- PERFORMANCE BY MAP (Selected Player) -->
   <details class="accordion" open>
-    <summary>Recent Entries (Top 10)</summary>
+    <summary>Performance by Map (Selected Player)</summary>
     <div class="accordion-body">
       <div class="card" style="margin:0">
-        <div id="tblRecent">—</div>
+        <div id="tblMapPerf">—</div>
       </div>
     </div>
   </details>
@@ -182,7 +182,7 @@ function getCI(obj, ...names){
   return '';
 }
 
-/* small helpers for flexible label finding */
+/* flexible helpers */
 function firstNonEmpty(...vals){
   for (const v of vals){
     const s = v==null ? '' : String(v).trim();
@@ -214,14 +214,13 @@ function normalizeRow(r){
   o.damage     = n(getCI(o,'DAMAGE','Damage','DMG'));
   o.grenade    = n(getCI(o,'Grenade kill','Grenade kills','Nade Kills','Grenade'));
 
-  // *** Active Skill: explicit support for "skillactive_1" ***
+  // Active Skill: explicit support for "skillactive_1" + fallbacks
   o.active = norm(firstNonEmpty(
-    getCI(o,'skillactive_1'),                          // <- your column
+    getCI(o,'skillactive_1'),
     getCI(o,'Active Skill','Active','Skill','ActiveSkill','Active Skill Name','ActiveSkillName'),
-    findByWords(o, ['active','skill']),               // e.g., "active skill name"
+    findByWords(o, ['active','skill']),
     getCI(o,'Character','Character Name','Active Character','ActiveCharacter')
   ));
-
   // Pet usage (common variants)
   o.pet = norm(firstNonEmpty(
     getCI(o,'Pet','Pet Name','PetName','Pet Skill Name','PetSkill','PetSkillName')
@@ -355,30 +354,57 @@ function renderOverview(player, rows){
     </div>` : '<div class="muted">—</div>';
 }
 
-/* ===== Tables ===== */
-function renderRecent(rows){
-  const sorted = rows.slice().sort((a,b)=>{
-    const ad = new Date(a._created||0).getTime() || 0;
-    const bd = new Date(b._created||0).getTime() || 0;
-    if (ad !== bd) return bd - ad;
-    return (b._id||0) - (a._id||0);
-  }).slice(0,10);
-  const cols = [
-    { label:'Map', key:'_map' },
-    { label:'Tournament', key:'_tournament' },
+/* ===== Performance by Map (Selected Player) ===== */
+function mapPerfForPlayer(rows){
+  const byMap = new Map();
+  for (const r of rows){
+    const key = r._map || '—';
+    if (!byMap.has(key)) byMap.set(key, { map:key, rows:0, kills:0, assists:0, headshots:0, grenade:0, damage:0 });
+    const a = byMap.get(key);
+    a.rows += 1;
+    a.kills += n(r.kills);
+    a.assists += n(r.assists);
+    a.headshots += n(r.headshots);
+    a.grenade += n(r.grenade);
+    a.damage += n(r.damage);
+  }
+  const list = Array.from(byMap.values()).map(m=>({
+    ...m,
+    kpr: m.rows ? m.kills/m.rows : 0,
+    apr: m.rows ? m.assists/m.rows : 0,
+    hspr: m.rows ? m.headshots/m.rows : 0,
+    nadpr: m.rows ? m.grenade/m.rows : 0,
+    dpr: m.rows ? m.damage/m.rows : 0,
+  }));
+  // Default sort: by KPR desc, then kills desc, then map A→Z
+  list.sort((a,b)=> b.kpr - a.kpr || b.kills - a.kills || a.map.localeCompare(b.map));
+  return list;
+}
+function renderMapPerf(rows){
+  if (!rows.length){
+    el('tblMapPerf').innerHTML = '<div class="muted">Select a player to see per-map performance.</div>';
+    return;
+  }
+  const list = mapPerfForPlayer(rows);
+  el('tblMapPerf').innerHTML = renderSimpleTable(list, [
+    { label:'Map', key:'map' },
+    { label:'Rows', key:'rows', right:true },
     { label:'Kills', key:'kills', right:true },
+    { label:'K/Row', key:'kpr', right:true, format:'1d' },
     { label:'Assists', key:'assists', right:true },
+    { label:'A/Row', key:'apr', right:true, format:'1d' },
     { label:'HS', key:'headshots', right:true },
+    { label:'HS/Row', key:'hspr', right:true, format:'1d' },
     { label:'Grenade', key:'grenade', right:true },
+    { label:'Nade/Row', key:'nadpr', right:true, format:'1d' },
     { label:'Damage', key:'damage', right:true },
-  ];
-  el('tblRecent').innerHTML = renderSimpleTable(sorted, cols);
-  applyColumnHeatmap('tblRecent', ['kills','assists','headshots','grenade','damage']);
+    { label:'DMG/Row', key:'dpr', right:true, format:'1d' },
+  ]);
+  applyColumnHeatmap('tblMapPerf', ['kpr','apr','hspr','nadpr','dpr','kills','assists','headshots','grenade','damage']);
 }
 
 /* ===== GLOBAL AGGREGATES (COUNTS ONLY) ===== */
 function countByName(rows, key){
-  // Case/space-insensitive grouping; display first-seen original label
   const m = new Map(); // normKey -> {name, picks}
   for (const r of rows){
     const raw = norm(r[key]);
@@ -389,28 +415,24 @@ function countByName(rows, key){
   }
   return Array.from(m.values());
 }
-
 function renderActiveGlobal(allRows){
   const list = countByName(allRows, 'active')
     .sort((a,b)=> b.picks - a.picks || a.name.localeCompare(b.name))
     .slice(0,10);
-  const cols = [
+  el('tblActive').innerHTML = renderSimpleTable(list, [
     { label:'Active Skill', key:'name' },
     { label:'Picks', key:'picks', right:true },
-  ];
-  el('tblActive').innerHTML = renderSimpleTable(list, cols);
+  ]);
   applyColumnHeatmap('tblActive', ['picks']);
 }
-
 function renderPetGlobal(allRows){
   const list = countByName(allRows, 'pet')
     .sort((a,b)=> b.picks - a.picks || a.name.localeCompare(b.name))
     .slice(0,10);
-  const cols = [
+  el('tblPet').innerHTML = renderSimpleTable(list, [
     { label:'Pet', key:'name' },
     { label:'Picks', key:'picks', right:true },
-  ];
-  el('tblPet').innerHTML = renderSimpleTable(list, cols);
+  ]);
   applyColumnHeatmap('tblPet', ['picks']);
 }
 
@@ -425,7 +447,7 @@ function renderTopKillers(allRows){
     o.kills += r.kills; o.assists += r.assists; o.headshots += r.headshots; o.grenade += r.grenade; o.damage += r.damage; o.rows++;
   }
   const list = Array.from(m.values()).sort((a,b)=> b.kills - a.kills || a.player.localeCompare(b.player)).slice(0,10);
-  const cols = [
+  el('tblTopKillers').innerHTML = renderSimpleTable(list, [
     { label:'Player', key:'player' },
     { label:'Rows', key:'rows', right:true },
     { label:'Kills', key:'kills', right:true },
@@ -433,8 +455,7 @@ function renderTopKillers(allRows){
     { label:'HS', key:'headshots', right:true },
     { label:'Grenade', key:'grenade', right:true },
     { label:'Damage', key:'damage', right:true },
-  ];
-  el('tblTopKillers').innerHTML = renderSimpleTable(list, cols);
+  ]);
   applyColumnHeatmap('tblTopKillers', ['rows','kills','assists','headshots','grenade','damage']);
 }
 
@@ -466,7 +487,7 @@ function selectPlayer(name){
 
   const rows = ALL.filter(r => (r._player||'').toLowerCase() === CURRENT_PLAYER.toLowerCase());
   renderOverview(CURRENT_PLAYER, rows);
-  renderRecent(rows);
+  renderMapPerf(rows);
 
   document.querySelectorAll('.chipbtn').forEach(b=>{
     b.classList.toggle('active', b.getAttribute('data-name').toLowerCase() === CURRENT_PLAYER.toLowerCase());
@@ -527,7 +548,7 @@ async function initial(){
     el('playerTitle').textContent = 'Player Overview';
     el('identityBody').innerHTML = 'Select a player.';
     el('kpiBody').innerHTML = '—';
-    el('tblRecent').innerHTML = '—';
+    el('tblMapPerf').innerHTML = '—';
     document.querySelectorAll('.chipbtn').forEach(b=> b.classList.remove('active'));
   };
   el('copyLink').onclick = copyLinkToClipboard;
