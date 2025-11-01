@@ -275,9 +275,7 @@ const TEAMS = [
 
 const TEAM_BY_CODE = Object.fromEntries(TEAMS.map(t => [t.name.toLowerCase(), t]));
 const TEAM_BY_NAME = Object.fromEntries(TEAMS.map(t => [t.fullname.toLowerCase(), t]));
-const ALLOWED_SET  = new Set(TEAMS.map(t => t.fullname.toLowerCase()));
-const ALLOWED = new Map();
-TEAMS.forEach(t => { ALLOWED.set(t.name.toLowerCase(), t); ALLOWED.set(t.fullname.toLowerCase(), t); });
+const ALLOWED_TAGS = new Set(TEAMS.map(t => t.name.toUpperCase())); // <-- ALLOWED by TAG
 
 /* ========= Utilities ========= */
 const el = (id) => document.getElementById(id);
@@ -287,29 +285,12 @@ const norm = (v) => (v==null ? '' : String(v).trim());
 function looksLikeURL(v){ return /^https?:\/\//i.test(String(v||'')); }
 function sum(arr, key){ let t=0; for(const r of arr) t += n(r[key]); return t; }
 function groupBy(arr, keyFn){ const m=new Map(); for(const r of arr){ const k=keyFn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r);} return m; }
-
-/* Vector key compare: returns -1/0/1 */
-function cmpKey(a=[], b=[]){
-  const L = Math.max(a.length, b.length);
-  for (let i=0;i<L;i++){
-    const av = a[i] ?? 0, bv = b[i] ?? 0;
-    if (av > bv) return 1;
-    if (av < bv) return -1;
-  }
-  return 0;
-}
-
-/* Split semicolon/comma/pipe/bullet/newline/JSON arrays to clean lines */
+function cmpKey(a=[], b=[]){ const L=Math.max(a.length,b.length); for(let i=0;i<L;i++){ const av=a[i]??0, bv=b[i]??0; if(av>bv) return 1; if(av<bv) return -1; } return 0; }
 function splitToLines(val){
   if (val == null) return [];
   if (Array.isArray(val)) return val.flat().map(x=>String(x).trim()).filter(Boolean);
   let s = String(val).trim();
-  try{
-    if (/^\s*\[/.test(s)){
-      const arr = JSON.parse(s);
-      if (Array.isArray(arr)) return arr.flat().map(x=>String(x).trim()).filter(Boolean);
-    }
-  }catch{}
+  try{ if (/^\s*\[/.test(s)){ const arr = JSON.parse(s); if (Array.isArray(arr)) return arr.flat().map(x=>String(x).trim()).filter(Boolean); } }catch{}
   s = s.replace(/[•\u2022\u00b7]/g, '\n');
   let parts = s.split(/\r?\n|;|\|/);
   if (parts.length === 1 && s.includes(',')) parts = s.split(',');
@@ -364,11 +345,20 @@ function teamMapPerf(rows){
 }
 
 /* ========= State ========= */
-let ALL = [];
-let TEAM_ROWS = [];
+let ALL = [];        // only rows whose TAG is in ALLOWED_TAGS
+let TEAM_ROWS = [];  // current team rows (TAG match, filtered by tournament)
 let CURRENT_TEAM = null;
 
-/* ========= Fetch ffbr_data (paginated) ========= */
+/* ========= Helpers bound to TAG ========= */
+function codeFromRow(r){
+  const code = norm(r.tag).toUpperCase();
+  return ALLOWED_TAGS.has(code) ? code : null;
+}
+function metaFromCode(code){
+  return code ? TEAM_BY_CODE[code.toLowerCase()] : null;
+}
+
+/* ========= Fetch ffbr_data (paginated, LIMITED BY TAG) ========= */
 async function fetchAllRows(){
   const CHUNK = 1000;
   let from = 0;
@@ -389,7 +379,8 @@ async function fetchAllRows(){
     out.push(...rows);
     from += rows.length;
   }
-  return out.filter(r => ALLOWED_SET.has((norm(r.team)||'').toLowerCase()));
+  // STRICT limiter by TAG (requested): keep only rows whose TAG matches one of the 18 codes
+  return out.filter(r => ALLOWED_TAGS.has((norm(r.tag)||'').toUpperCase()));
 }
 
 /* ========= Global tournament helpers ========= */
@@ -410,7 +401,7 @@ function uniqueTournaments(rows){
     if (!map.has(k)) map.set(k, { name:t, key });
     else { const o = map.get(k); if (cmpKey(key, o.key) > 0) o.key = key; }
   }
-  return Array.from(map.values()).sort((a,b)=> cmpKey(b.key, a.key));
+  return Array.from(map.values()).sort((a,b)=> cmpKey(b.key, a.key) * -1);
 }
 function populateGlobalTournament(){
   const sel = el('gTournament');
@@ -439,22 +430,20 @@ function updateFilterHint(){
     : `Scope: ${t} • Rows: ${total}`;
 }
 
-/* ========= Overall & Per-Map aggregations (all teams) ========= */
+/* ========= Overall & Per-Map aggregations (TAG-based) ========= */
 function aggregateOverall(rows){
-  const grouped = new Map();
+  const grouped = new Map(); // key: CODE (TAG)
   for (const r of rows){
-    const raw = (r.team || '').trim().toLowerCase();
-    const meta = ALLOWED.get(raw);
-    if (!meta) continue;
-    const code = meta.name.toLowerCase();
+    const code = codeFromRow(r);
+    if (!code) continue;
     if (!grouped.has(code)) grouped.set(code, []);
     grouped.get(code).push(r);
   }
   const out = [];
   for (const [code, list] of grouped.entries()){
-    const meta = TEAM_BY_CODE[code];
+    const meta = metaFromCode(code);
     const m = list.length;
-    if (!m) continue;
+    if (!m || !meta) continue;
     const booyahs = sum(list,'booyah');
     const elims   = sum(list,'elimination');
     const place   = sum(list,'placement');
@@ -475,23 +464,21 @@ function aggregateOverall(rows){
   return out;
 }
 function aggregateTeamsForMap(rows, mapValue){
-  const perTeam = new Map();
+  const perTeam = new Map(); // key: CODE (TAG)
   for (const r of rows){
     if (mapValue && mapValue !== '__all__'){
       if ((norm(r.map) || '').toLowerCase() !== mapValue.toLowerCase()) continue;
     }
-    const raw = (r.team || '').trim().toLowerCase();
-    const meta = ALLOWED.get(raw);
-    if (!meta) continue;
-    const code = meta.name.toLowerCase();
+    const code = codeFromRow(r);
+    if (!code) continue;
     if (!perTeam.has(code)) perTeam.set(code, []);
     perTeam.get(code).push(r);
   }
   const out = [];
   for (const [code, list] of perTeam.entries()){
-    const meta = TEAM_BY_CODE[code];
+    const meta = metaFromCode(code);
     const m = list.length;
-    if (!m) continue;
+    if (!m || !meta) continue;
     const booyahs = sum(list,'booyah');
     const elims   = sum(list,'elimination');
     const place   = sum(list,'placement');
@@ -557,12 +544,11 @@ function renderSimpleTable(list, cols){
   return `<table>${head}${body}</table>`;
 }
 
-/* ========= Soft Heatmap (subtle tint by rank; no harsh bars) ========= */
+/* ========= Soft Heatmap (subtle tint by rank) ========= */
 function applyColumnHeatmap(containerId, keys){
   const wrap = el(containerId);
   const table = wrap?.querySelector('table'); if (!table) return;
 
-  // Clear old styles
   table.querySelectorAll('td[data-key]').forEach(td=>{
     td.style.backgroundImage = 'none';
     td.style.backgroundColor = '';
@@ -573,32 +559,27 @@ function applyColumnHeatmap(containerId, keys){
     const cells = Array.from(table.querySelectorAll(`td[data-key="${key}"]`));
     if (!cells.length) continue;
 
-    // Collect numeric values
     const vals = cells.map(td=>{
       const raw = (td.textContent||'').trim().replace('%','');
       const v = parseFloat(raw);
       return isFinite(v) ? v : null;
     });
 
-    // Filter and rank (higher is better)
     const entries = cells.map((td,i)=>({ td, v: vals[i] })).filter(x=>x.v!=null);
     if (!entries.length) continue;
 
-    entries.sort((a,b)=> b.v - a.v);               // desc
+    entries.sort((a,b)=> b.v - a.v);
     const n = entries.length;
     const topVal = entries[0].v;
 
-    // Apply tint based on percentile rank (easier on the eyes)
     entries.forEach((e, idx)=>{
-      const pctRank = n <= 1 ? 1 : 1 - (idx / (n - 1)); // 1 for top, 0 for bottom
-      // Slight easing to keep midrange very subtle
+      const pctRank = n <= 1 ? 1 : 1 - (idx / (n - 1)); // 1 top → 0 bottom
       const eased = Math.pow(pctRank, 0.65);
-      const alpha = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--heat-min')) || .06)
-                  + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--heat-max')) || .24 - (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--heat-min')) || .06)) * eased;
+      const minA = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--heat-min')) || .06;
+      const maxA = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--heat-max')) || .24;
+      const alpha = minA + (maxA - minA) * eased;
 
       e.td.style.backgroundColor = `rgba(${getComputedStyle(document.documentElement).getPropertyValue('--heat-rgb') || '255,189,89'}, ${alpha.toFixed(3)})`;
-
-      // Mark top cell(s) with a soft inset outline
       if (e.v === topVal) e.td.classList.add('heat-top');
     });
   }
@@ -824,18 +805,16 @@ function highlightActiveTile(){
   });
 }
 
-/* ========= Selection ========= */
+/* ========= Selection (TAG-first) ========= */
 async function selectTeam(teamObj){
   CURRENT_TEAM = teamObj;
   const url = new URL(window.location.href);
   url.searchParams.set('team', CURRENT_TEAM.name);
   history.replaceState(null, '', url.toString());
 
-  // Limit by TAG primarily; fallback to fullname
   const base = baseRowsByTournament(ALL);
-  const byTag = base.filter(r => (norm(r.tag).toUpperCase() || '') === teamObj.name.toUpperCase());
-  const byName = base.filter(r => (norm(r.team).toLowerCase() || '') === teamObj.fullname.toLowerCase());
-  TEAM_ROWS = byTag.length ? byTag : byName;
+  // STRICT by TAG
+  TEAM_ROWS = base.filter(r => (norm(r.tag).toUpperCase() || '') === teamObj.name.toUpperCase());
 
   renderTeamOverview();
   await loadTeamMeta(teamObj);
@@ -929,9 +908,7 @@ async function initial(){
     populateMapFilter();
     if (CURRENT_TEAM){
       const base = baseRowsByTournament(ALL);
-      const byTag = base.filter(r => (norm(r.tag).toUpperCase() || '') === CURRENT_TEAM.name.toUpperCase());
-      const byName = base.filter(r => (norm(r.team).toLowerCase() || '') === CURRENT_TEAM.fullname.toLowerCase());
-      TEAM_ROWS = byTag.length ? byTag : byName;
+      TEAM_ROWS = base.filter(r => (norm(r.tag).toUpperCase() || '') === CURRENT_TEAM.name.toUpperCase());
       renderTeamOverview();
     }
     renderOverall();
@@ -982,7 +959,7 @@ async function initial(){
     renderPerMapAllTeams();
   });
 
-  // Load data
+  // Load data (TAG-limited)
   ALL = await fetchAllRows();
 
   // Populate global tournament (default to latest) & map list
