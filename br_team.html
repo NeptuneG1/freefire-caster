@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FFBR — Teams (Overview + Map + Info + Roster)</title>
+  <title>FFBR — Teams (Overview + Map + Info + Roster + Overall)</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root{--bg:#0e0e0e; --panel:#1b1b1b; --panel2:#141414; --ink:#f5f5f5; --muted:#b9b9b9; --brand:#ffbd59; --brand2:#ff7733; --line:#313131;}
@@ -26,8 +26,9 @@
     .kpis{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
     .kpi{background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:5px 8px;font-size:.9rem}
     .muted{color:var(--muted)}
+    .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 
-    /* Team grid: equal tiles, 9 cols default, logo fixed */
+    /* Team grid: equal tiles; default 9 columns; logo 72x72; names clamp 2 lines */
     .team-grid{
       --cols: 9;
       display:grid;
@@ -58,18 +59,12 @@
     th,td{border-bottom:1px solid #2a2a2a;padding:6px 6px;vertical-align:top}
     thead th{background:#191919;position:sticky;top:0;text-align:left}
 
-    @media (max-width:860px){ .grid2{grid-template-columns:1fr} }
-
-    /* Collapsible */
     details.accordion{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:14px}
     details.accordion>summary{list-style:none;cursor:pointer;padding:12px 14px;color:var(--brand);font-weight:700;border-bottom:1px solid var(--line);user-select:none}
     details.accordion[open]>summary{border-bottom-color:var(--line)}
     details.accordion>.accordion-body{padding:12px}
 
-    .avatar{width:36px;height:36px;border-radius:6px;object-fit:cover;border:1px solid #2a2a2a;background:#111}
-    .list-compact{margin:0;padding-left:16px}
-    .list-compact li{margin:2px 0}
-    .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    @media (max-width:860px){ .grid2{grid-template-columns:1fr} }
   </style>
 </head>
 <body>
@@ -92,7 +87,7 @@
     <div id="teamGrid" class="team-grid">Loading teams…</div>
   </div>
 
-  <!-- GLOBAL TOURNAMENT (applies to ALL ffbr_data views) -->
+  <!-- GLOBAL TOURNAMENT (applies to *ALL* ffbr_data views) -->
   <div class="section">
     <h2>Data Scope</h2>
     <div class="bar">
@@ -127,7 +122,62 @@
     </div>
   </div>
 
-  <!-- TEAM INFO (collapsible, default closed) -->
+  <!-- OVERALL PERFORMANCE (All Teams) -->
+  <details class="accordion" id="overallSection">
+    <summary>Overall Performance (All Teams)</summary>
+    <div class="accordion-body">
+      <div class="bar">
+        <label for="overallSortKey">Sort by</label>
+        <select id="overallSortKey" class="input">
+          <option value="total_pm" selected>Total / m</option>
+          <option value="elims_pm">Elims / m</option>
+          <option value="placement_pm">Placement / m</option>
+          <option value="booyah_rate">Booyah %</option>
+          <option value="top3_rate">Top-3 %</option>
+          <option value="matches">Matches</option>
+          <option value="team">Team (A→Z)</option>
+        </select>
+        <button class="btn secondary" id="overallSortDir" data-dir="desc" title="Toggle ascending/descending">Desc</button>
+        <button class="btn secondary" id="overallReset">Reset</button>
+        <span class="muted">Scope: global tournament above</span>
+      </div>
+      <div class="card" style="margin:0">
+        <div id="tblOverall">Loading…</div>
+      </div>
+    </div>
+  </details>
+
+  <!-- ALL TEAMS — PER-MAP BREAKDOWN -->
+  <details class="accordion" id="perMapAllSection">
+    <summary>All Teams — Per-Map Breakdown</summary>
+    <div class="accordion-body">
+      <div class="bar">
+        <label for="mapFilter">Map</label>
+        <select id="mapFilter" class="input" style="min-width:220px">
+          <option value="__all__" selected>All maps</option>
+        </select>
+
+        <label for="perMapSortKey">Sort by</label>
+        <select id="perMapSortKey" class="input">
+          <option value="total_pm" selected>Total / m</option>
+          <option value="elims_pm">Elims / m</option>
+          <option value="placement_pm">Placement / m</option>
+          <option value="booyah_rate">Booyah %</option>
+          <option value="top3_rate">Top-3 %</option>
+          <option value="matches">Matches</option>
+          <option value="team">Team (A→Z)</option>
+        </select>
+        <button class="btn secondary" id="perMapSortDir" data-dir="desc" title="Toggle ascending/descending">Desc</button>
+        <button class="btn secondary" id="perMapReset">Reset</button>
+        <span class="muted">Scope: global tournament above</span>
+      </div>
+      <div class="card" style="margin:0">
+        <div id="tblPerMapAllTeams">Loading…</div>
+      </div>
+    </div>
+  </details>
+
+  <!-- TEAM INFO (collapsible) -->
   <details class="accordion" id="teamInfoSection">
     <summary>Team Info</summary>
     <div class="accordion-body">
@@ -137,7 +187,7 @@
     </div>
   </details>
 
-  <!-- ROSTER (collapsible, default closed) -->
+  <!-- ROSTER (collapsible) -->
   <details class="accordion" id="teamRosterSection">
     <summary>Roster & Accolades</summary>
     <div class="accordion-body">
@@ -278,7 +328,6 @@ function teamMapPerf(rows){
       total_pm:m?sum(list,'total')/m:0
     });
   }
-  // Desc by Total/m, then matches, then name
   return out.sort((a,b)=> b.total_pm - a.total_pm || b.matches - a.matches || a.map.localeCompare(b.map));
 }
 
@@ -288,7 +337,7 @@ let CURRENT_TEAM = null;   // selected TEAMS meta
 let G_TOURN = '__all__';   // global tournament selection
 let DEFAULT_TOURN = '__all__';
 
-/* Scope helper: filter ALL by tournament */
+/* Scope helper: filter ALL by global tournament */
 function rowsScope(){
   if (G_TOURN === '__all__') return ALL;
   const lf = G_TOURN.toLowerCase();
@@ -319,7 +368,77 @@ async function fetchAllRows(){
   return out.filter(r => ALLOWED_TAGS.has(String(r.tag||'').toUpperCase()));
 }
 
-/* ========= UI rendering ========= */
+/* ========= OVERALL (All Teams) ========= */
+function aggregateOverall(rows){
+  const byTag = groupBy(rows, r => String(r.tag||'').toUpperCase());
+  const out = [];
+  for (const [code, list] of byTag.entries()){
+    if (!ALLOWED_TAGS.has(code)) continue;
+    const meta = TEAM_BY_CODE[code.toLowerCase()];
+    const m = list.length;
+    if (!m) continue;
+    out.push({
+      team: meta?.fullname || code,
+      code: meta?.name || code,
+      region: meta?.region || '—',
+      matches: m,
+      booyah_rate:  sum(list,'booyah')/m,
+      elims_pm:     sum(list,'elimination')/m,
+      placement_pm: sum(list,'placement')/m,
+      total_pm:     sum(list,'total')/m,
+      top3_rate:    sum(list,'top3')/m
+    });
+  }
+  return out;
+}
+
+/* ========= All Teams — Per-Map Breakdown ========= */
+function uniqueMaps(rows){
+  const s = new Set();
+  for (const r of rows){ const m = norm(r.map); if (m) s.add(m); }
+  return Array.from(s).sort((a,b)=>a.localeCompare(b));
+}
+function aggregateTeamsForMap(rows, mapValue){
+  const filtered = (mapValue && mapValue !== '__all__')
+    ? rows.filter(r => norm(r.map).toLowerCase() === mapValue.toLowerCase())
+    : rows;
+
+  const byTag = groupBy(filtered, r => String(r.tag||'').toUpperCase());
+  const out = [];
+  for (const [code, list] of byTag.entries()){
+    if (!ALLOWED_TAGS.has(code)) continue;
+    const meta = TEAM_BY_CODE[code.toLowerCase()];
+    const m = list.length;
+    if (!m) continue;
+    out.push({
+      team: meta?.fullname || code,
+      code: meta?.name || code,
+      region: meta?.region || '—',
+      matches: m,
+      booyah_rate:  sum(list,'booyah')/m,
+      elims_pm:     sum(list,'elimination')/m,
+      placement_pm: sum(list,'placement')/m,
+      total_pm:     sum(list,'total')/m,
+      top3_rate:    sum(list,'top3')/m
+    });
+  }
+  return out;
+}
+
+/* ========= Sort helpers & render tables ========= */
+function sortRowsGeneric(rows, key, dir){
+  const mult = dir === 'asc' ? 1 : -1;
+  return rows.sort((a,b)=>{
+    if (['team','region','code'].includes(key)){
+      return mult * a[key].localeCompare(b[key]);
+    }
+    const av = Number(a[key]); const bv = Number(b[key]);
+    if (isNaN(av) && isNaN(bv)) return 0;
+    if (isNaN(av)) return 1 * mult;
+    if (isNaN(bv)) return -1 * mult;
+    return mult * (av - bv);
+  });
+}
 function renderSimpleTable(list, cols){
   if (!list.length) return '<div class="muted">No rows.</div>';
   const head = `<thead><tr>${cols.map(c=>`<th class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
@@ -335,13 +454,14 @@ function renderSimpleTable(list, cols){
   return `<table>${head}${body}</table>`;
 }
 
+/* ========= UI renderers (team + overall + per-map) ========= */
 function renderTeamOverview(){
   const scope = rowsScope();
   const code = CURRENT_TEAM?.name || '';
   const tagUp = code.toUpperCase();
   const TEAM_ROWS = scope.filter(r => String(r.tag||'').toUpperCase() === tagUp);
 
-  // Scope meta label
+  // Scope meta
   const metaEl = el('scopeMeta');
   const tLabel = G_TOURN === '__all__' ? 'All tournaments' : G_TOURN;
   metaEl.textContent = `Tournament: ${tLabel} • Rows in scope: ${scope.length}`;
@@ -391,6 +511,53 @@ function renderTeamOverview(){
   );
 }
 
+function renderOverall(){
+  const keySel = el('overallSortKey');
+  const dirBtn = el('overallSortDir');
+  const sortKey = keySel?.value || 'total_pm';
+  const dir = dirBtn?.dataset?.dir || 'desc';
+
+  const rows = aggregateOverall(rowsScope());
+  sortRowsGeneric(rows, sortKey, dir);
+
+  el('tblOverall').innerHTML = renderSimpleTable(rows, [
+    {label:'Team',           key:'team'},
+    {label:'Code',           key:'code'},
+    {label:'Region',         key:'region'},
+    {label:'Matches',        key:'matches',     right:true},
+    {label:'Booyah %',       key:'booyah_rate', format:'pct', right:true},
+    {label:'Elims / m',      key:'elims_pm',    format:'1d',  right:true},
+    {label:'Placement / m',  key:'placement_pm',format:'1d',  right:true},
+    {label:'Total / m',      key:'total_pm',    format:'1d',  right:true},
+    {label:'Top-3 %',        key:'top3_rate',   format:'pct', right:true},
+  ]);
+}
+
+function renderPerMapAllTeams(){
+  const mapSel = el('mapFilter');
+  const keySel = el('perMapSortKey');
+  const dirBtn = el('perMapSortDir');
+
+  const mapVal = mapSel?.value || '__all__';
+  const sortKey = keySel?.value || 'total_pm';
+  const dir = dirBtn?.dataset?.dir || 'desc';
+
+  const rows = aggregateTeamsForMap(rowsScope(), mapVal);
+  sortRowsGeneric(rows, sortKey, dir);
+
+  el('tblPerMapAllTeams').innerHTML = renderSimpleTable(rows, [
+    {label:'Team',           key:'team'},
+    {label:'Code',           key:'code'},
+    {label:'Region',         key:'region'},
+    {label:'Matches',        key:'matches',     right:true},
+    {label:'Booyah %',       key:'booyah_rate', format:'pct', right:true},
+    {label:'Elims / m',      key:'elims_pm',    format:'1d',  right:true},
+    {label:'Placement / m',  key:'placement_pm',format:'1d',  right:true},
+    {label:'Total / m',      key:'total_pm',    format:'1d',  right:true},
+    {label:'Top-3 %',        key:'top3_rate',   format:'pct', right:true},
+  ]);
+}
+
 /* ========= Team Info & Roster via aliases (TAG / Team Initials) ========= */
 function uiShowTeamInfoError(msg){
   el('teamInfoBody').innerHTML = `<div class="muted" style="white-space:pre-wrap">${msg}</div>`;
@@ -400,12 +567,12 @@ function uiShowRosterError(msg){
 }
 function prettifyKey(k){ return String(k).replace(/_/g,' ').replace(/\b\w/g, s=>s.toUpperCase()); }
 
-/* Prefer exact alias match first: br_team_info."Team Initials" == CODE */
+/* Prefer exact alias: br_team_info."Team Initials" == CODE */
 async function fetchTeamInfoBy(codeRaw, nameRaw){
   const codeUp = norm(codeRaw).toUpperCase();
   const name = norm(nameRaw);
   try{
-    let res = await client.from('br_team_info').select('*').eq('"Team Initials"', codeUp).limit(1);
+    let res = await client.from('br_team_info').select('*').eq('Team Initials', codeUp).limit(1);
     if (res.error) throw res.error;
     if (res.data && res.data.length) return res.data[0];
 
@@ -424,12 +591,12 @@ async function fetchTeamInfoBy(codeRaw, nameRaw){
   return null;
 }
 
-/* Prefer exact alias match first: br_player_info."TAG" == CODE */
+/* Prefer exact alias: br_player_info."TAG" == CODE */
 async function fetchPlayersBy(codeRaw, nameRaw, teamId){
   const codeUp = norm(codeRaw).toUpperCase();
   const name = norm(nameRaw);
   try{
-    let res = await client.from('br_player_info').select('*').eq('"TAG"', codeUp);
+    let res = await client.from('br_player_info').select('*').eq('TAG', codeUp);
     if (res.error) throw res.error;
     if (res.data && res.data.length) return res.data;
 
@@ -567,17 +734,14 @@ function populateGlobalTournament(){
   sel.value = exists ? latest : '__all__';
 }
 
-/* ========= Selection & data flow ========= */
+/* ========= Selection & wiring ========= */
 async function selectTeam(teamObj){
   CURRENT_TEAM = teamObj;
   const url = new URL(window.location.href);
   url.searchParams.set('team', CURRENT_TEAM.name);
   history.replaceState(null, '', url.toString());
 
-  // Re-render team area based on current global tournament scope
   renderTeamOverview();
-
-  // Load Team Info + Roster (alias by code/TAG)
   await loadTeamMeta(teamObj);
   highlightActiveTile();
 }
@@ -602,18 +766,62 @@ async function loadTeamMeta(teamObj){
   renderRoster(players);
 }
 
-/* ========= Wiring ========= */
+function populateMapFilter(){ // based on current scope
+  const sel = el('mapFilter');
+  const current = sel.value || '__all__';
+  const items = uniqueMaps(rowsScope());
+  sel.innerHTML = `<option value="__all__">All maps</option>` + items.map(m=>`<option value="${m.replaceAll('"','&quot;')}">${m}</option>`).join('');
+  const exists = [...sel.options].some(op => op.value === current);
+  sel.value = exists ? current : '__all__';
+}
+
 async function initial(){
   renderTeamGrid('');
   el('teamSearch').addEventListener('input', e => renderTeamGrid(e.target.value||''));
 
   ALL = await fetchAllRows();
   populateGlobalTournament();
+  populateMapFilter();
 
-  // Global tournament change
+  // Global tournament change — re-render EVERYTHING that uses ffbr_data
   el('globalTournament').addEventListener('change', (e)=>{
     G_TOURN = e.target.value || '__all__';
-    renderTeamOverview(); // re-scope team
+    populateMapFilter();
+    renderTeamOverview();
+    renderOverall();
+    renderPerMapAllTeams();
+  });
+
+  // Overall controls
+  const oKey = el('overallSortKey');
+  const oDir = el('overallSortDir');
+  const oReset = el('overallReset');
+  oKey.addEventListener('change', renderOverall);
+  oDir.addEventListener('click', ()=>{
+    const cur = oDir.dataset.dir === 'desc' ? 'asc' : 'desc';
+    oDir.dataset.dir = cur; oDir.textContent = cur === 'desc' ? 'Desc' : 'Asc';
+    renderOverall();
+  });
+  oReset.addEventListener('click', ()=>{
+    oKey.value = 'total_pm'; oDir.dataset.dir = 'desc'; oDir.textContent = 'Desc';
+    renderOverall();
+  });
+
+  // Per-map controls
+  const mSel = el('mapFilter');
+  const pmKey = el('perMapSortKey');
+  const pmDir = el('perMapSortDir');
+  const pmReset = el('perMapReset');
+  mSel.addEventListener('change', renderPerMapAllTeams);
+  pmKey.addEventListener('change', renderPerMapAllTeams);
+  pmDir.addEventListener('click', ()=>{
+    const cur = pmDir.dataset.dir === 'desc' ? 'asc' : 'desc';
+    pmDir.dataset.dir = cur; pmDir.textContent = cur === 'desc' ? 'Desc' : 'Asc';
+    renderPerMapAllTeams();
+  });
+  pmReset.addEventListener('click', ()=>{
+    mSel.value = '__all__'; pmKey.value = 'total_pm'; pmDir.dataset.dir = 'desc'; pmDir.textContent = 'Desc';
+    renderPerMapAllTeams();
   });
 
   // Auto-select ?team= (code or name)
@@ -623,7 +831,11 @@ async function initial(){
     const found = TEAM_BY_CODE[qTeam] || TEAM_BY_NAME[qTeam];
     if (found) await selectTeam(found);
   }
-  if (!CURRENT_TEAM && TEAMS.length) await selectTeam(TEAMS[0]); // default first team
+  if (!CURRENT_TEAM && TEAMS.length) await selectTeam(TEAMS[0]);
+
+  // Initial renders for tables
+  renderOverall();
+  renderPerMapAllTeams();
 }
 
 initial();
