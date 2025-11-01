@@ -118,6 +118,16 @@
       </div>
     </div>
   </details>
+
+  <!-- GLOBAL: TOP 10 PLAYERS BY KILLS -->
+  <details class="accordion" open>
+    <summary>Top 10 Players by Kills</summary>
+    <div class="accordion-body">
+      <div class="card" style="margin:0">
+        <div id="tblTopKillers">—</div>
+      </div>
+    </div>
+  </details>
 </div>
 
 <script>
@@ -133,13 +143,13 @@ const client = supabase.createClient(
   else ui.textContent = 'Anon access';
 })();
 document.getElementById('logoutBtn').onclick = async () => {
-  await client.auth.signOut(); window.location.href = 'index.html';
+  await client.auth.signOut();
+  window.location.href = 'index.html';
 };
 
 /* ===== Utils ===== */
 const el = id => document.getElementById(id);
 const norm = v => (v==null ? '' : String(v).trim());
-const low  = v => norm(v).toLowerCase();
 const n = v => {
   if (v == null || v === '') return 0;
   const x = typeof v === 'number' ? v : parseFloat(String(v).replace(/,/g,''));
@@ -147,19 +157,46 @@ const n = v => {
 };
 const uniq = arr => Array.from(new Set(arr));
 function sum(arr, k){ let t=0; for(const r of arr) t += n(r[k]); return t; }
-function looksLikeDate(s){ return !isNaN(new Date(s).getTime()); }
 
-/* case-insensitive getter with alias attempts */
+/* column-insensitive getter */
 function getCI(obj, ...names){
   if (!obj) return '';
   const keys = Object.keys(obj);
+  // exact case-insensitive
   for (const want of names){
-    const k1 = keys.find(k => k === want);
-    if (k1 && obj[k1]!=null && obj[k1]!=='') return obj[k1];
-    const k2 = keys.find(k => k.toLowerCase() === String(want).toLowerCase());
-    if (k2 && obj[k2]!=null && obj[k2]!=='') return obj[k2];
+    const k = keys.find(x => x.toLowerCase() === String(want).toLowerCase());
+    if (k) return obj[k];
+  }
+  // normalized space-insensitive
+  for (const want of names){
+    const rx = new RegExp('^'+String(want).replace(/\s+/g,'\\s*')+'$','i');
+    const k = keys.find(x => rx.test(x));
+    if (k) return obj[k];
+  }
+  // final loose match on normalized tokens
+  const wantLow = names.map(s => String(s).toLowerCase().replace(/\s+/g,' ').trim());
+  for (const k of keys){
+    const lk = k.toLowerCase().replace(/\s+/g,' ').trim();
+    if (wantLow.includes(lk)) return obj[k];
   }
   return '';
+}
+
+/* small helpers for flexible label finding */
+function firstNonEmpty(...vals){
+  for (const v of vals){
+    const s = v==null ? '' : String(v).trim();
+    if (s) return s;
+  }
+  return '';
+}
+function findByWords(obj, words){
+  const keys = Object.keys(obj||{});
+  const k = keys.find(key => {
+    const lk = key.toLowerCase();
+    return words.every(w => lk.includes(String(w).toLowerCase()));
+  });
+  return k ? obj[k] : '';
 }
 
 /* ===== Normalizer for ffbr_lopsdata ===== */
@@ -170,20 +207,31 @@ function normalizeRow(r){
   o._player    = norm(getCI(o,'Player name','Player Name','Player','IGN'));
   o._team      = norm(getCI(o,'Team','TAG','TeamName','Team Name'));
   o._map       = norm(getCI(o,'Map','map','Match Map'));
+
   o.kills      = n(getCI(o,'KILLS','Kills','Kill'));
   o.assists    = n(getCI(o,'ASSISTS','Assists','Assist'));
   o.headshots  = n(getCI(o,'HEADSHOTRS','HEADSHOTS','Headshots','HS'));
   o.damage     = n(getCI(o,'DAMAGE','Damage','DMG'));
   o.grenade    = n(getCI(o,'Grenade kill','Grenade kills','Nade Kills','Grenade'));
-  o.active     = norm(getCI(o,'Active Skill','Active','Skill','ActiveSkill'));
-  o.pet        = norm(getCI(o,'Pet','Pet Name','PetName','Pet Skill Name','PetSkill'));
+
+  // *** Active Skill: explicit support for "skillactive_1" ***
+  o.active = norm(firstNonEmpty(
+    getCI(o,'skillactive_1'),                          // <- your column
+    getCI(o,'Active Skill','Active','Skill','ActiveSkill','Active Skill Name','ActiveSkillName'),
+    findByWords(o, ['active','skill']),               // e.g., "active skill name"
+    getCI(o,'Character','Character Name','Active Character','ActiveCharacter')
+  ));
+
+  // Pet usage (common variants)
+  o.pet = norm(firstNonEmpty(
+    getCI(o,'Pet','Pet Name','PetName','Pet Skill Name','PetSkill','PetSkillName')
+  ));
+
   o._tournament= norm(getCI(o,'Tournament','Event','Series'));
-  // per-game fingerprint (optional)
-  o._pgkey = `${low(o._player)}|${low(o._team)}|${low(o._map)}|${looksLikeDate(o._created)?new Date(o._created).getTime():low(o._created)}`;
   return o;
 }
 
-/* ===== Fetch ===== */
+/* ===== Data fetch (chunked) ===== */
 async function fetchAllRows(){
   const CHUNK = 1000;
   let from = 0;
@@ -200,12 +248,12 @@ async function fetchAllRows(){
     from += rows.length;
   }
   const normed = out.map(normalizeRow);
-  el('pickerHint').textContent =
-    `Loaded ${normed.length} rows • Columns detected (example): ${Object.keys(out[0]||{}).slice(0,8).join(', ')}${Object.keys(out[0]||{}).length>8?'…':''}`;
+  document.getElementById('pickerHint').textContent =
+    `Loaded ${normed.length} rows • Example columns: ${Object.keys(out[0]||{}).slice(0,8).join(', ')}${Object.keys(out[0]||{}).length>8?'…':''}`;
   return normed.filter(r => r._player);
 }
 
-/* ===== Heatmap ===== */
+/* ===== Heatmap (optional) ===== */
 function applyColumnHeatmap(containerId, keys){
   const wrap = el(containerId);
   const table = wrap?.querySelector('table'); if (!table) return;
@@ -328,35 +376,66 @@ function renderRecent(rows){
   applyColumnHeatmap('tblRecent', ['kills','assists','headshots','grenade','damage']);
 }
 
-/* ===== ONLY REPLICATED LOGIC: Active & Pet usage (GLOBAL COUNTS) ===== */
-function tally(list){
-  const m=new Map();
-  for(const v of list){ const k=norm(v); if(!k) continue; m.set(k,(m.get(k)||0)+1); }
-  return Array.from(m.entries()).map(([name,count])=>({name,count}));
+/* ===== GLOBAL AGGREGATES (COUNTS ONLY) ===== */
+function countByName(rows, key){
+  // Case/space-insensitive grouping; display first-seen original label
+  const m = new Map(); // normKey -> {name, picks}
+  for (const r of rows){
+    const raw = norm(r[key]);
+    if (!raw) continue;
+    const k = raw.toLowerCase().replace(/\s+/g,' ').trim();
+    if (!m.has(k)) m.set(k, { name: raw, picks: 0 });
+    m.get(k).picks += 1;
+  }
+  return Array.from(m.values());
 }
-function renderPickTable(items, mountId, title){
-  const total = items.reduce((t,x)=>t+x.count,0) || 1;
-  const rows = items.sort((a,b)=> b.count-a.count || a.name.localeCompare(b.name))
-                    .slice(0,10)
-                    .map((x,i)=>({ rank:i+1, name:x.name, count:x.count, rate:x.count/total }));
-  el(mountId).innerHTML = renderSimpleTable(rows, [
-    {label:'#', key:'rank', right:true},
-    {label:title, key:'name'},
-    {label:'Count', key:'count', right:true},
-    {label:'Pick %', key:'rate', right:true, format:'pct'}
-  ]);
-}
+
 function renderActiveGlobal(allRows){
-  const list = tally(allRows.map(r=>r.active).filter(Boolean));
-  if (!list.length){ el('tblActive').innerHTML = '<div class="muted">No Active Skill data.</div>'; return; }
-  renderPickTable(list, 'tblActive', 'Active Skill');
-  applyColumnHeatmap('tblActive', ['count','rate']);
+  const list = countByName(allRows, 'active')
+    .sort((a,b)=> b.picks - a.picks || a.name.localeCompare(b.name))
+    .slice(0,10);
+  const cols = [
+    { label:'Active Skill', key:'name' },
+    { label:'Picks', key:'picks', right:true },
+  ];
+  el('tblActive').innerHTML = renderSimpleTable(list, cols);
+  applyColumnHeatmap('tblActive', ['picks']);
 }
+
 function renderPetGlobal(allRows){
-  const list = tally(allRows.map(r=>r.pet).filter(Boolean));
-  if (!list.length){ el('tblPet').innerHTML = '<div class="muted">No Pet data.</div>'; return; }
-  renderPickTable(list, 'tblPet', 'Pet');
-  applyColumnHeatmap('tblPet', ['count','rate']);
+  const list = countByName(allRows, 'pet')
+    .sort((a,b)=> b.picks - a.picks || a.name.localeCompare(b.name))
+    .slice(0,10);
+  const cols = [
+    { label:'Pet', key:'name' },
+    { label:'Picks', key:'picks', right:true },
+  ];
+  el('tblPet').innerHTML = renderSimpleTable(list, cols);
+  applyColumnHeatmap('tblPet', ['picks']);
+}
+
+/* ===== GLOBAL: Top 10 players by kills ===== */
+function renderTopKillers(allRows){
+  const m = new Map();
+  for (const r of allRows){
+    const p = r._player;
+    if (!p) continue;
+    if (!m.has(p)) m.set(p,{player:p, kills:0, assists:0, headshots:0, grenade:0, damage:0, rows:0});
+    const o = m.get(p);
+    o.kills += r.kills; o.assists += r.assists; o.headshots += r.headshots; o.grenade += r.grenade; o.damage += r.damage; o.rows++;
+  }
+  const list = Array.from(m.values()).sort((a,b)=> b.kills - a.kills || a.player.localeCompare(b.player)).slice(0,10);
+  const cols = [
+    { label:'Player', key:'player' },
+    { label:'Rows', key:'rows', right:true },
+    { label:'Kills', key:'kills', right:true },
+    { label:'Assists', key:'assists', right:true },
+    { label:'HS', key:'headshots', right:true },
+    { label:'Grenade', key:'grenade', right:true },
+    { label:'Damage', key:'damage', right:true },
+  ];
+  el('tblTopKillers').innerHTML = renderSimpleTable(list, cols);
+  applyColumnHeatmap('tblTopKillers', ['rows','kills','assists','headshots','grenade','damage']);
 }
 
 /* ===== Player list & selection ===== */
@@ -367,10 +446,17 @@ function buildPlayerLists(allRows){
   const names = uniq(allRows.map(r=>r._player).filter(Boolean)).sort((a,b)=> a.localeCompare(b));
   const sel = el('playerSelect');
   sel.innerHTML = `<option value="">— Select player —</option>` + names.map(nm=>`<option value="${nm.replaceAll('"','&quot;')}">${nm}</option>`).join('');
-  // Simple chips: first 10 alphabetical (neutral)
-  el('playerChips').innerHTML = names.slice(0,10).map(p=>`<button class="chipbtn" data-name="${p}">${p}</button>`).join('') || '<div class="muted">No players.</div>';
+  // Quick chips: top 10 by kills
+  const m = new Map();
+  for (const r of allRows){
+    if (!r._player) continue;
+    if (!m.has(r._player)) m.set(r._player, 0);
+    m.set(r._player, m.get(r._player) + r.kills);
+  }
+  const chips = Array.from(m.entries()).map(([p,k])=>({p,k})).sort((a,b)=> b.k - a.k || a.p.localeCompare(b.p)).slice(0,10);
+  el('playerChips').innerHTML = chips.map(x=>`<button class="chipbtn" data-name="${x.p}">${x.p} <span class="muted">• ${x.k}</span></button>`).join('') || '<div class="muted">No players.</div>';
   el('playerChips').querySelectorAll('.chipbtn').forEach(btn=> btn.onclick = ()=> selectPlayer(btn.getAttribute('data-name')));
-  el('pickerHint').textContent = `${names.length} unique players • Quick picks shown below`;
+  el('pickerHint').textContent = `${names.length} unique players • Top 10 chips shown below`;
 }
 
 function selectPlayer(name){
@@ -405,9 +491,10 @@ async function initial(){
 
   buildPlayerLists(ALL);
 
-  // ONLY replicated global tables
+  // Global, player-independent tables
   renderActiveGlobal(ALL);
   renderPetGlobal(ALL);
+  renderTopKillers(ALL);
 
   // URL ?player=
   const url = new URL(window.location.href);
