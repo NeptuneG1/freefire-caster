@@ -153,6 +153,16 @@
     <div class="card" id="tblPreview">Loading…</div>
   </div>
 
+  <!-- Sample Data (static) -->
+  <div class="section">
+    <h2>Sample Data (Static Table)</h2>
+    <div class="bar" style="margin-bottom:8px">
+      <button id="useSampleBtn" class="btn primary">Load Sample Into Preview</button>
+      <span class="muted">This table shows a fixed 6-team dataset for quick testing. Click the button to replace the preview data with this sample.</span>
+    </div>
+    <div class="card" id="tblSample">Loading…</div>
+  </div>
+
 </div>
 
 <script>
@@ -170,7 +180,41 @@ function fmtPct(x){ return Number.isFinite(x) ? (x*100).toFixed(1)+'%' : '—'; 
 function n(x){ return Number(x ?? 0) || 0; }
 function sum(arr, key){ let t=0; for(const r of arr) t += n(r[key]); return t; }
 
-/* ======================= Sample Data ======================= */
+/* ======================= Columns ======================= */
+const COLS = [
+  {label:'Team',           key:'team'},
+  {label:'Matches',        key:'matches',     right:true},
+  {label:'Booyahs',        key:'booyahs',     right:true},
+  {label:'Elims',          key:'elims',       right:true},
+  {label:'Placement',      key:'placement',   right:true},
+  {label:'Total',          key:'total',       right:true},
+  {label:'Booyah %',       key:'booyah_rate', format:'pct', right:true},
+  {label:'Elims / m',      key:'elims_pm',    format:'1d',  right:true},
+  {label:'Placement / m',  key:'placement_pm',format:'1d',  right:true},
+  {label:'Total / m',      key:'total_pm',    format:'1d',  right:true},
+  {label:'Top-3 %',        key:'top3_rate',   format:'pct', right:true},
+];
+
+/* ======================= Sample Data (STATIC) ======================= */
+/* 6 fixed rows with hand-picked values (repeatable) */
+const SAMPLE = [
+  // team, matches, booyahs, elims, placement, total, top3
+  ['RRQ', 18, 5,  96, 178, 420,  9],
+  ['AG',  20, 4, 110, 190, 460,  8],
+  ['BRU', 16, 6, 105, 165, 410,  7],
+  ['EVOS',22, 7, 130, 210, 520, 12],
+  ['FX',  19, 3,  90, 172, 395,  6],
+  ['R7',  17, 4,  98, 160, 400,  7],
+].map(([team,matches,booyahs,elims,placement,total,top3]) => ({
+  team, matches, booyahs, elims, placement, total,
+  booyah_rate: matches ? booyahs/matches : 0,
+  elims_pm: matches ? elims/matches : 0,
+  placement_pm: matches ? placement/matches : 0,
+  total_pm: matches ? total/matches : 0,
+  top3_rate: matches ? top3/matches : 0
+}));
+
+/* ======================= Random Preview Data ======================= */
 const TEAMS = ['AG','BRU','CLVS','E1','EVOS','FX','GOW','HEV','HS','NVL','PE','R7','RC','RHK','RRQ','FLCN','TS','WAG'];
 
 function randomRow(team){
@@ -179,7 +223,6 @@ function randomRow(team){
   const elims   = Math.floor(matches*(2.5 + Math.random()*3.5)); // ~ 20..168
   const place   = Math.floor(matches*(6 + Math.random()*5));     // ~ 48..308
   const total   = elims*2 + place*1.2 + booyahs*5 + Math.floor(Math.random()*20);
-
   const top3    = Math.floor(Math.random()*matches);
   return {
     team,
@@ -198,21 +241,7 @@ function randomRow(team){
 
 let DATA = TEAMS.map(t=>randomRow(t));
 
-/* ======================= Render Table ======================= */
-const COLS = [
-  {label:'Team',           key:'team'},
-  {label:'Matches',        key:'matches',     right:true},
-  {label:'Booyahs',        key:'booyahs',     right:true},
-  {label:'Elims',          key:'elims',       right:true},
-  {label:'Placement',      key:'placement',   right:true},
-  {label:'Total',          key:'total',       right:true},
-  {label:'Booyah %',       key:'booyah_rate', format:'pct', right:true},
-  {label:'Elims / m',      key:'elims_pm',    format:'1d',  right:true},
-  {label:'Placement / m',  key:'placement_pm',format:'1d',  right:true},
-  {label:'Total / m',      key:'total_pm',    format:'1d',  right:true},
-  {label:'Top-3 %',        key:'top3_rate',   format:'pct', right:true},
-];
-
+/* ======================= Renderers ======================= */
 function renderSimpleTable(list, cols){
   const head = `<thead><tr>${cols.map(c=>`<th class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
   const body = `<tbody>${list.map(r=>`<tr>${cols.map(c=>{
@@ -226,8 +255,11 @@ function renderSimpleTable(list, cols){
   return `<table>${head}${body}</table>`;
 }
 
-function rerender(){
+function renderPreview(){
   document.getElementById('tblPreview').innerHTML = renderSimpleTable(DATA, COLS);
+}
+function renderSample(){
+  document.getElementById('tblSample').innerHTML = renderSimpleTable(SAMPLE, COLS);
 }
 
 /* ======================= Heatmap Variants Core ======================= */
@@ -256,13 +288,6 @@ function rerender(){
     });
     return ranks;
   }
-  function normalize(values){
-    const nums = values.filter(v => v!=null);
-    if (!nums.length) return v => null;
-    const min = Math.min(...nums), max = Math.max(...nums);
-    if (min === max) return v => v==null ? null : 1;
-    return v => v==null ? null : (v - min) / (max - min);
-  }
   function quantile(values, q){
     const arr = values.filter(v=>v!=null).slice().sort((a,b)=>a-b);
     if (!arr.length) return null;
@@ -280,7 +305,12 @@ function rerender(){
     td.querySelectorAll('.hm-barwrap,.hm-dots,.hm-pill').forEach(el=>el.remove());
   }
   function clearAll(containerId, keys){
-    keys.forEach(key => getCells(containerId, key).forEach(clearCell));
+    const wrap = document.getElementById(containerId);
+    if (!wrap) return;
+    keys.forEach(key => {
+      const cells = wrap.querySelectorAll(`td[data-key="${key}"]`);
+      cells.forEach(clearCell);
+    });
   }
 
   // Variants
@@ -358,34 +388,46 @@ function rerender(){
 
   function applyNeutralBars(containerId, keys, opt={}){
     keys.forEach(key=>{
-      const cells = getCells(containerId, key);
-      const vals  = cells.map(parseVal);
-      const norm  = (function(){
-        const nums = vals.filter(v => v!=null);
-        if (!nums.length) return v=>null;
-        const min = Math.min(...nums), max = Math.max(...nums);
-        if (min === max) return v=>1;
-        return v => v==null ? null : (v - min) / (max - min);
-      })();
-      const top   = Math.max(...vals.filter(v=>v!=null));
+      const wrap = document.getElementById(containerId);
+      if (!wrap) return;
+      const table = wrap.querySelector('table'); if (!table) return;
+
+      const cells = table.querySelectorAll(`td[data-key="${key}"]`);
+      const vals  = Array.from(cells).map(td=>{
+        let raw = (td.textContent||'').trim().replace('%','').replace(/,/g,'');
+        const v = parseFloat(raw);
+        return Number.isFinite(v) ? v : null;
+      });
+
+      const nums = vals.filter(v=>v!=null);
+      if (!nums.length) return;
+      const min = Math.min(...nums), max = Math.max(...nums);
+      const norm = (v)=> v==null ? null : (min===max ? 1 : (v - min)/(max - min));
+
+      const top   = Math.max(...nums);
 
       cells.forEach((td,i)=>{
         const v = vals[i]; if (v==null) return;
         const p = Math.round(norm(v)*100);
 
-        const wrap = document.createElement('div');
-        wrap.className = 'hm-barwrap';
+        const inner = document.createElement('div');
+        inner.style.position = 'relative';
+        const txt = document.createElement('div');
+        txt.style.position = 'relative';
+        txt.style.zIndex = '1';
+        txt.textContent = (td.textContent||'').trim();
+
+        const wrapBar = document.createElement('div');
+        wrapBar.className = 'hm-barwrap';
         const bar = document.createElement('div');
         bar.className = 'hm-bar';
         bar.style.width = p + '%';
-        wrap.appendChild(bar);
+        wrapBar.appendChild(bar);
 
-        const txt = document.createElement('div');
-        txt.style.position='relative'; txt.style.zIndex='1';
-        txt.textContent = (td.textContent||'').trim();
         td.textContent = '';
-        td.appendChild(txt);
-        td.appendChild(wrap);
+        inner.appendChild(txt);
+        inner.appendChild(wrapBar);
+        td.appendChild(inner);
 
         if (v === top) td.classList.add('hm-top');
       });
@@ -395,20 +437,23 @@ function rerender(){
   function applyTop3Pills(containerId, keys, opt={}){
     keys.forEach(key=>{
       const cells = getCells(containerId, key);
-      const vals  = cells.map(parseVal);
+      const vals  = cells.map(td=>{
+        let raw = (td.textContent||'').trim().replace('%','').replace(/,/g,'');
+        const v = parseFloat(raw);
+        return Number.isFinite(v) ? v : null;
+      });
       const entries = cells.map((td,i)=>({td, v: vals[i]})).filter(x=>x.v!=null).sort((a,b)=> b.v - a.v);
       const top3 = new Set(entries.slice(0,3).map(x=>x.td));
       const best = entries.length ? entries[0].v : null;
 
       cells.forEach(td=>{
-        const v = parseVal(td);
-        if (v==null) return;
-        const txt = (td.textContent||'').trim();
+        const raw = (td.textContent||'').trim();
         td.textContent = '';
         const span = document.createElement('span');
-        span.textContent = txt;
+        span.textContent = raw;
         if (top3.has(td)) {
           span.className = 'hm-pill';
+          const v = parseFloat(raw.replace('%','').replace(/,/g,''));
           if (v === best) td.classList.add('hm-top');
         }
         td.appendChild(span);
@@ -420,16 +465,25 @@ function rerender(){
     const steps = opt.steps || 5;
     keys.forEach(key=>{
       const cells = getCells(containerId, key);
-      const vals  = cells.map(parseVal);
-      const entries = cells.map((td,i)=>({td:td, v:vals[i]}));
-      const ranks = rankNormalize(vals);
+      const vals  = cells.map(td=>{
+        let raw = (td.textContent||'').trim().replace('%','').replace(/,/g,'');
+        const v = parseFloat(raw);
+        return Number.isFinite(v) ? v : null;
+      });
+      const ranks = (function(values){
+        const entries = values.map((v,i)=>({i,v})).filter(x=>x.v!=null).sort((a,b)=> b.v - a.v);
+        const n = entries.length, out = Array(values.length).fill(null);
+        entries.forEach((e,idx)=> out[e.i] = (n<=1) ? 1 : 1 - (idx/(n-1)));
+        return out;
+      })(vals);
       const best  = Math.max(...vals.filter(v=>v!=null));
-      entries.forEach((e,i)=>{
-        const v = e.v; const r = ranks[i];
+
+      cells.forEach((td,i)=>{
+        const v = vals[i], r = ranks[i];
         if (v==null || r==null) return;
         const on = Math.max(1, Math.round(r*steps));
-        const txt = (e.td.textContent||'').trim();
-        e.td.textContent = '';
+        const txt = (td.textContent||'').trim();
+        td.textContent = '';
 
         const wrap = document.createElement('div');
         wrap.style.display='flex'; wrap.style.justifyContent='space-between'; wrap.style.alignItems='center'; wrap.style.gap='8px';
@@ -441,9 +495,9 @@ function rerender(){
           dots.appendChild(d);
         }
         wrap.appendChild(label); wrap.appendChild(dots);
-        e.td.appendChild(wrap);
+        td.appendChild(wrap);
 
-        if (v === best) e.td.classList.add('hm-top');
+        if (v === best) td.classList.add('hm-top');
       });
     });
   }
@@ -473,7 +527,7 @@ function rerender(){
 })();
 
 /* ======================= Controls & Wiring ======================= */
-const COL_KEYS = COLS.map(c=>c.key).filter(k => k!=='team'); // numeric-ish default
+const COL_KEYS = COLS.map(c=>c.key).filter(k => k!=='team');
 
 function renderChips(){
   const box = document.getElementById('colChips');
@@ -523,7 +577,7 @@ function applyNow(){
 
 function randomizeData(){
   DATA = TEAMS.map(t=>randomRow(t));
-  rerender();
+  renderPreview();
   applyNow();
 }
 
@@ -535,18 +589,31 @@ function resetView(){
   document.getElementById('maxAlpha').value = '0.22';
   document.getElementById('radiusPx').value = '8';
   renderChips();
-  rerender();
+  renderPreview();
+  renderSample();
   applyNow();
 }
 
+/* Load SAMPLE into main preview */
+document.getElementById('useSampleBtn')?.addEventListener('click', ()=>{
+  DATA = SAMPLE.map(r=>({...r})); // clone
+  renderPreview();
+  applyNow();
+});
+
+/* Buttons */
 document.getElementById('applyBtn').addEventListener('click', applyNow);
 document.getElementById('randomBtn').addEventListener('click', randomizeData);
 document.getElementById('resetBtn').addEventListener('click', resetView);
 
 /* ======================= Boot ======================= */
-renderChips();
-rerender();
-applyNow();
+function boot(){
+  renderChips();
+  renderPreview();
+  renderSample();
+  applyNow();
+}
+boot();
 </script>
 </body>
 </html>
