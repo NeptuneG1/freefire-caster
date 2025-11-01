@@ -10,12 +10,11 @@
       --bg:#0e0e0e; --panel:#1b1b1b; --panel2:#141414; --ink:#f5f5f5; --muted:#b9b9b9;
       --brand:#ffbd59; --brand2:#ff7733; --line:#313131;
 
-      /* Team strip sizing */
-      --tile-w: 132px;
-      --tile-h: 136px;
-      --logo:   56px;
-      --code-fs:.78rem;
-      --name-fs:.70rem;
+      /* Compact team tiles (no scrolling, wraps to grid) */
+      --tile-w: 96px;
+      --tile-h: 104px;
+      --logo:   44px;
+      --code-fs:.74rem;
 
       /* Heatmap colors */
       --heat: rgba(255,189,89,.18);
@@ -38,50 +37,24 @@
     .kpis{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
     .kpi{background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:5px 8px;font-size:.9rem}
 
-    /* === Single-row Team Strip === */
-    .strip-wrap{
-      position: relative;
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      align-items: center;
-      gap: 6px;
-    }
+    /* === Team grid (no horizontal scroll; wraps to rows) === */
     .team-grid{
-      display:flex;
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(var(--tile-w), 1fr));
       gap:8px;
-      overflow-x:auto;
-      overflow-y:hidden;
-      scroll-snap-type:x mandatory;
-      -webkit-overflow-scrolling:touch;
-      padding-bottom:6px;
+      align-items:stretch;
     }
-    .team-grid::-webkit-scrollbar{ height:8px }
-    .team-grid::-webkit-scrollbar-thumb{ background:#333; border-radius:6px }
-    .team-grid{ scrollbar-color:#333 transparent; scrollbar-width:thin; }
-
     .team-tile{
-      flex:0 0 var(--tile-w);
       height:var(--tile-h);
-      scroll-snap-align:start;
       background:#131313;border:1px solid #2a2a2a;border-radius:10px;
-      padding:8px;display:flex;flex-direction:column;align-items:center;gap:6px;
+      padding:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
       cursor:pointer;transition:transform .1s ease, border-color .1s ease;overflow:hidden;
     }
     .team-tile:hover{transform:translateY(-2px);border-color:#444}
     .team-tile.active{outline:2px solid var(--brand2)}
     .team-logo{ width:var(--logo); height:var(--logo); object-fit:contain; filter:drop-shadow(0 0 8px rgba(0,0,0,.4)) }
-    .team-code{ font-weight:800; font-size:var(--code-fs); line-height:1.1 }
-    .team-name{
-      font-size:var(--name-fs); line-height:1.1; color:var(--muted); text-align:center;
-      display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden;
-    }
-    .team-tile .muted{ font-size:.66rem }
-    .strip-nav{
-      background:#1e1e1e;border:1px solid #2d2d2d;color:#ddd;
-      width:32px;height:32px;border-radius:8px;display:grid;place-items:center;cursor:pointer;
-    }
-    .strip-nav:hover{ background:#2a2a2a }
-    .strip-nav:disabled{ opacity:.45; cursor:default }
+    .team-code{ font-weight:800; font-size:var(--code-fs); line-height:1.1; letter-spacing:.2px }
+    .team-tile .muted{ display:none } /* hide region to keep it ultra-compact */
 
     /* Controls */
     .bar{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
@@ -141,11 +114,7 @@
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
       <input type="search" id="teamSearch" placeholder="Search team / region…" class="input" style="flex:1;max-width:420px">
     </div>
-    <div class="strip-wrap">
-      <button class="strip-nav" id="teamPrev" aria-label="Scroll left">‹</button>
-      <div id="teamGrid" class="team-grid">Loading teams…</div>
-      <button class="strip-nav" id="teamNext" aria-label="Scroll right">›</button>
-    </div>
+    <div id="teamGrid" class="team-grid">Loading teams…</div>
   </div>
 
   <!-- GLOBAL TOURNAMENT FILTER (applies to ALL ffbr_data-driven sections) -->
@@ -314,7 +283,7 @@ const TEAMS = [
 const TEAM_BY_CODE = Object.fromEntries(TEAMS.map(t => [t.name.toLowerCase(), t]));
 const TEAM_BY_NAME = Object.fromEntries(TEAMS.map(t => [t.fullname.toLowerCase(), t]));
 const ALLOWED_SET  = new Set(TEAMS.map(t => t.fullname.toLowerCase()));
-const ALLOWED = new Map(); // lookup by code or fullname (lower)
+const ALLOWED = new Map();
 TEAMS.forEach(t => { ALLOWED.set(t.name.toLowerCase(), t); ALLOWED.set(t.fullname.toLowerCase(), t); });
 
 /* ========= Utilities ========= */
@@ -330,7 +299,6 @@ function groupBy(arr, keyFn){ const m=new Map(); for(const r of arr){ const k=ke
 function splitToLines(val){
   if (val == null) return [];
   if (Array.isArray(val)) return val.flat().map(x=>String(x).trim()).filter(Boolean);
-
   let s = String(val).trim();
   try{
     if (/^\s*\[/.test(s)){
@@ -417,13 +385,11 @@ async function fetchAllRows(){
     out.push(...rows);
     from += rows.length;
   }
-  // Keep only rows for the 18 teams (by fullname in your table)
   return out.filter(r => ALLOWED_SET.has((norm(r.team)||'').toLowerCase()));
 }
 
 /* ========= Tournament helpers (GLOBAL) ========= */
 function latestTournamentName(rows){
-  // Pick the tournament of the row with the max composite key
   let best = null;
   for (const r of rows){
     const key = [
@@ -445,10 +411,7 @@ function uniqueTournaments(rows){
     const yr = Number(r.year)||0, wk = Number(r.week)||0, dy = Number(r.day)||0, mt = Number(r.match)||0, id = Number(r.id)||0;
     const key = [yr,wk,dy,mt,id];
     if (!map.has(k)) map.set(k, { name:t, key });
-    else {
-      const o = map.get(k);
-      if (key > o.key) o.key = key;
-    }
+    else { const o = map.get(k); if (key > o.key) o.key = key; }
   }
   return Array.from(map.values()).sort((a,b)=> (b.key > a.key ? 1 : -1));
 }
@@ -463,8 +426,7 @@ function populateGlobalTournament(){
   updateFilterHint();
 }
 function selectedTournament(){
-  const v = (el('gTournament')?.value || '__all__').trim();
-  return v;
+  return (el('gTournament')?.value || '__all__').trim();
 }
 function baseRowsByTournament(rows){
   const t = selectedTournament();
@@ -618,14 +580,14 @@ function applyColumnHeatmap(containerId, keys){
       const v = parseFloat(raw);
       if (!isFinite(v)) { td.style.backgroundImage='none'; return; }
       const t = (v - mn)/span; // 0..1
-      const pct = Math.round(8 + 92 * t); // width of gradient area
+      const pct = Math.round(8 + 92 * t);
       td.style.backgroundImage = `linear-gradient(90deg, var(--heat) ${pct}%, transparent ${pct}%)`;
       td.style.backgroundClip = 'padding-box';
     });
   }
 }
 
-/* ========= Team Info & Roster (uses aliases) ========= */
+/* ========= Team Info & Roster ========= */
 function uiShowTeamInfoError(msg){
   const box = document.getElementById('teamInfoBody');
   box.innerHTML = `<div class="muted" style="white-space:pre-wrap">${msg}</div>`;
@@ -637,22 +599,13 @@ function uiShowRosterError(msg){
 function prettifyKey(k){
   return String(k).replace(/_/g,' ').replace(/\b\w/g, s=>s.toUpperCase());
 }
-
-/* Prefer exact alias match first: br_team_info."Team Initials" == CODE */
 async function fetchTeamInfoBy(codeRaw, nameRaw){
   const codeUp = norm(codeRaw).toUpperCase();
   const name = norm(nameRaw);
   try{
-    // 1) Exact alias match on "Team Initials"
-    let res = await client
-      .from('br_team_info')
-      .select('*')
-      .eq('"Team Initials"', codeUp)
-      .limit(1);
+    let res = await client.from('br_team_info').select('*').eq('"Team Initials"', codeUp).limit(1);
     if (res.error) throw res.error;
     if (res.data && res.data.length) return res.data[0];
-
-    // 2) Fallbacks
     const like = `*${name}*`;
     const tries = [
       ['team_name','ilike', like],
@@ -671,21 +624,13 @@ async function fetchTeamInfoBy(codeRaw, nameRaw){
   }
   return null;
 }
-
-/* Prefer exact alias match first: br_player_info."TAG" == CODE */
 async function fetchPlayersBy(codeRaw, nameRaw, teamId){
   const codeUp = norm(codeRaw).toUpperCase();
   const name = norm(nameRaw);
   try{
-    // 1) Exact alias match on TAG
-    let res = await client
-      .from('br_player_info')
-      .select('*')
-      .eq('"TAG"', codeUp);
+    let res = await client.from('br_player_info').select('*').eq('"TAG"', codeUp);
     if (res.error) throw res.error;
     if (res.data && res.data.length) return res.data;
-
-    // 2) Fallbacks (by team_id or fuzzy fields)
     if (teamId != null){
       const r2 = await client.from('br_player_info').select('*').eq('team_id', teamId);
       if (!r2.error && r2.data && r2.data.length) return r2.data;
@@ -707,7 +652,6 @@ async function fetchPlayersBy(codeRaw, nameRaw, teamId){
   }
   return [];
 }
-
 function renderTeamInfo(info){
   const box = document.getElementById('teamInfoBody');
   if (!info){ box.innerHTML = '<div class="muted">No team info found.</div>'; return; }
@@ -737,7 +681,6 @@ function renderTeamInfo(info){
   const maybeLogo = logoUrl ? `<div style="margin-bottom:8px"><img src="${logoUrl}" alt="team logo" style="width:84px;height:84px;object-fit:contain;border:1px solid #2a2a2a;border-radius:8px;background:#111"></div>` : '';
   box.innerHTML = `${maybeLogo}<table>${rows || '<tr><td class="muted">No visible fields.</td></tr>'}</table>`;
 }
-
 function renderRoster(players){
   const box = document.getElementById('teamRosterBody');
   if (!players || !players.length){ box.innerHTML = '<div class="muted">No players found.</div>'; return; }
@@ -749,14 +692,12 @@ function renderRoster(players){
   const countryKey= keys.find(k => /country|nation/i.test(k)) || null;
   const ageKey    = keys.find(k => /^age$/i.test(k)) || null;
 
-  // Accolades + Former Team
   const accolKey  = keys.includes('Accolades') ? 'Accolades' : (keys.find(k => /accolade|achievement|title|awards/i.test(k)) || null);
   const formerKey = keys.find(k => /former(\s|_)?teams?/i.test(k.toLowerCase())) || null;
 
-  const rows = players
-    .slice()
-    .sort((a,b)=> String(a[roleKey]||'').localeCompare(String(b[roleKey]||'')) || String(a[ignKey]||'').localeCompare(String(b[ignKey]||'')))
-    .map(p=>{
+  const rows = players.slice().sort(
+    (a,b)=> String(a[roleKey]||'').localeCompare(String(b[roleKey]||'')) || String(a[ignKey]||'').localeCompare(String(b[ignKey]||''))
+  ).map(p=>{
       const avatar     = avatarKey && p[avatarKey] ? `<img class="avatar" src="${p[avatarKey]}" alt="">` : '';
       const ign        = p[ignKey] ?? '—';
       const role       = roleKey ? (p[roleKey] ?? '—') : '—';
@@ -789,13 +730,13 @@ function renderTeamOverview(){
     el('teamRosterBody').innerHTML = '—';
     return;
   }
-  el('teamTitle').textContent = `Team Overview — ${CURRENT_TEAM.fullname}`;
+  el('teamTitle').textContent = `Team Overview — ${CURRENT_TEAM.name}`;
   el('identityBody').innerHTML = `
     <div style="display:flex;gap:12px;align-items:center">
-      <img src="${CURRENT_TEAM.logo}" alt="${CURRENT_TEAM.fullname} logo" style="width:84px;height:84px;object-fit:contain">
+      <img src="${CURRENT_TEAM.logo}" alt="${CURRENT_TEAM.fullname} logo" style="width:72px;height:72px;object-fit:contain">
       <div>
-        <div style="font-size:1.25rem;font-weight:800">${CURRENT_TEAM.fullname} <span class="muted">(${CURRENT_TEAM.name})</span></div>
-        <div class="muted">Region: ${CURRENT_TEAM.region||'—'}</div>
+        <div style="font-size:1.1rem;font-weight:800">${CURRENT_TEAM.name}</div>
+        <div class="muted">${CURRENT_TEAM.fullname} • ${CURRENT_TEAM.region||'—'}</div>
       </div>
     </div>`;
 
@@ -830,7 +771,7 @@ function renderTeamOverview(){
   applyColumnHeatmap('tblMapTeam', ['total_pm','elims_pm','placement_pm','booyah_rate','matches','booyahs','elims','placement','total']);
 }
 
-/* ========= UI: Team strip ========= */
+/* ========= UI: Team grid ========= */
 function renderTeamGrid(filter=''){
   const grid = el('teamGrid');
   const q = filter.trim().toLowerCase();
@@ -840,11 +781,9 @@ function renderTeamGrid(filter=''){
   if (!items.length){ grid.innerHTML = '<div class="muted">No matches.</div>'; return; }
 
   grid.innerHTML = items.map(t=>`
-    <div class="team-tile" data-code="${t.name}">
+    <div class="team-tile" data-code="${t.name}" title="${t.fullname} • ${t.region||''}">
       <img class="team-logo" src="${t.logo}" alt="${t.fullname} logo" loading="lazy">
       <div class="team-code">${t.name}</div>
-      <div class="team-name">${t.fullname}</div>
-      <div class="muted">${t.region||''}</div>
     </div>`).join('');
 
   grid.querySelectorAll('.team-tile').forEach(tile=>{
@@ -867,41 +806,15 @@ function highlightActiveTile(){
     div.classList.toggle('active', !!CURRENT_TEAM && CURRENT_TEAM.name===code);
   });
 }
-// Nav arrows (scroll by ~4 tiles)
-function wireTeamStripNav(){
-  const grid = el('teamGrid');
-  const prev = el('teamPrev');
-  const next = el('teamNext');
-  if (!grid || !prev || !next) return;
-
-  function tileSize(){
-    const s = getComputedStyle(document.documentElement);
-    const w = parseFloat(s.getPropertyValue('--tile-w')) || 132;
-    const gap = 8;
-    return w + gap;
-  }
-  prev.onclick = ()=> grid.scrollBy({ left: -tileSize()*4, behavior:'smooth' });
-  next.onclick = ()=> grid.scrollBy({ left:  tileSize()*4, behavior:'smooth' });
-
-  // make vertical wheel scroll horizontally
-  grid.addEventListener('wheel', (e)=>{
-    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)){
-      grid.scrollBy({ left: e.deltaY, behavior:'auto' });
-      e.preventDefault();
-    }
-  }, { passive:false });
-}
 
 /* ========= Selection ========= */
 async function selectTeam(teamObj){
   CURRENT_TEAM = teamObj;
-
-  // Update URL (?team=CODE)
   const url = new URL(window.location.href);
   url.searchParams.set('team', CURRENT_TEAM.name);
   history.replaceState(null, '', url.toString());
 
-  // Team limiter uses TAG (code) primarily; fallback to fullname if tag empty
+  // Limit by TAG primarily; fallback to fullname
   const base = baseRowsByTournament(ALL);
   const byTag = base.filter(r => (norm(r.tag).toUpperCase() || '') === teamObj.name.toUpperCase());
   const byName = base.filter(r => (norm(r.team).toLowerCase() || '') === teamObj.fullname.toLowerCase());
@@ -965,20 +878,38 @@ function renderPerMapAllTeams(){
   applyColumnHeatmap('tblPerMapAllTeams', ['total_pm','elims_pm','placement_pm','booyah_rate','matches','booyahs','elims','placement','total']);
 }
 
+/* ========= Load team meta ========= */
+async function loadTeamMeta(teamObj){
+  const code = (teamObj.name||'').trim();
+  const name = (teamObj.fullname||'').trim();
+
+  let info = null;
+  try{ info = await fetchTeamInfoBy(code, name); }
+  catch(e){ console.error('fetchTeamInfoBy threw:', e); uiShowTeamInfoError(`Team info error: ${e.message || e}`); }
+  renderTeamInfo(info);
+
+  let players = [];
+  try{
+    const teamId = info && (info.id ?? info.team_id);
+    players = await fetchPlayersBy(code, name, teamId);
+  }catch(e){
+    console.error('fetchPlayersBy threw:', e);
+    uiShowRosterError(`Player info error: ${e.message || e}`);
+  }
+  renderRoster(players);
+}
+
 /* ========= Wiring ========= */
 async function initial(){
-  // Build team strip
   renderTeamGrid('');
-  wireTeamStripNav();
   el('teamSearch').addEventListener('input', e => renderTeamGrid(e.target.value||''));
 
-  // Global controls
+  // Global tournament controls
   const gSel = el('gTournament');
   const gReset = el('gTournReset');
   gSel.addEventListener('change', ()=>{
     updateFilterHint();
     populateMapFilter();
-    // Re-derive team rows (if a team is active)
     if (CURRENT_TEAM){
       const base = baseRowsByTournament(ALL);
       const byTag = base.filter(r => (norm(r.tag).toUpperCase() || '') === CURRENT_TEAM.name.toUpperCase());
@@ -1046,7 +977,7 @@ async function initial(){
   // Load data
   ALL = await fetchAllRows();
 
-  // Populate global tournament (defaults to latest) and map list
+  // Populate global tournament (defaults to latest) & map list
   populateGlobalTournament();
   populateMapFilter();
 
@@ -1054,7 +985,7 @@ async function initial(){
   renderOverall();
   renderPerMapAllTeams();
 
-  // Auto-select ?team= (code or name)
+  // Auto-select ?team=
   const url = new URL(window.location.href);
   const qTeam = (url.searchParams.get('team')||'').trim().toLowerCase();
   if (qTeam){
