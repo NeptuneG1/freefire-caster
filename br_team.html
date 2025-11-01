@@ -357,9 +357,11 @@ let CURRENT_TEAM = null;
 
 /* ========= Normalizer (handles tag/TAG + common alt names) ========= */
 function normalizeRow(r){
-  // Normalize TAG
   r._tag = norm(r.tag ?? r.TAG ?? '');
-  // Normalize metrics (safe fallbacks if your schema used other names at any point)
+  // normalize optional tournament id variants if they exist
+  if (r.tournament_id == null && r.tourn_id != null) r.tournament_id = r.tourn_id;
+  if (r.tournament_id == null && r.tournamentId != null) r.tournament_id = r.tournamentId;
+
   if (r.elimination == null) r.elimination = r.elims ?? r.kills ?? 0;
   if (r.placement   == null) r.placement   = r.place ?? 0;
   if (r.top3        == null) r.top3        = r.top_3 ?? 0;
@@ -383,7 +385,7 @@ async function fetchAllRows(){
   for(;;){
     const { data, error } = await client
       .from('ffbr_data')
-      .select('*')                    // safe: grab everything; avoids missing alt columns
+      .select('*')
       .order('year',  { ascending:true, nullsFirst:true })
       .order('week',  { ascending:true, nullsFirst:true })
       .order('day',   { ascending:true, nullsFirst:true })
@@ -401,7 +403,6 @@ async function fetchAllRows(){
     from += rows.length;
   }
 
-  // Normalize, then STRICT limiter by TAG
   const normalized = out.map(normalizeRow);
   const limited = normalized.filter(r => ALLOWED_TAGS.has(norm(r._tag).toUpperCase()));
 
@@ -411,38 +412,78 @@ async function fetchAllRows(){
   return limited;
 }
 
-/* ========= Global tournament helpers ========= */
-function latestTournamentName(rows){
-  // latest by tuple (year,week,day,match,id)
-  const byT = new Map(); // key: lower(tourn) -> {name, maxKey}
+/* ========= Tournament indexing & default pick ========= */
+const PREFERRED_LATEST_NAME = 'ffws global finals 2025'; // force this if present
+
+function tournamentsIndex(rows){
+  // key by lower(name); keep max id and max tuple
+  const map = new Map();
   for (const r of rows){
-    const t = norm(r.tournament); if (!t) continue;
-    const k = t.toLowerCase();
+    const name = norm(r.tournament); if (!name) continue;
+    const key = name.toLowerCase();
+    const id  = Number(r.tournament_id);
     const tup = keyTuple(r);
-    if (!byT.has(k)) byT.set(k, { name:t, maxKey: tup });
-    else if (cmpTuple(tup, byT.get(k).maxKey) > 0) byT.get(k).maxKey = tup;
+    if (!map.has(key)){
+      map.set(key, {
+        name,
+        idMax: Number.isFinite(id) ? id : -Infinity,
+        tupMax: tup
+      });
+    } else {
+      const o = map.get(key);
+      if (Number.isFinite(id)) o.idMax = Math.max(o.idMax, id);
+      if (cmpTuple(tup, o.tupMax) > 0) o.tupMax = tup;
+    }
   }
-  if (!byT.size) return null;
-  return Array.from(byT.values()).sort((a,b)=> cmpTuple(b.maxKey, a.maxKey) )[0].name;
+  return map;
+}
+
+function defaultTournamentName(rows){
+  const idx = tournamentsIndex(rows);
+  if (!idx.size) return null;
+
+  // 1) If preferred title exists, use it
+  for (const v of idx.values()){
+    if (v.name.toLowerCase() === PREFERRED_LATEST_NAME) return v.name;
+  }
+
+  // 2) Else, pick by highest tournament_id if any are finite
+  const withId = Array.from(idx.values()).filter(v => Number.isFinite(v.idMax) && v.idMax !== -Infinity);
+  if (withId.length){
+    withId.sort((a,b)=> b.idMax - a.idMax || cmpTuple(b.tupMax, a.tupMax));
+    return withId[0].name;
+  }
+
+  // 3) Else, fallback to tuple recency
+  const all = Array.from(idx.values()).sort((a,b)=> cmpTuple(b.tupMax, a.tupMax));
+  return all[0].name;
 }
 
 function uniqueTournaments(rows){
-  const map = new Map();
-  for (const r of rows){
-    const t = norm(r.tournament); if (!t) continue;
-    const key = t.toLowerCase();
-    const tup = keyTuple(r);
-    if (!map.has(key)) map.set(key, { name:t, maxKey:tup });
-    else if (cmpTuple(tup, map.get(key).maxKey) > 0) map.get(key).maxKey = tup;
-  }
-  return Array.from(map.values()).sort((a,b)=> cmpTuple(b.maxKey, a.maxKey) || a.name.localeCompare(b.name));
+  const idx = tournamentsIndex(rows);
+  const items = Array.from(idx.values());
+  // sort by idMax desc (finite first), then tuple desc, then name
+  items.sort((a,b)=>{
+    const aId = Number.isFinite(a.idMax), bId = Number.isFinite(b.idMax);
+    if (aId && bId){
+      if (b.idMax !== a.idMax) return b.idMax - a.idMax;
+      const t = cmpTuple(b.tupMax, a.tupMax); if (t) return t;
+      return a.name.localeCompare(b.name);
+    }
+    if (aId && !bId) return -1;
+    if (!aId && bId) return 1;
+    const t = cmpTuple(b.tupMax, a.tupMax); if (t) return t;
+    return a.name.localeCompare(b.name);
+  });
+  return items;
 }
 
 function populateGlobalTournament(){
   const sel = el('gTournament');
   if (!sel) return;
+
   const items = uniqueTournaments(ALL);
-  const latest = latestTournamentName(ALL);
+  const latest = defaultTournamentName(ALL);
 
   sel.innerHTML = `<option value="__all__">All tournaments</option>` +
     items.map(o=> `<option value="${o.name.replaceAll('"','&quot;')}">${o.name}</option>`).join('');
@@ -450,6 +491,7 @@ function populateGlobalTournament(){
   sel.value = latest || '__all__';
   updateFilterHint();
 }
+
 function selectedTournament(){ return (el('gTournament')?.value || '__all__').trim(); }
 function baseRowsByTournament(rows){
   const t = selectedTournament();
@@ -462,7 +504,7 @@ function updateFilterHint(){
   const total = baseRowsByTournament(ALL).length;
   el('filterHint').textContent = t === '__all__'
     ? `Scope: All tournaments • Rows: ${total}`
-    : `Scope: ${t} • Rows: ${total}`;
+    : `Scope: ${t} • Rows: ${total} • Default prefers “FFWS GLOBAL FINALS 2025”, else latest by tournament_id`;
 }
 
 /* ========= Overall & Per-Map aggregations (TAG-based) ========= */
@@ -689,13 +731,32 @@ async function fetchPlayersBy(codeRaw, nameRaw, teamId){
   }
   return [];
 }
+function asListHTML(val){
+  const items = splitToLines(val);
+  if (!items.length) return '—';
+  return `<ul class="list-compact">${items.map(it=>`<li>${it}</li>`).join('')}</ul>`;
+}
+function splitToLines(val){
+  if (val == null) return [];
+  if (Array.isArray(val)) return val.flat().map(x=>String(x).trim()).filter(Boolean);
+  let s = String(val).trim();
+  try{
+    if (/^\s*\[/.test(s)){
+      const arr = JSON.parse(s);
+      if (Array.isArray(arr)) return arr.flat().map(x=>String(x).trim()).filter(Boolean);
+    }
+  }catch{}
+  s = s.replace(/[•\u2022\u00b7]/g, '\n');
+  let parts = s.split(/\r?\n|;|\|/);
+  if (parts.length === 1 && s.includes(',')) parts = s.split(',');
+  return parts.map(x=>x.trim()).filter(Boolean);
+}
 function renderTeamInfo(info){
   const box = document.getElementById('teamInfoBody');
   if (!info){ box.innerHTML = '<div class="muted">No team info found.</div>'; return; }
 
   const keys = Object.keys(info);
   const rewardsKey = keys.find(k => k.toLowerCase() === 'rewards') || keys.find(k => /reward/i.test(k));
-
   const hide = new Set(['id','created_at','updated_at','code','team_code','team','team_name','logo','logo_url','photo','image','image_url']);
   const preferred = ['Team Initials','country','region','founded','coach','manager','owner','org','sponsor','hq','tagline','website','twitter','facebook','youtube','instagram','tiktok','discord'];
   if (rewardsKey) preferred.push(rewardsKey);
@@ -852,7 +913,6 @@ async function selectTeam(teamObj){
   history.replaceState(null, '', url.toString());
 
   const base = baseRowsByTournament(ALL);
-  // STRICT by TAG
   TEAM_ROWS = base.filter(r => (norm(r._tag).toUpperCase() || '') === teamObj.name.toUpperCase());
 
   renderTeamOverview();
@@ -954,8 +1014,9 @@ async function initial(){
     renderPerMapAllTeams();
   });
   gReset.addEventListener('click', ()=>{
-    const latest = latestTournamentName(ALL);
-    gSel.value = latest || '__all__';
+    // Reset to preferred name if present, else latest by tournament_id
+    const preferred = defaultTournamentName(ALL);
+    gSel.value = preferred || '__all__';
     gSel.dispatchEvent(new Event('change'));
   });
 
@@ -1001,7 +1062,7 @@ async function initial(){
   // Load data (TAG-limited)
   ALL = await fetchAllRows();
 
-  // Populate global tournament (DEFAULT = last record by (year,week,day,match,id)) & map list
+  // Populate global tournament (DEFAULT = FFWS GLOBAL FINALS 2025 if present; else latest by tournament_id; else by tuple)
   populateGlobalTournament();
   populateMapFilter();
 
