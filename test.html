@@ -1,253 +1,552 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Free Fire — OB51 Update (Flame Arena)</title>
-  <link rel="preconnect" href="https://dl.dir.freefiremobile.com"/>
-  <style>
-    :root{
-      --bg:#0e0e0e; --panel:#1b1b1b; --panel2:#141414;
-      --ink:#f5f5f5; --muted:#b9b9b9;
-      --brand:#ffbd59; --brand2:#ff7733; --line:#313131;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif}
-    header{position:sticky;top:0;z-index:5;background:#1f1f1f;border-bottom:3px solid var(--brand);padding:14px 16px}
-    h1{margin:0;font-size:1.1rem;letter-spacing:.3px;color:var(--brand)}
-    .user-controls{position:absolute;right:16px;top:12px;display:flex;gap:10px;align-items:center}
-    .chip{font-size:.85rem;color:#ddd}
-    .btn{background:var(--brand);color:var(--panel);border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
-    .btn.secondary{background:#2a2a2a;color:#ddd;border:1px solid #3a3a3a}
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Heatmap Preview — Table Variants</title>
+<style>
+  :root{
+    --bg:#0e0e0e; --panel:#1b1b1b; --panel2:#141414; --ink:#f5f5f5; --muted:#b9b9b9;
+    --brand:#ffbd59; --brand2:#ff7733; --line:#2c2c2c;
 
-    .shell{max-width:1100px;margin:22px auto;padding:0 12px}
-    .section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
-    .section h2{margin:0 0 10px;color:var(--brand)}
-    .grid2{display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:12px}
-    .grid3{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:12px}
-    .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px}
-    .card h3{margin:0 0 6px;color:var(--brand2);font-size:1.0rem}
-    .muted{color:var(--muted)}
-    .hero{border-radius:12px;overflow:hidden;border:1px solid var(--line)}
-    .hero img{width:100%;display:block}
+    /* Heatmap defaults (can be overridden by JS options) */
+    --hm-brand-rgb: 255,189,89;  /* warm brand */
+    --hm-cool-rgb:  127,210,255; /* cool for diverging */
+    --hm-min: .06;               /* min alpha */
+    --hm-max: .22;               /* max alpha */
+    --hm-top-outline: .42;       /* outline alpha for top cell */
+    --hm-radius: 8px;            /* rounded heat cells */
 
-    .kpis{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
-    .kpi{background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:6px 10px;font-size:.9rem}
+    --hm-pill-bg: rgba(255,189,89,.18);
+    --hm-pill-fg: #ffe8bd;
+    --hm-dot-dim: 6px;
+    --hm-bar-h: 8px;
+    --hm-bar-alpha: .22;
+    --hm-band-alpha-step: .04;
+  }
 
-    .pillnav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
-    .pillnav a{padding:6px 10px;border-radius:999px;border:1px solid #2a2a2a;background:#141414;color:#e8e8e8;text-decoration:none;font-size:.9rem}
-    .pillnav a:hover{border-color:#484848}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif}
+  header{position:sticky;top:0;z-index:5;background:#1f1f1f;border-bottom:3px solid var(--brand);padding:14px 16px}
+  h1{margin:0;font-size:1.1rem;letter-spacing:.3px;color:var(--brand)}
+  .shell{max-width:1100px;margin:20px auto;padding:0 12px}
+  .section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
+  .section h2{margin:0 0 10px;color:var(--brand)}
+  .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px}
+  .muted{color:var(--muted)}
 
-    table{width:100%;border-collapse:collapse;font-size:.95rem}
-    th,td{border-bottom:1px solid #2a2a2a;padding:6px 6px;vertical-align:top}
-    thead th{background:#191919;position:sticky;top:0;text-align:left}
+  /* Controls bar */
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .label{font-size:.85rem;color:var(--muted)}
+  .input, select, button{
+    background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;
+    padding:8px 10px;font-size:.95rem
+  }
+  .btn{cursor:pointer}
+  .btn.primary{background:var(--brand);color:#1b1b1b;border-color:#3b3b3b;font-weight:700}
+  .btn.ghost{background:#1a1a1a}
+  .btn:active{transform:translateY(1px)}
 
-    .img{width:100%;border-radius:10px;border:1px solid var(--line)}
-    .note{font-size:.9rem;color:var(--muted)}
+  /* Table (rounded cells using border-spacing) */
+  table{width:100%;border-collapse:separate;border-spacing:0 6px;font-size:.92rem}
+  thead th{background:#191919;position:sticky;top:0;text-align:left;border-radius:8px;padding:8px 6px}
+  th,td{padding:6px 6px;vertical-align:middle}
+  .right{text-align:right}
 
-    @media (max-width: 860px){ .grid2,.grid3{grid-template-columns:1fr} }
-  </style>
+  /* Heatmap cell base + helpers (variants script relies on these) */
+  td[data-key]{ border-radius: var(--hm-radius); background-clip: padding-box; transition: background-color .18s ease, box-shadow .18s ease, opacity .18s ease; }
+  td.hm-top{ box-shadow: inset 0 0 0 1px rgba(var(--hm-brand-rgb), var(--hm-top-outline)); }
+
+  /* Bars */
+  .hm-barwrap{ position: relative; min-height: calc(var(--hm-bar-h) + 4px); }
+  .hm-bar{ position:absolute; left:0; bottom:2px; height: var(--hm-bar-h); border-radius: 6px; background: rgba(var(--hm-brand-rgb), var(--hm-bar-alpha)); }
+
+  /* Pills */
+  .hm-pill{ display:inline-block; padding:2px 8px; border-radius:999px; background: var(--hm-pill-bg); color: var(--hm-pill-fg); font-weight:700; }
+
+  /* Dots */
+  .hm-dots{ display:inline-flex; gap:4px; align-items:center; }
+  .hm-dot{ width: var(--hm-dot-dim); height: var(--hm-dot-dim); border-radius:50%; background: rgba(255,255,255,.18); }
+  .hm-dot.on{ background: rgba(var(--hm-brand-rgb), .9); }
+
+  /* Quantile bands (0 = lowest, 4 = highest) */
+  .hm-band-0{ background: rgba(var(--hm-brand-rgb), calc(var(--hm-min) + var(--hm-band-alpha-step)*0)); }
+  .hm-band-1{ background: rgba(var(--hm-brand-rgb), calc(var(--hm-min) + var(--hm-band-alpha-step)*1)); }
+  .hm-band-2{ background: rgba(var(--hm-brand-rgb), calc(var(--hm-min) + var(--hm-band-alpha-step)*2)); }
+  .hm-band-3{ background: rgba(var(--hm-brand-rgb), calc(var(--hm-min) + var(--hm-band-alpha-step)*3)); }
+  .hm-band-4{ background: rgba(var(--hm-brand-rgb), calc(var(--hm-min) + var(--hm-band-alpha-step)*4)); }
+
+  /* Chips */
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{display:inline-flex;gap:8px;align-items:center;background:#101010;border:1px solid #2a2a2a;border-radius:999px;padding:6px 10px}
+  .chip input{width:16px;height:16px}
+</style>
 </head>
 <body>
-<header>
-  <h1>Free Fire — OB51 Update (Flame Arena)</h1>
-  <div class="user-controls">
-    <a class="btn secondary" href="dashboard.html">← Dashboard</a>
-  </div>
-</header>
+<header><h1>Heatmap Preview — Variants</h1></header>
 
 <div class="shell">
-  <!-- HERO / SUMMARY -->
+
+  <!-- Controls -->
   <div class="section">
-    <div class="hero">
-      <img src="https://dl.dir.freefiremobile.com/common/web_event/official2/dist/client/img/banner.8540265.png" alt="Free Fire OB51 banner">
+    <h2>Controls</h2>
+    <div class="bar">
+      <div class="field">
+        <label class="label" for="variant">Variant</label>
+        <select id="variant">
+          <option value="soft-rank" selected>Soft Rank (rounded, smooth alpha)</option>
+          <option value="quantile-bands">Quantile Bands (5 discrete tints)</option>
+          <option value="diverging-z">Diverging Z-Score (warm/cool)</option>
+          <option value="neutral-bars">Neutral Bars (in-cell bar)</option>
+          <option value="top3-pills">Top-3 Pills (only top ranked)</option>
+          <option value="dot-scale">Dot Scale (1–5 dots)</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label class="label">Warm / Brand Color</label>
+        <input id="warmHex" class="input" type="text" value="#ffbd59" />
+      </div>
+
+      <div class="field">
+        <label class="label">Cool Color (diverging)</label>
+        <input id="coolHex" class="input" type="text" value="#7fd2ff" />
+      </div>
+
+      <div class="field">
+        <label class="label">Min α</label>
+        <input id="minAlpha" class="input" type="number" step="0.01" min="0" max="1" value="0.06"/>
+      </div>
+
+      <div class="field">
+        <label class="label">Max α</label>
+        <input id="maxAlpha" class="input" type="number" step="0.01" min="0" max="1" value="0.22"/>
+      </div>
+
+      <div class="field">
+        <label class="label">Radius (px)</label>
+        <input id="radiusPx" class="input" type="number" min="0" value="8"/>
+      </div>
+
+      <div class="field">
+        <button id="applyBtn" class="btn primary">Apply</button>
+      </div>
+      <div class="field">
+        <button id="randomBtn" class="btn ghost">Randomize Data</button>
+      </div>
+      <div class="field">
+        <button id="resetBtn" class="btn ghost">Reset View</button>
+      </div>
     </div>
-    <div class="kpis" style="margin-top:10px">
-      <div class="kpi"><strong>Version:</strong> OB51 (Flame Arena)</div>
-      <div class="kpi"><strong>Modes touched:</strong> BR • Clash Squad • Training Grounds</div>
-      <div class="kpi"><strong>Headline:</strong> New character <em>Nero</em>, new weapons <em>Winchester</em> & <em>Thompson‑X</em>, loadout rework, BR/CS balance + QoL</div>
-    </div>
-    <div class="pillnav">
-      <a href="#highlights">Highlights</a>
-      <a href="#characters">Characters</a>
-      <a href="#weapons">Weapons & Balancing</a>
-      <a href="#clashsquad">Clash Squad</a>
-      <a href="#battle-royale">Battle Royale</a>
-      <a href="#system">System & QoL</a>
-      <a href="#links">Links</a>
+
+    <div style="margin-top:12px">
+      <div class="label" style="margin-bottom:6px">Columns to Highlight</div>
+      <div id="colChips" class="chips"></div>
+      <div class="muted" style="margin-top:6px">Tip: Try a few numeric columns only (e.g., Total/m, Elims/m, Booyah%) for clearer separation.</div>
     </div>
   </div>
 
-  <!-- HIGHLIGHTS -->
-  <div class="section" id="highlights">
-    <h2>Highlights</h2>
-    <div class="grid3">
-      <div class="card">
-        <h3>New Character: Nero</h3>
-        <p>Nero brings a tactical buff that helps squads push or hold by converting Gloo usage into temporary combat advantages. Great for coordinated rushes and late‑circle skirmishes.</p>
-      </div>
-      <div class="card">
-        <h3>New Guns: Winchester & Thompson‑X</h3>
-        <p>Classic <b>Winchester</b> returns reworked for mid‑range precision. <b>Thompson‑X</b> is a controllable SMG built for aggressive entry fragging.</p>
-      </div>
-      <div class="card">
-        <h3>Loadout Rework</h3>
-        <p>Team utilities like <em>Team Booster</em>, <em>Enhance Hammer</em>, <em>Tactical Market</em>, and <em>Super Leg Pockets</em> streamline BR setup with clearer choices and stronger identities.</p>
-      </div>
-      <div class="card">
-        <h3>BR Quality‑of‑Life</h3>
-        <p>Waypoint pings, improved Weapon Rack info, and new utility items such as <em>Gloo Mushroom</em> and <em>Gloo UAV‑Lite</em> make rotations and scouting more readable.</p>
-      </div>
-      <div class="card">
-        <h3>Clash Squad Tuning</h3>
-        <p>Purchase flow refinements, Gloo and grenade adjustments, and pacing tweaks to reduce early snowball and encourage counterplay.</p>
-      </div>
-      <div class="card">
-        <h3>Solara Map Balance</h3>
-        <p>Cover, loot, and landing adjustments across key POIs to increase fair fights and diversify rotations.</p>
-      </div>
-    </div>
+  <!-- Preview -->
+  <div class="section">
+    <h2>Preview Table</h2>
+    <div class="card" id="tblPreview">Loading…</div>
   </div>
 
-  <!-- CHARACTERS -->
-  <div class="section" id="characters">
-    <h2>Characters</h2>
-    <div class="grid2">
-      <div class="card">
-        <h3>Nero — Featured Character</h3>
-        <p>Nero’s skill rewards smart utility usage and team play. It triggers a short‑window buff around Gloo interactions so your squad can breach, trade, and reset more safely. Best paired with entry SMGs/shotguns and a support running extra Gloo.</p>
-        <ul class="muted">
-          <li>Pairs well with aggressive brawlers and revive‑centric comps.</li>
-          <li>Synergizes with utility‑heavy rotations and late‑circle holds.</li>
-        </ul>
-      </div>
-      <div class="card">
-        <img class="img" alt="Characters Update" src="https://ff.garena.com/images/news/2025/10/30/0056004900338/Characters%20Update.jpeg"/>
-        <p class="note">Official character update art.</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- WEAPONS & BALANCING -->
-  <div class="section" id="weapons">
-    <h2>Weapons & Balancing</h2>
-    <div class="grid2">
-      <div class="card">
-        <h3>New</h3>
-        <ul>
-          <li><b>Winchester</b> — precision rifle tuned for reliable mid‑range picks with a rewarding headshot profile.</li>
-          <li><b>Thompson‑X</b> — stable SMG variant with strong time‑to‑damage in close quarters.</li>
-        </ul>
-        <h3>Adjustments</h3>
-        <ul>
-          <li><b>M1917</b> & <b>AC80</b> rebalanced to tighten dueling fairness.</li>
-          <li>SMG class pass for handling and consistency improvements.</li>
-          <li>Attachment and upgrade curves reviewed to match weapon roles.</li>
-        </ul>
-      </div>
-      <div class="card">
-        <img class="img" alt="Weapon Update" src="https://ff.garena.com/images/news/2025/10/30/0056004900338/Weapon%20Update.jpg"/>
-        <p class="note">Official weapon update art.</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- CLASH SQUAD -->
-  <div class="section" id="clashsquad">
-    <h2>Clash Squad</h2>
-    <div class="grid2">
-      <div class="card">
-        <h3>Economy & Buy‑Phase</h3>
-        <ul>
-          <li>Purchase interface streamlined for faster, clearer rounds.</li>
-          <li>Gloo Wall and Fire Grenade quantities adjusted per round to reduce spam and open counterplay windows.</li>
-        </ul>
-        <h3>Combat Feel</h3>
-        <ul>
-          <li>Weapon upgrade pacing tuned; round‑over flow tightened.</li>
-          <li>Quality‑of‑life fixes across HUD hints and item feedback.</li>
-        </ul>
-      </div>
-      <div class="card">
-        <p class="muted">Tip: Nero’s utility buff can set up entry paths—chain with smoke denial and quick trades.</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- BATTLE ROYALE -->
-  <div class="section" id="battle-royale">
-    <h2>Battle Royale</h2>
-    <div class="grid3">
-      <div class="card">
-        <h3>Loadout Rework</h3>
-        <ul>
-          <li><b>Team Booster</b>: squad‑wide early advantage for momentum starts.</li>
-          <li><b>Enhance Hammer</b>: accelerates weapon upgrade timings.</li>
-          <li><b>Tactical Market</b>: smarter access to key utilities mid‑match.</li>
-          <li><b>Super Leg Pockets</b>: expanded carry to support utility play.</li>
-        </ul>
-      </div>
-      <div class="card">
-        <h3>Loot & Revives</h3>
-        <ul>
-          <li><b>Advanced Revival Point</b> UI and rhythm made clearer.</li>
-          <li>Loot table clarity improved across rarities and drops.</li>
-        </ul>
-      </div>
-      <div class="card">
-        <h3>New Utilities</h3>
-        <ul>
-          <li><b>Gloo Mushroom</b>: mushroom pickup that contributes to Gloo availability.</li>
-          <li><b>Gloo UAV‑Lite</b>: intel ping that highlights nearby enemy Gloo placements.</li>
-        </ul>
-      </div>
-      <div class="card">
-        <h3>Navigation & Info</h3>
-        <ul>
-          <li><b>Waypoint</b> pings for clearer squad pathing.</li>
-          <li><b>Weapon Rack</b> now shows exact available guns for faster decisions.</li>
-        </ul>
-      </div>
-      <div class="card">
-        <h3>Solara Adjustments</h3>
-        <p>POI tuning for cover, loot density, and travel lanes; encourages wider rotations and fair engagements.</p>
-      </div>
-      <div class="card">
-        <p class="muted">Also includes miscellaneous balance and polish passes to reduce frustration moments and reward smart rotations.</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- SYSTEM / QOL -->
-  <div class="section" id="system">
-    <h2>System & QoL</h2>
-    <div class="grid2">
-      <div class="card">
-        <h3>Controls & Sensitivity</h3>
-        <p>Global sensitivity logic refined; long‑requested feel improvements for aim consistency and micro adjustments.</p>
-      </div>
-      <div class="card">
-        <h3>Training Grounds Revamp</h3>
-        <p>Layout and interactions refreshed so you can test the OB51 weapon balance faster and with more realistic scenarios.</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- LINKS -->
-  <div class="section" id="links">
-    <h2>Official Links</h2>
-    <table>
-      <thead><tr><th>Item</th><th>URL</th></tr></thead>
-      <tbody>
-        <tr><td>OB51 Patch Notes (Garena)</td><td><a href="https://ff.garena.com/news/en/patch-notes-ob51/" target="_blank" rel="noopener">ff.garena.com/news/en/patch-notes-ob51/</a></td></tr>
-        <tr><td>Characters Update image</td><td><a href="https://ff.garena.com/images/news/2025/10/30/0056004900338/Characters%20Update.jpeg" target="_blank" rel="noopener">Characters Update (Garena)</a></td></tr>
-        <tr><td>Weapons Update image</td><td><a href="https://ff.garena.com/images/news/2025/10/30/0056004900338/Weapon%20Update.jpg" target="_blank" rel="noopener">Weapons Update (Garena)</a></td></tr>
-      </tbody>
-    </table>
-    <p class="note">All art and logos © Garena. This fan page summarizes the key changes with links to the official notes.</p>
-  </div>
 </div>
 
-  
+<script>
+/* ======================= Utilities ======================= */
+function hexToRgbTuple(hex){
+  const h = (hex||'').trim();
+  const m = /^#?([a-f0-9]{3}|[a-f0-9]{6})$/i.exec(h);
+  if(!m) return null;
+  let s = m[1];
+  if (s.length===3) s = s.split('').map(ch=>ch+ch).join('');
+  const num = parseInt(s,16);
+  return [ (num>>16)&255, (num>>8)&255, num&255 ];
+}
+function fmtPct(x){ return Number.isFinite(x) ? (x*100).toFixed(1)+'%' : '—'; }
+function n(x){ return Number(x ?? 0) || 0; }
+function sum(arr, key){ let t=0; for(const r of arr) t += n(r[key]); return t; }
+
+/* ======================= Sample Data ======================= */
+const TEAMS = ['AG','BRU','CLVS','E1','EVOS','FX','GOW','HEV','HS','NVL','PE','R7','RC','RHK','RRQ','FLCN','TS','WAG'];
+
+function randomRow(team){
+  const matches = Math.floor(8 + Math.random()*20); // 8..28
+  const booyahs = Math.floor(Math.random()*(matches*0.5));
+  const elims   = Math.floor(matches*(2.5 + Math.random()*3.5)); // ~ 20..168
+  const place   = Math.floor(matches*(6 + Math.random()*5));     // ~ 48..308
+  const total   = elims*2 + place*1.2 + booyahs*5 + Math.floor(Math.random()*20);
+
+  const top3    = Math.floor(Math.random()*matches);
+  return {
+    team,
+    matches,
+    booyahs,
+    elims,
+    placement: place,
+    total,
+    booyah_rate: matches ? booyahs/matches : 0,
+    elims_pm: matches ? elims/matches : 0,
+    placement_pm: matches ? place/matches : 0,
+    total_pm: matches ? total/matches : 0,
+    top3_rate: matches ? top3/matches : 0
+  };
+}
+
+let DATA = TEAMS.map(t=>randomRow(t));
+
+/* ======================= Render Table ======================= */
+const COLS = [
+  {label:'Team',           key:'team'},
+  {label:'Matches',        key:'matches',     right:true},
+  {label:'Booyahs',        key:'booyahs',     right:true},
+  {label:'Elims',          key:'elims',       right:true},
+  {label:'Placement',      key:'placement',   right:true},
+  {label:'Total',          key:'total',       right:true},
+  {label:'Booyah %',       key:'booyah_rate', format:'pct', right:true},
+  {label:'Elims / m',      key:'elims_pm',    format:'1d',  right:true},
+  {label:'Placement / m',  key:'placement_pm',format:'1d',  right:true},
+  {label:'Total / m',      key:'total_pm',    format:'1d',  right:true},
+  {label:'Top-3 %',        key:'top3_rate',   format:'pct', right:true},
+];
+
+function renderSimpleTable(list, cols){
+  const head = `<thead><tr>${cols.map(c=>`<th class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
+  const body = `<tbody>${list.map(r=>`<tr>${cols.map(c=>{
+    let v = r[c.key];
+    if (c.format==='pct') v = fmtPct(v);
+    else if (c.format==='1d') v = Number.isFinite(v) ? Number(v).toFixed(1) : '—';
+    else if (c.format==='2d') v = Number.isFinite(v) ? Number(v).toFixed(2) : '—';
+    else if (c.format==='0d') v = Number.isFinite(v) ? Number(v).toFixed(0) : '—';
+    return `<td data-key="${c.key}" class="${c.right?'right':''}">${v==null?'—':v}</td>`;
+  }).join('')}</tr>`).join('')}</tbody>`;
+  return `<table>${head}${body}</table>`;
+}
+
+function rerender(){
+  document.getElementById('tblPreview').innerHTML = renderSimpleTable(DATA, COLS);
+}
+
+/* ======================= Heatmap Variants Core ======================= */
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function getCells(containerId, key){
+    const wrap = $(containerId); if (!wrap) return [];
+    const table = wrap.querySelector('table'); if (!table) return [];
+    return Array.from(table.querySelectorAll(`td[data-key="${key}"]`));
+  }
+  function parseVal(td){
+    let raw = (td.textContent||'').trim();
+    if (!raw) return null;
+    const isPct = raw.includes('%');
+    raw = raw.replace('%','').replace(/,/g,'');
+    const v = parseFloat(raw);
+    return Number.isFinite(v) ? (isPct ? v : v) : null;
+  }
+  function rankNormalize(values){
+    const entries = values.map((v,i)=>({i,v})).filter(x=>x.v!=null).sort((a,b)=> b.v - a.v);
+    const n = entries.length;
+    const ranks = Array(values.length).fill(null);
+    entries.forEach((e, idx)=>{
+      const pct = (n<=1) ? 1 : 1 - (idx/(n-1)); // top=1 .. bottom=0
+      ranks[e.i] = pct;
+    });
+    return ranks;
+  }
+  function normalize(values){
+    const nums = values.filter(v => v!=null);
+    if (!nums.length) return v => null;
+    const min = Math.min(...nums), max = Math.max(...nums);
+    if (min === max) return v => v==null ? null : 1;
+    return v => v==null ? null : (v - min) / (max - min);
+  }
+  function quantile(values, q){
+    const arr = values.filter(v=>v!=null).slice().sort((a,b)=>a-b);
+    if (!arr.length) return null;
+    const idx = (arr.length - 1) * q;
+    const lo = Math.floor(idx), hi = Math.ceil(idx);
+    if (lo === hi) return arr[lo];
+    const w = idx - lo;
+    return arr[lo]*(1-w) + arr[hi]*w;
+  }
+  function clearCell(td){
+    td.style.backgroundColor = '';
+    td.style.boxShadow = '';
+    td.classList.forEach(c=>{ if (c.startsWith('hm-band-')) td.classList.remove(c); });
+    td.classList.remove('hm-top');
+    td.querySelectorAll('.hm-barwrap,.hm-dots,.hm-pill').forEach(el=>el.remove());
+  }
+  function clearAll(containerId, keys){
+    keys.forEach(key => getCells(containerId, key).forEach(clearCell));
+  }
+
+  // Variants
+  function applySoftRank(containerId, keys, opt={}){
+    const brand = opt.brandRGB || getComputedStyle(document.documentElement).getPropertyValue('--hm-brand-rgb') || '255,189,89';
+    const minA  = opt.minAlpha ?? parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hm-min')) || .06;
+    const maxA  = opt.maxAlpha ?? parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hm-max')) || .22;
+
+    keys.forEach(key=>{
+      const cells = getCells(containerId, key);
+      const vals  = cells.map(parseVal);
+      const ranks = rankNormalize(vals);
+      const topVal = Math.max(...vals.filter(v=>v!=null));
+      cells.forEach((td,i)=>{
+        const r = ranks[i];
+        if (r==null) return;
+        const alpha = minA + (maxA - minA) * Math.pow(r, 0.65);
+        td.style.backgroundColor = `rgba(${brand.trim()}, ${alpha.toFixed(3)})`;
+        if (vals[i] === topVal) td.classList.add('hm-top');
+      });
+    });
+  }
+
+  function applyQuantileBands(containerId, keys, opt={}){
+    keys.forEach(key=>{
+      const cells = getCells(containerId, key);
+      const vals  = cells.map(parseVal);
+      const q1 = quantile(vals, .2),
+            q2 = quantile(vals, .4),
+            q3 = quantile(vals, .6),
+            q4 = quantile(vals, .8);
+      const top = Math.max(...vals.filter(v=>v!=null));
+      cells.forEach((td,i)=>{
+        const v = vals[i];
+        if (v==null) return;
+        let band = 0;
+        if (v>q1) band=1;
+        if (v>q2) band=2;
+        if (v>q3) band=3;
+        if (v>q4) band=4;
+        td.classList.add(`hm-band-${band}`);
+        if (v === top) td.classList.add('hm-top');
+      });
+    });
+  }
+
+  function applyDivergingZ(containerId, keys, opt={}){
+    const warm = opt.warmRGB || getComputedStyle(document.documentElement).getPropertyValue('--hm-brand-rgb') || '255,189,89';
+    const cool = opt.coolRGB || getComputedStyle(document.documentElement).getPropertyValue('--hm-cool-rgb')  || '127,210,255';
+    const minA = opt.minAlpha ?? .05, maxA = opt.maxAlpha ?? .26;
+
+    keys.forEach(key=>{
+      const cells = getCells(containerId, key);
+      const vals  = cells.map(parseVal).filter(v=>v!=null);
+      if (!vals.length) return;
+      const mean = vals.reduce((a,b)=>a+b,0)/vals.length;
+      const sd   = Math.sqrt(vals.reduce((s,v)=> s+(v-mean)*(v-mean), 0)/vals.length) || 1;
+
+      const allCells = getCells(containerId, key);
+      const allVals  = allCells.map(parseVal);
+      const top = Math.max(...allVals.filter(v=>v!=null));
+
+      allCells.forEach(td=>{
+        const v = parseVal(td);
+        if (v==null) return;
+        const z = (v-mean)/sd; // negative..positive
+        const mag = Math.min(1, Math.abs(z)/2.0); // clamp
+        const alpha = minA + (maxA - minA) * Math.pow(mag, .9);
+        const rgb = z>=0 ? warm : cool;
+        td.style.backgroundColor = `rgba(${rgb.trim()}, ${alpha.toFixed(3)})`;
+        if (v === top) td.classList.add('hm-top');
+      });
+    });
+  }
+
+  function applyNeutralBars(containerId, keys, opt={}){
+    keys.forEach(key=>{
+      const cells = getCells(containerId, key);
+      const vals  = cells.map(parseVal);
+      const norm  = (function(){
+        const nums = vals.filter(v => v!=null);
+        if (!nums.length) return v=>null;
+        const min = Math.min(...nums), max = Math.max(...nums);
+        if (min === max) return v=>1;
+        return v => v==null ? null : (v - min) / (max - min);
+      })();
+      const top   = Math.max(...vals.filter(v=>v!=null));
+
+      cells.forEach((td,i)=>{
+        const v = vals[i]; if (v==null) return;
+        const p = Math.round(norm(v)*100);
+
+        const wrap = document.createElement('div');
+        wrap.className = 'hm-barwrap';
+        const bar = document.createElement('div');
+        bar.className = 'hm-bar';
+        bar.style.width = p + '%';
+        wrap.appendChild(bar);
+
+        const txt = document.createElement('div');
+        txt.style.position='relative'; txt.style.zIndex='1';
+        txt.textContent = (td.textContent||'').trim();
+        td.textContent = '';
+        td.appendChild(txt);
+        td.appendChild(wrap);
+
+        if (v === top) td.classList.add('hm-top');
+      });
+    });
+  }
+
+  function applyTop3Pills(containerId, keys, opt={}){
+    keys.forEach(key=>{
+      const cells = getCells(containerId, key);
+      const vals  = cells.map(parseVal);
+      const entries = cells.map((td,i)=>({td, v: vals[i]})).filter(x=>x.v!=null).sort((a,b)=> b.v - a.v);
+      const top3 = new Set(entries.slice(0,3).map(x=>x.td));
+      const best = entries.length ? entries[0].v : null;
+
+      cells.forEach(td=>{
+        const v = parseVal(td);
+        if (v==null) return;
+        const txt = (td.textContent||'').trim();
+        td.textContent = '';
+        const span = document.createElement('span');
+        span.textContent = txt;
+        if (top3.has(td)) {
+          span.className = 'hm-pill';
+          if (v === best) td.classList.add('hm-top');
+        }
+        td.appendChild(span);
+      });
+    });
+  }
+
+  function applyDotScale(containerId, keys, opt={}){
+    const steps = opt.steps || 5;
+    keys.forEach(key=>{
+      const cells = getCells(containerId, key);
+      const vals  = cells.map(parseVal);
+      const entries = cells.map((td,i)=>({td:td, v:vals[i]}));
+      const ranks = rankNormalize(vals);
+      const best  = Math.max(...vals.filter(v=>v!=null));
+      entries.forEach((e,i)=>{
+        const v = e.v; const r = ranks[i];
+        if (v==null || r==null) return;
+        const on = Math.max(1, Math.round(r*steps));
+        const txt = (e.td.textContent||'').trim();
+        e.td.textContent = '';
+
+        const wrap = document.createElement('div');
+        wrap.style.display='flex'; wrap.style.justifyContent='space-between'; wrap.style.alignItems='center'; wrap.style.gap='8px';
+        const label = document.createElement('span'); label.textContent = txt; label.style.flex='0 0 auto';
+        const dots = document.createElement('span'); dots.className='hm-dots'; dots.style.flex='0 0 auto';
+
+        for(let k=0;k<steps;k++){
+          const d = document.createElement('span'); d.className = 'hm-dot' + (k<on ? ' on' : '');
+          dots.appendChild(d);
+        }
+        wrap.appendChild(label); wrap.appendChild(dots);
+        e.td.appendChild(wrap);
+
+        if (v === best) e.td.classList.add('hm-top');
+      });
+    });
+  }
+
+  function applyHeatmap(containerId, keys, variant='soft-rank', options={}){
+    // Cleanup first
+    clearAll(containerId, keys);
+
+    // Allow quick CSS var overrides
+    if (options.brandRGB) document.documentElement.style.setProperty('--hm-brand-rgb', options.brandRGB);
+    if (options.coolRGB)  document.documentElement.style.setProperty('--hm-cool-rgb',  options.coolRGB);
+    if (options.radius!=null) document.documentElement.style.setProperty('--hm-radius', options.radius);
+
+    switch(String(variant)){
+      case 'soft-rank':       return applySoftRank(containerId, keys, options);
+      case 'quantile-bands':  return applyQuantileBands(containerId, keys, options);
+      case 'diverging-z':     return applyDivergingZ(containerId, keys, options);
+      case 'neutral-bars':    return applyNeutralBars(containerId, keys, options);
+      case 'top3-pills':      return applyTop3Pills(containerId, keys, options);
+      case 'dot-scale':       return applyDotScale(containerId, keys, options);
+      default:                return applySoftRank(containerId, keys, options);
+    }
+  }
+
+  // expose
+  window.applyHeatmap = applyHeatmap;
+})();
+
+/* ======================= Controls & Wiring ======================= */
+const COL_KEYS = COLS.map(c=>c.key).filter(k => k!=='team'); // numeric-ish default
+
+function renderChips(){
+  const box = document.getElementById('colChips');
+  box.innerHTML = '';
+  COLS.forEach(col=>{
+    if (col.key === 'team') return;
+    const id = 'chk_' + col.key;
+    const chip = document.createElement('label');
+    chip.className = 'chip';
+    chip.innerHTML = `<input type="checkbox" id="${id}" checked/> <span>${col.label}</span>`;
+    box.appendChild(chip);
+  });
+}
+
+function getSelectedKeys(){
+  const keys = [];
+  COLS.forEach(col=>{
+    if (col.key === 'team') return;
+    const id = 'chk_' + col.key;
+    const el = document.getElementById(id);
+    if (el && el.checked) keys.push(col.key);
+  });
+  return keys.length ? keys : ['total_pm','elims_pm','booyah_rate'];
+}
+
+function applyNow(){
+  const variant = document.getElementById('variant').value;
+
+  const warmHex = document.getElementById('warmHex').value;
+  const coolHex = document.getElementById('coolHex').value;
+  const warmRgb = hexToRgbTuple(warmHex) || [255,189,89];
+  const coolRgb = hexToRgbTuple(coolHex) || [127,210,255];
+
+  const minAlpha = parseFloat(document.getElementById('minAlpha').value) || 0.06;
+  const maxAlpha = parseFloat(document.getElementById('maxAlpha').value) || 0.22;
+  const radius   = (parseInt(document.getElementById('radiusPx').value,10) || 8) + 'px';
+
+  const keys = getSelectedKeys();
+
+  window.applyHeatmap('tblPreview', keys, variant, {
+    brandRGB: warmRgb.join(','),
+    coolRGB:  coolRgb.join(','),
+    minAlpha, maxAlpha,
+    radius
+  });
+}
+
+function randomizeData(){
+  DATA = TEAMS.map(t=>randomRow(t));
+  rerender();
+  applyNow();
+}
+
+function resetView(){
+  document.getElementById('variant').value = 'soft-rank';
+  document.getElementById('warmHex').value = '#ffbd59';
+  document.getElementById('coolHex').value = '#7fd2ff';
+  document.getElementById('minAlpha').value = '0.06';
+  document.getElementById('maxAlpha').value = '0.22';
+  document.getElementById('radiusPx').value = '8';
+  renderChips();
+  rerender();
+  applyNow();
+}
+
+document.getElementById('applyBtn').addEventListener('click', applyNow);
+document.getElementById('randomBtn').addEventListener('click', randomizeData);
+document.getElementById('resetBtn').addEventListener('click', resetView);
+
+/* ======================= Boot ======================= */
+renderChips();
+rerender();
+applyNow();
+</script>
 </body>
 </html>
