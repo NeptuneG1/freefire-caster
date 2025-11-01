@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>FFBR — LOPS Dashboard</title>
+<title>FFBR — LOPS Player Focus</title>
 <meta name="theme-color" content="#0d1014"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -13,8 +13,8 @@
     --brand:#ffe93b; --brandText:#0b0d0e; --line:#4c525d; --chip:#213830;
     --good:#62e887; --bad:#ff6b6b; --accent:#7fd2ff;
 
-    /* Heatmap look */
-    --heat-rgb: 255,233,59;      /* brand yellow */
+    /* Heatmap look for any tables we color later */
+    --heat-rgb: 255,233,59;
     --heat-min: .06;
     --heat-max: .24;
     --heat-outline: .45;
@@ -40,10 +40,17 @@
   .pill{background:#172033;padding:4px 8px;border-radius:999px;color:#c5d0e6;border:1px solid #2d3b57}
   .muted{color:var(--muted)}
 
+  .grid2{display:grid;grid-template-columns:repeat(2,minmax(280px,1fr));gap:12px}
+  .grid3{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:12px}
+  @media (max-width: 980px){ .grid3{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width: 640px){ .grid2,.grid3{grid-template-columns:1fr} }
+
   .kpis{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:10px}
   .kpi{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px}
   .kpi .t{font-size:.8rem;letter-spacing:.3px;color:#b7c2da}
   .kpi .v{font-size:1.3rem;font-weight:800}
+  @media (max-width: 980px){ .kpis{grid-template-columns:repeat(3,1fr)} }
+  @media (max-width: 620px){ .kpis{grid-template-columns:repeat(2,1fr)} }
 
   table{width:100%;border-collapse:separate;border-spacing:0 8px;font-size:.95rem}
   thead th{background:#141a28;text-align:left;border-radius:10px;padding:8px 8px}
@@ -51,8 +58,8 @@
   th,td{padding:8px 8px;vertical-align:top}
   td{border-radius:10px}
   td.right, th.right{text-align:right}
-
-  .sortbar{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+  td[data-key]{ transition: background-color .18s ease, box-shadow .18s ease; border-radius: var(--heat-radius); background-clip: padding-box; }
+  td.heat-top{ box-shadow: inset 0 0 0 1px rgba(var(--heat-rgb), var(--heat-outline)); }
 
   details.accordion{
     background:var(--panel);
@@ -65,28 +72,11 @@
   }
   details.accordion[open] > summary{ border-bottom-color:var(--line); }
   details.accordion > .accordion-body{ padding:12px; }
-
-  /* Heat cells */
-  td[data-key]{ transition: background-color .18s ease, box-shadow .18s ease; border-radius: var(--heat-radius); background-clip: padding-box; }
-  td.heat-top{ box-shadow: inset 0 0 0 1px rgba(var(--heat-rgb), var(--heat-outline)); }
-
-  /* Bars */
-  .barwrap{height:20px;background:#0c1320;border:1px solid #26324c;border-radius:10px;overflow:hidden}
-  .barfill{height:100%;background:linear-gradient(90deg, var(--brand) 0%, #ffb000 100%);}
-
-  /* Responsive */
-  @media (max-width: 980px){
-    .kpis{grid-template-columns:repeat(3,1fr)}
-  }
-  @media (max-width: 620px){
-    .kpis{grid-template-columns:repeat(2,1fr)}
-    table{font-size:.9rem}
-  }
 </style>
 </head>
 <body>
 <header>
-  <h1>FFBR — LOPS Dashboard</h1>
+  <h1>FFBR — LOPS Player Focus</h1>
   <div class="user-controls">
     <a class="btn secondary" href="dashboard.html">← Dashboard</a>
     <span class="chip" id="user-info">Checking login…</span>
@@ -119,40 +109,70 @@
   <!-- KPIs -->
   <div class="section">
     <h2>Overview</h2>
-    <div class="kpis" id="kpiWrap">
-      <!-- populated -->
-    </div>
+    <div class="kpis" id="kpiWrap"></div>
   </div>
 
-  <!-- TEAM LEADERBOARD -->
+  <!-- Player Stat Spotlights -->
   <details class="accordion" open>
-    <summary>Team Leaderboard</summary>
+    <summary>Player Stat Spotlights (Top 10)</summary>
     <div class="accordion-body">
-      <div class="sortbar">
-        <label>Sort
-          <select id="teamSortKey" class="input">
-            <option value="points" selected>Points</option>
-            <option value="kills">Kills</option>
-            <option value="assists">Assists</option>
-            <option value="booyah_rate">Booyah %</option>
-            <option value="avg_place">Avg Placement</option>
-            <option value="mvp">MVPs</option>
-            <option value="kpm">Kills / match</option>
-            <option value="ppm">Points / match</option>
-            <option value="team">Team A→Z</option>
-          </select>
-        </label>
-        <button class="btn secondary" id="teamSortDir" data-dir="desc">Desc</button>
+      <div class="grid3">
+        <div class="section" style="margin:0">
+          <h3 style="margin:0 0 8px;color:#ffd84a">Eliminations</h3>
+          <div id="top10Kills">Loading…</div>
+        </div>
+        <div class="section" style="margin:0">
+          <h3 style="margin:0 0 8px;color:#ffd84a">Assists</h3>
+          <div id="top10Assists">Loading…</div>
+        </div>
+        <div class="section" style="margin:0">
+          <h3 style="margin:0 0 8px;color:#ffd84a">Points</h3>
+          <div id="top10Points">Loading…</div>
+        </div>
       </div>
-      <div id="tblTeams">Loading…</div>
+
+      <div class="grid3" style="margin-top:12px">
+        <div class="section" style="margin:0">
+          <h3 style="margin:0 0 8px;color:#ffd84a">Kills / Match</h3>
+          <div id="top10KPM">Loading…</div>
+        </div>
+        <div class="section" style="margin:0">
+          <h3 style="margin:0 0 8px;color:#ffd84a">Points / Match</h3>
+          <div id="top10PPM">Loading…</div>
+        </div>
+        <div class="section" style="margin:0" id="mvpSpot" hidden>
+          <h3 style="margin:0 0 8px;color:#ffd84a">MVPs</h3>
+          <div id="top10MVP">Loading…</div>
+        </div>
+      </div>
+
+      <!-- Optional extra metrics auto-detected (only show if present) -->
+      <div class="grid3" id="extraMetricsWrap" style="margin-top:12px"></div>
     </div>
   </details>
 
-  <!-- PLAYER LEADERBOARD -->
+  <!-- Pick Rates — Active & Pet only -->
   <details class="accordion" open>
-    <summary>Player Leaderboard (Top 25)</summary>
+    <summary>Pick Rates — Active Skills & Pet Skills</summary>
     <div class="accordion-body">
-      <div class="sortbar">
+      <div class="grid2">
+        <div class="section" style="margin:0">
+          <h3 style="margin:0 0 8px;color:#ffd84a">Active Skills</h3>
+          <div id="tblActive">Loading…</div>
+        </div>
+        <div class="section" style="margin:0">
+          <h3 style="margin:0 0 8px;color:#ffd84a">Pet Skills</h3>
+          <div id="tblPet">Loading…</div>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <!-- Player Leaderboard (still useful) -->
+  <details class="accordion">
+    <summary>Player Leaderboard (Full, sortable)</summary>
+    <div class="accordion-body">
+      <div class="bar">
         <label>Sort
           <select id="playerSortKey" class="input">
             <option value="kills" selected>Kills</option>
@@ -170,53 +190,7 @@
     </div>
   </details>
 
-  <!-- TEAM x MAP HEATMAP -->
-  <details class="accordion" open>
-    <summary>Team × Map Heatmap</summary>
-    <div class="accordion-body">
-      <div class="bar" style="margin-bottom:10px">
-        <label>Metric
-          <select id="heatMetric" class="input">
-            <option value="ppm" selected>Points / match</option>
-            <option value="kpm">Kills / match</option>
-            <option value="booyah_rate">Booyah %</option>
-            <option value="place_inv">Placement (better=brighter)</option>
-          </select>
-        </label>
-      </div>
-      <div id="tblHeat">Loading…</div>
-    </div>
-  </details>
-
-  <!-- PICKS -->
-  <details class="accordion" open>
-    <summary>Pick Rates (Characters / Active Skills / Pet Skills)</summary>
-    <div class="accordion-body">
-      <div class="bar"><span class="muted">Counts from filtered rows</span></div>
-      <div class="section" style="margin:0 0 10px">
-        <h3 style="margin:0 0 8px;color:#ffd84a">Top Characters</h3>
-        <div id="listChars">—</div>
-      </div>
-      <div class="section" style="margin:0 0 10px">
-        <h3 style="margin:0 0 8px;color:#ffd84a">Active Skills</h3>
-        <div id="listActive">—</div>
-      </div>
-      <div class="section" style="margin:0">
-        <h3 style="margin:0 0 8px;color:#ffd84a">Pet Skills</h3>
-        <div id="listPet">—</div>
-      </div>
-    </div>
-  </details>
-
-  <!-- MVP LEDGER -->
-  <details class="accordion">
-    <summary>MVP Ledger</summary>
-    <div class="accordion-body" id="mvpLedger">
-      Loading…
-    </div>
-  </details>
-
-  <!-- DATA EXPLORER -->
+  <!-- Data Explorer -->
   <details class="accordion">
     <summary>Data Explorer</summary>
     <div class="accordion-body">
@@ -267,22 +241,33 @@ const n = v => {
 };
 const uniq = arr => Array.from(new Set(arr));
 const sum = (arr,key) => arr.reduce((t,r)=>t+n(r[key]),0);
-const html = s => s;
-function looksLikeURL(v){ return /^https?:\/\//i.test(String(v||'')); }
-function escapeHtml(s){ return s.replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
-function fmt(x,dec=0){ x=Number(x); return isFinite(x)? x.toFixed(dec) : '—'; }
+const escapeHtml = s => s.replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
 function pct(x){ x=Number(x); return isFinite(x)? (x*100).toFixed(1)+'%' : '—'; }
+function renderTable(list, cols){
+  if (!list.length) return '<div class="muted">No rows.</div>';
+  const head = `<thead><tr>${cols.map(c=>`<th class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
+  const body = '<tbody>' + list.map(r=>{
+    const tds = cols.map(c=>{
+      let v = r[c.key];
+      if (c.fmt==='pct') v = pct(v);
+      else if (c.fmt==='1d') v = isFinite(v)? Number(v).toFixed(1) : '—';
+      else if (c.fmt==='2d') v = isFinite(v)? Number(v).toFixed(2) : '—';
+      else if (v==null || v==='') v = '—';
+      return `<td class="${c.right?'right':''}" data-key="${c.key}">${escapeHtml(String(v))}</td>`;
+    }).join('');
+    return `<tr>${tds}</tr>`;
+  }).join('') + '</tbody>';
+  return `<table>${head}${body}</table>`;
+}
 
 /* ===== Data & Normalization ===== */
-let RAW = [];           // all rows from ffbr_lopsdata
-let VIEW = [];          // rows after filters
-let ALL_COLS = [];      // column names seen
+let RAW = [];
+let VIEW = [];
+let ALL_COLS = [];
 let filter = { day:'__all__', match:'__all__', map:'__all__', team:'', player:'' };
 
 function normalizeRow(r){
   const o = {...r};
-
-  // canonical keys
   o._team   = norm(o.TeamName ?? o.Team ?? o.team ?? o.TAG ?? o.tag);
   o._player = norm(o.Player ?? o.IGN ?? o['Player IGN'] ?? o['InGameName'] ?? o['IGName']);
   o._map    = norm(o.Map ?? o.map);
@@ -294,28 +279,21 @@ function normalizeRow(r){
   const rankScore = n(o.RankingScore ?? o['Ranking Score']);
   const killScore = n(o.KillingScore ?? o['Killing Score']);
   const totalScore = n(o.TotalScore ?? o['Total Score'] ?? o.Total ?? o['Total Points']);
-  // Prefer explicit total, else compose
   o._points = totalScore || (rankScore + killScore);
 
-  o._kills    = n(o['Total Kill'] ?? o.Kills ?? o.KILL ?? o.KILLING ?? o.KILLCOUNT ?? o['Kill']);
+  o._kills    = n(o['Total Kill'] ?? o.Kills ?? o['Kill']);
   o._assists  = n(o.Assist ?? o.Assists);
   o._mvp      = n(o.MVP ?? o['MVPs']);
 
-  // Picks
-  o._chars = [];
-  for (let i=1;i<=4;i++){
-    const key = ['Character '+i,'Character'+i,'Char '+i,'Char'+i].find(k=>o[k]!=null);
-    if (key){ const v = norm(o[key]); if (v) o._chars.push(v); }
-  }
+  // picks
   o._active = norm(o.SkillActive ?? o['Skill Active'] ?? o.Active);
   o._pet    = norm(o['Pet Skill Name'] ?? o['PetSkill'] ?? o['Pet']);
 
   // derive booyah if not present
   if (!o._booyah) o._booyah = (o._place===1) ? 1 : 0;
 
-  // game key (for per-match rates)
-  o._gkey = `${low(o._day)}|${low(o._match)}|${low(o._map)}|${low(o._team)}`;
-
+  // per-player per game key
+  o._pgkey = `${low(o._day)}|${low(o._match)}|${low(o._map)}|${low(o._player)}`;
   return o;
 }
 
@@ -348,7 +326,7 @@ function applyFilters(){
     return true;
   });
   el('scopeText').textContent =
-    `Rows: ${VIEW.length} • Days: ${uniq(VIEW.map(r=>r._day)).length} • Matches: ${uniq(VIEW.map(r=>r._match)).length} • Teams: ${uniq(VIEW.map(r=>r._team)).length}`;
+    `Rows: ${VIEW.length} • Days: ${uniq(VIEW.map(r=>r._day)).length} • Matches: ${uniq(VIEW.map(r=>r._match)).length} • Teams: ${uniq(VIEW.map(r=>r._team)).length} • Players: ${uniq(VIEW.map(r=>r._player)).length}`;
 }
 
 /* ===== KPIs ===== */
@@ -356,20 +334,9 @@ function renderKPIs(){
   const games = uniq(VIEW.map(r=> `${r._day}|${r._match}|${r._map}`)).length;
   const teams = uniq(VIEW.map(r=> r._team)).length;
   const players = uniq(VIEW.map(r=> r._player)).length;
-
-  // Points & kills might be per player; still good for totals
   const totalPts = VIEW.reduce((t,r)=> t + n(r._points), 0);
   const totalKills = VIEW.reduce((t,r)=> t + n(r._kills), 0);
-
-  // Booyah rate per team-game
-  const byTeamGame = groupBy(VIEW, r=>r._gkey);
-  let booyahGames=0, gameCount=0;
-  for (const [g,list] of byTeamGame){
-    gameCount++;
-    const isB = list.some(x=> n(x._booyah)>0 || n(x._place)===1 );
-    if (isB) booyahGames++;
-  }
-  const booyahRate = gameCount? (booyahGames/gameCount) : 0;
+  const totalAssists = VIEW.reduce((t,r)=> t + n(r._assists), 0);
 
   el('kpiWrap').innerHTML = [
     ['Games', games],
@@ -377,7 +344,7 @@ function renderKPIs(){
     ['Players', players],
     ['Total Points', totalPts],
     ['Total Kills', totalKills],
-    ['Booyah Rate', pct(booyahRate)]
+    ['Total Assists', totalAssists]
   ].map(([t,v])=>`
     <div class="kpi">
       <div class="t">${t}</div>
@@ -386,102 +353,12 @@ function renderKPIs(){
   `).join('');
 }
 
-/* ===== Group helpers ===== */
+/* ===== Player Aggregates ===== */
 function groupBy(arr, keyFn){ const m=new Map(); for (const r of arr){ const k=keyFn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r);} return m; }
 
-/* ===== Team Leaderboard ===== */
-function computeTeamTable(){
-  const map = new Map(); // team -> agg
-  const perTeamGames = new Map(); // team -> Set of games
-  const perTeamPlace = new Map(); // team -> Map(game->min place)
-
-  for (const r of VIEW){
-    if (!r._team) continue;
-    if (!map.has(r._team)) map.set(r._team, { team:r._team, points:0, kills:0, assists:0, mvp:0, booyah:0 });
-    const a = map.get(r._team);
-    a.points += n(r._points);
-    a.kills  += n(r._kills);
-    a.assists+= n(r._assists);
-    a.mvp    += n(r._mvp);
-
-    // per game
-    if (!perTeamGames.has(r._team)) perTeamGames.set(r._team, new Set());
-    if (!perTeamPlace.has(r._team)) perTeamPlace.set(r._team, new Map());
-    perTeamGames.get(r._team).add(r._gkey);
-
-    const gmap = perTeamPlace.get(r._team);
-    const cur = gmap.get(r._gkey);
-    const p = n(r._place) || (n(r._booyah)>0?1:0);
-    if (!cur) gmap.set(r._gkey, p || 0);
-    else gmap.set(r._gkey, Math.min(cur, p||0));
-
-    // booyah if any row in game had booyah/place=1
-    if (n(r._booyah)>0 || n(r._place)===1) a.booyah += 1; // will be corrected below not to overcount
-  }
-
-  const rows=[];
-  for (const [team, agg] of map){
-    const gamesSet = perTeamGames.get(team) || new Set();
-    const gcount = gamesSet.size || 0;
-
-    // Correct booyah to count unique games only
-    let booyahGames = 0;
-    for (const g of gamesSet){
-      const minPlace = perTeamPlace.get(team)?.get(g) ?? 0;
-      if (minPlace===1) booyahGames++;
-    }
-
-    // avg placement from min placement per game
-    const places = Array.from(perTeamPlace.get(team)?.values() || []);
-    const avgPlace = places.length ? (places.reduce((t,x)=>t+n(x),0)/places.length) : 0;
-
-    rows.push({
-      team,
-      points: agg.points,
-      kills: agg.kills,
-      assists: agg.assists,
-      mvp: agg.mvp,
-      matches: gcount,
-      kpm: gcount ? agg.kills/gcount : 0,
-      ppm: gcount ? agg.points/gcount : 0,
-      booyah_rate: gcount ? booyahGames/gcount : 0,
-      avg_place: avgPlace || 0
-    });
-  }
-  return rows;
-}
-
-function renderTeamTable(){
-  const key = el('teamSortKey').value;
-  const dir = el('teamSortDir').dataset.dir;
-  const mult = dir==='asc' ? 1 : -1;
-
-  const rows = computeTeamTable();
-  rows.sort((a,b)=>{
-    if (key==='team') return mult * a.team.localeCompare(b.team);
-    return mult * ((+a[key]) - (+b[key]));
-  });
-
-  const cols = [
-    {label:'Team', key:'team'},
-    {label:'Matches', key:'matches', right:true},
-    {label:'Points', key:'points', right:true},
-    {label:'Points / m', key:'ppm', right:true, fmt:'1d'},
-    {label:'Kills', key:'kills', right:true},
-    {label:'Kills / m', key:'kpm', right:true, fmt:'1d'},
-    {label:'Assists', key:'assists', right:true},
-    {label:'Booyah %', key:'booyah_rate', right:true, fmt:'pct'},
-    {label:'Avg Place', key:'avg_place', right:true, fmt:'1d'},
-    {label:'MVPs', key:'mvp', right:true},
-  ];
-
-  el('tblTeams').innerHTML = renderTable(rows, cols);
-}
-
-/* ===== Player Leaderboard ===== */
 function computePlayerTable(){
   const map = new Map(); // player -> agg
-  const gamesByPlayer = new Map(); // player -> Set game keys (team-insensitive per player)
+  const gamesByPlayer = new Map(); // per-player unique games
   for (const r of VIEW){
     if (!r._player) continue;
     if (!map.has(r._player)) map.set(r._player, { player:r._player, team: r._team, points:0, kills:0, assists:0, mvp:0 });
@@ -491,8 +368,7 @@ function computePlayerTable(){
     a.assists+= n(r._assists);
     a.mvp    += n(r._mvp);
     if (!gamesByPlayer.has(r._player)) gamesByPlayer.set(r._player, new Set());
-    // group by day|match|map for that player
-    gamesByPlayer.get(r._player).add(`${low(r._day)}|${low(r._match)}|${low(r._map)}`);
+    gamesByPlayer.get(r._player).add(r._pgkey);
   }
   const out=[];
   for (const [player, agg] of map){
@@ -511,6 +387,161 @@ function computePlayerTable(){
   return out;
 }
 
+/* ===== Player Spotlights (Top-10 tables) ===== */
+function topN(rows, key, n=10){
+  const arr = rows.slice().sort((a,b)=> (+b[key]) - (+a[key]) || a.player.localeCompare(b.player));
+  return arr.slice(0,n);
+}
+function renderTop10(){
+  const base = computePlayerTable();
+  const cols = (extra)=>[
+    {label:'#', key:'rank', right:true},
+    {label:'Player', key:'player'},
+    {label:'Team', key:'team'},
+    ...extra
+  ];
+  // Kills
+  {
+    const data = topN(base, 'kills').map((r,i)=>({...r, rank:i+1}));
+    el('top10Kills').innerHTML = renderTable(data, cols([
+      {label:'Kills', key:'kills', right:true},
+      {label:'Matches', key:'matches', right:true},
+      {label:'KPM', key:'kpm', right:true, fmt:'1d'}
+    ]));
+  }
+  // Assists
+  {
+    const data = topN(base, 'assists').map((r,i)=>({...r, rank:i+1}));
+    el('top10Assists').innerHTML = renderTable(data, cols([
+      {label:'Assists', key:'assists', right:true},
+      {label:'Matches', key:'matches', right:true},
+      {label:'KPM', key:'kpm', right:true, fmt:'1d'}
+    ]));
+  }
+  // Points
+  {
+    const data = topN(base, 'points').map((r,i)=>({...r, rank:i+1}));
+    el('top10Points').innerHTML = renderTable(data, cols([
+      {label:'Points', key:'points', right:true},
+      {label:'Matches', key:'matches', right:true},
+      {label:'PPM', key:'ppm', right:true, fmt:'1d'}
+    ]));
+  }
+  // KPM
+  {
+    const data = topN(base.filter(r=>r.matches>0), 'kpm').map((r,i)=>({...r, rank:i+1}));
+    el('top10KPM').innerHTML = renderTable(data, cols([
+      {label:'KPM', key:'kpm', right:true, fmt:'1d'},
+      {label:'Kills', key:'kills', right:true},
+      {label:'Matches', key:'matches', right:true}
+    ]));
+  }
+  // PPM
+  {
+    const data = topN(base.filter(r=>r.matches>0), 'ppm').map((r,i)=>({...r, rank:i+1}));
+    el('top10PPM').innerHTML = renderTable(data, cols([
+      {label:'PPM', key:'ppm', right:true, fmt:'1d'},
+      {label:'Points', key:'points', right:true},
+      {label:'Matches', key:'matches', right:true}
+    ]));
+  }
+  // MVPs (only show if any)
+  const hasMVP = base.some(r=> r.mvp>0);
+  if (hasMVP){
+    const data = topN(base, 'mvp').map((r,i)=>({...r, rank:i+1}));
+    el('top10MVP').innerHTML = renderTable(data, cols([
+      {label:'MVPs', key:'mvp', right:true},
+      {label:'Matches', key:'matches', right:true}
+    ]));
+    el('mvpSpot').hidden = false;
+  } else {
+    el('mvpSpot').hidden = true;
+  }
+
+  // Optional extras detected from raw columns (e.g., Headshot, Damage, Revive, Heal)
+  renderExtraMetrics();
+}
+
+/* ===== Optional extra player metrics (auto-detect) ===== */
+const EXTRA_CANDIDATES = [
+  { key:'headshots', label:'Headshots', patterns:[/head ?shot/i, /\bhs\b/i] },
+  { key:'damage',    label:'Damage',    patterns:[/damage/i] },
+  { key:'revives',   label:'Revives',   patterns:[/revive/i, /rescues?/i] },
+  { key:'heals',     label:'Heals',     patterns:[/heal/i] },
+  { key:'knocks',    label:'Knockdowns',patterns:[/knock/i, /down/i] },
+];
+
+function findNumericCols(patterns){
+  return ALL_COLS.filter(c => patterns.some(p=> p.test(c)) );
+}
+function aggregateExtraByPlayer(cols){
+  const map = new Map();
+  if (!cols.length) return [];
+  for (const r of VIEW){
+    if (!r._player) continue;
+    const val = cols.reduce((t,c)=> t + n(r[c]), 0);
+    if (!map.has(r._player)) map.set(r._player, { player:r._player, team:r._team, value:0 });
+    map.get(r._player).value += val;
+  }
+  return Array.from(map.values());
+}
+function renderExtraMetrics(){
+  const wrap = el('extraMetricsWrap');
+  wrap.innerHTML = '';
+  let rendered = 0;
+  for (const cand of EXTRA_CANDIDATES){
+    const cols = findNumericCols(cand.patterns);
+    const agg = aggregateExtraByPlayer(cols);
+    if (!agg.length) continue;
+    const top = agg.sort((a,b)=> b.value - a.value || a.player.localeCompare(b.player)).slice(0,10)
+                   .map((r,i)=>({rank:i+1, ...r}));
+    const block = document.createElement('div');
+    block.className = 'section';
+    block.style.margin = '0';
+    block.innerHTML = `
+      <h3 style="margin:0 0 8px;color:#ffd84a">${cand.label}</h3>
+      ${renderTable(top, [
+        {label:'#', key:'rank', right:true},
+        {label:'Player', key:'player'},
+        {label:'Team', key:'team'},
+        {label:cand.label, key:'value', right:true}
+      ])}
+    `;
+    wrap.appendChild(block);
+    rendered++;
+  }
+  if (!rendered){
+    wrap.innerHTML = '<div class="muted">No extra per-player metrics found in this dataset.</div>';
+  }
+}
+
+/* ===== Pick Rates — Active & Pet (tables) ===== */
+function tally(list){
+  const m=new Map();
+  for(const v of list){ const k=norm(v); if(!k) continue; m.set(k,(m.get(k)||0)+1); }
+  return Array.from(m.entries()).map(([name,count])=>({name,count}));
+}
+function renderPickTable(items, mountId, title){
+  const total = items.reduce((t,x)=>t+x.count,0) || 1;
+  const rows = items.sort((a,b)=> b.count-a.count || a.name.localeCompare(b.name))
+                    .slice(0,50)
+                    .map((x,i)=>({ rank:i+1, name:x.name, count:x.count, rate:x.count/total }));
+  el(mountId).innerHTML = renderTable(rows, [
+    {label:'#', key:'rank', right:true},
+    {label:title, key:'name'},
+    {label:'Count', key:'count', right:true},
+    {label:'Pick %', key:'rate', right:true, fmt:'pct'}
+  ]);
+}
+function renderPickRates(){
+  const act = VIEW.map(r=> r._active).filter(Boolean);
+  const pet = VIEW.map(r=> r._pet).filter(Boolean);
+
+  renderPickTable(tally(act), 'tblActive', 'Active Skill');
+  renderPickTable(tally(pet), 'tblPet', 'Pet Skill');
+}
+
+/* ===== Player Leaderboard (full) ===== */
 function renderPlayerTable(){
   const key = el('playerSortKey').value;
   const dir = el('playerSortDir').dataset.dir;
@@ -522,248 +553,17 @@ function renderPlayerTable(){
     return mult * ((+a[key]) - (+b[key]));
   });
 
-  const top = rows.slice(0,25);
-  const cols = [
+  el('tblPlayers').innerHTML = renderTable(rows, [
     {label:'Player', key:'player'},
     {label:'Team', key:'team'},
     {label:'Matches', key:'matches', right:true},
     {label:'Points', key:'points', right:true},
-    {label:'Points / m', key:'ppm', right:true, fmt:'1d'},
+    {label:'PPM', key:'ppm', right:true, fmt:'1d'},
     {label:'Kills', key:'kills', right:true},
-    {label:'Kills / m', key:'kpm', right:true, fmt:'1d'},
+    {label:'KPM', key:'kpm', right:true, fmt:'1d'},
     {label:'Assists', key:'assists', right:true},
     {label:'MVPs', key:'mvp', right:true},
-  ];
-  el('tblPlayers').innerHTML = renderTable(top, cols);
-}
-
-/* ===== Heatmap (Team × Map) ===== */
-function computeHeatCube(){
-  const byTeamMap = new Map(); // `${team}||${map}` -> agg
-  const teamSet = new Set(), mapSet = new Set();
-  const gamesSeen = new Map(); // key -> Set of game keys per team-map
-
-  for (const r of VIEW){
-    const team = r._team||''; const map = r._map||'';
-    if (!team||!map) continue;
-    const key = team+'||'+map;
-    if (!byTeamMap.has(key)) byTeamMap.set(key, {team,map, points:0, kills:0, booyahGames:0, totalGames:0, placeSum:0, placeN:0});
-    teamSet.add(team); mapSet.add(map);
-
-    // track unique games per team-map
-    const gk = `${low(r._day)}|${low(r._match)}|${low(r._map)}|${low(r._team)}`;
-    if (!gamesSeen.has(key)) gamesSeen.set(key, new Set());
-    const set = gamesSeen.get(key);
-    const firstTime = !set.has(gk);
-    if (firstTime){
-      set.add(gk);
-      byTeamMap.get(key).totalGames += 1;
-      // booyah check per game
-      const booy = (n(r._booyah)>0 || n(r._place)===1) ? 1 : 0;
-      byTeamMap.get(key).booyahGames += booy;
-    }
-
-    byTeamMap.get(key).points += n(r._points);
-    byTeamMap.get(key).kills  += n(r._kills);
-
-    // placement — keep min per game by writing min as we go (approx via per-row min)
-    const p = n(r._place) || (n(r._booyah)>0?1:0);
-    if (p>0){
-      // average of mins across rows is approximated by using the minimum encountered per team-map game,
-      // but since we're not tracking per game min separately here, we approximate with simple aggregate.
-      byTeamMap.get(key).placeSum += p;
-      byTeamMap.get(key).placeN += 1;
-    }
-  }
-
-  const teams = Array.from(teamSet).sort((a,b)=>a.localeCompare(b));
-  const maps = Array.from(mapSet).sort((a,b)=>a.localeCompare(b));
-
-  // build rows for table with chosen metric computed later
-  const grid = teams.map(team=>{
-    const row = { team };
-    for (const m of maps){
-      const key = team+'||'+m;
-      const o = byTeamMap.get(key);
-      if (!o || !o.totalGames){
-        row[m] = {disp:'—', v:null};
-      } else {
-        const ppm = o.points / o.totalGames;
-        const kpm = o.kills / o.totalGames;
-        const br  = o.booyahGames / o.totalGames;
-        const placeAvg = o.placeN? (o.placeSum/o.placeN) : null;
-        const placeInv = placeAvg? (1/Math.max(1e-6, placeAvg)) : null;
-        row[m] = { ppm, kpm, booyah_rate: br, place_avg: placeAvg, place_inv: placeInv };
-      }
-    }
-    return row;
-  });
-
-  return { teams, maps, grid };
-}
-
-function renderHeatmap(){
-  const metric = el('heatMetric').value; // ppm | kpm | booyah_rate | place_inv
-
-  const {teams, maps, grid} = computeHeatCube();
-  if (!teams.length || !maps.length){
-    el('tblHeat').innerHTML = '<div class="muted">No data for heatmap.</div>'; return;
-  }
-
-  // Prepare numeric series for quantiles
-  const values = [];
-  for (const row of grid){
-    for (const m of maps){
-      const cell = row[m];
-      const v = cell?.[metric];
-      if (v!=null && isFinite(v)) values.push(v);
-    }
-  }
-
-  // Render table
-  let thead = `<thead><tr><th>Team</th>${maps.map(m=>`<th class="right">${escapeHtml(m)}</th>`).join('')}</tr></thead>`;
-  let tbody = '<tbody>' + grid.map(row=>{
-    const tds = maps.map(m=>{
-      const cell = row[m] || {};
-      let v = cell?.[metric];
-      let disp = '—';
-      if (v!=null && isFinite(v)){
-        if (metric==='booyah_rate') disp = pct(v);
-        else if (metric==='place_inv') disp = cell.place_avg ? (1/cell.place_inv).toFixed(1) : '—'; // show Avg Place
-        else disp = v.toFixed(1);
-      }
-      return `<td data-key="${metric}" class="right">${disp}</td>`;
-    }).join('');
-    return `<tr><td>${escapeHtml(row.team)}</td>${tds}</tr>`;
-  }).join('') + '</tbody>';
-
-  el('tblHeat').innerHTML = `<table>${thead}${tbody}</table>`;
-
-  // Apply quantile-band coloring
-  applyQuantileHeat('tblHeat', [metric], 5, metric==='place_inv'); // invert already done by using place_inv (higher better)
-}
-
-/* Quantile-band heat (rounded, on-brand) */
-function applyQuantileHeat(containerId, keys, bands=5, alreadyInverted=false){
-  const wrap = el(containerId);
-  const table = wrap?.querySelector('table'); if (!table) return;
-
-  table.querySelectorAll('td[data-key]').forEach(td=>{
-    td.style.backgroundColor=''; td.classList.remove('heat-top');
-  });
-
-  const styles = getComputedStyle(document.documentElement);
-  const rgb   = styles.getPropertyValue('--heat-rgb') || '255,233,59';
-  const minA  = parseFloat(styles.getPropertyValue('--heat-min')) || .06;
-  const maxA  = parseFloat(styles.getPropertyValue('--heat-max')) || .24;
-  const radius= styles.getPropertyValue('--heat-radius') || '8px';
-
-  for (const key of keys){
-    const cells = Array.from(table.querySelectorAll(`td[data-key="${key}"]`));
-    const entries = cells.map((td,i)=>{
-      const raw = (td.textContent||'').trim().replace('%','').replace(/,/g,'');
-      let v = parseFloat(raw);
-      if (key==='place_inv'){ // we displayed Avg Place; recompute from title? Instead derive from text:
-        // If text shows Avg Place (e.g., 2.1), invert here:
-        if (!alreadyInverted){
-          v = isFinite(v) ? (1/Math.max(1e-6,v)) : NaN;
-        }
-      }
-      return { td, i, v: isFinite(v) ? v : null };
-    }).filter(e=>e.v!=null);
-
-    if (!entries.length) continue;
-    // sort asc for banding
-    const asc = entries.slice().sort((a,b)=> a.v - b.v);
-    const n = asc.length;
-    const topVal = asc[n-1].v;
-
-    // band map
-    const bandByIndex = new Map();
-    asc.forEach((e, rank)=>{
-      const p = n<=1 ? 1 : (rank/(n-1));
-      const band = Math.min(bands-1, Math.floor(p*bands)); // 0..bands-1
-      bandByIndex.set(e.i, band);
-    });
-
-    // paint
-    cells.forEach((td,i)=>{
-      const band = bandByIndex.get(i);
-      if (band==null) return;
-      const alpha = minA + (band/(bands-1))*(maxA - minA);
-      td.style.backgroundColor = `rgba(${rgb}, ${alpha.toFixed(3)})`;
-      td.style.borderRadius = radius;
-      td.style.backgroundClip = 'padding-box';
-
-      const val = asc[n-1].v;
-      const here = entries.find(e=>e.td===td)?.v;
-      if (here!=null && here===val) td.classList.add('heat-top');
-    });
-  }
-}
-
-/* ===== Picks ===== */
-function tally(items){
-  const m=new Map();
-  for(const v of items){ const k=norm(v); if(!k) continue; m.set(k,(m.get(k)||0)+1); }
-  return Array.from(m.entries()).map(([name,count])=>({name,count})).sort((a,b)=> b.count-a.count || a.name.localeCompare(b.name));
-}
-function renderBars(list, mountId, maxItems=20){
-  if (!list.length){ el(mountId).innerHTML = '<div class="muted">No data.</div>'; return; }
-  const total = list.reduce((t,x)=>t+x.count,0);
-  const top = list.slice(0, maxItems);
-  el(mountId).innerHTML = top.map(x=>{
-    const frac = total? (x.count/total) : 0;
-    return `
-      <div style="display:grid;grid-template-columns:200px 1fr 60px;gap:10px;align-items:center;margin:6px 0">
-        <div>${escapeHtml(x.name)}</div>
-        <div class="barwrap"><div class="barfill" style="width:${(frac*100).toFixed(1)}%"></div></div>
-        <div class="right">${x.count}</div>
-      </div>
-    `;
-  }).join('');
-}
-function renderPicks(){
-  const chars = VIEW.flatMap(r=> r._chars||[]);
-  const act   = VIEW.map(r=> r._active).filter(Boolean);
-  const pet   = VIEW.map(r=> r._pet).filter(Boolean);
-
-  renderBars(tally(chars), 'listChars');
-  renderBars(tally(act), 'listActive');
-  renderBars(tally(pet), 'listPet');
-}
-
-/* ===== MVP Ledger ===== */
-function renderMVP(){
-  // group by Day -> Match -> rows where MVP>0 (or highest kills/points?)
-  const byDay = groupBy(VIEW, r=> r._day || '—');
-  if (!byDay.size){ el('mvpLedger').innerHTML = '<div class="muted">No data.</div>'; return; }
-
-  let htmlOut = '';
-  const days = Array.from(byDay.keys()).sort((a,b)=> a.localeCompare(b,undefined,{numeric:true}));
-  for (const d of days){
-    const byMatch = groupBy(byDay.get(d), r=> r._match || '—');
-    htmlOut += `<div class="section" style="margin:0 0 10px"><h3 style="margin:0 0 8px;color:#ffd84a">Day ${escapeHtml(d)}</h3>`;
-    const matches = Array.from(byMatch.keys()).sort((a,b)=> a.localeCompare(b,undefined,{numeric:true}));
-    htmlOut += '<div>';
-    for (const m of matches){
-      const list = byMatch.get(m);
-      // choose MVP rows: either explicit MVP>0 else best (kills then points)
-      let mvps = list.filter(x=> n(x._mvp)>0 );
-      if (!mvps.length){
-        const bestKill = Math.max(...list.map(x=>n(x._kills)));
-        mvps = list.filter(x=> n(x._kills)===bestKill);
-        if (mvps.length>3){
-          const bestPts = Math.max(...list.map(x=>n(x._points)));
-          mvps = list.filter(x=> n(x._points)===bestPts);
-        }
-      }
-      const items = mvps.slice(0,3).map(x=> `${escapeHtml(x._player||'—')} <span class="muted">(${n(x._kills)}K • ${n(x._points)}pts)</span>`).join(', ');
-      htmlOut += `<div style="margin:4px 0"><span class="pill">Match ${escapeHtml(m)}</span> — ${items||'<span class="muted">No MVP data</span>'}</div>`;
-    }
-    htmlOut += '</div></div>';
-  }
-  el('mvpLedger').innerHTML = htmlOut;
+  ]);
 }
 
 /* ===== Explorer ===== */
@@ -775,24 +575,6 @@ function renderExplorer(){
     const obj={}; for (const c of cols){ obj[c] = r[c]; } return obj;
   });
   el('tblExplorer').innerHTML = renderTable(rows, cols.map(c=>({label:c,key:c})));
-}
-
-/* ===== Generic table renderer ===== */
-function renderTable(list, cols){
-  if (!list.length) return '<div class="muted">No rows.</div>';
-  const head = `<thead><tr>${cols.map(c=>`<th class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
-  const body = '<tbody>' + list.map(r=>{
-    const tds = cols.map(c=>{
-      let v = r[c.key];
-      if (c.fmt==='pct') v = pct(v);
-      else if (c.fmt==='1d') v = isFinite(v)? Number(v).toFixed(1) : '—';
-      else if (c.fmt==='2d') v = isFinite(v)? Number(v).toFixed(2) : '—';
-      else if (v==null || v==='') v = '—';
-      return `<td class="${c.right?'right':''}" data-key="${c.key}">${escapeHtml(String(v))}</td>`;
-    }).join('');
-    return `<tr>${tds}</tr>`;
-  }).join('') + '</tbody>';
-  return `<table>${head}${body}</table>`;
 }
 
 /* ===== Populate filter options ===== */
@@ -820,19 +602,11 @@ function wireUI(){
     refreshAll();
   };
 
-  el('teamSortKey').addEventListener('change', renderTeamTable);
-  el('teamSortDir').onclick = ()=>{
-    const b=el('teamSortDir'); b.dataset.dir = (b.dataset.dir==='desc'?'asc':'desc'); b.textContent = b.dataset.dir==='desc'?'Desc':'Asc';
-    renderTeamTable();
-  };
-
   el('playerSortKey').addEventListener('change', renderPlayerTable);
   el('playerSortDir').onclick = ()=>{
     const b=el('playerSortDir'); b.dataset.dir = (b.dataset.dir==='desc'?'asc':'desc'); b.textContent = b.dataset.dir==='desc'?'Desc':'Asc';
     renderPlayerTable();
   };
-
-  el('heatMetric').addEventListener('change', renderHeatmap);
 
   el('explRefresh').onclick = renderExplorer;
 }
@@ -841,12 +615,11 @@ function wireUI(){
 function refreshAll(){
   applyFilters();
   renderKPIs();
-  renderTeamTable();
+  renderTop10();
+  renderPickRates();
   renderPlayerTable();
-  renderHeatmap();
-  renderPicks();
-  renderMVP();
-  // Explorer keeps its own selection; only redraw if already populated
+
+  // Explorer columns persist; only draw if already filled
   if (el('explCols').options.length) renderExplorer();
 }
 
@@ -856,10 +629,10 @@ async function init(){
   RAW = raw.map(normalizeRow);
   ALL_COLS = uniq(RAW.flatMap(r=>Object.keys(r)));
 
-  // Fill explorer column chooser
+  // Fill explorer column chooser (prefer canonical + detected)
   const expl = el('explCols');
   const defaultCols = ['_day','_match','_map','_team','_player','_points','_kills','_assists','_place','_booyah','_active','_pet'];
-  const items = uniq(defaultCols.concat(ALL_COLS)).filter(c=>!/^_gkey$/.test(c));
+  const items = uniq(defaultCols.concat(ALL_COLS)).filter(c=>!/^_pgkey$/.test(c));
   expl.innerHTML = items.map(c=> `<option value="${escapeHtml(c)}" ${defaultCols.includes(c)?'selected':''}>${escapeHtml(c)}</option>`).join('');
 
   populateFilters();
