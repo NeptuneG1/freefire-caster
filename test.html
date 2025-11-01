@@ -13,7 +13,6 @@
     --brand:#ffe93b; --brandText:#0b0d0e; --line:#4c525d; --chip:#213830;
     --good:#62e887; --bad:#ff6b6b; --accent:#7fd2ff;
 
-    /* Heatmap look for any tables we color later */
     --heat-rgb: 255,233,59;
     --heat-min: .06;
     --heat-max: .24;
@@ -146,7 +145,10 @@
         </div>
       </div>
 
-      <!-- Optional extra metrics auto-detected (only show if present) -->
+      <!-- Static extras from your columns -->
+      <div class="grid3" id="extraStaticWrap" style="margin-top:12px"></div>
+
+      <!-- Auto-detected extras (fallback) -->
       <div class="grid3" id="extraMetricsWrap" style="margin-top:12px"></div>
     </div>
   </details>
@@ -168,7 +170,7 @@
     </div>
   </details>
 
-  <!-- Player Leaderboard (still useful) -->
+  <!-- Player Leaderboard -->
   <details class="accordion">
     <summary>Player Leaderboard (Full, sortable)</summary>
     <div class="accordion-body">
@@ -242,6 +244,17 @@ const n = v => {
 const uniq = arr => Array.from(new Set(arr));
 const sum = (arr,key) => arr.reduce((t,r)=>t+n(r[key]),0);
 const escapeHtml = s => s.replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+
+/* case-insensitive getter with aliases */
+function getCI(obj, ...names){
+  for (const name of names){
+    if (obj[name] != null && obj[name] !== '') return obj[name];
+    const key = Object.keys(obj).find(k => k.toLowerCase() === String(name).toLowerCase());
+    if (key && obj[key] != null && obj[key] !== '') return obj[key];
+  }
+  return null;
+}
+
 function pct(x){ x=Number(x); return isFinite(x)? (x*100).toFixed(1)+'%' : '—'; }
 function renderTable(list, cols){
   if (!list.length) return '<div class="muted">No rows.</div>';
@@ -268,31 +281,44 @@ let filter = { day:'__all__', match:'__all__', map:'__all__', team:'', player:''
 
 function normalizeRow(r){
   const o = {...r};
-  o._team   = norm(o.TeamName ?? o.Team ?? o.team ?? o.TAG ?? o.tag);
-  o._player = norm(o.Player ?? o.IGN ?? o['Player IGN'] ?? o['InGameName'] ?? o['IGName']);
-  o._map    = norm(o.Map ?? o.map);
-  o._day    = norm(o.Day ?? o.day ?? o['WkDay'] ?? o['D']);
-  o._match  = norm(o.Match ?? o.match ?? o.Game ?? o['MatchNo']);
-  o._booyah = n(o.Booyah ?? o.booyah);
-  o._place  = n(o.Placement ?? o.placement ?? o['Place']);
 
-  const rankScore = n(o.RankingScore ?? o['Ranking Score']);
-  const killScore = n(o.KillingScore ?? o['Killing Score']);
-  const totalScore = n(o.TotalScore ?? o['Total Score'] ?? o.Total ?? o['Total Points']);
+  /* Keys you mentioned */
+  const KILLS_col       = getCI(o, 'KILLS','Kills','Kill','Total Kill');
+  const ASSISTS_col     = getCI(o, 'ASSISTS','Assist','Assists');
+  const HEADSHOTRS_col  = getCI(o, 'HEADSHOTRS','HEADSHOTS','Headshots','Headshot','HS');
+  const DAMAGE_col      = getCI(o, 'DAMAGE','Damage');
+  const GRENADE_col     = getCI(o, 'Grenade kill','Grenade Kill','Grenade Kills');
+
+  /* Common meta */
+  o._team   = norm(getCI(o,'TeamName','Team','team','TAG','tag'));
+  o._player = norm(getCI(o,'Player','IGN','Player IGN','InGameName','IGName','player','ign'));
+  o._map    = norm(getCI(o,'Map','map'));
+  o._day    = norm(getCI(o,'Day','day','WkDay','D'));
+  o._match  = norm(getCI(o,'Match','match','Game','MatchNo'));
+
+  /* Scores / placement */
+  o._place   = n(getCI(o,'Placement','placement','Place'));
+  const rankScore  = n(getCI(o,'RankingScore','Ranking Score'));
+  const killScore  = n(getCI(o,'KillingScore','Killing Score'));
+  const totalScore = n(getCI(o,'TotalScore','Total Score','Total','Total Points'));
   o._points = totalScore || (rankScore + killScore);
 
-  o._kills    = n(o['Total Kill'] ?? o.Kills ?? o['Kill']);
-  o._assists  = n(o.Assist ?? o.Assists);
-  o._mvp      = n(o.MVP ?? o['MVPs']);
+  /* Core stats (using your exact columns) */
+  o._kills     = n(KILLS_col);
+  o._assists   = n(ASSISTS_col);
+  o._headshots = n(HEADSHOTRS_col);      // supports the HEADSHOTRS typo
+  o._damage    = n(DAMAGE_col);
+  o._nade      = n(GRENADE_col);
 
-  // picks
-  o._active = norm(o.SkillActive ?? o['Skill Active'] ?? o.Active);
-  o._pet    = norm(o['Pet Skill Name'] ?? o['PetSkill'] ?? o['Pet']);
-
-  // derive booyah if not present
+  /* Booyah */
+  o._booyah = n(getCI(o,'Booyah','booyah'));
   if (!o._booyah) o._booyah = (o._place===1) ? 1 : 0;
 
-  // per-player per game key
+  /* Picks */
+  o._active = norm(getCI(o,'Active Skill','SkillActive','Skill Active','Active'));
+  o._pet    = norm(getCI(o,'Pet Skill Name','PetSkill','Pet'));
+
+  /* per-player per game key */
   o._pgkey = `${low(o._day)}|${low(o._match)}|${low(o._map)}|${low(o._player)}`;
   return o;
 }
@@ -458,11 +484,59 @@ function renderTop10(){
     el('mvpSpot').hidden = true;
   }
 
-  // Optional extras detected from raw columns (e.g., Headshot, Damage, Revive, Heal)
-  renderExtraMetrics();
+  renderExtraStatic();   // uses HEADSHOTRS / DAMAGE / Grenade kill
+  renderExtraMetrics();  // fallback auto-detect
 }
 
-/* ===== Optional extra player metrics (auto-detect) ===== */
+/* ===== Static extra metrics from your named columns ===== */
+function aggregateStaticExtraByPlayer(keyName){
+  const map = new Map();
+  for (const r of VIEW){
+    if (!r._player) continue;
+    const val = n(r[keyName]);
+    if (!val) continue;
+    if (!map.has(r._player)) map.set(r._player, { player:r._player, team:r._team, value:0 });
+    map.get(r._player).value += val;
+  }
+  return Array.from(map.values());
+}
+function renderExtraStatic(){
+  const wrap = el('extraStaticWrap');
+  wrap.innerHTML = '';
+
+  const CANDS = [
+    { field:'_headshots', label:'Headshots' },
+    { field:'_damage',    label:'Damage' },
+    { field:'_nade',      label:'Grenade Kills' }
+  ];
+
+  let rendered = 0;
+  for (const c of CANDS){
+    const agg = aggregateStaticExtraByPlayer(c.field);
+    if (!agg.length) continue;
+    const top = agg.sort((a,b)=> b.value - a.value || a.player.localeCompare(b.player))
+                   .slice(0,10).map((r,i)=>({rank:i+1, ...r}));
+    const block = document.createElement('div');
+    block.className = 'section';
+    block.style.margin = '0';
+    block.innerHTML = `
+      <h3 style="margin:0 0 8px;color:#ffd84a">${c.label}</h3>
+      ${renderTable(top, [
+        {label:'#', key:'rank', right:true},
+        {label:'Player', key:'player'},
+        {label:'Team', key:'team'},
+        {label:c.label, key:'value', right:true}
+      ])}
+    `;
+    wrap.appendChild(block);
+    rendered++;
+  }
+  if (!rendered){
+    wrap.innerHTML = '<div class="muted">No Headshots/Damage/Grenade Kill metrics present.</div>';
+  }
+}
+
+/* ===== Optional auto-detected extras (still kept) ===== */
 const EXTRA_CANDIDATES = [
   { key:'headshots', label:'Headshots', patterns:[/head ?shot/i, /\bhs\b/i] },
   { key:'damage',    label:'Damage',    patterns:[/damage/i] },
@@ -470,9 +544,8 @@ const EXTRA_CANDIDATES = [
   { key:'heals',     label:'Heals',     patterns:[/heal/i] },
   { key:'knocks',    label:'Knockdowns',patterns:[/knock/i, /down/i] },
 ];
-
 function findNumericCols(patterns){
-  return ALL_COLS.filter(c => patterns.some(p=> p.test(c)) );
+  return ALL_COLS.filter(c => patterns.some(p=> p.test(c)));
 }
 function aggregateExtraByPlayer(cols){
   const map = new Map();
@@ -480,6 +553,7 @@ function aggregateExtraByPlayer(cols){
   for (const r of VIEW){
     if (!r._player) continue;
     const val = cols.reduce((t,c)=> t + n(r[c]), 0);
+    if (!val) continue;
     if (!map.has(r._player)) map.set(r._player, { player:r._player, team:r._team, value:0 });
     map.get(r._player).value += val;
   }
@@ -499,7 +573,7 @@ function renderExtraMetrics(){
     block.className = 'section';
     block.style.margin = '0';
     block.innerHTML = `
-      <h3 style="margin:0 0 8px;color:#ffd84a">${cand.label}</h3>
+      <h3 style="margin:0 0 8px;color:#ffd84a">${cand.label} (auto)</h3>
       ${renderTable(top, [
         {label:'#', key:'rank', right:true},
         {label:'Player', key:'player'},
@@ -511,11 +585,11 @@ function renderExtraMetrics(){
     rendered++;
   }
   if (!rendered){
-    wrap.innerHTML = '<div class="muted">No extra per-player metrics found in this dataset.</div>';
+    wrap.innerHTML = '<div class="muted">No additional auto-detected metrics.</div>';
   }
 }
 
-/* ===== Pick Rates — Active & Pet (tables) ===== */
+/* ===== Pick Rates — Active & Pet ===== */
 function tally(list){
   const m=new Map();
   for(const v of list){ const k=norm(v); if(!k) continue; m.set(k,(m.get(k)||0)+1); }
@@ -537,11 +611,17 @@ function renderPickRates(){
   const act = VIEW.map(r=> r._active).filter(Boolean);
   const pet = VIEW.map(r=> r._pet).filter(Boolean);
 
-  renderPickTable(tally(act), 'tblActive', 'Active Skill');
-  renderPickTable(tally(pet), 'tblPet', 'Pet Skill');
+  el('tblActive').innerHTML = '—';
+  el('tblPet').innerHTML = '—';
+
+  if (act.length) renderPickTable(tally(act), 'tblActive', 'Active Skill');
+  else el('tblActive').innerHTML = '<div class="muted">No Active Skill column detected.</div>';
+
+  if (pet.length) renderPickTable(tally(pet), 'tblPet', 'Pet Skill');
+  else el('tblPet').innerHTML = '<div class="muted">No Pet Skill column detected.</div>';
 }
 
-/* ===== Player Leaderboard (full) ===== */
+/* ===== Player Leaderboard ===== */
 function renderPlayerTable(){
   const key = el('playerSortKey').value;
   const dir = el('playerSortDir').dataset.dir;
@@ -618,8 +698,6 @@ function refreshAll(){
   renderTop10();
   renderPickRates();
   renderPlayerTable();
-
-  // Explorer columns persist; only draw if already filled
   if (el('explCols').options.length) renderExplorer();
 }
 
@@ -629,9 +707,8 @@ async function init(){
   RAW = raw.map(normalizeRow);
   ALL_COLS = uniq(RAW.flatMap(r=>Object.keys(r)));
 
-  // Fill explorer column chooser (prefer canonical + detected)
   const expl = el('explCols');
-  const defaultCols = ['_day','_match','_map','_team','_player','_points','_kills','_assists','_place','_booyah','_active','_pet'];
+  const defaultCols = ['_day','_match','_map','_team','_player','_points','_kills','_assists','_place','_booyah','_active','_pet','_headshots','_damage','_nade'];
   const items = uniq(defaultCols.concat(ALL_COLS)).filter(c=>!/^_pgkey$/.test(c));
   expl.innerHTML = items.map(c=> `<option value="${escapeHtml(c)}" ${defaultCols.includes(c)?'selected':''}>${escapeHtml(c)}</option>`).join('');
 
