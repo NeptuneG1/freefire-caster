@@ -387,7 +387,9 @@ async function fetchAllRows(){
     out.push(...rows); from += rows.length;
   }
   const normalized = out.map(normalizeRow);
-  return normalized.filter(r => ALLOWED_TAGS.has(norm(r._tag).toUpperCase()));
+  const filtered = normalized.filter(r => ALLOWED_TAGS.has(norm(r._tag).toUpperCase()));
+  console.log(`[ffbr_data] loaded=${out.length} normalized=${normalized.length} allowed=${filtered.length}`);
+  return filtered;
 }
 
 /* ========= Tournament helpers (ffbr_data) ========= */
@@ -767,7 +769,7 @@ function normalizeLopsRow(r){
   o.headshots  = n(getCI(o,'HEADSHOTRS','HEADSHOTS','Headshots','HS'));
   o.damage     = n(getCI(o,'DAMAGE','Damage','DMG'));
   o.grenade    = n(getCI(o,'Grenade kill','Grenade kills','Nade Kills','Grenade'));
-  // active skill (you set this to skillactive_1)
+  // active skill (column: skillactive_1)
   o.active     = norm(getCI(o,'skillactive_1','SkillActive_1','Active Skill','Active','SkillActive'));
   // PET — auto-detect plus wide synonyms
   const petSyns = ['Pet','Pet Name','PetName','Pet 1','pet_1','pet1','SkillPet','skillpet_1','PetName1','PetName_1'];
@@ -873,6 +875,11 @@ async function initial(){
   // Tournaments & per-map controls
   populateGlobalTournament();
   populateMapFilter();
+
+  // INITIAL RENDER so the tables don't stay on "Loading…"
+  renderOverall();
+  renderPerMapAllTeams();
+
   el('gTournament').addEventListener('change', ()=>{
     updateFilterHint(); populateMapFilter();
     if(CURRENT_TEAM){
