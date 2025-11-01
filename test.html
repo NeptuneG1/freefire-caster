@@ -3,19 +3,15 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>FFBR — LOPS Data (Players, Active Skill, Pet)</title>
+<title>FFBR — Player Performance</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --bg:#0e0e0e; --panel:#1b1b1b; --panel2:#141414; --ink:#f5f5f5; --muted:#b9b9b9;
     --brand:#ffbd59; --brand2:#ff7733; --line:#313131;
 
-    /* Heatmap tint (brand-ish) */
-    --heat-rgb:255,189,89;   /* brand yellow */
-    --heat-min:.06;          /* min alpha */
-    --heat-max:.22;          /* max alpha */
-    --heat-top-outline:.42;  /* alpha for top outline */
-    --heat-radius:8px;       /* rounded heatmap cells */
+    --heat-rgb:255,189,89; /* brandish yellow for heat */
+    --heat-min:.06; --heat-max:.22; --heat-top-outline:.42; --heat-radius:8px;
   }
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif}
@@ -25,6 +21,7 @@
   .chip{font-size:.85rem;color:#ddd}
   .btn{background:var(--brand);color:var(--panel);border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
   .btn.secondary{background:#2a2a2a;color:#ddd;border:1px solid #3a3a3a}
+
   .shell{max-width:1100px;margin:22px auto;padding:0 12px}
   .section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
   .section h2{margin:0 0 10px;color:var(--brand)}
@@ -34,53 +31,39 @@
   .card h3{margin:0 0 6px;color:var(--brand2);font-size:1.0rem}
   .kpis{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
   .kpi{background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:6px 8px;font-size:.9rem}
-
-  .bar{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
-  .bar label{color:var(--muted);font-size:.9rem}
-  .input{background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:7px 10px}
   .muted{color:var(--muted)}
   .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#222;border:1px solid #2a2a2a;font-size:.8rem}
 
   /* Collapsible */
-  details.accordion{
-    background:var(--panel);
-    border:1px solid var(--line);
-    border-radius:12px;
-    padding:0;
-    margin-bottom:14px;
-  }
-  details.accordion > summary{
-    list-style:none;cursor:pointer;padding:12px 14px;color:var(--brand);font-weight:700;border-bottom:1px solid var(--line);user-select:none;
-  }
-  details.accordion[open] > summary{ border-bottom-color:var(--line); }
-  details.accordion > .accordion-body{ padding:12px; }
+  details.accordion{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:0;margin-bottom:14px}
+  details.accordion > summary{list-style:none;cursor:pointer;padding:12px 14px;color:var(--brand);font-weight:700;border-bottom:1px solid var(--line);user-select:none}
+  details.accordion[open] > summary{border-bottom-color:var(--line)}
+  details.accordion > .accordion-body{padding:12px}
 
   /* Tables */
   table{width:100%;border-collapse:separate;border-spacing:0 6px;font-size:.92rem}
   thead th{background:#191919;position:sticky;top:0;text-align:left;border-radius:8px;padding:8px 6px}
-  tbody tr td{border-bottom:none}
   th,td{padding:6px 6px;vertical-align:top}
   .right{text-align:right}
-  td[data-key]{transition:background-color .18s ease, box-shadow .18s ease; border-radius:var(--heat-radius); background-clip:padding-box;}
-  td.heat-top{box-shadow:inset 0 0 0 1px rgba(var(--heat-rgb), var(--heat-top-outline));}
+  td[data-key]{transition:background-color .18s ease, box-shadow .18s ease;border-radius:var(--heat-radius);background-clip:padding-box}
+  td.heat-top{box-shadow:inset 0 0 0 1px rgba(var(--heat-rgb), var(--heat-top-outline))}
 
-  /* Player mini panel */
-  .mini{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .mini h4{margin:0 0 6px;color:var(--brand)}
-  .rowlist{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow:auto}
-  .rowitem{display:grid;grid-template-columns:1fr repeat(5,70px);gap:8px;background:#101010;border:1px solid #2a2a2a;border-radius:10px;padding:6px 8px}
-  .rowitem .right{text-align:right}
+  /* Skill row with icon */
+  .skillcell{display:flex;align-items:center;gap:8px}
+  .skillcell img{width:28px;height:28px;object-fit:cover;border-radius:6px;border:1px solid #2a2a2a;background:#0f0f0f}
 
-  @media (max-width: 900px){
-    .grid2,.grid3{grid-template-columns:1fr}
-    .mini{grid-template-columns:1fr}
-    .rowitem{grid-template-columns:1fr repeat(5,64px)}
-  }
+  /* Player chip list */
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chipbtn{cursor:pointer;border:1px solid #3a3a3a;background:#1a1a1a;color:#e6e6e6;border-radius:999px;padding:6px 10px;font-weight:700}
+  .chipbtn:hover{border-color:#555}
+  .chipbtn.active{background:var(--brand2);color:#111;border-color:#000}
+
+  @media (max-width: 880px){ .grid2,.grid3{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
 <header>
-  <h1>FFBR — LOPS Data</h1>
+  <h1>FFBR — Player Performance</h1>
   <div class="user-controls">
     <span class="chip" id="user-info">Checking login…</span>
     <button class="btn" id="logoutBtn">Logout</button>
@@ -89,126 +72,82 @@
 
 <div class="shell">
 
-  <!-- Global Filters -->
+  <!-- PLAYER PICKER (minimal, no extra filters) -->
   <div class="section">
-    <h2>Filters</h2>
-    <div class="bar">
-      <label>Tournament
-        <select id="gTournament" class="input" style="min-width:260px">
-          <option value="__all__" selected>All tournaments</option>
-        </select>
-      </label>
-      <label>Player
-        <input list="playerList" id="playerSearch" class="input" style="min-width:240px" placeholder="Type player name…">
-        <datalist id="playerList"></datalist>
-      </label>
-      <button class="btn secondary" id="gReset">Reset</button>
+    <h2>Select a Player</h2>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+      <input type="search" id="playerSearch" placeholder="Type player name…" class="btn secondary" style="flex:1;max-width:420px;padding:10px">
+      <button class="btn secondary" id="clearPlayer">Clear</button>
+      <button class="btn" id="copyLink">Copy Link</button>
     </div>
-    <div class="muted" id="filterHint">—</div>
+    <div class="muted" id="pickerHint">Top 10 players by kills (click to load)</div>
+    <div id="playerChips" class="chips">Loading…</div>
   </div>
 
-  <!-- Overview -->
-  <div class="section">
-    <h2>Overview</h2>
-    <div class="grid3">
-      <div class="card">
-        <h3>Dataset</h3>
-        <div class="kpis" id="kpiDataset">—</div>
+  <!-- PLAYER OVERVIEW -->
+  <div class="section" id="playerHeader">
+    <h2 id="playerTitle">Player Overview</h2>
+    <div class="grid2">
+      <div class="card" id="playerIdentity">
+        <h3>Identity</h3>
+        <div id="identityBody" class="muted">Select a player.</div>
       </div>
-      <div class="card">
-        <h3>Kills & Damage</h3>
-        <div class="kpis" id="kpiDamage">—</div>
-      </div>
-      <div class="card">
-        <h3>Accuracy / Headshots</h3>
-        <div class="kpis" id="kpiHS">—</div>
+      <div class="card" id="playerKPIs">
+        <h3>Key KPIs</h3>
+        <div id="kpiBody">—</div>
       </div>
     </div>
   </div>
 
-  <!-- Usage tables -->
+  <!-- RECENT ENTRIES (Top 10 only) -->
   <details class="accordion" open>
-    <summary>Active Skill Usage</summary>
+    <summary>Recent Entries (Top 10)</summary>
     <div class="accordion-body">
-      <div class="bar">
-        <span class="muted">Counts & performance by Active Skill</span>
-      </div>
       <div class="card" style="margin:0">
-        <div id="tblActiveSkill">Loading…</div>
+        <div id="tblRecent">—</div>
       </div>
     </div>
   </details>
 
+  <!-- ACTIVE SKILL (Top 10) -->
   <details class="accordion" open>
-    <summary>Pet Usage</summary>
+    <summary>Active Skill Usage (Top 10)</summary>
     <div class="accordion-body">
-      <div class="bar">
-        <span class="muted">Counts & performance by Pet</span>
-      </div>
       <div class="card" style="margin:0">
-        <div id="tblPet">Loading…</div>
+        <div id="tblActive">—</div>
       </div>
     </div>
   </details>
 
-  <!-- Players -->
+  <!-- PET (Top 10) -->
   <details class="accordion" open>
-    <summary>Top Players — Eliminations</summary>
+    <summary>Pet Usage (Top 10)</summary>
     <div class="accordion-body">
-      <div class="bar">
-        <label>Sort by
-          <select id="topSort" class="input">
-            <option value="kills" selected>Kills</option>
-            <option value="damage">Damage</option>
-            <option value="assists">Assists</option>
-            <option value="hsr">Headshot %</option>
-            <option value="grenade">Grenade Kills</option>
-          </select>
-        </label>
-        <label>Limit
-          <select id="topLimit" class="input">
-            <option>10</option><option>20</option><option>30</option><option>50</option>
-          </select>
-        </label>
-      </div>
       <div class="card" style="margin:0">
-        <div id="tblTopPlayers">Loading…</div>
+        <div id="tblPet">—</div>
       </div>
     </div>
   </details>
-
-  <!-- Player Mini Panel -->
-  <details class="accordion" open>
-    <summary>Player Explorer</summary>
-    <div class="accordion-body">
-      <div id="miniPanel" class="card" style="margin:0">
-        <div class="muted">Select a player from “Player” in Filters, or click a row in Top Players.</div>
-      </div>
-    </div>
-  </details>
-
 </div>
 
 <script>
-/* ====== Supabase init + auth ====== */
+/* ===== Supabase ===== */
 const client = supabase.createClient(
   'https://gkugecflfddkpitlrmws.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
 );
-
-(async () => {
+(async ()=>{
   const { data: { session } } = await client.auth.getSession();
   if (!session) { window.location.href = 'index.html'; return; }
   const ui = document.getElementById('user-info');
   if (ui && session.user?.email) ui.textContent = `Logged in as: ${session.user.email}`;
 })();
-
 document.getElementById('logoutBtn').onclick = async () => {
   await client.auth.signOut();
   window.location.href = 'index.html';
 };
 
-/* ====== Utilities ====== */
+/* ===== Utils ===== */
 const el = id => document.getElementById(id);
 const norm = v => (v==null ? '' : String(v).trim());
 const n = v => {
@@ -217,69 +156,97 @@ const n = v => {
   return Number.isFinite(x) ? x : 0;
 };
 const uniq = arr => Array.from(new Set(arr));
-const groupBy = (arr, keyFn) => {
+const sum = (arr, k) => arr.reduce((t,r)=> t + n(r[k]), 0);
+const by = (arr, keyFn) => {
   const m = new Map();
   for (const r of arr){ const k = keyFn(r); if (!m.has(k)) m.set(k, []); m.get(k).push(r); }
   return m;
 };
-const sum = (arr,key) => arr.reduce((t,r)=> t + n(r[key]), 0);
-const fmt = (x,d=0)=>Number(n(x)).toFixed(d);
-const fmtPct = x => isFinite(x) ? (x*100).toFixed(1)+'%' : '—';
-
-/* Case-insensitive getter over an object */
 function getCI(obj, ...names){
   if (!obj) return '';
   const keys = Object.keys(obj);
   for (const want of names){
-    const idx = keys.find(k => k.toLowerCase() === String(want).toLowerCase());
-    if (idx) return obj[idx];
+    const k = keys.find(x => x.toLowerCase() === String(want).toLowerCase());
+    if (k) return obj[k];
   }
-  // partial/regex fallbacks (e.g., "Grenade kill")
   for (const want of names){
     const rx = new RegExp('^'+String(want).replace(/\s+/g,'\\s*')+'$','i');
-    const k2 = keys.find(k => rx.test(k));
-    if (k2) return obj[k2];
+    const k = keys.find(x => rx.test(x));
+    if (k) return obj[k];
   }
   return '';
 }
 
-/* ====== Normalization ====== */
+/* ===== Normalization for ffbr_lopsdata ===== */
 function normalizeRow(r){
   const o = {...r};
-  // Tournament fields
-  o._tournament = norm(getCI(o,'Tournament','tournament','Event','Series'));
-  o._tournament_id = n(getCI(o,'tournament_id','Tournament ID','TID','ID'));
-  o._created = getCI(o,'created_at','Created','Timestamp') || null;
-
-  // Player (primary: "Player name")
-  let pn = norm(getCI(o,'Player name','Player Name'));
-  if (!pn) pn = norm(getCI(o,'Player','player','IGN','ign','Player IGN','InGameName','IGName'));
-  o._player = pn;
-
-  // Team (best-effort)
-  o._team = norm(getCI(o,'Team','TEAM','TeamName','Team Name','TAG','Tag'));
-
-  // Map (optional)
-  o._map = norm(getCI(o,'Map','map','Match Map'));
-
-  // Core numbers
+  o._created  = getCI(o,'created_at','Created','Timestamp') || null;
+  o._id       = n(getCI(o,'id','ID'));
+  o._player   = norm(getCI(o,'Player name','Player Name','Player','IGN'));
+  o._team     = norm(getCI(o,'Team','TAG','TeamName','Team Name'));
+  o._map      = norm(getCI(o,'Map','map','Match Map'));
   o.kills     = n(getCI(o,'KILLS','Kills','Kill'));
   o.assists   = n(getCI(o,'ASSISTS','Assists','Assist'));
-  // HEADSHOTRS (typo) + variants
-  o.headshots = n(getCI(o,'HEADSHOTRS','HEADSHOTS','Headshots','HS','Head shot','Head-shot'));
+  o.headshots = n(getCI(o,'HEADSHOTRS','HEADSHOTS','Headshots','HS'));
   o.damage    = n(getCI(o,'DAMAGE','Damage','DMG'));
-  // grenade
-  const gk = getCI(o,'Grenade kill','Grenade kills','Grenade','Nade Kills','Nade');
-  o.grenade   = n(gk);
-
-  // Active Skill / Pet
-  o.active_skill = norm(getCI(o,'Active Skill','Active','Skill','ActiveSkill'));
-  o.pet          = norm(getCI(o,'Pet','Pet Name','PetName'));
-
+  o.grenade   = n(getCI(o,'Grenade kill','Grenade kills','Nade Kills','Grenade'));
+  o.active    = norm(getCI(o,'Active Skill','Active','Skill','ActiveSkill'));
+  o.pet       = norm(getCI(o,'Pet','Pet Name','PetName'));
+  o._tournament = norm(getCI(o,'Tournament','Event','Series'));
   return o;
 }
 
-/* ====== Fetch all from ffbr_lopsdata (paginated) ====== */
+/* ===== Character index (from character.json or Supabase fallback) ===== */
+let CHARIDX = null;  // key -> { name, portrait, activeName, activeDesc }
+const NC = s => (s||'').toLowerCase().replace(/\s+/g,' ').trim();
+
+async function loadCharacters(){
+  try{
+    const resp = await fetch('character.json', { cache: 'no-store' });
+    if (resp.ok){
+      const json = await resp.json();
+      CHARIDX = indexCharacters(json);
+      return;
+    }
+  }catch(e){ console.warn('character.json fetch failed:', e); }
+  // optional: supabase fallback (table name guess)
+  try{
+    const { data, error } = await client.from('character').select('*').limit(500);
+    if (!error && data) CHARIDX = indexCharacters(data);
+  }catch(e){ console.warn('character (table) fallback failed:', e); }
+  if (!CHARIDX) CHARIDX = new Map();
+}
+function dig(obj, ...paths){
+  for (const p of paths){
+    try{
+      const parts = Array.isArray(p) ? p : String(p).split('.');
+      let cur = obj;
+      for (const seg of parts){ if (cur==null) break; cur = cur[seg]; }
+      if (cur != null && cur !== '') return cur;
+    }catch{}
+  }
+  return '';
+}
+function indexCharacters(list){
+  const m = new Map();
+  for (const c of list){
+    const name = norm(c.name || c.Name || c.character || c.title);
+    const portrait = dig(c, 'icon', 'image', 'portrait', 'img', 'images.portrait', 'images.icon') || '';
+    const activeName = dig(c, 'active.name', 'skill.active.name', 'skill.name', 'activeSkill.name', 'ability.active.name') || name;
+    const activeDesc = dig(c, 'active.desc', 'skill.active.desc', 'skill.description', 'activeSkill.description', 'ability.active.description') || '';
+    const aliases = (c.aliases || c.Aliases || []).map(x=>norm(x)).filter(Boolean);
+    const keyset = new Set([name, ...aliases]);
+    keyset.forEach(k => m.set(NC(k), { name, portrait, activeName, activeDesc }));
+  }
+  return m;
+}
+function charInfoForActive(activeName){
+  if (!activeName) return null;
+  const key = NC(activeName);
+  return CHARIDX?.get(key) || null;
+}
+
+/* ===== Data fetch ===== */
 async function fetchAllRows(){
   const CHUNK = 1000;
   let from = 0;
@@ -288,97 +255,20 @@ async function fetchAllRows(){
     const { data, error } = await client
       .from('ffbr_lopsdata')
       .select('*')
-      .order('tournament_id', { ascending: true, nullsFirst:true }) // stable order across pages
-      .order('id', { ascending: true, nullsFirst:true })
+      .order('created_at', { ascending: true, nullsFirst: true })
+      .order('id', { ascending: true, nullsFirst: true })
       .range(from, from + CHUNK - 1);
-
     if (error){ console.error('ffbr_lopsdata fetch failed:', error); break; }
     const rows = data || [];
     if (!rows.length) break;
     out.push(...rows);
     from += rows.length;
   }
-
-  // Normalize & strip obvious header echoes like TeamName-only rows
-  const normed = out.map(normalizeRow).filter(r => r._player || r.kills || r.damage || r.assists || r.headshots);
-  const filtered = normed.filter(r => String(r._team).toLowerCase() !== 'teamname'); // safety
-
-  return filtered;
+  // normalize + drop empty
+  return out.map(normalizeRow).filter(r => r._player);
 }
 
-/* ====== Tournament indexing & default (prefer FFWS GLOBAL FINALS 2025) ====== */
-const PREFERRED_LATEST_NAME = 'ffws global finals 2025';
-
-function tournamentsIndex(rows){
-  const m = new Map(); // key: lower(name) -> {name, idMax, count}
-  for (const r of rows){
-    const name = norm(r._tournament); if (!name) continue;
-    const key = name.toLowerCase();
-    const id  = n(r._tournament_id);
-    if (!m.has(key)) m.set(key, { name, idMax: Number.isFinite(id)? id : -Infinity, count: 1 });
-    else {
-      const o = m.get(key);
-      if (Number.isFinite(id)) o.idMax = Math.max(o.idMax, id);
-      o.count++;
-    }
-  }
-  return m;
-}
-function defaultTournamentName(rows){
-  const idx = tournamentsIndex(rows);
-  if (!idx.size) return null;
-  for (const v of idx.values()){
-    if (v.name.toLowerCase() === PREFERRED_LATEST_NAME) return v.name;
-  }
-  // else choose highest idMax then by count
-  const all = Array.from(idx.values()).sort((a,b)=>{
-    const af = Number.isFinite(a.idMax), bf = Number.isFinite(b.idMax);
-    if (af && bf && a.idMax !== b.idMax) return b.idMax - a.idMax;
-    if (a.count !== b.count) return b.count - a.count;
-    return a.name.localeCompare(b.name);
-  });
-  return all[0].name;
-}
-function uniqueTournaments(rows){
-  const idx = tournamentsIndex(rows);
-  const items = Array.from(idx.values()).sort((a,b)=>{
-    const af = Number.isFinite(a.idMax), bf = Number.isFinite(b.idMax);
-    if (af && bf && a.idMax !== b.idMax) return b.idMax - a.idMax;
-    if (a.count !== b.count) return b.count - a.count;
-    return a.name.localeCompare(b.name);
-  });
-  return items;
-}
-
-/* ====== Global state ====== */
-let ALL = [];
-let CURRENT_PLAYER = '';
-
-/* ====== Filtering ====== */
-function selectedTournament(){ return (el('gTournament')?.value || '__all__').trim(); }
-function baseRowsByTournament(rows){
-  const t = selectedTournament();
-  if (t === '__all__') return rows;
-  const lf = t.toLowerCase();
-  return rows.filter(r => r._tournament.toLowerCase() === lf);
-}
-
-/* ====== Rendering helpers ====== */
-function renderSimpleTable(list, cols){
-  if (!list.length) return '<div class="muted">No rows.</div>';
-  const head = `<thead><tr>${cols.map(c=>`<th class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
-  const body = `<tbody>${list.map(r=>`<tr>${cols.map(c=>{
-    let v = r[c.key];
-    if (c.format==='pct') v = isFinite(v) ? (v*100).toFixed(1)+'%' : '—';
-    else if (c.format==='1d') v = isFinite(v) ? Number(v).toFixed(1) : '—';
-    else if (c.format==='2d') v = isFinite(v) ? Number(v).toFixed(2) : '—';
-    else if (c.format==='0d') v = isFinite(v) ? Number(v).toFixed(0) : '—';
-    return `<td data-key="${c.key}" class="${c.right?'right':''}">${(v==null||v==='')?'—':v}</td>`;
-  }).join('')}</tr>`).join('')}</tbody>`;
-  return `<table>${head}${body}</table>`;
-}
-
-/* ====== Quantile-band Heatmap (5 bands) ====== */
+/* ===== Heatmap ===== */
 function applyColumnHeatmap(containerId, keys){
   const wrap = el(containerId);
   const table = wrap?.querySelector('table'); if (!table) return;
@@ -413,19 +303,18 @@ function applyColumnHeatmap(containerId, keys){
 
     const bandByIndex = new Map();
     asc.forEach((e, rank)=>{
-      const p = (n<=1) ? 1 : (rank / (n - 1)); // 0..1
-      const band = Math.min(BANDS-1, Math.floor(p * BANDS)); // 0..4
+      const p = (n<=1) ? 1 : (rank/(n-1));
+      const band = Math.min(BANDS-1, Math.floor(p * BANDS));
       bandByIndex.set(e.i, band);
     });
 
-    cells.forEach((td, i)=>{
+    cells.forEach((td,i)=>{
       const band = bandByIndex.get(i);
       if (band == null) return;
       const alpha = minA + ((band)/(BANDS-1)) * (maxA - minA);
       td.style.backgroundColor = `rgba(${rgb}, ${alpha.toFixed(3)})`;
       td.style.borderRadius = radius;
       td.style.backgroundClip = 'padding-box';
-
       const raw = (td.textContent||'').trim().replace('%','').replace(/,/g,'');
       const v = parseFloat(raw);
       if (isFinite(v) && v === topVal) td.classList.add('heat-top');
@@ -433,322 +322,259 @@ function applyColumnHeatmap(containerId, keys){
   }
 }
 
-/* ====== KPIs ====== */
-function renderKPIs(rows){
-  const players = uniq(rows.map(r=>r._player).filter(Boolean));
-  const matches = rows.length;
-  const totalKills = sum(rows,'kills');
-  const totalAssists = sum(rows,'assists');
-  const totalHS = sum(rows,'headshots');
-  const totalDmg = sum(rows,'damage');
-  const totalG = sum(rows,'grenade');
-
-  el('kpiDataset').innerHTML = `
-    <div class="kpi">Rows <strong>${matches}</strong></div>
-    <div class="kpi">Players <strong>${players.length}</strong></div>
-    <div class="kpi">Avg Kills/row <strong>${fmt(matches? totalKills/matches : 0,2)}</strong></div>
-    <div class="kpi">Avg Dmg/row <strong>${fmt(matches? totalDmg/matches : 0,0)}</strong></div>
-  `;
-  el('kpiDamage').innerHTML = `
-    <div class="kpi">Kills <strong>${totalKills}</strong></div>
-    <div class="kpi">Assists <strong>${totalAssists}</strong></div>
-    <div class="kpi">Grenade Kills <strong>${totalG}</strong></div>
-    <div class="kpi">Damage <strong>${fmt(totalDmg,0)}</strong></div>
-  `;
-  const hsr = totalKills>0 ? (totalHS/totalKills) : 0;
-  el('kpiHS').innerHTML = `
-    <div class="kpi">Headshots <strong>${totalHS}</strong></div>
-    <div class="kpi">HS Rate <strong>${fmtPct(hsr)}</strong></div>
-  `;
+/* ===== Rendering ===== */
+function renderSimpleTable(list, cols){
+  if (!list.length) return '<div class="muted">No rows.</div>';
+  const head = `<thead><tr>${cols.map(c=>`<th class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
+  const body = `<tbody>${list.map(r=>`<tr>${cols.map(c=>{
+    let v = r[c.key];
+    if (c.html) v = c.html(r);
+    else if (c.format==='pct') v = isFinite(v) ? (v*100).toFixed(1)+'%' : '—';
+    else if (c.format==='1d') v = isFinite(v) ? Number(v).toFixed(1) : '—';
+    else if (c.format==='2d') v = isFinite(v) ? Number(v).toFixed(2) : '—';
+    else if (c.format==='0d') v = isFinite(v) ? Number(v).toFixed(0) : '—';
+    return `<td data-key="${c.key}" class="${c.right?'right':''}">${(v==null||v==='')?'—':v}</td>`;
+  }).join('')}</tr>`).join('')}</tbody>`;
+  return `<table>${head}${body}</table>`;
 }
 
-/* ====== Usage: Active Skill & Pet ====== */
-function aggregateByKey(rows, key){
-  const g = groupBy(rows, r=> norm(r[key]) || '—');
+function kpisForPlayer(rows){
+  const cnt = rows.length;
+  const kills = sum(rows,'kills');
+  const assists = sum(rows,'assists');
+  const hs = sum(rows,'headshots');
+  const dmg = sum(rows,'damage');
+  const gk = sum(rows,'grenade');
+  return {
+    rows: cnt, kills, assists, hs, dmg, gk,
+    kpr: cnt? kills/cnt : 0,
+    apr: cnt? assists/cnt : 0,
+    dpr: cnt? dmg/cnt : 0,
+    hsr: kills? hs/kills : 0,
+  };
+}
+
+function identityBlock(playerName, rows){
+  const teams = uniq(rows.map(r=>r._team).filter(Boolean)).join(', ') || '—';
+  const tourns = uniq(rows.map(r=>r._tournament).filter(Boolean)).length;
+  return `
+    <div style="display:flex;gap:12px;align-items:center">
+      <div style="width:72px;height:72px;border:1px solid #2a2a2a;border-radius:10px;background:#111;display:flex;align-items:center;justify-content:center;font-weight:800">${(playerName||'?').slice(0,2).toUpperCase()}</div>
+      <div>
+        <div style="font-size:1.1rem;font-weight:800">${playerName||'—'}</div>
+        <div class="muted">${teams} • ${tourns||0} tournament(s)</div>
+      </div>
+    </div>`;
+}
+
+function renderOverview(player, rows){
+  el('playerTitle').textContent = player ? `Player Overview — ${player}` : 'Player Overview';
+  el('identityBody').innerHTML = player ? identityBlock(player, rows) : 'Select a player.';
+  const k = kpisForPlayer(rows);
+  el('kpiBody').innerHTML = k.rows ? `
+    <div class="kpis">
+      <div class="kpi">Rows <strong>${k.rows}</strong></div>
+      <div class="kpi">Kills <strong>${k.kills}</strong> <span class="muted">(${k.kpr.toFixed(2)}/row)</span></div>
+      <div class="kpi">Assists <strong>${k.assists}</strong> <span class="muted">(${k.apr.toFixed(2)}/row)</span></div>
+      <div class="kpi">Grenade <strong>${k.gk}</strong></div>
+      <div class="kpi">Damage <strong>${Math.round(k.dmg)}</strong> <span class="muted">(${Math.round(k.dpr)}/row)</span></div>
+      <div class="kpi">Headshots <strong>${k.hs}</strong> <span class="muted">(${(k.hsr*100).toFixed(1)}%)</span></div>
+    </div>` : '<div class="muted">—</div>';
+}
+
+/* Recent (Top 10 by recency, using created_at/id) */
+function renderRecent(rows){
+  const sorted = rows.slice().sort((a,b)=>{
+    const ad = new Date(a._created||0).getTime() || 0;
+    const bd = new Date(b._created||0).getTime() || 0;
+    if (ad !== bd) return bd - ad;
+    return (b._id||0) - (a._id||0);
+  }).slice(0,10);
+
+  const cols = [
+    { label:'Map', key:'_map' },
+    { label:'Tournament', key:'_tournament' },
+    { label:'Kills', key:'kills', right:true },
+    { label:'Assists', key:'assists', right:true },
+    { label:'HS', key:'headshots', right:true },
+    { label:'Grenade', key:'grenade', right:true },
+    { label:'Damage', key:'damage', right:true },
+  ];
+  el('tblRecent').innerHTML = renderSimpleTable(sorted, cols);
+  applyColumnHeatmap('tblRecent', ['kills','assists','headshots','grenade','damage']);
+}
+
+/* Aggregate helpers */
+function aggregateBy(rows, key){
+  const g = by(rows, r=> norm(r[key]) || '—');
   const out = [];
-  for (const [name,list] of g.entries()){
+  for (const [name, list] of g.entries()){
     const picks = list.length;
-    const players = uniq(list.map(r=>r._player).filter(Boolean)).length;
-    const kills = sum(list,'kills');
-    const assists = sum(list,'assists');
-    const dmg = sum(list,'damage');
-    const hs = sum(list,'headshots');
-    const gk = sum(list,'grenade');
     out.push({
-      name, picks, players,
-      kills, assists, damage:dmg, headshots:hs, grenade:gk,
-      kpr: picks? kills/picks : 0,
-      dpr: picks? dmg/picks : 0,
-      hsr: kills? hs/kills : 0,
-      usage: rows.length? picks/rows.length : 0
+      name,
+      picks,
+      kills: sum(list,'kills'),
+      assists: sum(list,'assists'),
+      headshots: sum(list,'headshots'),
+      grenade: sum(list,'grenade'),
+      damage: sum(list,'damage'),
+      kpr: picks? sum(list,'kills')/picks : 0,
+      dpr: picks? sum(list,'damage')/picks : 0,
+      hsr: sum(list,'kills') ? sum(list,'headshots')/sum(list,'kills') : 0,
     });
   }
-  // sort by picks desc then kills desc
+  // sort by picks then kills
   out.sort((a,b)=> b.picks - a.picks || b.kills - a.kills || a.name.localeCompare(b.name));
   return out;
 }
 
-function renderActiveSkill(rows){
-  const agg = aggregateByKey(rows, 'active_skill');
+/* Active Skill (Top 10, with character art/skill) */
+function renderActive(rows){
+  const agg = aggregateBy(rows, 'active').slice(0,10);
   const cols = [
-    {label:'Active Skill', key:'name'},
-    {label:'Picks', key:'picks', right:true},
-    {label:'Players', key:'players', right:true},
-    {label:'Usage %', key:'usage', format:'pct', right:true},
-    {label:'Kills', key:'kills', right:true},
-    {label:'Assists', key:'assists', right:true},
-    {label:'Damage', key:'damage', right:true},
-    {label:'HS', key:'headshots', right:true},
-    {label:'HS %', key:'hsr', format:'pct', right:true},
-    {label:'Grenade', key:'grenade', right:true},
-    {label:'Kills/row', key:'kpr', format:'2d', right:true},
-    {label:'Dmg/row', key:'dpr', format:'1d', right:true},
+    { label:'Active Skill', key:'name', html:(r)=>{
+        const ci = charInfoForActive(r.name);
+        if (ci){
+          const tip = (ci.activeDesc||'').replace(/"/g,'&quot;');
+          return `<div class="skillcell" title="${tip}">
+            <img src="${ci.portrait||''}" alt="${ci.name||r.name}">
+            <div><div style="font-weight:700">${ci.name||r.name}</div>
+            <div class="muted" style="font-size:.78rem;line-height:1.2">${ci.activeName||''}</div></div>
+          </div>`;
+        }
+        return `<div class="skillcell"><img src="" alt="" style="display:none"><div><div style="font-weight:700">${r.name||'—'}</div></div></div>`;
+      }},
+    { label:'Picks', key:'picks', right:true },
+    { label:'Kills', key:'kills', right:true },
+    { label:'Assists', key:'assists', right:true },
+    { label:'HS', key:'headshots', right:true },
+    { label:'HS %', key:'hsr', format:'pct', right:true },
+    { label:'Grenade', key:'grenade', right:true },
+    { label:'Damage', key:'damage', right:true },
+    { label:'Kills/row', key:'kpr', format:'2d', right:true },
+    { label:'Dmg/row', key:'dpr', format:'1d', right:true },
   ];
-  el('tblActiveSkill').innerHTML = renderSimpleTable(agg, cols);
-  applyColumnHeatmap('tblActiveSkill', ['picks','players','usage','kills','assists','damage','headshots','grenade','kpr','dpr','hsr']);
+  el('tblActive').innerHTML = renderSimpleTable(agg, cols);
+  applyColumnHeatmap('tblActive', ['picks','kills','assists','headshots','hsr','grenade','damage','kpr','dpr']);
 }
 
+/* Pet (Top 10) */
 function renderPet(rows){
-  const agg = aggregateByKey(rows, 'pet');
+  const agg = aggregateBy(rows, 'pet').slice(0,10);
   const cols = [
-    {label:'Pet', key:'name'},
-    {label:'Picks', key:'picks', right:true},
-    {label:'Players', key:'players', right:true},
-    {label:'Usage %', key:'usage', format:'pct', right:true},
-    {label:'Kills', key:'kills', right:true},
-    {label:'Assists', key:'assists', right:true},
-    {label:'Damage', key:'damage', right:true},
-    {label:'HS', key:'headshots', right:true},
-    {label:'HS %', key:'hsr', format:'pct', right:true},
-    {label:'Grenade', key:'grenade', right:true},
-    {label:'Kills/row', key:'kpr', format:'2d', right:true},
-    {label:'Dmg/row', key:'dpr', format:'1d', right:true},
+    { label:'Pet', key:'name' },
+    { label:'Picks', key:'picks', right:true },
+    { label:'Kills', key:'kills', right:true },
+    { label:'Assists', key:'assists', right:true },
+    { label:'HS', key:'headshots', right:true },
+    { label:'HS %', key:'hsr', format:'pct', right:true },
+    { label:'Grenade', key:'grenade', right:true },
+    { label:'Damage', key:'damage', right:true },
+    { label:'Kills/row', key:'kpr', format:'2d', right:true },
+    { label:'Dmg/row', key:'dpr', format:'1d', right:true },
   ];
   el('tblPet').innerHTML = renderSimpleTable(agg, cols);
-  applyColumnHeatmap('tblPet', ['picks','players','usage','kills','assists','damage','headshots','grenade','kpr','dpr','hsr']);
+  applyColumnHeatmap('tblPet', ['picks','kills','assists','headshots','hsr','grenade','damage','kpr','dpr']);
 }
 
-/* ====== Top Players ====== */
-function aggregatePlayers(rows){
-  const byP = groupBy(rows, r=> r._player || '—');
-  const out = [];
-  for (const [player, list] of byP.entries()){
-    if (!player || player==='—') continue;
-    const team = uniq(list.map(r=>r._team).filter(Boolean)).join(', ');
-    const cnt = list.length;
-    const kills = sum(list,'kills');
-    const assists = sum(list,'assists');
-    const hs = sum(list,'headshots');
-    const dmg = sum(list,'damage');
-    const gk = sum(list,'grenade');
-    out.push({
-      player, team, rows:cnt,
-      kills, assists, damage:dmg, headshots:hs, grenade:gk,
-      kpr: cnt? kills/cnt : 0,
-      dpr: cnt? dmg/cnt : 0,
-      hsr: kills? hs/kills : 0
-    });
+/* Player chips: Top 10 players by kills (overall) */
+function renderTopPlayerChips(allRows){
+  const byP = by(allRows, r=>r._player);
+  const list = [];
+  for (const [p, arr] of byP.entries()){
+    if (!p) continue;
+    list.push({ p, kills: sum(arr,'kills') });
   }
-  return out;
-}
-function renderTopPlayers(rows){
-  const sortKey = el('topSort')?.value || 'kills';
-  const limit = parseInt(el('topLimit')?.value || '10',10);
-  const agg = aggregatePlayers(rows);
-  const dir = (sortKey==='hsr') ? 'desc' : 'desc';
-  agg.sort((a,b)=>{
-    if (sortKey==='player') return a.player.localeCompare(b.player);
-    const av = Number(a[sortKey]); const bv = Number(b[sortKey]);
-    if (!isFinite(av) && !isFinite(bv)) return 0;
-    if (!isFinite(av)) return 1;
-    if (!isFinite(bv)) return -1;
-    return dir==='desc' ? (bv - av) : (av - bv);
-  });
-  const cut = agg.slice(0, limit);
+  list.sort((a,b)=> b.kills - a.kills || a.p.localeCompare(b.p));
+  const top = list.slice(0,10);
+  const cur = CURRENT_PLAYER.toLowerCase();
 
-  const cols = [
-    {label:'Player', key:'player'},
-    {label:'Team', key:'team'},
-    {label:'Rows', key:'rows', right:true},
-    {label:'Kills', key:'kills', right:true},
-    {label:'Assists', key:'assists', right:true},
-    {label:'HS', key:'headshots', right:true},
-    {label:'HS %', key:'hsr', format:'pct', right:true},
-    {label:'Grenade', key:'grenade', right:true},
-    {label:'Damage', key:'damage', right:true},
-    {label:'Kills/row', key:'kpr', format:'2d', right:true},
-    {label:'Dmg/row', key:'dpr', format:'1d', right:true},
-  ];
-  el('tblTopPlayers').innerHTML = renderSimpleTable(cut, cols);
-  applyColumnHeatmap('tblTopPlayers', ['kills','assists','headshots','hsr','grenade','damage','kpr','dpr','rows']);
+  el('playerChips').innerHTML = top.map(x =>
+    `<button class="chipbtn ${cur===x.p.toLowerCase()?'active':''}" data-name="${x.p}">${x.p} <span class="muted">• ${x.kills}</span></button>`
+  ).join('') || '<div class="muted">No players found.</div>';
 
-  // make rows clickable -> mini panel
-  const table = el('tblTopPlayers').querySelector('table');
-  if (table){
-    const bodyRows = table.querySelectorAll('tbody tr');
-    bodyRows.forEach((tr)=>{
-      const name = (tr.querySelector('td[data-key="player"]')?.textContent || '').trim();
-      if (!name) return;
-      tr.style.cursor = 'pointer';
-      tr.addEventListener('click', ()=>{
-        CURRENT_PLAYER = name;
-        el('playerSearch').value = name;
-        renderMiniPanel(baseRowsByTournament(ALL), name);
-        // scroll to player explorer
-        document.querySelector('#miniPanel')?.scrollIntoView({behavior:'smooth', block:'start'});
-      });
-    });
-  }
-}
-
-/* ====== Player Mini Panel ====== */
-function renderMiniPanel(rows, playerName){
-  const list = rows.filter(r => (r._player||'').toLowerCase() === playerName.toLowerCase());
-  const box = el('miniPanel');
-  if (!list.length){
-    box.innerHTML = `<div class="muted">No rows for <b>${playerName}</b> in current scope.</div>`;
-    return;
-  }
-  const team = uniq(list.map(r=>r._team).filter(Boolean)).join(', ') || '—';
-  const cnt = list.length;
-  const kills = sum(list,'kills');
-  const assists = sum(list,'assists');
-  const hs = sum(list,'headshots');
-  const dmg = sum(list,'damage');
-  const gk = sum(list,'grenade');
-  const hsr = kills? hs/kills : 0;
-
-  // by Active Skill
-  const byAS = aggregateByKey(list,'active_skill');
-  // by Pet
-  const byPet = aggregateByKey(list,'pet');
-
-  const topRows = list.slice(-10); // last 10 rows as “recent”
-  const recent = topRows.map(r=>`
-    <div class="rowitem">
-      <div><span class="pill">${r._map||'—'}</span> <span class="muted">• ${r._tournament||'—'}</span></div>
-      <div class="right" title="Kills">${fmt(r.kills)}</div>
-      <div class="right" title="Assists">${fmt(r.assists)}</div>
-      <div class="right" title="HS">${fmt(r.headshots)}</div>
-      <div class="right" title="Grenade">${fmt(r.grenade)}</div>
-      <div class="right" title="Damage">${fmt(r.damage)}</div>
-    </div>
-  `).join('');
-
-  box.innerHTML = `
-    <div class="mini">
-      <div>
-        <h3>${playerName} <span class="muted">(${team})</span></h3>
-        <div class="kpis">
-          <div class="kpi">Rows <strong>${cnt}</strong></div>
-          <div class="kpi">Kills <strong>${kills}</strong> <span class="muted">(${fmt(kills/cnt,2)}/row)</span></div>
-          <div class="kpi">Assists <strong>${assists}</strong> <span class="muted">(${fmt(assists/cnt,2)}/row)</span></div>
-          <div class="kpi">Grenade <strong>${gk}</strong></div>
-          <div class="kpi">Damage <strong>${fmt(dmg,0)}</strong> <span class="muted">(${fmt(dmg/cnt,0)}/row)</span></div>
-          <div class="kpi">HS <strong>${hs}</strong> <span class="muted">(${fmtPct(hsr)})</span></div>
-        </div>
-        <h4>Recent (last 10)</h4>
-        <div class="rowlist">${recent || '<div class="muted">—</div>'}</div>
-      </div>
-      <div>
-        <h4>By Active Skill</h4>
-        ${renderSimpleTable(byAS.slice(0,8), [
-          {label:'Active', key:'name'},
-          {label:'Picks', key:'picks', right:true},
-          {label:'Kills', key:'kills', right:true},
-          {label:'HS %', key:'hsr', format:'pct', right:true},
-        ])}
-        <div style="height:10px"></div>
-        <h4>By Pet</h4>
-        ${renderSimpleTable(byPet.slice(0,8), [
-          {label:'Pet', key:'name'},
-          {label:'Picks', key:'picks', right:true},
-          {label:'Kills', key:'kills', right:true},
-          {label:'HS %', key:'hsr', format:'pct', right:true},
-        ])}
-      </div>
-    </div>
-  `;
-
-  // heatmaps inside mini (small sets)
-  const miniEl = box;
-  miniEl.querySelectorAll('table').forEach((t,i)=>{
-    const id = `mini_${i}`;
-    const wrap = document.createElement('div');
-    wrap.id = id;
-    t.parentElement.replaceChildren(wrap);
-    wrap.appendChild(t);
-    applyColumnHeatmap(id, ['picks','kills','hsr']);
+  el('playerChips').querySelectorAll('.chipbtn').forEach(btn=>{
+    btn.onclick = () => selectPlayer(btn.getAttribute('data-name'));
   });
 }
 
-/* ====== Map filter options: players list & tournaments ====== */
-function populatePlayersDatalist(rows){
-  const names = uniq(rows.map(r=>r._player).filter(Boolean)).sort((a,b)=>a.localeCompare(b));
-  const dl = el('playerList');
-  dl.innerHTML = names.map(nm=>`<option value="${nm}">`).join('');
+/* Selection */
+let ALL = [];
+let CURRENT_PLAYER = '';
+
+function selectPlayer(name){
+  CURRENT_PLAYER = (name||'').trim();
+  el('playerSearch').value = CURRENT_PLAYER;
+
+  const rows = ALL.filter(r => (r._player||'').toLowerCase() === CURRENT_PLAYER.toLowerCase());
+  renderOverview(CURRENT_PLAYER, rows);
+  renderRecent(rows);
+  renderActive(rows);
+  renderPet(rows);
+
+  // highlight chip
+  document.querySelectorAll('.chipbtn').forEach(b=>{
+    b.classList.toggle('active', b.getAttribute('data-name').toLowerCase() === CURRENT_PLAYER.toLowerCase());
+  });
 }
 
-function populateGlobalTournament(){
-  const sel = el('gTournament');
-  const items = uniqueTournaments(ALL);
-  const latest = defaultTournamentName(ALL);
-
-  sel.innerHTML = `<option value="__all__">All tournaments</option>` +
-    items.map(o=> `<option value="${o.name.replaceAll('"','&quot;')}">${o.name}</option>`).join('');
-
-  sel.value = latest || '__all__';
-  updateFilterHint();
-}
-function updateFilterHint(){
-  const t = selectedTournament();
-  const rows = baseRowsByTournament(ALL).length;
-  el('filterHint').textContent = t==='__all__'
-    ? `Scope: All tournaments • Rows: ${rows}`
-    : `Scope: ${t} • Rows: ${rows} • Default prefers “FFWS GLOBAL FINALS 2025”, else latest by tournament_id`;
+/* Copy link (?player=) */
+function copyLinkToClipboard(){
+  const url = new URL(window.location.href);
+  if (CURRENT_PLAYER) url.searchParams.set('player', CURRENT_PLAYER);
+  else url.searchParams.delete('player');
+  navigator.clipboard.writeText(url.toString()).then(()=>{
+    const btn = el('copyLink'); const old = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(()=> btn.textContent = old, 1200);
+  });
 }
 
-/* ====== Wiring ====== */
-function renderAll(){
-  const base = baseRowsByTournament(ALL);
-  renderKPIs(base);
-  renderActiveSkill(base);
-  renderPet(base);
-  renderTopPlayers(base);
-
-  // refresh datalist (once is fine; cheap to do again)
-  populatePlayersDatalist(base);
-
-  // if a player is currently selected, refresh mini
-  if (CURRENT_PLAYER) renderMiniPanel(base, CURRENT_PLAYER);
-}
-
+/* Wiring */
 async function initial(){
-  // controls
-  el('topSort').addEventListener('change', ()=> renderTopPlayers(baseRowsByTournament(ALL)));
-  el('topLimit').addEventListener('change', ()=> renderTopPlayers(baseRowsByTournament(ALL)));
-  el('gTournament').addEventListener('change', ()=> { updateFilterHint(); renderAll(); });
-  el('gReset').addEventListener('click', ()=>{
-    el('gTournament').value = defaultTournamentName(ALL) || '__all__';
-    el('playerSearch').value = '';
-    CURRENT_PLAYER = '';
-    el('gTournament').dispatchEvent(new Event('change'));
-  });
-  el('playerSearch').addEventListener('change', (e)=>{
-    const name = (e.target.value||'').trim();
-    CURRENT_PLAYER = name;
-    renderMiniPanel(baseRowsByTournament(ALL), name);
-  });
+  // Load characters first (for icons/skill text)
+  await loadCharacters();
 
-  // data
+  // Load data
   ALL = await fetchAllRows();
 
-  // populate tournament filter & players
-  populateGlobalTournament();
-  populatePlayersDatalist(ALL);
+  // Player chips
+  renderTopPlayerChips(ALL);
+  el('pickerHint').textContent = 'Top 10 by kills — click a name or type below.';
 
-  // render all for default scope
-  renderAll();
+  // Search enter -> select exact match or closest (case-insensitive exact)
+  el('playerSearch').addEventListener('keydown', (e)=>{
+    if (e.key === 'Enter'){
+      const name = (e.target.value||'').trim();
+      if (!name) return;
+      // exact ci match prefer
+      const names = uniq(ALL.map(r=>r._player).filter(Boolean));
+      const exact = names.find(nm=> nm.toLowerCase() === name.toLowerCase());
+      selectPlayer(exact || name);
+    }
+  });
+
+  // Clear & copy
+  el('clearPlayer').onclick = ()=>{
+    CURRENT_PLAYER = '';
+    el('playerSearch').value = '';
+    el('playerTitle').textContent = 'Player Overview';
+    el('identityBody').innerHTML = 'Select a player.';
+    el('kpiBody').innerHTML = '—';
+    el('tblRecent').innerHTML = '—';
+    el('tblActive').innerHTML = '—';
+    el('tblPet').innerHTML = '—';
+    document.querySelectorAll('.chipbtn').forEach(b=> b.classList.remove('active'));
+  };
+  el('copyLink').onclick = copyLinkToClipboard;
+
+  // URL ?player=
+  const url = new URL(window.location.href);
+  const qp = (url.searchParams.get('player')||'').trim();
+  if (qp){
+    selectPlayer(qp);
+    // if not present in chips, still render
+  }
 }
 
 initial();
