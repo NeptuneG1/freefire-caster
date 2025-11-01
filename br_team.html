@@ -81,9 +81,9 @@
     details.accordion > .accordion-body{ padding:12px; }
 
     /* Tables */
-    table{width:100%;border-collapse:separate;border-spacing:0 6px;font-size:.92rem} /* separate for rounded heat cells */
+    table{width:100%;border-collapse:separate;border-spacing:0 6px;font-size:.92rem}
     thead th{background:#191919;position:sticky;top:0;text-align:left;border-radius:8px;padding:8px 6px}
-    tbody tr td{border-bottom:none} /* spacing provides row separators now */
+    tbody tr td{border-bottom:none}
     th,td{padding:6px 6px;vertical-align:top}
     .right{text-align:right}
 
@@ -114,7 +114,7 @@
     <div id="teamGrid" class="team-grid">Loading teams…</div>
   </div>
 
-  <!-- GLOBAL TOURNAMENT FILTER (applies to ALL ffbr_data-driven sections) -->
+  <!-- GLOBAL TOURNAMENT FILTER -->
   <div class="section">
     <h2>Filters</h2>
     <div class="bar">
@@ -279,7 +279,7 @@ const TEAMS = [
 
 const TEAM_BY_CODE = Object.fromEntries(TEAMS.map(t => [t.name.toLowerCase(), t]));
 const TEAM_BY_NAME = Object.fromEntries(TEAMS.map(t => [t.fullname.toLowerCase(), t]));
-const ALLOWED_TAGS = new Set(TEAMS.map(t => t.name.toUpperCase())); // <-- ALLOWED by TAG
+const ALLOWED_TAGS = new Set(TEAMS.map(t => t.name.toUpperCase())); // STRICT by TAG
 
 /* ========= Utilities ========= */
 const el = (id) => document.getElementById(id);
@@ -289,8 +289,24 @@ const norm = (v) => (v==null ? '' : String(v).trim());
 function looksLikeURL(v){ return /^https?:\/\//i.test(String(v||'')); }
 function sum(arr, key){ let t=0; for(const r of arr) t += n(r[key]); return t; }
 function groupBy(arr, keyFn){ const m=new Map(); for(const r of arr){ const k=keyFn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r);} return m; }
-function cmpKey(a=[], b=[]){ const L=Math.max(a.length,b.length); for(let i=0;i<L;i++){ const av=a[i]??0, bv=b[i]??0; if(av>bv) return 1; if(av<bv) return -1; } return 0; }
-const parseTime = v => v ? (new Date(v)).getTime() || 0 : 0;
+
+/* Tuple comparator for latest detection (year,week,day,match,id) */
+function keyTuple(r){
+  return [
+    Number(r.year)||0,
+    Number(r.week)||0,
+    Number(r.day)||0,
+    Number(r.match)||0,
+    Number(r.id)||0
+  ];
+}
+function cmpTuple(a,b){
+  for(let i=0;i<Math.max(a.length,b.length);i++){
+    const av=a[i]??0, bv=b[i]??0;
+    if(av>bv) return 1; if(av<bv) return -1;
+  }
+  return 0;
+}
 
 /* ========= Aggregations ========= */
 function kpiDataset(rows){
@@ -335,20 +351,31 @@ function teamMapPerf(rows){
 }
 
 /* ========= State ========= */
-let ALL = [];        // only rows whose TAG is in ALLOWED_TAGS
-let TEAM_ROWS = [];  // current team rows (TAG match, filtered by tournament)
+let ALL = [];        // rows (normalized) limited by TAG
+let TEAM_ROWS = [];  // current team rows after tournament filter
 let CURRENT_TEAM = null;
+
+/* ========= Normalizer (handles tag/TAG + common alt names) ========= */
+function normalizeRow(r){
+  // Normalize TAG
+  r._tag = norm(r.tag ?? r.TAG ?? '');
+  // Normalize metrics (safe fallbacks if your schema used other names at any point)
+  if (r.elimination == null) r.elimination = r.elims ?? r.kills ?? 0;
+  if (r.placement   == null) r.placement   = r.place ?? 0;
+  if (r.top3        == null) r.top3        = r.top_3 ?? 0;
+  return r;
+}
 
 /* ========= Helpers bound to TAG ========= */
 function codeFromRow(r){
-  const code = norm(r.tag).toUpperCase();
+  const code = norm(r._tag).toUpperCase();
   return ALLOWED_TAGS.has(code) ? code : null;
 }
 function metaFromCode(code){
   return code ? TEAM_BY_CODE[code.toLowerCase()] : null;
 }
 
-/* ========= Fetch ffbr_data (paginated, LIMITED BY TAG) ========= */
+/* ========= Fetch ffbr_data (safe select/order) ========= */
 async function fetchAllRows(){
   const CHUNK = 1000;
   let from = 0;
@@ -356,51 +383,59 @@ async function fetchAllRows(){
   for(;;){
     const { data, error } = await client
       .from('ffbr_data')
-      .select('id, created_at, team, "group", stage, day, match, map, booyah, placement, elimination, drop, damage, total, played, top3, tag, week, tournament, year, season')
-      .order('created_at', { ascending:true, nullsFirst:true })
-      .order('id', { ascending:true })
+      .select('*')                    // safe: grab everything; avoids missing alt columns
+      .order('year',  { ascending:true, nullsFirst:true })
+      .order('week',  { ascending:true, nullsFirst:true })
+      .order('day',   { ascending:true, nullsFirst:true })
+      .order('match', { ascending:true, nullsFirst:true })
+      .order('id',    { ascending:true })
       .range(from, from + CHUNK - 1);
 
-    if (error){ console.error('ffbr_data fetch failed:', error); break; }
+    if (error){
+      console.error('ffbr_data fetch failed:', error);
+      break;
+    }
     const rows = data || [];
     if (!rows.length) break;
     out.push(...rows);
     from += rows.length;
   }
-  // STRICT limiter by TAG (requested): keep only rows whose TAG matches one of the 18 codes
-  return out.filter(r => ALLOWED_TAGS.has((norm(r.tag)||'').toUpperCase()));
+
+  // Normalize, then STRICT limiter by TAG
+  const normalized = out.map(normalizeRow);
+  const limited = normalized.filter(r => ALLOWED_TAGS.has(norm(r._tag).toUpperCase()));
+
+  if (!limited.length){
+    console.warn('No rows matched ALLOWED_TAGS. First few raw rows (for debugging):', normalized.slice(0,5));
+  }
+  return limited;
 }
 
 /* ========= Global tournament helpers ========= */
 function latestTournamentName(rows){
-  // Prefer the tournament that has the most recent created_at among its rows.
-  const byT = new Map(); // key: lower(tournament) -> {name, maxTs}
+  // latest by tuple (year,week,day,match,id)
+  const byT = new Map(); // key: lower(tourn) -> {name, maxKey}
   for (const r of rows){
     const t = norm(r.tournament); if (!t) continue;
     const k = t.toLowerCase();
-    const ts = parseTime(r.created_at);
-    if (!byT.has(k)) byT.set(k, { name:t, maxTs: ts });
-    else if (ts > byT.get(k).maxTs) byT.get(k).maxTs = ts;
+    const tup = keyTuple(r);
+    if (!byT.has(k)) byT.set(k, { name:t, maxKey: tup });
+    else if (cmpTuple(tup, byT.get(k).maxKey) > 0) byT.get(k).maxKey = tup;
   }
-  if (byT.size){
-    return Array.from(byT.values()).sort((a,b)=> b.maxTs - a.maxTs)[0].name;
-  }
-  // Fallback: use tournament of the last row (by created_at/id asc fetch)
-  const last = rows.length ? rows[rows.length-1] : null;
-  return last ? norm(last.tournament) : null;
+  if (!byT.size) return null;
+  return Array.from(byT.values()).sort((a,b)=> cmpTuple(b.maxKey, a.maxKey) )[0].name;
 }
 
 function uniqueTournaments(rows){
-  // Keep max created_at for ordering
   const map = new Map();
   for (const r of rows){
     const t = norm(r.tournament); if (!t) continue;
     const key = t.toLowerCase();
-    const ts = parseTime(r.created_at);
-    if (!map.has(key)) map.set(key, { name:t, maxTs: ts });
-    else map.get(key).maxTs = Math.max(map.get(key).maxTs, ts);
+    const tup = keyTuple(r);
+    if (!map.has(key)) map.set(key, { name:t, maxKey:tup });
+    else if (cmpTuple(tup, map.get(key).maxKey) > 0) map.get(key).maxKey = tup;
   }
-  return Array.from(map.values()).sort((a,b)=> b.maxTs - a.maxTs || a.name.localeCompare(b.name));
+  return Array.from(map.values()).sort((a,b)=> cmpTuple(b.maxKey, a.maxKey) || a.name.localeCompare(b.name));
 }
 
 function populateGlobalTournament(){
@@ -818,7 +853,7 @@ async function selectTeam(teamObj){
 
   const base = baseRowsByTournament(ALL);
   // STRICT by TAG
-  TEAM_ROWS = base.filter(r => (norm(r.tag).toUpperCase() || '') === teamObj.name.toUpperCase());
+  TEAM_ROWS = base.filter(r => (norm(r._tag).toUpperCase() || '') === teamObj.name.toUpperCase());
 
   renderTeamOverview();
   await loadTeamMeta(teamObj);
@@ -912,7 +947,7 @@ async function initial(){
     populateMapFilter();
     if (CURRENT_TEAM){
       const base = baseRowsByTournament(ALL);
-      TEAM_ROWS = base.filter(r => (norm(r.tag).toUpperCase() || '') === CURRENT_TEAM.name.toUpperCase());
+      TEAM_ROWS = base.filter(r => (norm(r._tag).toUpperCase() || '') === CURRENT_TEAM.name.toUpperCase());
       renderTeamOverview();
     }
     renderOverall();
@@ -966,11 +1001,11 @@ async function initial(){
   // Load data (TAG-limited)
   ALL = await fetchAllRows();
 
-  // Populate global tournament (DEFAULT = last record in DB via created_at max) & map list
+  // Populate global tournament (DEFAULT = last record by (year,week,day,match,id)) & map list
   populateGlobalTournament();
   populateMapFilter();
 
-  // Ensure ffbr_data sections use default tournament immediately
+  // Apply default selection immediately
   el('gTournament').dispatchEvent(new Event('change'));
 
   // Auto-select ?team=
