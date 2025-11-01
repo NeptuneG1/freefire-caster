@@ -9,7 +9,7 @@
     --bg:#0e0e0e; --panel:#1b1b1b; --panel2:#141414; --ink:#f5f5f5; --muted:#b9b9b9;
     --brand:#ffbd59; --brand2:#ff7733; --line:#2c2c2c;
 
-    /* Heatmap defaults (can be overridden by JS options) */
+    /* Heatmap defaults (override via JS) */
     --hm-brand-rgb: 255,189,89;  /* warm brand */
     --hm-cool-rgb:  127,210,255; /* cool for diverging */
     --hm-min: .06;               /* min alpha */
@@ -35,6 +35,9 @@
   .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px}
   .muted{color:var(--muted)}
 
+  /* Error banner */
+  #err{display:none;margin:12px 0;padding:10px;border-radius:8px;background:#3b1212;border:1px solid #592222;color:#ffdede;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+
   /* Controls bar */
   .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
   .field{display:flex;flex-direction:column;gap:6px}
@@ -54,7 +57,7 @@
   th,td{padding:6px 6px;vertical-align:middle}
   .right{text-align:right}
 
-  /* Heatmap cell base + helpers (variants script relies on these) */
+  /* Heatmap cell base + helpers */
   td[data-key]{ border-radius: var(--hm-radius); background-clip: padding-box; transition: background-color .18s ease, box-shadow .18s ease, opacity .18s ease; }
   td.hm-top{ box-shadow: inset 0 0 0 1px rgba(var(--hm-brand-rgb), var(--hm-top-outline)); }
 
@@ -87,6 +90,8 @@
 <header><h1>Heatmap Preview — Variants</h1></header>
 
 <div class="shell">
+
+  <div id="err"></div>
 
   <!-- Controls -->
   <div class="section">
@@ -130,13 +135,13 @@
       </div>
 
       <div class="field">
-        <button id="applyBtn" class="btn primary">Apply</button>
+        <button id="applyBtn" class="btn primary" type="button">Apply</button>
       </div>
       <div class="field">
-        <button id="randomBtn" class="btn ghost">Randomize Data</button>
+        <button id="randomBtn" class="btn ghost" type="button">Randomize Data</button>
       </div>
       <div class="field">
-        <button id="resetBtn" class="btn ghost">Reset View</button>
+        <button id="resetBtn" class="btn ghost" type="button">Reset View</button>
       </div>
     </div>
 
@@ -157,7 +162,7 @@
   <div class="section">
     <h2>Sample Data (Static Table)</h2>
     <div class="bar" style="margin-bottom:8px">
-      <button id="useSampleBtn" class="btn primary">Load Sample Into Preview</button>
+      <button id="useSampleBtn" class="btn primary" type="button">Load Sample Into Preview</button>
       <span class="muted">This table shows a fixed 6-team dataset for quick testing. Click the button to replace the preview data with this sample.</span>
     </div>
     <div class="card" id="tblSample">Loading…</div>
@@ -166,22 +171,29 @@
 </div>
 
 <script>
-/* ======================= Utilities ======================= */
+/* =============== Error helper =============== */
+function showErr(e){
+  var box = document.getElementById('err');
+  if (!box) return;
+  box.style.display = 'block';
+  box.textContent = 'Error: ' + (e && e.message ? e.message : e);
+  console.error(e);
+}
+
+/* =============== Utilities =============== */
 function hexToRgbTuple(hex){
-  const h = (hex||'').trim();
-  const m = /^#?([a-f0-9]{3}|[a-f0-9]{6})$/i.exec(h);
+  var h = (hex||'').trim();
+  var m = /^#?([a-f0-9]{3}|[a-f0-9]{6})$/i.exec(h);
   if(!m) return null;
-  let s = m[1];
-  if (s.length===3) s = s.split('').map(ch=>ch+ch).join('');
-  const num = parseInt(s,16);
+  var s = m[1];
+  if (s.length===3) s = s.split('').map(function(ch){ return ch+ch; }).join('');
+  var num = parseInt(s,16);
   return [ (num>>16)&255, (num>>8)&255, num&255 ];
 }
-function fmtPct(x){ return Number.isFinite(x) ? (x*100).toFixed(1)+'%' : '—'; }
-function n(x){ return Number(x ?? 0) || 0; }
-function sum(arr, key){ let t=0; for(const r of arr) t += n(r[key]); return t; }
+function fmtPct(x){ return isFinite(x) ? (x*100).toFixed(1)+'%' : '—'; }
 
-/* ======================= Columns ======================= */
-const COLS = [
+/* =============== Columns schema =============== */
+var COLS = [
   {label:'Team',           key:'team'},
   {label:'Matches',        key:'matches',     right:true},
   {label:'Booyahs',        key:'booyahs',     right:true},
@@ -195,42 +207,37 @@ const COLS = [
   {label:'Top-3 %',        key:'top3_rate',   format:'pct', right:true},
 ];
 
-/* ======================= Sample Data (STATIC) ======================= */
-/* 6 fixed rows with hand-picked values (repeatable) */
-const SAMPLE = [
-  // team, matches, booyahs, elims, placement, total, top3
+/* =============== Sample data (fixed) =============== */
+var SAMPLE = [
   ['RRQ', 18, 5,  96, 178, 420,  9],
   ['AG',  20, 4, 110, 190, 460,  8],
   ['BRU', 16, 6, 105, 165, 410,  7],
   ['EVOS',22, 7, 130, 210, 520, 12],
   ['FX',  19, 3,  90, 172, 395,  6],
   ['R7',  17, 4,  98, 160, 400,  7],
-].map(([team,matches,booyahs,elims,placement,total,top3]) => ({
-  team, matches, booyahs, elims, placement, total,
-  booyah_rate: matches ? booyahs/matches : 0,
-  elims_pm: matches ? elims/matches : 0,
-  placement_pm: matches ? placement/matches : 0,
-  total_pm: matches ? total/matches : 0,
-  top3_rate: matches ? top3/matches : 0
-}));
-
-/* ======================= Random Preview Data ======================= */
-const TEAMS = ['AG','BRU','CLVS','E1','EVOS','FX','GOW','HEV','HS','NVL','PE','R7','RC','RHK','RRQ','FLCN','TS','WAG'];
-
-function randomRow(team){
-  const matches = Math.floor(8 + Math.random()*20); // 8..28
-  const booyahs = Math.floor(Math.random()*(matches*0.5));
-  const elims   = Math.floor(matches*(2.5 + Math.random()*3.5)); // ~ 20..168
-  const place   = Math.floor(matches*(6 + Math.random()*5));     // ~ 48..308
-  const total   = elims*2 + place*1.2 + booyahs*5 + Math.floor(Math.random()*20);
-  const top3    = Math.floor(Math.random()*matches);
+].map(function(x){
+  var team=x[0],matches=x[1],booyahs=x[2],elims=x[3],placement=x[4],total=x[5],top3=x[6];
   return {
-    team,
-    matches,
-    booyahs,
-    elims,
-    placement: place,
-    total,
+    team:team, matches:matches, booyahs:booyahs, elims:elims, placement:placement, total:total,
+    booyah_rate: matches ? booyahs/matches : 0,
+    elims_pm: matches ? elims/matches : 0,
+    placement_pm: matches ? placement/matches : 0,
+    total_pm: matches ? total/matches : 0,
+    top3_rate: matches ? top3/matches : 0
+  };
+});
+
+/* =============== Random data =============== */
+var TEAM_CODES = ['AG','BRU','CLVS','E1','EVOS','FX','GOW','HEV','HS','NVL','PE','R7','RC','RHK','RRQ','FLCN','TS','WAG'];
+function randomRow(team){
+  var matches = Math.floor(8 + Math.random()*20);
+  var booyahs = Math.floor(Math.random()*(matches*0.5));
+  var elims   = Math.floor(matches*(2.5 + Math.random()*3.5));
+  var place   = Math.floor(matches*(6 + Math.random()*5));
+  var total   = elims*2 + place*1.2 + booyahs*5 + Math.floor(Math.random()*20);
+  var top3    = Math.floor(Math.random()*matches);
+  return {
+    team:team, matches:matches, booyahs:booyahs, elims:elims, placement:place, total:total,
     booyah_rate: matches ? booyahs/matches : 0,
     elims_pm: matches ? elims/matches : 0,
     placement_pm: matches ? place/matches : 0,
@@ -238,382 +245,402 @@ function randomRow(team){
     top3_rate: matches ? top3/matches : 0
   };
 }
+var DATA = SAMPLE.slice(); // seed preview with SAMPLE so it always shows
 
-let DATA = TEAMS.map(t=>randomRow(t));
-
-/* ======================= Renderers ======================= */
+/* =============== Renderers =============== */
 function renderSimpleTable(list, cols){
-  const head = `<thead><tr>${cols.map(c=>`<th class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
-  const body = `<tbody>${list.map(r=>`<tr>${cols.map(c=>{
-    let v = r[c.key];
-    if (c.format==='pct') v = fmtPct(v);
-    else if (c.format==='1d') v = Number.isFinite(v) ? Number(v).toFixed(1) : '—';
-    else if (c.format==='2d') v = Number.isFinite(v) ? Number(v).toFixed(2) : '—';
-    else if (c.format==='0d') v = Number.isFinite(v) ? Number(v).toFixed(0) : '—';
-    return `<td data-key="${c.key}" class="${c.right?'right':''}">${v==null?'—':v}</td>`;
-  }).join('')}</tr>`).join('')}</tbody>`;
-  return `<table>${head}${body}</table>`;
+  if (!list || !list.length) return '<div class="muted">No rows.</div>';
+  var head = '<thead><tr>' + cols.map(function(c){
+    return '<th class="' + (c.right?'right':'') + '">' + c.label + '</th>';
+  }).join('') + '</tr></thead>';
+  var body = '<tbody>' + list.map(function(r){
+    return '<tr>' + cols.map(function(c){
+      var v = r[c.key];
+      if (c.format==='pct') v = fmtPct(v);
+      else if (c.format==='1d') v = isFinite(v) ? Number(v).toFixed(1) : '—';
+      else if (c.format==='2d') v = isFinite(v) ? Number(v).toFixed(2) : '—';
+      else if (c.format==='0d') v = isFinite(v) ? Number(v).toFixed(0) : '—';
+      return '<td data-key="'+c.key+'" class="'+(c.right?'right':'')+'">' + (v==null?'—':v) + '</td>';
+    }).join('') + '</tr>';
+  }).join('') + '</tbody>';
+  return '<table>' + head + body + '</table>';
 }
-
 function renderPreview(){
-  document.getElementById('tblPreview').innerHTML = renderSimpleTable(DATA, COLS);
+  var box = document.getElementById('tblPreview');
+  if (!box) return;
+  box.innerHTML = renderSimpleTable(DATA, COLS);
 }
 function renderSample(){
-  document.getElementById('tblSample').innerHTML = renderSimpleTable(SAMPLE, COLS);
+  var box = document.getElementById('tblSample');
+  if (!box) return;
+  box.innerHTML = renderSimpleTable(SAMPLE, COLS);
 }
 
-/* ======================= Heatmap Variants Core ======================= */
+/* =============== Heatmap engine =============== */
 (function(){
   function $(id){ return document.getElementById(id); }
   function getCells(containerId, key){
-    const wrap = $(containerId); if (!wrap) return [];
-    const table = wrap.querySelector('table'); if (!table) return [];
-    return Array.from(table.querySelectorAll(`td[data-key="${key}"]`));
+    var wrap = $(containerId); if (!wrap) return [];
+    var table = wrap.querySelector('table'); if (!table) return [];
+    return Array.prototype.slice.call(table.querySelectorAll('td[data-key="'+key+'"]'));
   }
   function parseVal(td){
-    let raw = (td.textContent||'').trim();
+    var raw = (td.textContent||'').trim();
     if (!raw) return null;
-    const isPct = raw.includes('%');
     raw = raw.replace('%','').replace(/,/g,'');
-    const v = parseFloat(raw);
-    return Number.isFinite(v) ? (isPct ? v : v) : null;
+    var v = parseFloat(raw);
+    return isFinite(v) ? v : null;
   }
   function rankNormalize(values){
-    const entries = values.map((v,i)=>({i,v})).filter(x=>x.v!=null).sort((a,b)=> b.v - a.v);
-    const n = entries.length;
-    const ranks = Array(values.length).fill(null);
-    entries.forEach((e, idx)=>{
-      const pct = (n<=1) ? 1 : 1 - (idx/(n-1)); // top=1 .. bottom=0
+    var entries = values.map(function(v,i){return {i:i,v:v};}).filter(function(x){return x.v!=null;}).sort(function(a,b){return b.v-a.v;});
+    var n = entries.length;
+    var ranks = Array(values.length).fill(null);
+    for (var k=0;k<entries.length;k++){
+      var e = entries[k];
+      var pct = (n<=1) ? 1 : 1 - (k/(n-1));
       ranks[e.i] = pct;
-    });
+    }
     return ranks;
   }
   function quantile(values, q){
-    const arr = values.filter(v=>v!=null).slice().sort((a,b)=>a-b);
+    var arr = values.filter(function(v){return v!=null;}).slice().sort(function(a,b){return a-b;});
     if (!arr.length) return null;
-    const idx = (arr.length - 1) * q;
-    const lo = Math.floor(idx), hi = Math.ceil(idx);
+    var idx = (arr.length - 1) * q;
+    var lo = Math.floor(idx), hi = Math.ceil(idx);
     if (lo === hi) return arr[lo];
-    const w = idx - lo;
+    var w = idx - lo;
     return arr[lo]*(1-w) + arr[hi]*w;
   }
   function clearCell(td){
     td.style.backgroundColor = '';
     td.style.boxShadow = '';
-    td.classList.forEach(c=>{ if (c.startsWith('hm-band-')) td.classList.remove(c); });
+    var classes = td.className.split(/\s+/).filter(Boolean);
+    for (var i=0;i<classes.length;i++){
+      if (classes[i].indexOf('hm-band-')===0) td.classList.remove(classes[i]);
+    }
     td.classList.remove('hm-top');
-    td.querySelectorAll('.hm-barwrap,.hm-dots,.hm-pill').forEach(el=>el.remove());
+    var toRemove = td.querySelectorAll('.hm-barwrap,.hm-dots,.hm-pill');
+    for (var j=0;j<toRemove.length;j++) toRemove[j].remove();
   }
   function clearAll(containerId, keys){
-    const wrap = document.getElementById(containerId);
+    var wrap = document.getElementById(containerId);
     if (!wrap) return;
-    keys.forEach(key => {
-      const cells = wrap.querySelectorAll(`td[data-key="${key}"]`);
-      cells.forEach(clearCell);
-    });
+    for (var i=0;i<keys.length;i++){
+      var cells = wrap.querySelectorAll('td[data-key="'+keys[i]+'"]');
+      for (var j=0;j<cells.length;j++) clearCell(cells[j]);
+    }
   }
 
-  // Variants
-  function applySoftRank(containerId, keys, opt={}){
-    const brand = opt.brandRGB || getComputedStyle(document.documentElement).getPropertyValue('--hm-brand-rgb') || '255,189,89';
-    const minA  = opt.minAlpha ?? parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hm-min')) || .06;
-    const maxA  = opt.maxAlpha ?? parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hm-max')) || .22;
-
-    keys.forEach(key=>{
-      const cells = getCells(containerId, key);
-      const vals  = cells.map(parseVal);
-      const ranks = rankNormalize(vals);
-      const topVal = Math.max(...vals.filter(v=>v!=null));
-      cells.forEach((td,i)=>{
-        const r = ranks[i];
-        if (r==null) return;
-        const alpha = minA + (maxA - minA) * Math.pow(r, 0.65);
-        td.style.backgroundColor = `rgba(${brand.trim()}, ${alpha.toFixed(3)})`;
+  function applySoftRank(containerId, keys, opt){
+    opt = opt||{};
+    var brand = opt.brandRGB || getComputedStyle(document.documentElement).getPropertyValue('--hm-brand-rgb') || '255,189,89';
+    var minA  = (typeof opt.minAlpha==='number') ? opt.minAlpha : (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hm-min')) || .06);
+    var maxA  = (typeof opt.maxAlpha==='number') ? opt.maxAlpha : (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hm-max')) || .22);
+    for (var k=0;k<keys.length;k++){
+      var key = keys[k];
+      var cells = getCells(containerId, key);
+      var vals  = cells.map(parseVal);
+      var ranks = rankNormalize(vals);
+      var nums = vals.filter(function(v){return v!=null;});
+      var topVal = nums.length ? Math.max.apply(null, nums) : null;
+      for (var i=0;i<cells.length;i++){
+        var td = cells[i], r = ranks[i];
+        if (r==null) continue;
+        var alpha = minA + (maxA - minA) * Math.pow(r, 0.65);
+        td.style.backgroundColor = 'rgba(' + brand.trim() + ', ' + alpha.toFixed(3) + ')';
         if (vals[i] === topVal) td.classList.add('hm-top');
-      });
-    });
+      }
+    }
   }
 
-  function applyQuantileBands(containerId, keys, opt={}){
-    keys.forEach(key=>{
-      const cells = getCells(containerId, key);
-      const vals  = cells.map(parseVal);
-      const q1 = quantile(vals, .2),
-            q2 = quantile(vals, .4),
-            q3 = quantile(vals, .6),
-            q4 = quantile(vals, .8);
-      const top = Math.max(...vals.filter(v=>v!=null));
-      cells.forEach((td,i)=>{
-        const v = vals[i];
-        if (v==null) return;
-        let band = 0;
+  function applyQuantileBands(containerId, keys){
+    for (var k=0;k<keys.length;k++){
+      var key = keys[k];
+      var cells = getCells(containerId, key);
+      var vals  = cells.map(parseVal);
+      var q1 = quantile(vals, .2),
+          q2 = quantile(vals, .4),
+          q3 = quantile(vals, .6),
+          q4 = quantile(vals, .8);
+      var nums = vals.filter(function(v){return v!=null;});
+      var top = nums.length ? Math.max.apply(null, nums) : null;
+      for (var i=0;i<cells.length;i++){
+        var v = vals[i], td = cells[i];
+        if (v==null) continue;
+        var band = 0;
         if (v>q1) band=1;
         if (v>q2) band=2;
         if (v>q3) band=3;
         if (v>q4) band=4;
-        td.classList.add(`hm-band-${band}`);
+        td.classList.add('hm-band-' + band);
         if (v === top) td.classList.add('hm-top');
-      });
-    });
-  }
-
-  function applyDivergingZ(containerId, keys, opt={}){
-    const warm = opt.warmRGB || getComputedStyle(document.documentElement).getPropertyValue('--hm-brand-rgb') || '255,189,89';
-    const cool = opt.coolRGB || getComputedStyle(document.documentElement).getPropertyValue('--hm-cool-rgb')  || '127,210,255';
-    const minA = opt.minAlpha ?? .05, maxA = opt.maxAlpha ?? .26;
-
-    keys.forEach(key=>{
-      const cells = getCells(containerId, key);
-      const vals  = cells.map(parseVal).filter(v=>v!=null);
-      if (!vals.length) return;
-      const mean = vals.reduce((a,b)=>a+b,0)/vals.length;
-      const sd   = Math.sqrt(vals.reduce((s,v)=> s+(v-mean)*(v-mean), 0)/vals.length) || 1;
-
-      const allCells = getCells(containerId, key);
-      const allVals  = allCells.map(parseVal);
-      const top = Math.max(...allVals.filter(v=>v!=null));
-
-      allCells.forEach(td=>{
-        const v = parseVal(td);
-        if (v==null) return;
-        const z = (v-mean)/sd; // negative..positive
-        const mag = Math.min(1, Math.abs(z)/2.0); // clamp
-        const alpha = minA + (maxA - minA) * Math.pow(mag, .9);
-        const rgb = z>=0 ? warm : cool;
-        td.style.backgroundColor = `rgba(${rgb.trim()}, ${alpha.toFixed(3)})`;
-        if (v === top) td.classList.add('hm-top');
-      });
-    });
-  }
-
-  function applyNeutralBars(containerId, keys, opt={}){
-    keys.forEach(key=>{
-      const wrap = document.getElementById(containerId);
-      if (!wrap) return;
-      const table = wrap.querySelector('table'); if (!table) return;
-
-      const cells = table.querySelectorAll(`td[data-key="${key}"]`);
-      const vals  = Array.from(cells).map(td=>{
-        let raw = (td.textContent||'').trim().replace('%','').replace(/,/g,'');
-        const v = parseFloat(raw);
-        return Number.isFinite(v) ? v : null;
-      });
-
-      const nums = vals.filter(v=>v!=null);
-      if (!nums.length) return;
-      const min = Math.min(...nums), max = Math.max(...nums);
-      const norm = (v)=> v==null ? null : (min===max ? 1 : (v - min)/(max - min));
-
-      const top   = Math.max(...nums);
-
-      cells.forEach((td,i)=>{
-        const v = vals[i]; if (v==null) return;
-        const p = Math.round(norm(v)*100);
-
-        const inner = document.createElement('div');
-        inner.style.position = 'relative';
-        const txt = document.createElement('div');
-        txt.style.position = 'relative';
-        txt.style.zIndex = '1';
-        txt.textContent = (td.textContent||'').trim();
-
-        const wrapBar = document.createElement('div');
-        wrapBar.className = 'hm-barwrap';
-        const bar = document.createElement('div');
-        bar.className = 'hm-bar';
-        bar.style.width = p + '%';
-        wrapBar.appendChild(bar);
-
-        td.textContent = '';
-        inner.appendChild(txt);
-        inner.appendChild(wrapBar);
-        td.appendChild(inner);
-
-        if (v === top) td.classList.add('hm-top');
-      });
-    });
-  }
-
-  function applyTop3Pills(containerId, keys, opt={}){
-    keys.forEach(key=>{
-      const cells = getCells(containerId, key);
-      const vals  = cells.map(td=>{
-        let raw = (td.textContent||'').trim().replace('%','').replace(/,/g,'');
-        const v = parseFloat(raw);
-        return Number.isFinite(v) ? v : null;
-      });
-      const entries = cells.map((td,i)=>({td, v: vals[i]})).filter(x=>x.v!=null).sort((a,b)=> b.v - a.v);
-      const top3 = new Set(entries.slice(0,3).map(x=>x.td));
-      const best = entries.length ? entries[0].v : null;
-
-      cells.forEach(td=>{
-        const raw = (td.textContent||'').trim();
-        td.textContent = '';
-        const span = document.createElement('span');
-        span.textContent = raw;
-        if (top3.has(td)) {
-          span.className = 'hm-pill';
-          const v = parseFloat(raw.replace('%','').replace(/,/g,''));
-          if (v === best) td.classList.add('hm-top');
-        }
-        td.appendChild(span);
-      });
-    });
-  }
-
-  function applyDotScale(containerId, keys, opt={}){
-    const steps = opt.steps || 5;
-    keys.forEach(key=>{
-      const cells = getCells(containerId, key);
-      const vals  = cells.map(td=>{
-        let raw = (td.textContent||'').trim().replace('%','').replace(/,/g,'');
-        const v = parseFloat(raw);
-        return Number.isFinite(v) ? v : null;
-      });
-      const ranks = (function(values){
-        const entries = values.map((v,i)=>({i,v})).filter(x=>x.v!=null).sort((a,b)=> b.v - a.v);
-        const n = entries.length, out = Array(values.length).fill(null);
-        entries.forEach((e,idx)=> out[e.i] = (n<=1) ? 1 : 1 - (idx/(n-1)));
-        return out;
-      })(vals);
-      const best  = Math.max(...vals.filter(v=>v!=null));
-
-      cells.forEach((td,i)=>{
-        const v = vals[i], r = ranks[i];
-        if (v==null || r==null) return;
-        const on = Math.max(1, Math.round(r*steps));
-        const txt = (td.textContent||'').trim();
-        td.textContent = '';
-
-        const wrap = document.createElement('div');
-        wrap.style.display='flex'; wrap.style.justifyContent='space-between'; wrap.style.alignItems='center'; wrap.style.gap='8px';
-        const label = document.createElement('span'); label.textContent = txt; label.style.flex='0 0 auto';
-        const dots = document.createElement('span'); dots.className='hm-dots'; dots.style.flex='0 0 auto';
-
-        for(let k=0;k<steps;k++){
-          const d = document.createElement('span'); d.className = 'hm-dot' + (k<on ? ' on' : '');
-          dots.appendChild(d);
-        }
-        wrap.appendChild(label); wrap.appendChild(dots);
-        td.appendChild(wrap);
-
-        if (v === best) td.classList.add('hm-top');
-      });
-    });
-  }
-
-  function applyHeatmap(containerId, keys, variant='soft-rank', options={}){
-    // Cleanup first
-    clearAll(containerId, keys);
-
-    // Allow quick CSS var overrides
-    if (options.brandRGB) document.documentElement.style.setProperty('--hm-brand-rgb', options.brandRGB);
-    if (options.coolRGB)  document.documentElement.style.setProperty('--hm-cool-rgb',  options.coolRGB);
-    if (options.radius!=null) document.documentElement.style.setProperty('--hm-radius', options.radius);
-
-    switch(String(variant)){
-      case 'soft-rank':       return applySoftRank(containerId, keys, options);
-      case 'quantile-bands':  return applyQuantileBands(containerId, keys, options);
-      case 'diverging-z':     return applyDivergingZ(containerId, keys, options);
-      case 'neutral-bars':    return applyNeutralBars(containerId, keys, options);
-      case 'top3-pills':      return applyTop3Pills(containerId, keys, options);
-      case 'dot-scale':       return applyDotScale(containerId, keys, options);
-      default:                return applySoftRank(containerId, keys, options);
+      }
     }
   }
 
-  // expose
+  function applyDivergingZ(containerId, keys, opt){
+    opt = opt||{};
+    var warm = opt.warmRGB || getComputedStyle(document.documentElement).getPropertyValue('--hm-brand-rgb') || '255,189,89';
+    var cool = opt.coolRGB || getComputedStyle(document.documentElement).getPropertyValue('--hm-cool-rgb')  || '127,210,255';
+    var minA = (typeof opt.minAlpha==='number') ? opt.minAlpha : .05;
+    var maxA = (typeof opt.maxAlpha==='number') ? opt.maxAlpha : .26;
+
+    for (var k=0;k<keys.length;k++){
+      var key = keys[k];
+      var cells = getCells(containerId, key);
+      var rawVals = cells.map(parseVal).filter(function(v){return v!=null;});
+      if (!rawVals.length) continue;
+      var sum=0; for (var i0=0;i0<rawVals.length;i0++) sum+=rawVals[i0];
+      var mean = sum/rawVals.length;
+      var sdSum=0; for (var i1=0;i1<rawVals.length;i1++){ var d=rawVals[i1]-mean; sdSum+=d*d; }
+      var sd = Math.sqrt(sdSum/rawVals.length) || 1;
+
+      var nums = rawVals.slice();
+      var top = Math.max.apply(null, nums);
+
+      for (var i=0;i<cells.length;i++){
+        var td = cells[i];
+        var v = parseVal(td);
+        if (v==null) continue;
+        var z = (v-mean)/sd; // neg..pos
+        var mag = Math.min(1, Math.abs(z)/2.0);
+        var alpha = minA + (maxA - minA) * Math.pow(mag, .9);
+        var rgb = z>=0 ? warm : cool;
+        td.style.backgroundColor = 'rgba(' + rgb.trim() + ', ' + alpha.toFixed(3) + ')';
+        if (v === top) td.classList.add('hm-top');
+      }
+    }
+  }
+
+  function applyNeutralBars(containerId, keys){
+    for (var k=0;k<keys.length;k++){
+      var key = keys[k];
+      var wrap = document.getElementById(containerId);
+      if (!wrap) continue;
+      var table = wrap.querySelector('table'); if (!table) continue;
+
+      var cells = table.querySelectorAll('td[data-key="'+key+'"]');
+      cells = Array.prototype.slice.call(cells);
+      var vals = cells.map(function(td){
+        var raw = (td.textContent||'').trim().replace('%','').replace(/,/g,'');
+        var v = parseFloat(raw);
+        return isFinite(v)?v:null;
+      });
+      var nums = vals.filter(function(v){return v!=null;});
+      if (!nums.length) continue;
+      var min = Math.min.apply(null, nums), max = Math.max.apply(null, nums);
+      function norm(v){ return v==null ? null : (min===max ? 1 : (v - min)/(max - min)); }
+      var top = Math.max.apply(null, nums);
+
+      for (var i=0;i<cells.length;i++){
+        var td = cells[i], v = vals[i];
+        if (v==null) continue;
+        var p = Math.round(norm(v)*100);
+        var inner = document.createElement('div'); inner.style.position = 'relative';
+        var txt = document.createElement('div'); txt.style.position = 'relative'; txt.style.zIndex='1'; txt.textContent = (td.textContent||'').trim();
+        var wrapBar = document.createElement('div'); wrapBar.className='hm-barwrap';
+        var bar = document.createElement('div'); bar.className='hm-bar'; bar.style.width = p + '%';
+        wrapBar.appendChild(bar);
+        td.textContent = '';
+        inner.appendChild(txt); inner.appendChild(wrapBar);
+        td.appendChild(inner);
+        if (v === top) td.classList.add('hm-top');
+      }
+    }
+  }
+
+  function applyTop3Pills(containerId, keys){
+    for (var k=0;k<keys.length;k++){
+      var key = keys[k];
+      var cells = getCells(containerId, key);
+      var vals  = cells.map(function(td){
+        var raw = (td.textContent||'').trim().replace('%','').replace(/,/g,'');
+        var v = parseFloat(raw);
+        return isFinite(v)?v:null;
+      });
+      var entries = cells.map(function(td,i){return {td:td, v:vals[i]};}).filter(function(x){return x.v!=null;}).sort(function(a,b){return b.v-a.v;});
+      var top3 = {}; for (var t=0;t<Math.min(3,entries.length);t++){ top3[entries[t].td]=true; }
+      var best = entries.length ? entries[0].v : null;
+
+      for (var i=0;i<cells.length;i++){
+        var td = cells[i];
+        var rawTxt = (td.textContent||'').trim();
+        td.textContent = '';
+        var span = document.createElement('span');
+        span.textContent = rawTxt;
+        if (top3[td]) {
+          span.className = 'hm-pill';
+          var v = parseFloat(rawTxt.replace('%','').replace(/,/g,''));
+          if (isFinite(v) && v === best) td.classList.add('hm-top');
+        }
+        td.appendChild(span);
+      }
+    }
+  }
+
+  function applyDotScale(containerId, keys, opt){
+    opt = opt||{};
+    var steps = opt.steps || 5;
+    for (var k=0;k<keys.length;k++){
+      var key = keys[k];
+      var cells = getCells(containerId, key);
+      var vals  = cells.map(function(td){
+        var raw = (td.textContent||'').trim().replace('%','').replace(/,/g,'');
+        var v = parseFloat(raw);
+        return isFinite(v)?v:null;
+      });
+      var entries = vals.map(function(v,i){return {i:i,v:v};}).filter(function(x){return x.v!=null;}).sort(function(a,b){return b.v-a.v;});
+      var n = entries.length, ranks = Array(vals.length).fill(null);
+      for (var i0=0;i0<entries.length;i0++){
+        var e = entries[i0];
+        ranks[e.i] = (n<=1) ? 1 : 1 - (i0/(n-1));
+      }
+      var nums = vals.filter(function(v){return v!=null;});
+      var best  = nums.length ? Math.max.apply(null, nums) : null;
+
+      for (var i=0;i<cells.length;i++){
+        var td = cells[i], v = vals[i], r = ranks[i];
+        if (v==null || r==null) continue;
+        var on = Math.max(1, Math.round(r*steps));
+        var txt = (td.textContent||'').trim();
+        td.textContent = '';
+
+        var wrap = document.createElement('div');
+        wrap.style.display='flex'; wrap.style.justifyContent='space-between'; wrap.style.alignItems='center'; wrap.style.gap='8px';
+        var label = document.createElement('span'); label.textContent = txt; label.style.flex='0 0 auto';
+        var dots = document.createElement('span'); dots.className='hm-dots'; dots.style.flex='0 0 auto';
+
+        for(var d=0; d<steps; d++){
+          var dot = document.createElement('span'); dot.className='hm-dot' + (d<on ? ' on' : '');
+          dots.appendChild(dot);
+        }
+        wrap.appendChild(label); wrap.appendChild(dots);
+        td.appendChild(wrap);
+        if (v === best) td.classList.add('hm-top');
+      }
+    }
+  }
+
+  function applyHeatmap(containerId, keys, variant, options){
+    try{
+      if (!containerId || !keys || !keys.length) return;
+      clearAll(containerId, keys);
+
+      if (!options) options = {};
+      if (options.brandRGB) document.documentElement.style.setProperty('--hm-brand-rgb', options.brandRGB);
+      if (options.coolRGB)  document.documentElement.style.setProperty('--hm-cool-rgb',  options.coolRGB);
+      if (options.radius!=null) document.documentElement.style.setProperty('--hm-radius', options.radius);
+
+      switch(String(variant||'soft-rank')){
+        case 'soft-rank':       applySoftRank(containerId, keys, options); break;
+        case 'quantile-bands':  applyQuantileBands(containerId, keys, options); break;
+        case 'diverging-z':     applyDivergingZ(containerId, keys, options); break;
+        case 'neutral-bars':    applyNeutralBars(containerId, keys, options); break;
+        case 'top3-pills':      applyTop3Pills(containerId, keys, options); break;
+        case 'dot-scale':       applyDotScale(containerId, keys, options); break;
+        default:                applySoftRank(containerId, keys, options); break;
+      }
+    }catch(e){ showErr(e); }
+  }
+
   window.applyHeatmap = applyHeatmap;
 })();
 
-/* ======================= Controls & Wiring ======================= */
-const COL_KEYS = COLS.map(c=>c.key).filter(k => k!=='team');
-
+/* =============== Controls & wiring =============== */
 function renderChips(){
-  const box = document.getElementById('colChips');
+  var box = document.getElementById('colChips');
+  if (!box) return;
   box.innerHTML = '';
-  COLS.forEach(col=>{
-    if (col.key === 'team') return;
-    const id = 'chk_' + col.key;
-    const chip = document.createElement('label');
+  for (var i=0;i<COLS.length;i++){
+    var col = COLS[i];
+    if (col.key === 'team') continue;
+    var id = 'chk_' + col.key;
+    var chip = document.createElement('label');
     chip.className = 'chip';
-    chip.innerHTML = `<input type="checkbox" id="${id}" checked/> <span>${col.label}</span>`;
+    chip.innerHTML = '<input type="checkbox" id="'+id+'" checked/> <span>'+col.label+'</span>';
     box.appendChild(chip);
-  });
+  }
 }
-
 function getSelectedKeys(){
-  const keys = [];
-  COLS.forEach(col=>{
-    if (col.key === 'team') return;
-    const id = 'chk_' + col.key;
-    const el = document.getElementById(id);
+  var keys = [];
+  for (var i=0;i<COLS.length;i++){
+    var col = COLS[i];
+    if (col.key === 'team') continue;
+    var id = 'chk_' + col.key;
+    var el = document.getElementById(id);
     if (el && el.checked) keys.push(col.key);
-  });
-  return keys.length ? keys : ['total_pm','elims_pm','booyah_rate'];
+  }
+  if (!keys.length) keys = ['total_pm','elims_pm','booyah_rate'];
+  return keys;
 }
-
 function applyNow(){
-  const variant = document.getElementById('variant').value;
+  try{
+    var variant = document.getElementById('variant').value;
+    var warmHex = document.getElementById('warmHex').value;
+    var coolHex = document.getElementById('coolHex').value;
+    var warmRgb = hexToRgbTuple(warmHex) || [255,189,89];
+    var coolRgb = hexToRgbTuple(coolHex) || [127,210,255];
+    var minAlpha = parseFloat(document.getElementById('minAlpha').value) || 0.06;
+    var maxAlpha = parseFloat(document.getElementById('maxAlpha').value) || 0.22;
+    var radius   = (parseInt(document.getElementById('radiusPx').value,10) || 8) + 'px';
+    var keys = getSelectedKeys();
 
-  const warmHex = document.getElementById('warmHex').value;
-  const coolHex = document.getElementById('coolHex').value;
-  const warmRgb = hexToRgbTuple(warmHex) || [255,189,89];
-  const coolRgb = hexToRgbTuple(coolHex) || [127,210,255];
-
-  const minAlpha = parseFloat(document.getElementById('minAlpha').value) || 0.06;
-  const maxAlpha = parseFloat(document.getElementById('maxAlpha').value) || 0.22;
-  const radius   = (parseInt(document.getElementById('radiusPx').value,10) || 8) + 'px';
-
-  const keys = getSelectedKeys();
-
-  window.applyHeatmap('tblPreview', keys, variant, {
-    brandRGB: warmRgb.join(','),
-    coolRGB:  coolRgb.join(','),
-    minAlpha, maxAlpha,
-    radius
-  });
+    window.applyHeatmap('tblPreview', keys, variant, {
+      brandRGB: warmRgb.join(','),
+      coolRGB:  coolRgb.join(','),
+      minAlpha: minAlpha,
+      maxAlpha: maxAlpha,
+      radius:   radius
+    });
+  }catch(e){ showErr(e); }
 }
-
 function randomizeData(){
-  DATA = TEAMS.map(t=>randomRow(t));
-  renderPreview();
-  applyNow();
+  try{
+    DATA = TEAM_CODES.map(function(t){ return randomRow(t); });
+    renderPreview();
+    applyNow();
+  }catch(e){ showErr(e); }
 }
-
 function resetView(){
-  document.getElementById('variant').value = 'soft-rank';
-  document.getElementById('warmHex').value = '#ffbd59';
-  document.getElementById('coolHex').value = '#7fd2ff';
-  document.getElementById('minAlpha').value = '0.06';
-  document.getElementById('maxAlpha').value = '0.22';
-  document.getElementById('radiusPx').value = '8';
-  renderChips();
-  renderPreview();
-  renderSample();
-  applyNow();
+  try{
+    document.getElementById('variant').value = 'soft-rank';
+    document.getElementById('warmHex').value = '#ffbd59';
+    document.getElementById('coolHex').value = '#7fd2ff';
+    document.getElementById('minAlpha').value = '0.06';
+    document.getElementById('maxAlpha').value = '0.22';
+    document.getElementById('radiusPx').value = '8';
+    renderChips();
+    DATA = SAMPLE.slice();      /* ensure preview has data */
+    renderPreview();
+    renderSample();
+    applyNow();
+  }catch(e){ showErr(e); }
 }
 
-/* Load SAMPLE into main preview */
-document.getElementById('useSampleBtn')?.addEventListener('click', ()=>{
-  DATA = SAMPLE.map(r=>({...r})); // clone
-  renderPreview();
-  applyNow();
-});
-
-/* Buttons */
-document.getElementById('applyBtn').addEventListener('click', applyNow);
-document.getElementById('randomBtn').addEventListener('click', randomizeData);
-document.getElementById('resetBtn').addEventListener('click', resetView);
-
-/* ======================= Boot ======================= */
+/* =============== Boot =============== */
 function boot(){
-  renderChips();
-  renderPreview();
-  renderSample();
-  applyNow();
+  try{
+    renderChips();
+    renderPreview();  /* shows SAMPLE by default */
+    renderSample();
+    /* Bind buttons */
+    var applyBtn = document.getElementById('applyBtn');
+    var randomBtn = document.getElementById('randomBtn');
+    var resetBtn = document.getElementById('resetBtn');
+    var useSampleBtn = document.getElementById('useSampleBtn');
+    if (applyBtn) applyBtn.addEventListener('click', applyNow);
+    if (randomBtn) randomBtn.addEventListener('click', randomizeData);
+    if (resetBtn) resetBtn.addEventListener('click', resetView);
+    if (useSampleBtn) useSampleBtn.addEventListener('click', function(){
+      DATA = SAMPLE.slice();
+      renderPreview();
+      applyNow();
+    });
+    /* First heatmap application */
+    applyNow();
+  }catch(e){ showErr(e); }
 }
-boot();
+window.addEventListener('DOMContentLoaded', boot);
 </script>
 </body>
 </html>
