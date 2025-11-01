@@ -1,98 +1,88 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FFBR — LOPS Analysis</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    :root{
-      --bg:#0e0e0e; --panel:#1b1b1b; --panel2:#141414; --ink:#f5f5f5; --muted:#b9b9b9;
-      --brand:#ffbd59; --brand2:#ff7733; --line:#313131;
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>FFBR — LOPS Player Focus (Per Player)</title>
+<meta name="theme-color" content="#0d1014"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-      /* Compact team tiles (wrap grid, no horiz scroll) */
-      --tile-w: 96px; --tile-h: 104px; --logo:44px; --code-fs:.74rem;
+<style>
+  :root{
+    --bg:#0d1014; --panel:#292d42; --panel2:#1e2432; --ink:#f3f6fa; --muted:#b8c0cc;
+    --brand:#ffe93b; --brandText:#0b0d0e; --line:#4c525d; --chip:#213830;
+    --good:#62e887; --bad:#ff6b6b; --accent:#7fd2ff;
 
-      /* Heatmap tint (brand-ish) */
-      --heat-rgb: 255,189,89;
-      --heat-min: .06;
-      --heat-max: .22;
-      --heat-top-outline: .42;
-      --heat-radius: 8px;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif}
-    header{position:sticky;top:0;z-index:5;background:#1f1f1f;border-bottom:3px solid var(--brand);padding:14px 16px}
-    h1{margin:0;font-size:1.1rem;letter-spacing:.3px;color:var(--brand)}
-    .user-controls{position:absolute;right:16px;top:12px;display:flex;gap:10px;align-items:center}
-    .chip{font-size:.85rem;color:#ddd}
-    .btn{background:var(--brand);color:var(--panel);border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
-    .btn.secondary{background:#2a2a2a;color:#ddd;border:1px solid #3a3a3a}
+    --heat-rgb: 255,233,59;
+    --heat-min: .06;
+    --heat-max: .24;
+    --heat-outline: .45;
+    --heat-radius: 8px;
+  }
 
-    .shell{max-width:1100px;margin:22px auto;padding:0 12px}
-    .section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
-    .section h2{margin:0 0 10px;color:var(--brand)}
-    .grid2{display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:12px}
-    .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px}
-    .card h3{margin:0 0 6px;color:var(--brand2);font-size:1.0rem}
-    .kpis{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
-    .kpi{background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:5px 8px;font-size:.9rem}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
+  header{position:sticky;top:0;z-index:5;background:#111622;border-bottom:3px solid var(--brand);padding:14px 16px}
+  h1{margin:0;font-size:1.12rem;letter-spacing:.3px;color:var(--brand)}
+  .user-controls{position:absolute;right:16px;top:12px;display:flex;gap:10px;align-items:center}
+  .chip{font-size:.85rem;color:#ddd}
+  .btn{background:var(--brand);color:#111;border:0;border-radius:10px;padding:9px 12px;font-weight:800;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+  .btn.secondary{background:#172033;color:#d8e0ef;border:1px solid #2e3b54}
+  .btn.ghost{background:transparent;border:1px dashed #40506f;color:#cbd4e6}
+  .shell{max-width:1180px;margin:20px auto;padding:0 12px}
 
-    /* Team grid (wrap, no scroll, tiny tiles) */
-    .team-grid{
-      display:grid;
-      grid-template-columns: repeat(auto-fill, minmax(var(--tile-w), 1fr));
-      gap:8px;
-      align-items:stretch;
-    }
-    .team-tile{
-      height:var(--tile-h);
-      background:#131313;border:1px solid #2a2a2a;border-radius:10px;
-      padding:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
-      cursor:pointer;transition:transform .1s ease, border-color .1s ease;overflow:hidden;
-    }
-    .team-tile:hover{transform:translateY(-2px);border-color:#444}
-    .team-tile.active{outline:2px solid var(--brand2)}
-    .team-logo{ width:var(--logo); height:var(--logo); object-fit:contain; filter:drop-shadow(0 0 8px rgba(0,0,0,.4)) }
-    .team-code{ font-weight:800; font-size:var(--code-fs); line-height:1.1; letter-spacing:.2px }
-    .team-tile .muted{ display:none }
+  .section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:14px}
+  .section h2{margin:0 0 10px;color:var(--brand)}
+  .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .input, select{background:#121826;color:#e7eefb;border:1px solid #31415f;border-radius:10px;padding:8px 10px;min-height:38px}
+  .input::placeholder{color:#9fb0cf}
+  .pill{background:#172033;padding:4px 8px;border-radius:999px;color:#c5d0e6;border:1px solid #2d3b57}
+  .muted{color:var(--muted)}
+  .tag{display:inline-flex;align-items:center;gap:6px;background:#172033;border:1px solid #2e3b54;color:#cbd7f3;padding:4px 8px;border-radius:999px;font-size:.86rem}
 
-    /* Controls */
-    .bar{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
-    .bar label{color:var(--muted);font-size:.9rem}
-    .input{background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:7px 10px}
+  .grid2{display:grid;grid-template-columns:repeat(2,minmax(280px,1fr));gap:12px}
+  .grid3{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:12px}
+  @media (max-width: 980px){ .grid3{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width: 640px){ .grid2,.grid3{grid-template-columns:1fr} }
 
-    /* Collapsible */
-    details.accordion{
-      background:var(--panel);
-      border:1px solid var(--line);
-      border-radius:12px;
-      padding:0;
-      margin-bottom:14px;
-    }
-    details.accordion > summary{
-      list-style:none;cursor:pointer;padding:12px 14px;color:var(--brand);font-weight:700;border-bottom:1px solid var(--line);user-select:none;
-    }
-    details.accordion[open] > summary{ border-bottom-color:var(--line); }
-    details.accordion > .accordion-body{ padding:12px; }
+  .kpis{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:10px}
+  .kpi{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px}
+  .kpi .t{font-size:.8rem;letter-spacing:.3px;color:#b7c2da}
+  .kpi .v{font-size:1.3rem;font-weight:800}
+  @media (max-width: 980px){ .kpis{grid-template-columns:repeat(3,1fr)} }
+  @media (max-width: 620px){ .kpis{grid-template-columns:repeat(2,1fr)} }
 
-    /* Tables */
-    table{width:100%;border-collapse:separate;border-spacing:0 6px;font-size:.92rem}
-    thead th{background:#191919;position:sticky;top:0;text-align:left;border-radius:8px;padding:8px 6px}
-    tbody tr td{border-bottom:none}
-    th,td{padding:6px 6px;vertical-align:top}
-    .right{text-align:right}
+  table{width:100%;border-collapse:separate;border-spacing:0 8px;font-size:.95rem}
+  thead th{background:#141a28;text-align:left;border-radius:10px;padding:8px 8px}
+  tbody td{background:#0f1522;border:1px solid #273350}
+  th,td{padding:8px 8px;vertical-align:top}
+  td{border-radius:10px}
+  td.right, th.right{text-align:right}
+  td[data-key]{ transition: background-color .18s ease, box-shadow .18s ease; border-radius: var(--heat-radius); background-clip: padding-box; }
+  td.heat-top{ box-shadow: inset 0 0 0 1px rgba(var(--heat-rgb), var(--heat-outline)); }
 
-    /* Rounded heat cells */
-    td[data-key]{ transition: background-color .18s ease, box-shadow .18s ease; border-radius: var(--heat-radius); background-clip: padding-box; }
-    td.heat-top{ box-shadow: inset 0 0 0 1px rgba(var(--heat-rgb), var(--heat-top-outline)); }
+  details.accordion{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:0;margin-bottom:14px;
+  }
+  details.accordion > summary{
+    list-style:none;cursor:pointer;padding:12px 14px;color:var(--brand);font-weight:800;border-bottom:1px solid var(--line);user-select:none;
+  }
+  details.accordion[open] > summary{ border-bottom-color:var(--line); }
+  details.accordion > .accordion-body{ padding:12px; }
 
-    @media (max-width: 860px){ .grid2{grid-template-columns:1fr} }
-  </style>
+  /* Clickable player names */
+  .linklike{
+    background:transparent;border:0;padding:0;margin:0;
+    color:#7fd2ff;text-decoration:underline;cursor:pointer;font:inherit;
+  }
+</style>
 </head>
 <body>
 <header>
-  <h1>FFBR — LOPS Analysis</h1>
+  <h1>FFBR — LOPS Player Focus (Per Player)</h1>
   <div class="user-controls">
     <a class="btn secondary" href="dashboard.html">← Dashboard</a>
     <span class="chip" id="user-info">Checking login…</span>
@@ -101,98 +91,189 @@
 </header>
 
 <div class="shell">
-  <!-- TEAMS PICKER -->
-  <div class="section">
-    <h2>Select a Team</h2>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
-      <input type="search" id="teamSearch" placeholder="Search team / region…" class="input" style="flex:1;max-width:420px">
-    </div>
-    <div id="teamGrid" class="team-grid">Loading teams…</div>
-  </div>
 
-  <!-- GLOBAL TOURNAMENT FILTER -->
+  <!-- Filters -->
   <div class="section">
     <h2>Filters</h2>
     <div class="bar">
-      <label>Tournament
-        <select id="gTournament" class="input" style="min-width:260px">
-          <option value="__all__" selected>All tournaments</option>
-        </select>
+      <label class="pill">Day
+        <select id="fDay" class="input" style="min-width:140px"><option value="__all__">All</option></select>
       </label>
-      <button class="btn secondary" id="gTournReset">Reset</button>
+      <label class="pill">Match
+        <select id="fMatch" class="input" style="min-width:140px"><option value="__all__">All</option></select>
+      </label>
+      <label class="pill">Map
+        <select id="fMap" class="input" style="min-width:160px"><option value="__all__">All</option></select>
+      </label>
+      <input id="fTeam" class="input" placeholder="Search team…" style="min-width:180px"/>
+      <input id="fPlayer" class="input" placeholder="Search player…" style="min-width:180px"/>
+      <button class="btn ghost" id="clearFilters">Clear</button>
     </div>
-    <div class="muted" id="filterHint">—</div>
+    <div class="muted" id="scopeText">—</div>
   </div>
 
-  <!-- OVERALL (ALL TEAMS) -->
-  <details class="accordion" id="overallSection" open>
-    <summary>Overall LOPS — Team Aggregates (All Teams)</summary>
-    <div class="accordion-body">
-      <div class="bar">
-        <label for="overallMetric">Metric</label>
-        <select id="overallMetric" class="input" style="min-width:200px"></select>
-        <button class="btn secondary" id="overallSortDir" data-dir="desc" title="Toggle ascending/descending">Desc</button>
-        <button class="btn secondary" id="overallReset">Reset</button>
-      </div>
-      <div class="card" style="margin:0">
-        <div id="tblOverall">Loading…</div>
-      </div>
-    </div>
-  </details>
-
-  <!-- PER MAP (ALL TEAMS) -->
-  <details class="accordion" id="perMapAllSection" open>
-    <summary>All Teams — Per-Map Aggregates</summary>
-    <div class="accordion-body">
-      <div class="bar">
-        <label for="mapFilter">Map</label>
-        <select id="mapFilter" class="input" style="min-width:220px">
-          <option value="__all__" selected>All maps</option>
-        </select>
-        <label for="perMapMetric">Metric</label>
-        <select id="perMapMetric" class="input" style="min-width:200px"></select>
-        <button class="btn secondary" id="perMapSortDir" data-dir="desc" title="Toggle ascending/descending">Desc</button>
-        <button class="btn secondary" id="perMapReset">Reset</button>
-      </div>
-      <div class="card" style="margin:0">
-        <div id="tblPerMapAllTeams">Loading…</div>
-      </div>
-    </div>
-  </details>
-
-  <!-- TEAM OVERVIEW (BASIC HEADER/KPI) -->
-  <div class="section" id="teamHeader">
-    <h2 id="teamTitle">Team Overview</h2>
-    <div class="grid2">
-      <div class="card" id="teamIdentity">
-        <h3>Identity</h3>
-        <div id="identityBody">Select a team.</div>
-      </div>
-      <div class="card" id="teamKPIs">
-        <h3>Quick KPIs (from LOPS)</h3>
-        <div id="kpiBody">—</div>
-      </div>
-    </div>
+  <!-- KPIs -->
+  <div class="section">
+    <h2>Overview</h2>
+    <div class="kpis" id="kpiWrap"></div>
   </div>
 
-  <!-- SELECTED TEAM — LOPS BREAKDOWN (BOTTOM, COLLAPSED) -->
-  <details class="accordion" id="teamBreakdownSection">
-    <summary>Selected Team — LOPS Breakdown (Per Map & Timeline)</summary>
+  <!-- NEW: Per-Player Mini Panel -->
+  <details class="accordion" id="playerMini">
+    <summary>Player Mini Panel — Pick Profile & Rates</summary>
     <div class="accordion-body">
-      <div class="card" style="margin:0 0 10px 0">
-        <h3>Per Map (Selected Team)</h3>
-        <div id="tblTeamPerMap">—</div>
+      <div class="bar" style="margin-bottom:10px">
+        <label>Player
+          <select id="ppPlayerSelect" class="input" style="min-width:260px"></select>
+        </label>
+        <span id="ppTeamTag" class="tag" title="Dominant team for this player" hidden>—</span>
+        <button class="btn secondary" id="ppClear">Clear</button>
       </div>
-      <div class="card" style="margin:0">
-        <h3>Timeline (Stage/Day/Match)</h3>
-        <div id="tblTeamTimeline">—</div>
+
+      <div class="kpis" id="ppKPIs" style="margin-bottom:10px"></div>
+
+      <div class="grid2">
+        <div class="section" style="margin:0">
+          <h3 style="margin:0 0 8px;color:#ffd84a">Active Skills — Player Picks</h3>
+          <div id="ppActive">—</div>
+        </div>
+        <div class="section" style="margin:0">
+          <h3 style="margin:0 0 8px;color:#ffd84a">Pet Skills — Player Picks</h3>
+          <div id="ppPet">—</div>
+        </div>
       </div>
     </div>
   </details>
+
+  <!-- Per-Player Metrics (Totals + per-match rates) -->
+  <details class="accordion" open>
+    <summary>Per-Player Metrics — Kills, Assists, Headshots, Damage, Grenade</summary>
+    <div class="accordion-body">
+      <div class="bar" style="margin-bottom:10px">
+        <label>Sort
+          <select id="ppSortKey" class="input">
+            <option value="kills" selected>Kills (total)</option>
+            <option value="assists">Assists (total)</option>
+            <option value="headshots">Headshots (total)</option>
+            <option value="damage">Damage (total)</option>
+            <option value="nades">Grenade Kills (total)</option>
+            <option value="kpm">Kills / Match</option>
+            <option value="apm">Assists / Match</option>
+            <option value="hspm">Headshots / Match</option>
+            <option value="dmgpm">Damage / Match</option>
+            <option value="nad_pm">Nades / Match</option>
+            <option value="points">Points (total)</option>
+            <option value="ppm">Points / Match</option>
+            <option value="player">Player A→Z</option>
+          </select>
+        </label>
+        <button class="btn secondary" id="ppSortDir" data-dir="desc">Desc</button>
+      </div>
+      <div id="tblPerPlayer">Loading…</div>
+    </div>
+  </details>
+
+  <!-- Player Stat Spotlights -->
+  <details class="accordion" open>
+    <summary>Player Stat Spotlights (Top 10)</summary>
+    <div class="accordion-body">
+      <div class="grid3">
+        <div class="section" style="margin:0">
+          <h3 style="margin:0 0 8px;color:#ffd84a">Eliminations</h3>
+          <div id="top10Kills">Loading…</div>
+        </div>
+        <div class="section" style="margin:0">
+          <h3 style="margin:0 0 8px;color:#ffd84a">Assists</h3>
+          <div id="top10Assists">Loading…</div>
+        </div>
+        <div class="section" style="margin:0">
+          <h3 style="margin:0 0 8px;color:#ffd84a">Points</h3>
+          <div id="top10Points">Loading…</div>
+        </div>
+      </div>
+
+      <div class="grid3" style="margin-top:12px">
+        <div class="section" style="margin:0">
+          <h3 style="margin:0 0 8px;color:#ffd84a">Kills / Match</h3>
+          <div id="top10KPM">Loading…</div>
+        </div>
+        <div class="section" style="margin:0">
+          <h3 style="margin:0 0 8px;color:#ffd84a">Points / Match</h3>
+          <div id="top10PPM">Loading…</div>
+        </div>
+        <div class="section" style="margin:0" id="mvpSpot" hidden>
+          <h3 style="margin:0 0 8px;color:#ffd84a">MVPs</h3>
+          <div id="top10MVP">Loading…</div>
+        </div>
+      </div>
+
+      <div class="grid3" id="extraStaticWrap" style="margin-top:12px"></div>
+      <div class="grid3" id="extraMetricsWrap" style="margin-top:12px"></div>
+    </div>
+  </details>
+
+  <!-- Pick Rates — Active & Pet -->
+  <details class="accordion" open>
+    <summary>Pick Rates — Active Skills & Pet Skills</summary>
+    <div class="accordion-body">
+      <div class="grid2">
+        <div class="section" style="margin:0">
+          <h3 style="margin:0 0 8px;color:#ffd84a">Active Skills</h3>
+          <div id="tblActive">Loading…</div>
+        </div>
+        <div class="section" style="margin:0">
+          <h3 style="margin:0 0 8px;color:#ffd84a">Pet Skills</h3>
+          <div id="tblPet">Loading…</div>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <!-- Player Leaderboard (legacy compact) -->
+  <details class="accordion">
+    <summary>Player Leaderboard (Compact)</summary>
+    <div class="accordion-body">
+      <div class="bar">
+        <label>Sort
+          <select id="playerSortKey" class="input">
+            <option value="kills" selected>Kills</option>
+            <option value="assists">Assists</option>
+            <option value="points">Points</option>
+            <option value="kpm">Kills / match</option>
+            <option value="ppm">Points / match</option>
+            <option value="mvp">MVPs</option>
+            <option value="player">Player A→Z</option>
+          </select>
+        </label>
+        <button class="btn secondary" id="playerSortDir" data-dir="desc">Desc</button>
+      </div>
+      <div id="tblPlayers">Loading…</div>
+    </div>
+  </details>
+
+  <!-- Data Explorer -->
+  <details class="accordion">
+    <summary>Data Explorer</summary>
+    <div class="accordion-body">
+      <div class="bar" style="margin-bottom:10px">
+        <label>Columns
+          <select id="explCols" class="input" multiple size="6" style="min-width:280px"></select>
+        </label>
+        <label>Limit
+          <select id="explLimit" class="input">
+            <option>100</option><option selected>500</option><option>1000</option><option>2000</option><option>4000</option>
+          </select>
+        </label>
+        <button class="btn secondary" id="explRefresh">Refresh</button>
+      </div>
+      <div id="tblExplorer">—</div>
+    </div>
+  </details>
+
 </div>
 
 <script>
-/* ========= Supabase init + auth ========= */
+/* ===== Supabase & Auth ===== */
 const client = supabase.createClient(
   'https://gkugecflfddkpitlrmws.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
@@ -204,617 +285,714 @@ const client = supabase.createClient(
   const ui = document.getElementById('user-info');
   if (ui && session.user?.email) ui.textContent = `Logged in as: ${session.user.email}`;
 })();
-
 document.getElementById('logoutBtn').onclick = async () => {
-  await client.auth.signOut();
-  window.location.href = 'index.html';
+  await client.auth.signOut(); window.location.href = 'index.html';
 };
 
-/* ========= Team Reference (18 teams) ========= */
-const TEAMS = [
-  { name:"AG",   fullname:"ALL GAMERS",                 region:"SEA",   logo:"https://i.imgur.com/KVvhezz.png" },
-  { name:"BRU",  fullname:"BURIRAM UNITED ESPORTS",     region:"SEA",   logo:"https://i.imgur.com/ngHig8q.png" },
-  { name:"CLVS", fullname:"CLEAR VISION ESPORTS",       region:"MEA",   logo:"https://i.imgur.com/AXkfYHk.png" },
-  { name:"E1",   fullname:"E1 SPORTS",                  region:"BR",    logo:"https://i.imgur.com/bddVsgm.png" },
-  { name:"EVOS", fullname:"EVOS DIVINE",                region:"SEA",   logo:"https://i.imgur.com/xWCHSwf.png" },
-  { name:"FX",   fullname:"FLUXO",                      region:"BR",    logo:"https://i.imgur.com/OGJ5A7r.png" },
-  { name:"GOW",  fullname:"GOW",                        region:"SEA",   logo:"https://i.imgur.com/CfmGEX6.png" },
-  { name:"HEV",  fullname:"HEAVY",                      region:"SEA",   logo:"https://i.imgur.com/vqVyJSJ.png" },
-  { name:"HS",   fullname:"HOTSHOT ESPORTS",            region:"PK",    logo:"https://i.imgur.com/f8ehquU.png" },
-  { name:"NVL",  fullname:"NOVA LEGION",                region:"LATAM", logo:"https://i.imgur.com/iZmL3FT.png" },
-  { name:"PE",   fullname:"P ESPORTS",                  region:"SEA",   logo:"https://i.imgur.com/kFcOez3.png" },
-  { name:"R7",   fullname:"MOVISTAR R7",                region:"LATAM", logo:"https://i.imgur.com/95lg1Dp.png" },
-  { name:"RC",   fullname:"RED CLIFF",                  region:"BD",    logo:"https://i.imgur.com/kX5wBEZ.png" },
-  { name:"RHK",  fullname:"RED HAWKS",                  region:"BD",    logo:"https://i.imgur.com/E2MJQdH.png" },
-  { name:"RRQ",  fullname:"RRQ KAZU",                   region:"SEA",   logo:"https://i.imgur.com/Afw7WMp.png" },
-  { name:"FLCN", fullname:"TEAM FALCONS",               region:"SEA",   logo:"https://i.imgur.com/DwPXnv1.png" },
-  { name:"TS",   fullname:"TEAM SOLID",                 region:"BR",    logo:"https://i.imgur.com/3Chm42Y.png" },
-  { name:"WAG",  fullname:"WAG",                        region:"SEA",   logo:"https://i.imgur.com/EiRHnoW.png" },
-];
-const TEAM_BY_CODE = Object.fromEntries(TEAMS.map(t => [t.name.toLowerCase(), t]));
-const TEAM_BY_NAME = Object.fromEntries(TEAMS.map(t => [t.fullname.toLowerCase(), t]));
-const ALLOWED_TAGS = new Set(TEAMS.map(t => t.name.toUpperCase())); // STRICT by 18-team pool
-
-/* ========= Utilities ========= */
-const el = (id) => document.getElementById(id);
-const norm = (v) => (v==null ? '' : String(v).trim());
-function sum(arr, key){ let t=0; for(const r of arr) t += Number(r[key] ?? 0) || 0; return t; }
-function groupBy(arr, keyFn){ const m=new Map(); for(const r of arr){ const k=keyFn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r);} return m; }
-function looksLikeURL(v){ return /^https?:\/\//i.test(String(v||'')); }
-
-/* ========= Column detection (case-insensitive) ========= */
-let COLS = {
-  teamKey:null, tagKey:null, mapKey:null, tournKey:null,
-  weekKey:null, dayKey:null, matchKey:null, stageKey:null,
-  tournIdKey:null, createdKey:null
+/* ===== Utils ===== */
+const el = id => document.getElementById(id);
+const norm = v => (v==null ? '' : String(v).trim());
+const low  = v => norm(v).toLowerCase();
+const n = v => {
+  if (v==null) return 0;
+  if (typeof v === 'number') return isFinite(v) ? v : 0;
+  const s = String(v).replace(/[, ]/g,'').trim();
+  const m = s.match(/^(-?\d+(\.\d+)?)$/);
+  return m ? Number(m[1]) : 0;
 };
-function detectCols(rows){
-  if(!rows.length) return;
-  const keys = Object.keys(rows[0]);
-  const L = Object.fromEntries(keys.map(k=>[k.toLowerCase(), k]));
-  COLS.tagKey    = L['tag'] || L['TAG'] || L['team initials'] || L['code'] || null;
-  COLS.teamKey   = L['teamname'] || L['team name'] || L['team'] || L['name'] || null;
-  COLS.mapKey    = L['map'] || null;
-  COLS.tournKey  = L['tournament'] || L['tourney'] || L['event'] || null;
-  COLS.tournIdKey= L['tournament_id'] || L['tourn_id'] || L['tournamentid'] || null;
-  COLS.weekKey   = L['week'] || null;
-  COLS.dayKey    = L['day'] || null;
-  COLS.matchKey  = L['match'] || L['game'] || null;
-  COLS.stageKey  = L['stage'] || null;
-  COLS.createdKey= L['created_at'] || L['timestamp'] || L['time'] || null;
+const uniq = arr => Array.from(new Set(arr));
+const sum = (arr,key) => arr.reduce((t,r)=>t+n(r[key]),0);
+const escapeHtml = s => s.replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+
+/* case-insensitive getter with aliases */
+function getCI(obj, ...names){
+  for (const name of names){
+    if (obj[name] != null && obj[name] !== '') return obj[name];
+    const key = Object.keys(obj).find(k => k.toLowerCase() === String(name).toLowerCase());
+    if (key && obj[key] != null && obj[key] !== '') return obj[key];
+  }
+  return null;
 }
 
-/* ========= Row normalization & team code derivation ========= */
-function normalizeRow(r){
-  const out = {...r};
-  const tag = COLS.tagKey ? norm(r[COLS.tagKey]) : '';
-  const team = COLS.teamKey ? norm(r[COLS.teamKey]) : '';
-  let code = tag.toUpperCase();
-  if (!ALLOWED_TAGS.has(code)){
-    // Try map full team name to code
-    const found = TEAM_BY_NAME[team.toLowerCase()];
-    code = found ? found.name.toUpperCase() : '';
-  }
-  out._code = ALLOWED_TAGS.has(code) ? code : null;
-  out._team = out._code ? TEAM_BY_CODE[out._code.toLowerCase()]?.fullname || team : team;
-  out._region = out._code ? TEAM_BY_CODE[out._code.toLowerCase()]?.region || '' : '';
-  out._map = COLS.mapKey ? norm(r[COLS.mapKey]) : '';
-  out._tournament = COLS.tournKey ? norm(r[COLS.tournKey]) : '';
-  out._tournament_id = COLS.tournIdKey ? Number(r[COLS.tournIdKey]) : null;
-  out._week = COLS.weekKey ? Number(r[COLS.weekKey])||0 : 0;
-  out._day  = COLS.dayKey ? Number(r[COLS.dayKey])||0 : 0;
-  out._match= COLS.matchKey ? Number(r[COLS.matchKey])||0 : 0;
-  out._stage= COLS.stageKey ? norm(r[COLS.stageKey]) : '';
-  out._created_ts = COLS.createdKey ? (new Date(r[COLS.createdKey])).getTime()||0 : 0;
-  return out;
-}
-
-/* ========= Numeric metrics detection ========= */
-let NUM_KEYS = []; // numeric columns to aggregate
-function detectNumericKeys(rows){
-  if(!rows.length) return;
-  const ban = new Set([
-    COLS.tagKey, COLS.teamKey, COLS.mapKey, COLS.tournKey, COLS.stageKey,
-    COLS.createdKey, COLS.tournIdKey, 'id'
-  ].filter(Boolean).map(k=>k.toLowerCase()).concat([
-    '_code','_team','_map','_tournament','_tournament_id','_week','_day','_match','_stage','_created_ts'
-  ]));
-  const keys = Object.keys(rows[0]);
-  const nums = [];
-  for(const k of keys){
-    if (ban.has(k.toLowerCase())) continue;
-    let numericCount=0, sampleCount=0;
-    for(let i=0;i<rows.length && sampleCount<80;i++){
-      const v = rows[i][k];
-      if (v===null || v==='') continue;
-      sampleCount++;
-      if (!isNaN(parseFloat(v))) numericCount++;
-    }
-    if (numericCount>=Math.max(3, Math.floor(sampleCount*0.6))) nums.push(k);
-  }
-  // Put "total", "elims", "elimination", "placement", "damage" first if present
-  const pri = ['total','elims','elimination','placement','booyah','damage','top3'];
-  nums.sort((a,b)=>{
-    const ai = pri.findIndex(p=>a.toLowerCase()===p);
-    const bi = pri.findIndex(p=>b.toLowerCase()===p);
-    if (ai!==-1 || bi!==-1) return (ai===-1?999:ai) - (bi===-1?999:bi);
-    return a.localeCompare(b);
-  });
-  NUM_KEYS = nums;
-}
-
-/* ========= Tournament indexing & default pick ========= */
-const PREFERRED_LATEST_NAME = 'ffws global finals 2025';
-function keyTuple(r){
-  return [r._tournament_id||-Infinity, r._week||0, r._day||0, r._match||0, r._created_ts||0];
-}
-function cmpTuple(a,b){ for(let i=0;i<a.length;i++){ if(a[i]>b[i])return 1; if(a[i]<b[i])return -1; } return 0; }
-
-function tournamentsIndex(rows){
-  const map = new Map();
-  for (const r of rows){
-    const name = r._tournament || '';
-    if (!name) continue;
-    const k = name.toLowerCase();
-    const tup = keyTuple(r);
-    if (!map.has(k)) map.set(k, { name, idMax: r._tournament_id ?? -Infinity, tupMax: tup });
-    else{
-      const o = map.get(k);
-      o.idMax = Math.max(o.idMax, r._tournament_id ?? -Infinity);
-      if (cmpTuple(tup, o.tupMax) > 0) o.tupMax = tup;
-    }
-  }
-  return map;
-}
-function defaultTournamentName(rows){
-  const idx = tournamentsIndex(rows);
-  if (!idx.size) return null;
-  for (const v of idx.values()){
-    if (v.name.toLowerCase() === PREFERRED_LATEST_NAME) return v.name;
-  }
-  const withId = Array.from(idx.values()).filter(v => isFinite(v.idMax) && v.idMax!==-Infinity);
-  if (withId.length){
-    withId.sort((a,b)=> b.idMax - a.idMax || cmpTuple(b.tupMax, a.tupMax));
-    return withId[0].name;
-  }
-  const all = Array.from(idx.values()).sort((a,b)=> cmpTuple(b.tupMax, a.tupMax));
-  return all[0].name;
-}
-function uniqueTournaments(rows){
-  const idx = tournamentsIndex(rows);
-  const items = Array.from(idx.values());
-  items.sort((a,b)=>{
-    const aId = isFinite(a.idMax), bId = isFinite(b.idMax);
-    if (aId && bId){ if (b.idMax!==a.idMax) return b.idMax-a.idMax; const t = cmpTuple(b.tupMax,a.tupMax); if(t) return t; return a.name.localeCompare(b.name); }
-    if (aId && !bId) return -1; if (!aId && bId) return 1;
-    const t = cmpTuple(b.tupMax, a.tupMax); if (t) return t; return a.name.localeCompare(b.name);
-  });
-  return items;
-}
-
-/* ========= Data state ========= */
-let RAW = [];      // all rows from table (normalized)
-let ALL = [];      // rows limited to allowed 18-team pool
-let TEAM_ROWS = []; // current selected team rows (after tournament filter)
-let CURRENT_TEAM = null;
-
-/* ========= Fetch ffbr_lopsdata ========= */
-async function fetchAllRows(){
-  const CHUNK = 1000;
-  let from = 0;
-  const out = [];
-  for(;;){
-    const { data, error } = await client
-      .from('ffbr_lopsdata')
-      .select('*')
-      .order('id', { ascending:true })
-      .range(from, from + CHUNK - 1);
-    if (error){ console.error('ffbr_lopsdata fetch failed:', error); break; }
-    const rows = data || [];
-    if (!rows.length) break;
-    out.push(...rows);
-    from += rows.length;
-  }
-  if (!out.length) return [];
-  detectCols(out);
-  const normalized = out.map(normalizeRow);
-  // filter to allowed team codes (or resolvable from full name)
-  const limited = normalized.filter(r => r._code);
-  return limited;
-}
-
-/* ========= Aggregations ========= */
-function aggregateByTeam(rows){
-  const g = groupBy(rows, r=>r._code);
-  const out=[];
-  for (const [code, list] of g.entries()){
-    const meta = TEAM_BY_CODE[code.toLowerCase()];
-    const recs = list.length;
-    const row = {
-      team: meta?.fullname || code,
-      code: code,
-      region: meta?.region || '—',
-      records: recs
-    };
-    for (const k of NUM_KEYS){ row[k] = sum(list, k); }
-    out.push(row);
-  }
-  return out;
-}
-function aggregateByTeamForMap(rows, mapVal){
-  const filtered = (!COLS.mapKey || mapVal==='__all__') ? rows : rows.filter(r => r._map.toLowerCase() === mapVal.toLowerCase());
-  return aggregateByTeam(filtered);
-}
-function teamPerMap(rows){
-  const g = groupBy(rows, r=>r._map||'—');
-  const out=[];
-  for (const [map, list] of g.entries()){
-    const row = { map, records: list.length };
-    for (const k of NUM_KEYS){ row[k] = sum(list, k); }
-    out.push(row);
-  }
-  // default sort by first numeric key desc
-  if (NUM_KEYS.length){
-    const key = NUM_KEYS[0];
-    out.sort((a,b)=> (b[key]||0) - (a[key]||0) || (b.records - a.records) || a.map.localeCompare(b.map));
-  } else {
-    out.sort((a,b)=> b.records - a.records || a.map.localeCompare(b.map));
-  }
-  return out;
-}
-function teamTimeline(rows){
-  // sorted by stage, week, day, match, created_ts
-  const list = rows.slice().sort((a,b)=>{
-    return (a._stage||'').localeCompare(b._stage||'') ||
-           (a._week - b._week) ||
-           (a._day - b._day) ||
-           (a._match - b._match) ||
-           (a._created_ts - b._created_ts);
-  });
-  return list.map(r=>{
-    const obj = {
-      stage: r._stage || '—',
-      week: r._week || 0,
-      day: r._day || 0,
-      match: r._match || 0,
-      map: r._map || '—'
-    };
-    for (const k of NUM_KEYS){ obj[k] = Number(r[k] ?? 0) || 0; }
-    return obj;
-  });
-}
-
-/* ========= UI Helpers ========= */
-function renderSimpleTable(list, cols){
+function pct(x){ x=Number(x); return isFinite(x)? (x*100).toFixed(1)+'%' : '—'; }
+function renderTable(list, cols){
   if (!list.length) return '<div class="muted">No rows.</div>';
-  const head = `<thead><tr>${cols.map(c=>`<th data-key="${c.key}" class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
-  const body = `<tbody>${list.map(r=>`<tr>${cols.map(c=>{
-    let v = r[c.key];
-    if (c.format==='0d') v = Number(v ?? 0).toFixed(0);
-    if (c.format==='1d') v = Number(v ?? 0).toFixed(1);
-    if (c.format==='2d') v = Number(v ?? 0).toFixed(2);
-    return `<td data-key="${c.key}" class="${c.right?'right':''}">${(v==null||v==='')?'—':v}</td>`;
-  }).join('')}</tr>`).join('')}</tbody>`;
+  const head = `<thead><tr>${cols.map(c=>`<th class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
+  const body = '<tbody>' + list.map(r=>{
+    const tds = cols.map(c=>{
+      let v = r[c.key];
+      if (c.fmt==='pct') v = pct(v);
+      else if (c.fmt==='1d') v = isFinite(v)? Number(v).toFixed(1) : '—';
+      else if (c.fmt==='2d') v = isFinite(v)? Number(v).toFixed(2) : '—';
+      else if (v==null || v==='') v = '—';
+      return `<td class="${c.right?'right':''}" data-key="${c.key}">${escapeHtml(String(v))}</td>`;
+    }).join('');
+    return `<tr>${tds}</tr>`;
+  }).join('') + '</tbody>';
   return `<table>${head}${body}</table>`;
 }
 
-/* ========= Quantile-band Heatmap (rounded) ========= */
-function applyColumnHeatmap(containerId, keys){
+/* ===== Data & Normalization ===== */
+let RAW = [];
+let VIEW = [];
+let ALL_COLS = [];
+let filter = { day:'__all__', match:'__all__', map:'__all__', team:'', player:'' };
+
+function normalizeRow(r){
+  const o = {...r};
+
+  // columns you highlighted
+  const KILLS_col       = getCI(o, 'KILLS','Kills','Kill','Total Kill');
+  const ASSISTS_col     = getCI(o, 'ASSISTS','Assist','Assists');
+  const HEADSHOTRS_col  = getCI(o, 'HEADSHOTRS','HEADSHOTS','Headshots','Headshot','HS');
+  const DAMAGE_col      = getCI(o, 'DAMAGE','Damage');
+  const GRENADE_col     = getCI(o, 'Grenade kill','Grenade Kill','Grenade Kills');
+
+  // meta
+  o._team   = norm(getCI(o,'TeamName','Team','team','TAG','tag'));
+  o._player = norm(getCI(o,'Player','IGN','Player IGN','InGameName','IGName','player','ign'));
+  o._map    = norm(getCI(o,'Map','map'));
+  o._day    = norm(getCI(o,'Day','day','WkDay','D'));
+  o._match  = norm(getCI(o,'Match','match','Game','MatchNo'));
+
+  // placement/points
+  o._place   = n(getCI(o,'Placement','placement','Place'));
+  const rankScore  = n(getCI(o,'RankingScore','Ranking Score'));
+  const killScore  = n(getCI(o,'KillingScore','Killing Score'));
+  const totalScore = n(getCI(o,'TotalScore','Total Score','Total','Total Points'));
+  o._points = totalScore || (rankScore + killScore);
+
+  // core stats
+  o._kills     = n(KILLS_col);
+  o._assists   = n(ASSISTS_col);
+  o._headshots = n(HEADSHOTRS_col);
+  o._damage    = n(DAMAGE_col);
+  o._nade      = n(GRENADE_col);
+
+  // booyah flag
+  o._booyah = n(getCI(o,'Booyah','booyah'));
+  if (!o._booyah) o._booyah = (o._place===1) ? 1 : 0;
+
+  // picks
+  o._active = norm(getCI(o,'Active Skill','SkillActive','Skill Active','Active'));
+  o._pet    = norm(getCI(o,'Pet Skill Name','PetSkill','Pet'));
+
+  // per-game key
+  o._pgkey = `${low(o._day)}|${low(o._match)}|${low(o._map)}|${low(o._player)}`;
+  return o;
+}
+
+/* ===== Fetch ===== */
+async function fetchAll(){
+  const CHUNK=2000; let from=0; const out=[];
+  for(;;){
+    const { data, error } = await client.from('ffbr_lopsdata')
+      .select('*')
+      .order('id',{ascending:true})
+      .range(from, from+CHUNK-1);
+    if (error){ console.error('fetch error', error); break; }
+    if (!data?.length) break;
+    out.push(...data);
+    from += data.length;
+  }
+  return out;
+}
+
+/* ===== Filters ===== */
+function applyFilters(){
+  const qTeam = low(filter.team);
+  const qPlayer = low(filter.player);
+  VIEW = RAW.filter(r=>{
+    if (filter.day   !== '__all__' && low(r._day)   !== low(filter.day)) return false;
+    if (filter.match !== '__all__' && low(r._match) !== low(filter.match)) return false;
+    if (filter.map   !== '__all__' && low(r._map)   !== low(filter.map)) return false;
+    if (qTeam && !low(r._team).includes(qTeam)) return false;
+    if (qPlayer && !low(r._player).includes(qPlayer)) return false;
+    return true;
+  });
+  el('scopeText').textContent =
+    `Rows: ${VIEW.length} • Days: ${uniq(VIEW.map(r=>r._day)).length} • Matches: ${uniq(VIEW.map(r=>r._match)).length} • Teams: ${uniq(VIEW.map(r=>r._team)).length} • Players: ${uniq(VIEW.map(r=>r._player)).length}`;
+}
+
+/* ===== KPIs ===== */
+function renderKPIs(){
+  const games = uniq(VIEW.map(r=> `${r._day}|${r._match}|${r._map}`)).length;
+  const teams = uniq(VIEW.map(r=> r._team)).length;
+  const players = uniq(VIEW.map(r=> r._player)).length;
+  const totalPts = VIEW.reduce((t,r)=> t + n(r._points), 0);
+  const totalKills = VIEW.reduce((t,r)=> t + n(r._kills), 0);
+  const totalAssists = VIEW.reduce((t,r)=> t + n(r._assists), 0);
+
+  el('kpiWrap').innerHTML = [
+    ['Games', games],
+    ['Teams', teams],
+    ['Players', players],
+    ['Total Points', totalPts],
+    ['Total Kills', totalKills],
+    ['Total Assists', totalAssists]
+  ].map(([t,v])=>`
+    <div class="kpi">
+      <div class="t">${t}</div>
+      <div class="v">${typeof v==='number'? v.toLocaleString(): v}</div>
+    </div>
+  `).join('');
+}
+
+/* ===== Aggregations ===== */
+function groupBy(arr, keyFn){ const m=new Map(); for (const r of arr){ const k=keyFn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r);} return m; }
+
+function computePlayerAgg(){
+  const gamesByPlayer = new Map(); // player -> Set of game keys
+  const byPlayer = new Map();      // player -> agg
+  for (const r of VIEW){
+    if (!r._player) continue;
+    if (!byPlayer.has(r._player)) byPlayer.set(r._player, {
+      player: r._player, team: r._team,
+      points:0, kills:0, assists:0, headshots:0, damage:0, nades:0, mvp:0
+    });
+    const a = byPlayer.get(r._player);
+    a.points    += n(r._points);
+    a.kills     += n(r._kills);
+    a.assists   += n(r._assists);
+    a.headshots += n(r._headshots);
+    a.damage    += n(r._damage);
+    a.nades     += n(r._nade);
+    a.mvp       += n(r._mvp);
+
+    if (!gamesByPlayer.has(r._player)) gamesByPlayer.set(r._player, new Set());
+    gamesByPlayer.get(r._player).add(r._pgkey);
+  }
+  const out=[];
+  for (const [player, a] of byPlayer){
+    const matches = gamesByPlayer.get(player)?.size || 0;
+    out.push({
+      player, team: a.team, matches,
+      points:a.points, kills:a.kills, assists:a.assists,
+      headshots:a.headshots, damage:a.damage, nades:a.nades,
+      ppm: matches? a.points/matches : 0,
+      kpm: matches? a.kills/matches : 0,
+      apm: matches? a.assists/matches : 0,
+      hspm: matches? a.headshots/matches : 0,
+      dmgpm: matches? a.damage/matches : 0,
+      nad_pm: matches? a.nades/matches : 0,
+      mvp:a.mvp
+    });
+  }
+  return out;
+}
+
+/* ===== Spotlights (Top-10) ===== */
+function topN(rows, key, n=10){
+  const arr = rows.slice().sort((a,b)=> (+b[key]) - (+a[key]) || a.player.localeCompare(b.player));
+  return arr.slice(0,n);
+}
+function renderTop10(){
+  const base = computePlayerAgg();
+  const cols = (extra)=>[
+    {label:'#', key:'rank', right:true},
+    {label:'Player', key:'player'},
+    {label:'Team', key:'team'},
+    ...extra
+  ];
+  // Kills
+  el('top10Kills').innerHTML = renderTable(topN(base,'kills').map((r,i)=>({...r,rank:i+1})), cols([
+    {label:'Kills', key:'kills', right:true},
+    {label:'Matches', key:'matches', right:true},
+    {label:'KPM', key:'kpm', right:true, fmt:'1d'}
+  ]));
+  // Assists
+  el('top10Assists').innerHTML = renderTable(topN(base,'assists').map((r,i)=>({...r,rank:i+1})), cols([
+    {label:'Assists', key:'assists', right:true},
+    {label:'Matches', key:'matches', right:true},
+    {label:'APM', key:'apm', right:true, fmt:'1d'}
+  ]));
+  // Points
+  el('top10Points').innerHTML = renderTable(topN(base,'points').map((r,i)=>({...r,rank:i+1})), cols([
+    {label:'Points', key:'points', right:true},
+    {label:'Matches', key:'matches', right:true},
+    {label:'PPM', key:'ppm', right:true, fmt:'1d'}
+  ]));
+  // KPM
+  el('top10KPM').innerHTML = renderTable(topN(base.filter(r=>r.matches>0),'kpm').map((r,i)=>({...r,rank:i+1})), cols([
+    {label:'KPM', key:'kpm', right:true, fmt:'1d'},
+    {label:'Kills', key:'kills', right:true},
+    {label:'Matches', key:'matches', right:true}
+  ]));
+  // PPM
+  el('top10PPM').innerHTML = renderTable(topN(base.filter(r=>r.matches>0),'ppm').map((r,i)=>({...r,rank:i+1})), cols([
+    {label:'PPM', key:'ppm', right:true, fmt:'1d'},
+    {label:'Points', key:'points', right:true},
+    {label:'Matches', key:'matches', right:true}
+  ]));
+
+  // MVPs visible only if present
+  const hasMVP = base.some(r=> r.mvp>0);
+  if (hasMVP){
+    el('top10MVP').innerHTML = renderTable(topN(base,'mvp').map((r,i)=>({...r,rank:i+1})), cols([
+      {label:'MVPs', key:'mvp', right:true},
+      {label:'Matches', key:'matches', right:true}
+    ]));
+    el('mvpSpot').hidden = false;
+  } else {
+    el('mvpSpot').hidden = true;
+  }
+
+  // make players clickable in these tables
+  makePlayerCellsClickable('top10Kills');
+  makePlayerCellsClickable('top10Assists');
+  makePlayerCellsClickable('top10Points');
+  makePlayerCellsClickable('top10KPM');
+  makePlayerCellsClickable('top10PPM');
+  makePlayerCellsClickable('top10MVP');
+}
+
+/* ===== Static extras from your named columns (per-player) ===== */
+function renderExtraStatic(base){
+  const wrap = el('extraStaticWrap');
+  wrap.innerHTML = '';
+  const blocks = [
+    { field:'headshots', label:'Headshots' },
+    { field:'damage',    label:'Damage' },
+    { field:'nades',     label:'Grenade Kills' }
+  ];
+  let rendered = 0;
+  for (const c of blocks){
+    const list = topN(base, c.field).slice(0,10).map((r,i)=>({rank:i+1, player:r.player, team:r.team, value:r[c.field]}));
+    if (!list.length || list.every(x=>!x.value)) continue;
+    const block = document.createElement('div');
+    block.className='section'; block.style.margin='0';
+    block.innerHTML = `
+      <h3 style="margin:0 0 8px;color:#ffd84a">${c.label}</h3>
+      ${renderTable(list, [
+        {label:'#', key:'rank', right:true},
+        {label:'Player', key:'player'},
+        {label:'Team', key:'team'},
+        {label:c.label, key:'value', right:true}
+      ])}
+    `;
+    wrap.appendChild(block); rendered++;
+  }
+  if (!rendered){
+    wrap.innerHTML = '<div class="muted">No Headshots/Damage/Grenade metrics present.</div>';
+  }
+  makePlayerCellsClickable('extraStaticWrap');
+}
+
+/* ===== Auto-detected extra metrics (optional) ===== */
+const EXTRA_CANDIDATES = [
+  { key:'headshots', label:'Headshots', patterns:[/head ?shot/i, /\bhs\b/i] },
+  { key:'damage',    label:'Damage',    patterns:[/damage/i] },
+  { key:'revives',   label:'Revives',   patterns:[/revive/i, /rescues?/i] },
+  { key:'heals',     label:'Heals',     patterns:[/heal/i] },
+  { key:'knocks',    label:'Knockdowns',patterns:[/knock/i, /down/i] },
+];
+function findNumericCols(patterns){
+  return ALL_COLS.filter(c => patterns.some(p=> p.test(c)));
+}
+function aggregateExtraByPlayer(cols){
+  const map = new Map();
+  if (!cols.length) return [];
+  for (const r of VIEW){
+    if (!r._player) continue;
+    const val = cols.reduce((t,c)=> t + n(r[c]), 0);
+    if (!val) continue;
+    if (!map.has(r._player)) map.set(r._player, { player:r._player, team:r._team, value:0 });
+    map.get(r._player).value += val;
+  }
+  return Array.from(map.values());
+}
+function renderExtraMetrics(base){
+  const wrap = el('extraMetricsWrap');
+  wrap.innerHTML = '';
+  let rendered = 0;
+  for (const cand of EXTRA_CANDIDATES){
+    const cols = findNumericCols(cand.patterns);
+    const agg = aggregateExtraByPlayer(cols);
+    if (!agg.length) continue;
+    const top = agg.sort((a,b)=> b.value - a.value || a.player.localeCompare(b.player)).slice(0,10)
+                   .map((r,i)=>({rank:i+1, ...r}));
+    const block = document.createElement('div');
+    block.className = 'section'; block.style.margin = '0';
+    block.innerHTML = `
+      <h3 style="margin:0 0 8px;color:#ffd84a">${cand.label} (auto)</h3>
+      ${renderTable(top, [
+        {label:'#', key:'rank', right:true},
+        {label:'Player', key:'player'},
+        {label:'Team', key:'team'},
+        {label:cand.label, key:'value', right:true}
+      ])}
+    `;
+    wrap.appendChild(block);
+    rendered++;
+  }
+  if (!rendered){
+    wrap.innerHTML = '<div class="muted">No additional auto-detected metrics.</div>';
+  }
+  makePlayerCellsClickable('extraMetricsWrap');
+}
+
+/* ===== Picks (overall) ===== */
+function tally(list){
+  const m=new Map();
+  for(const v of list){ const k=norm(v); if(!k) continue; m.set(k,(m.get(k)||0)+1); }
+  return Array.from(m.entries()).map(([name,count])=>({name,count}));
+}
+function renderPickTable(items, mountId, title){
+  const total = items.reduce((t,x)=>t+x.count,0) || 1;
+  const rows = items.sort((a,b)=> b.count-a.count || a.name.localeCompare(b.name))
+                    .slice(0,50)
+                    .map((x,i)=>({ rank:i+1, name:x.name, count:x.count, rate:x.count/total }));
+  el(mountId).innerHTML = renderTable(rows, [
+    {label:'#', key:'rank', right:true},
+    {label:title, key:'name'},
+    {label:'Count', key:'count', right:true},
+    {label:'Pick %', key:'rate', right:true, fmt:'pct'}
+  ]);
+}
+function renderPickRates(){
+  const act = VIEW.map(r=> r._active).filter(Boolean);
+  const pet = VIEW.map(r=> r._pet).filter(Boolean);
+
+  el('tblActive').innerHTML = '—';
+  el('tblPet').innerHTML = '—';
+
+  if (act.length) renderPickTable(tally(act), 'tblActive', 'Active Skill');
+  else el('tblActive').innerHTML = '<div class="muted">No Active Skill column detected.</div>';
+
+  if (pet.length) renderPickTable(tally(pet), 'tblPet', 'Pet Skill');
+  else el('tblPet').innerHTML = '<div class="muted">No Pet Skill column detected.</div>';
+}
+
+/* ===== Legacy compact player table ===== */
+function computePlayerTable(){
+  const base = computePlayerAgg();
+  return base.map(r=>({
+    player:r.player, team:r.team, matches:r.matches,
+    points:r.points, ppm:r.ppm,
+    kills:r.kills, kpm:r.kpm,
+    assists:r.assists,
+    mvp:r.mvp
+  }));
+}
+function renderPlayerTable(){
+  const key = el('playerSortKey').value;
+  const dir = el('playerSortDir').dataset.dir;
+  const mult = dir==='asc' ? 1 : -1;
+
+  const rows = computePlayerTable();
+  rows.sort((a,b)=>{
+    if (key==='player') return mult * a.player.localeCompare(b.player);
+    return mult * ((+a[key]) - (+b[key]));
+  });
+
+  el('tblPlayers').innerHTML = renderTable(rows, [
+    {label:'Player', key:'player'},
+    {label:'Team', key:'team'},
+    {label:'Matches', key:'matches', right:true},
+    {label:'Points', key:'points', right:true},
+    {label:'PPM', key:'ppm', right:true, fmt:'1d'},
+    {label:'Kills', key:'kills', right:true},
+    {label:'KPM', key:'kpm', right:true, fmt:'1d'},
+    {label:'Assists', key:'assists', right:true},
+    {label:'MVPs', key:'mvp', right:true},
+  ]);
+
+  makePlayerCellsClickable('tblPlayers');
+}
+
+/* ===== NEW: Per-Player Metrics Table ===== */
+function renderPerPlayer(){
+  const key = el('ppSortKey').value;
+  const dir = el('ppSortDir').dataset.dir;
+  const mult = dir==='asc' ? 1 : -1;
+
+  const rows = computePlayerAgg();
+  rows.sort((a,b)=>{
+    if (key==='player') return mult * a.player.localeCompare(b.player);
+    return mult * ((+a[key]) - (+b[key]));
+  });
+
+  el('tblPerPlayer').innerHTML = renderTable(rows, [
+    {label:'Player', key:'player'},
+    {label:'Team', key:'team'},
+    {label:'Matches', key:'matches', right:true},
+
+    {label:'Points', key:'points', right:true},
+    {label:'PPM', key:'ppm', right:true, fmt:'1d'},
+
+    {label:'Kills', key:'kills', right:true},
+    {label:'KPM', key:'kpm', right:true, fmt:'1d'},
+
+    {label:'Assists', key:'assists', right:true},
+    {label:'APM', key:'apm', right:true, fmt:'1d'},
+
+    {label:'Headshots', key:'headshots', right:true},
+    {label:'HS / M', key:'hspm', right:true, fmt:'1d'},
+
+    {label:'Damage', key:'damage', right:true},
+    {label:'DMG / M', key:'dmgpm', right:true, fmt:'1d'},
+
+    {label:'Grenade', key:'nades', right:true},
+    {label:'Nade / M', key:'nad_pm', right:true, fmt:'1d'}
+  ]);
+
+  makePlayerCellsClickable('tblPerPlayer');
+}
+
+/* ===== Explorer ===== */
+function renderExplorer(){
+  const sel = el('explCols');
+  const limit = Number(el('explLimit').value)||500;
+  const cols = Array.from(sel.selectedOptions).map(o=>o.value);
+  const rows = VIEW.slice(0, limit).map(r=>{
+    const obj={}; for (const c of cols){ obj[c] = r[c]; } return obj;
+  });
+  el('tblExplorer').innerHTML = renderTable(rows, cols.map(c=>({label:c,key:c})));
+}
+
+/* ===== Populate filters ===== */
+function populateFilters(){
+  const days   = ['__all__'].concat(uniq(RAW.map(r=>r._day)).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).filter(Boolean));
+  const matches= ['__all__'].concat(uniq(RAW.map(r=>r._match)).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).filter(Boolean));
+  const maps   = ['__all__'].concat(uniq(RAW.map(r=>r._map)).sort((a,b)=>a.localeCompare(b)).filter(Boolean));
+
+  el('fDay').innerHTML    = days.map(v=> `<option value="${escapeHtml(v)}">${v==='__all__'?'All':escapeHtml(v)}</option>`).join('');
+  el('fMatch').innerHTML  = matches.map(v=> `<option value="${escapeHtml(v)}">${v==='__all__'?'All':escapeHtml(v)}</option>`).join('');
+  el('fMap').innerHTML    = maps.map(v=> `<option value="${escapeHtml(v)}">${v==='__all__'?'All':escapeHtml(v)}</option>`).join('');
+}
+
+/* ===== Player Mini Panel state + helpers ===== */
+let CURRENT_PLAYER = '';
+
+function playerNamesFromView(){
+  return uniq(VIEW.map(r=>r._player).filter(Boolean)).sort((a,b)=>a.localeCompare(b));
+}
+function dominantTeamForPlayer(player){
+  const m=new Map();
+  for (const r of VIEW){ if (r._player===player){ const t=r._team||'—'; m.set(t,(m.get(t)||0)+1); } }
+  let best='—',max=-1; for (const [t,c] of m){ if (c>max){ max=c; best=t; } }
+  return best;
+}
+function setCurrentPlayer(name){
+  CURRENT_PLAYER = name || '';
+  renderMiniPanel();
+}
+
+/* Make the 'Player' cells clickable in any rendered table inside a container */
+function makePlayerCellsClickable(containerId){
   const wrap = el(containerId);
-  const table = wrap?.querySelector('table'); if (!table) return;
-  table.querySelectorAll('td[data-key]').forEach(td=>{
-    td.style.backgroundColor = '';
-    td.classList.remove('heat-top');
-  });
-  const styles = getComputedStyle(document.documentElement);
-  const rgb   = styles.getPropertyValue('--heat-rgb') || '255,189,89';
-  const minA  = parseFloat(styles.getPropertyValue('--heat-min')) || .06;
-  const maxA  = parseFloat(styles.getPropertyValue('--heat-max')) || .22;
-  const radius= styles.getPropertyValue('--heat-radius') || '8px';
-  const BANDS = 5;
-
-  for (const key of keys){
-    const cells = Array.from(table.querySelectorAll(`td[data-key="${key}"]`));
-    if (!cells.length) continue;
-
-    const entries = cells.map((td,i)=>{
-      const raw = (td.textContent||'').trim().replace('%','').replace(/,/g,'');
-      const v = parseFloat(raw);
-      return { td, i, v: isFinite(v) ? v : null };
-    }).filter(e => e.v != null);
-    if (!entries.length) continue;
-
-    const asc = entries.slice().sort((a,b)=> a.v - b.v);
-    const n = asc.length;
-    const topVal = asc[n-1].v;
-
-    const bandByIndex = new Map();
-    asc.forEach((e, rank)=>{
-      const p = (n<=1) ? 1 : (rank / (n - 1));
-      const band = Math.min(BANDS-1, Math.floor(p * BANDS));
-      bandByIndex.set(e.i, band);
+  if (!wrap) return;
+  const tables = wrap.querySelectorAll('table');
+  tables.forEach(table=>{
+    const ths = Array.from(table.querySelectorAll('thead th'));
+    const idx = ths.findIndex(th => th.textContent.trim().toLowerCase() === 'player');
+    if (idx === -1) return;
+    table.querySelectorAll('tbody tr').forEach(tr=>{
+      const td = tr.children[idx];
+      if (!td) return;
+      const name = td.textContent.trim();
+      if (!name) return;
+      td.innerHTML = `<button class="linklike" data-player="${escapeHtml(name)}">${escapeHtml(name)}</button>`;
     });
+  });
+}
 
-    cells.forEach((td, i)=>{
-      const band = bandByIndex.get(i);
-      if (band == null) return;
-      const alpha = minA + ( (band)/(BANDS-1) ) * (maxA - minA);
-      td.style.backgroundColor = `rgba(${rgb}, ${alpha.toFixed(3)})`;
-      td.style.borderRadius = radius;
-      td.style.backgroundClip = 'padding-box';
-
-      const raw = (td.textContent||'').trim().replace('%','').replace(/,/g,'');
-      const v = parseFloat(raw);
-      if (isFinite(v) && v === topVal) td.classList.add('heat-top');
-    });
+/* Wire global click to set player from any clickable name */
+document.addEventListener('click', (e)=>{
+  const b = e.target.closest('button.linklike[data-player]');
+  if (b){
+    setCurrentPlayer(b.dataset.player);
+    const pnl = el('playerMini'); pnl.open = true;
+    const sel = el('ppPlayerSelect');
+    if (sel){ sel.value = b.dataset.player; }
   }
-}
+});
 
-/* ========= Team grid ========= */
-function renderTeamGrid(filter=''){
-  const grid = el('teamGrid');
-  const q = filter.trim().toLowerCase();
-  const items = TEAMS.filter(t =>
-    !q || t.name.toLowerCase().includes(q) || t.fullname.toLowerCase().includes(q) || (t.region||'').toLowerCase().includes(q)
-  );
-  if (!items.length){ grid.innerHTML = '<div class="muted">No matches.</div>'; return; }
+/* Render mini panel UI + data */
+function renderMiniPanel(){
+  // Populate dropdown from current VIEW
+  const players = playerNamesFromView();
+  const sel = el('ppPlayerSelect');
+  sel.innerHTML = `<option value="">— Select a player —</option>` + players.map(p=>`<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+  if (CURRENT_PLAYER && players.includes(CURRENT_PLAYER)) sel.value = CURRENT_PLAYER;
 
-  grid.innerHTML = items.map(t=>`
-    <div class="team-tile" data-code="${t.name}" title="${t.fullname} • ${t.region||''}">
-      <img class="team-logo" src="${t.logo}" alt="${t.fullname} logo" loading="lazy">
-      <div class="team-code">${t.name}</div>
-    </div>`).join('');
+  const teamTag = el('ppTeamTag');
+  const kpiMount = el('ppKPIs');
+  const actMount = el('ppActive');
+  const petMount = el('ppPet');
 
-  grid.querySelectorAll('.team-tile').forEach(tile=>{
-    tile.onclick = ()=>{
-      const code = tile.getAttribute('data-code').toLowerCase();
-      const info = TEAM_BY_CODE[code];
-      if (info) {
-        selectTeam(info);
-        tile.scrollIntoView({ behavior:'smooth', inline:'center', block:'nearest' });
-      }
-    };
-  });
-  highlightActiveTile();
-}
-function highlightActiveTile(){
-  const grid = el('teamGrid');
-  if (!grid) return;
-  [...grid.querySelectorAll('.team-tile')].forEach(div=>{
-    const code = div.getAttribute('data-code');
-    div.classList.toggle('active', !!CURRENT_TEAM && CURRENT_TEAM.name===code);
-  });
-}
-
-/* ========= Tournament UI ========= */
-function populateGlobalTournament(){
-  const sel = el('gTournament');
-  if (!sel) return;
-  const items = uniqueTournaments(ALL);
-  const latest = defaultTournamentName(ALL);
-
-  sel.innerHTML = `<option value="__all__">All tournaments</option>` +
-    items.map(o=> `<option value="${o.name.replaceAll('"','&quot;')}">${o.name}</option>`).join('');
-  sel.value = latest || '__all__';
-  updateFilterHint();
-}
-function selectedTournament(){ return (el('gTournament')?.value || '__all__').trim(); }
-function baseRowsByTournament(rows){
-  const t = selectedTournament();
-  if (t === '__all__') return rows;
-  const lf = t.toLowerCase();
-  return rows.filter(r => (r._tournament||'').toLowerCase() === lf);
-}
-function updateFilterHint(){
-  const t = selectedTournament();
-  const total = baseRowsByTournament(ALL).length;
-  el('filterHint').textContent = t === '__all__'
-    ? `Scope: All tournaments • Rows: ${total}`
-    : `Scope: ${t} • Rows: ${total} • Default prefers “FFWS GLOBAL FINALS 2025”, else latest by tournament_id`;
-}
-
-/* ========= Map filter ========= */
-function uniqueMaps(rows){
-  const s = new Set();
-  for (const r of rows){ const m = r._map; if (m) s.add(m); }
-  return Array.from(s).sort((a,b)=>a.localeCompare(b));
-}
-function populateMapFilter(){
-  const sel = el('mapFilter');
-  const current = sel.value || '__all__';
-  const items = uniqueMaps(baseRowsByTournament(ALL));
-  sel.innerHTML = `<option value="__all__">All maps</option>` + items.map(m=>`<option value="${m.replaceAll('"','&quot;')}">${m}</option>`).join('');
-  const exists = [...sel.options].some(op => op.value === current);
-  sel.value = exists ? current : '__all__';
-}
-
-/* ========= Selected team rendering ========= */
-function renderTeamHeader(){
-  if (!CURRENT_TEAM){
-    el('teamTitle').textContent = 'Team Overview';
-    el('identityBody').innerHTML = 'Select a team.';
-    el('kpiBody').innerHTML = '—';
-    el('tblTeamPerMap').innerHTML = '—';
-    el('tblTeamTimeline').innerHTML = '—';
-    return;
-  }
-  el('teamTitle').textContent = `Team Overview — ${CURRENT_TEAM.name}`;
-  el('identityBody').innerHTML = `
-    <div style="display:flex;gap:12px;align-items:center">
-      <img src="${CURRENT_TEAM.logo}" alt="${CURRENT_TEAM.fullname} logo" style="width:72px;height:72px;object-fit:contain">
-      <div>
-        <div style="font-size:1.1rem;font-weight:800">${CURRENT_TEAM.name}</div>
-        <div class="muted">${CURRENT_TEAM.fullname} • ${CURRENT_TEAM.region||'—'}</div>
-      </div>
-    </div>`;
-
-  // KPIs from team rows – use first 3 numeric keys
-  const krows = TEAM_ROWS;
-  const records = krows.length;
-  const parts = [`<div class="kpi">Records <strong>${records}</strong></div>`];
-  const topKeys = NUM_KEYS.slice(0,3);
-  for (const k of topKeys){
-    const val = sum(krows, k);
-    parts.push(`<div class="kpi">${k} <strong>${Number(val||0).toFixed(0)}</strong></div>`);
-  }
-  el('kpiBody').innerHTML = parts.join('');
-}
-function renderTeamBreakdown(){
-  if (!CURRENT_TEAM){ el('tblTeamPerMap').innerHTML='—'; el('tblTeamTimeline').innerHTML='—'; return; }
-  const perMap = teamPerMap(TEAM_ROWS);
-  const tl = teamTimeline(TEAM_ROWS);
-
-  // Columns
-  const pmCols = [{label:'Map', key:'map'} , {label:'Records', key:'records', right:true}]
-    .concat(NUM_KEYS.map(k=>({label:k, key:k, right:true})));
-  el('tblTeamPerMap').innerHTML = renderSimpleTable(perMap, pmCols);
-  applyColumnHeatmap('tblTeamPerMap', NUM_KEYS);
-
-  const tlCols = [
-    {label:'Stage', key:'stage'},
-    {label:'W', key:'week', right:true},
-    {label:'D', key:'day', right:true},
-    {label:'M', key:'match', right:true},
-    {label:'Map', key:'map'}
-  ].concat(NUM_KEYS.map(k=>({label:k, key:k, right:true})));
-  el('tblTeamTimeline').innerHTML = renderSimpleTable(tl, tlCols);
-  applyColumnHeatmap('tblTeamTimeline', NUM_KEYS);
-}
-
-/* ========= Overall & Per-Map (all teams) ========= */
-function renderOverall(){
-  const rows = aggregateByTeam(baseRowsByTournament(ALL));
-  const metric = el('overallMetric')?.value || (NUM_KEYS[0] || 'records');
-  const dir = el('overallSortDir')?.dataset?.dir || 'desc';
-
-  rows.sort((a,b)=>{
-    const av = Number(a[metric] ?? 0), bv = Number(b[metric] ?? 0);
-    return dir==='asc' ? (av-bv) : (bv-av);
-  });
-
-  const cols = [
-    {label:'Team', key:'team'},
-    {label:'Code', key:'code'},
-    {label:'Region', key:'region'},
-    {label:'Records', key:'records', right:true}
-  ].concat(NUM_KEYS.map(k=>({label:k, key:k, right:true})));
-
-  el('tblOverall').innerHTML = renderSimpleTable(rows, cols);
-  applyColumnHeatmap('tblOverall', NUM_KEYS);
-}
-function renderPerMapAllTeams(){
-  const mapSel = el('mapFilter');
-  const rows = aggregateByTeamForMap(baseRowsByTournament(ALL), mapSel?.value || '__all__');
-  const metric = el('perMapMetric')?.value || (NUM_KEYS[0] || 'records');
-  const dir = el('perMapSortDir')?.dataset?.dir || 'desc';
-
-  rows.sort((a,b)=>{
-    const av = Number(a[metric] ?? 0), bv = Number(b[metric] ?? 0);
-    return dir==='asc' ? (av-bv) : (bv-av);
-  });
-
-  const cols = [
-    {label:'Team', key:'team'},
-    {label:'Code', key:'code'},
-    {label:'Region', key:'region'},
-    {label:'Records', key:'records', right:true}
-  ].concat(NUM_KEYS.map(k=>({label:k, key:k, right:true})));
-
-  el('tblPerMapAllTeams').innerHTML = renderSimpleTable(rows, cols);
-  applyColumnHeatmap('tblPerMapAllTeams', NUM_KEYS);
-}
-
-/* ========= Selection ========= */
-async function selectTeam(teamObj){
-  CURRENT_TEAM = teamObj;
-  const url = new URL(window.location.href);
-  url.searchParams.set('team', CURRENT_TEAM.name);
-  history.replaceState(null, '', url.toString());
-
-  const base = baseRowsByTournament(ALL);
-  TEAM_ROWS = base.filter(r => (r._code||'') === CURRENT_TEAM.name.toUpperCase());
-
-  renderTeamHeader();
-  renderTeamBreakdown();
-  highlightActiveTile();
-}
-
-/* ========= Wiring ========= */
-async function initial(){
-  // Prepare team grid search
-  renderTeamGrid('');
-  el('teamSearch').addEventListener('input', e => renderTeamGrid(e.target.value||''));
-
-  // Load LOPS data
-  ALL = await fetchAllRows();
-
-  if (!ALL.length){
-    document.querySelector('.shell').insertAdjacentHTML('afterbegin',
-      '<div class="section"><div class="muted">No data found in ffbr_lopsdata.</div></div>');
+  if (!CURRENT_PLAYER || !players.includes(CURRENT_PLAYER)){
+    teamTag.hidden = true; teamTag.textContent = '—';
+    kpiMount.innerHTML = '<div class="muted">Select a player to view KPIs & pick profile.</div>';
+    actMount.innerHTML = '—';
+    petMount.innerHTML = '—';
     return;
   }
 
-  // Detect numeric keys & populate metric selectors
-  detectNumericKeys(ALL);
-  const metricSelects = [el('overallMetric'), el('perMapMetric')];
-  for (const sel of metricSelects){
-    sel.innerHTML = (NUM_KEYS.length ? '' : '<option value="records">records</option>') +
-      NUM_KEYS.map(k=>`<option value="${k}">${k}</option>`).join('');
-    if (NUM_KEYS.length) sel.value = NUM_KEYS[0];
+  const rows = VIEW.filter(r=>r._player===CURRENT_PLAYER);
+  const matches = uniq(rows.map(r=>r._pgkey)).length;
+
+  // Per-player KPIs
+  const points = rows.reduce((t,r)=> t + n(r._points), 0);
+  const kills  = rows.reduce((t,r)=> t + n(r._kills), 0);
+  const assists= rows.reduce((t,r)=> t + n(r._assists), 0);
+  const hshots = rows.reduce((t,r)=> t + n(r._headshots), 0);
+  const damage = rows.reduce((t,r)=> t + n(r._damage), 0);
+  const nades  = rows.reduce((t,r)=> t + n(r._nade), 0);
+
+  const ppm = matches? points/matches : 0;
+  const kpm = matches? kills/matches  : 0;
+  const apm = matches? assists/matches: 0;
+  const hspm= matches? hshots/matches : 0;
+  const dmgpm=matches? damage/matches : 0;
+  const nadpm=matches? nades/matches  : 0;
+
+  const domTeam = dominantTeamForPlayer(CURRENT_PLAYER);
+  teamTag.textContent = `Team: ${domTeam}`; teamTag.hidden = false;
+
+  kpiMount.innerHTML = [
+    ['Matches', matches],
+    ['Points', points],
+    ['PPM', ppm.toFixed(1)],
+    ['Kills', kills],
+    ['KPM', kpm.toFixed(1)],
+    ['Assists', assists],
+    ['APM', apm.toFixed(1)],
+    ['Headshots', hshots],
+    ['HS/M', hspm.toFixed(1)],
+    ['Damage', damage],
+    ['DMG/M', dmgpm.toFixed(1)],
+    ['Grenade', nades],
+    ['Nade/M', nadpm.toFixed(1)],
+  ].map(([t,v])=>`
+    <div class="kpi">
+      <div class="t">${t}</div>
+      <div class="v">${typeof v==='number'? v.toLocaleString(): v}</div>
+    </div>
+  `).join('');
+
+  // Per-player pick tallies
+  const act = rows.map(r=> r._active).filter(Boolean);
+  const pet = rows.map(r=> r._pet).filter(Boolean);
+
+  if (act.length){
+    const items = tally(act);
+    const total = items.reduce((t,x)=>t+x.count,0) || 1;
+    const rowsAct = items.sort((a,b)=> b.count-a.count || a.name.localeCompare(b.name))
+                         .slice(0,30)
+                         .map((x,i)=>({ rank:i+1, name:x.name, count:x.count, rate:x.count/total }));
+    actMount.innerHTML = renderTable(rowsAct, [
+      {label:'#', key:'rank', right:true},
+      {label:'Active Skill', key:'name'},
+      {label:'Count', key:'count', right:true},
+      {label:'Pick %', key:'rate', right:true, fmt:'pct'}
+    ]);
+  } else {
+    actMount.innerHTML = '<div class="muted">No Active Skill picks for this player.</div>';
   }
 
-  // Tournament filter + Map filter
-  populateGlobalTournament();
-  populateMapFilter();
-
-  // Controls
-  const gSel = el('gTournament');
-  const gReset = el('gTournReset');
-  gSel.addEventListener('change', ()=>{
-    updateFilterHint();
-    populateMapFilter();
-    if (CURRENT_TEAM){
-      const base = baseRowsByTournament(ALL);
-      TEAM_ROWS = base.filter(r => (r._code||'') === CURRENT_TEAM.name.toUpperCase());
-      renderTeamHeader();
-      renderTeamBreakdown();
-    }
-    renderOverall();
-    renderPerMapAllTeams();
-  });
-  gReset.addEventListener('click', ()=>{
-    const preferred = defaultTournamentName(ALL);
-    gSel.value = preferred || '__all__';
-    gSel.dispatchEvent(new Event('change'));
-  });
-
-  el('overallMetric').addEventListener('change', renderOverall);
-  el('overallSortDir').addEventListener('click', ()=>{
-    const btn = el('overallSortDir');
-    const cur = btn.dataset.dir === 'desc' ? 'asc' : 'desc';
-    btn.dataset.dir = cur; btn.textContent = cur==='desc' ? 'Desc' : 'Asc';
-    renderOverall();
-  });
-  el('overallReset').addEventListener('click', ()=>{
-    el('overallMetric').value = NUM_KEYS[0] || 'records';
-    el('overallSortDir').dataset.dir = 'desc';
-    el('overallSortDir').textContent = 'Desc';
-    renderOverall();
-  });
-
-  el('mapFilter').addEventListener('change', renderPerMapAllTeams);
-  el('perMapMetric').addEventListener('change', renderPerMapAllTeams);
-  el('perMapSortDir').addEventListener('click', ()=>{
-    const btn = el('perMapSortDir');
-    const cur = btn.dataset.dir === 'desc' ? 'asc' : 'desc';
-    btn.dataset.dir = cur; btn.textContent = cur==='desc' ? 'Desc' : 'Asc';
-    renderPerMapAllTeams();
-  });
-  el('perMapReset').addEventListener('click', ()=>{
-    el('mapFilter').value = '__all__';
-    el('perMapMetric').value = NUM_KEYS[0] || 'records';
-    el('perMapSortDir').dataset.dir = 'desc';
-    el('perMapSortDir').textContent = 'Desc';
-    renderPerMapAllTeams();
-  });
-
-  // Default tournament applied immediately
-  el('gTournament').dispatchEvent(new Event('change'));
-
-  // Auto-select ?team=
-  const url = new URL(window.location.href);
-  const qTeam = (url.searchParams.get('team')||'').trim().toLowerCase();
-  if (qTeam){
-    const found = TEAM_BY_CODE[qTeam] || TEAM_BY_NAME[qTeam];
-    if (found) await selectTeam(found);
+  if (pet.length){
+    const items = tally(pet);
+    const total = items.reduce((t,x)=>t+x.count,0) || 1;
+    const rowsPet = items.sort((a,b)=> b.count-a.count || a.name.localeCompare(b.name))
+                         .slice(0,30)
+                         .map((x,i)=>({ rank:i+1, name:x.name, count:x.count, rate:x.count/total }));
+    petMount.innerHTML = renderTable(rowsPet, [
+      {label:'#', key:'rank', right:true},
+      {label:'Pet Skill', key:'name'},
+      {label:'Count', key:'count', right:true},
+      {label:'Pick %', key:'rate', right:true, fmt:'pct'}
+    ]);
+  } else {
+    petMount.innerHTML = '<div class="muted">No Pet Skill picks for this player.</div>';
   }
-  if (!CURRENT_TEAM && TEAMS.length) await selectTeam(TEAMS[0]);
-
-  // Ensure bottom team breakdown is collapsed by default
-  document.getElementById('teamBreakdownSection').open = false;
 }
 
-initial();
+/* ===== Wire mini panel controls ===== */
+function wireMiniPanelUI(){
+  el('ppPlayerSelect').addEventListener('change', e=>{
+    setCurrentPlayer(e.target.value || '');
+  });
+  el('ppClear').addEventListener('click', ()=>{
+    setCurrentPlayer('');
+    el('ppPlayerSelect').value = '';
+  });
+}
+
+/* ===== Sorting / UI Wiring ===== */
+function wireUI(){
+  el('fDay').addEventListener('change', e=>{ filter.day=e.target.value; refreshAll(); });
+  el('fMatch').addEventListener('change', e=>{ filter.match=e.target.value; refreshAll(); });
+  el('fMap').addEventListener('change', e=>{ filter.map=e.target.value; refreshAll(); });
+  el('fTeam').addEventListener('input', e=>{ filter.team=e.target.value; refreshAll(); });
+  el('fPlayer').addEventListener('input', e=>{ filter.player=e.target.value; refreshAll(); });
+  el('clearFilters').onclick = ()=>{
+    filter={ day:'__all__', match:'__all__', map:'__all__', team:'', player:'' };
+    populateFilters();
+    el('fTeam').value=''; el('fPlayer').value='';
+    refreshAll();
+  };
+
+  el('playerSortKey').addEventListener('change', renderPlayerTable);
+  el('playerSortDir').onclick = ()=>{
+    const b=el('playerSortDir'); b.dataset.dir = (b.dataset.dir==='desc'?'asc':'desc'); b.textContent = b.dataset.dir==='desc'?'Desc':'Asc';
+    renderPlayerTable();
+  };
+
+  el('ppSortKey').addEventListener('change', renderPerPlayer);
+  el('ppSortDir').onclick = ()=>{
+    const b=el('ppSortDir'); b.dataset.dir = (b.dataset.dir==='desc'?'asc':'desc'); b.textContent = b.dataset.dir==='desc'?'Desc':'Asc';
+    renderPerPlayer();
+  };
+
+  el('explRefresh').onclick = renderExplorer;
+
+  wireMiniPanelUI();
+}
+
+/* ===== Refresh pipeline ===== */
+function refreshAll(){
+  const prevPlayer = CURRENT_PLAYER;
+  applyFilters();
+  renderKPIs();
+  renderPerPlayer();   // per-player big table
+  renderTop10();       // spotlights
+  renderPickRates();   // global picks
+  renderPlayerTable(); // legacy compact
+
+  // mini panel: re-populate list, keep selection if still visible
+  const players = playerNamesFromView();
+  if (!players.includes(prevPlayer)) {
+    CURRENT_PLAYER = '';
+  } else {
+    CURRENT_PLAYER = prevPlayer;
+  }
+  renderMiniPanel();
+
+  if (el('explCols').options.length) renderExplorer();
+}
+
+/* ===== Explorer ===== */
+function populateExplorerCols(){
+  const expl = el('explCols');
+  const defaultCols = ['_day','_match','_map','_team','_player','_points','_kills','_assists','_place','_booyah','_active','_pet','_headshots','_damage','_nade'];
+  const items = uniq(defaultCols.concat(ALL_COLS)).filter(c=>!/^_pgkey$/.test(c));
+  expl.innerHTML = items.map(c=> `<option value="${escapeHtml(c)}" ${defaultCols.includes(c)?'selected':''}>${escapeHtml(c)}</option>`).join('');
+}
+
+/* ===== Init ===== */
+async function init(){
+  const raw = await fetchAll();
+  RAW = raw.map(normalizeRow);
+  ALL_COLS = uniq(RAW.flatMap(r=>Object.keys(r)));
+
+  populateFilters();
+  populateExplorerCols();
+  wireUI();
+  refreshAll();
+}
+
+init();
 </script>
 </body>
 </html>
