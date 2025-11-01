@@ -2,89 +2,86 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>FFBR — LOPS Player Focus (Per Player)</title>
-<meta name="theme-color" content="#0d1014"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FFBR — LOPS Data (Players, Active Skill, Pet)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <style>
   :root{
-    --bg:#0d1014; --panel:#292d42; --panel2:#1e2432; --ink:#f3f6fa; --muted:#b8c0cc;
-    --brand:#ffe93b; --brandText:#0b0d0e; --line:#4c525d; --chip:#213830;
-    --good:#62e887; --bad:#ff6b6b; --accent:#7fd2ff;
+    --bg:#0e0e0e; --panel:#1b1b1b; --panel2:#141414; --ink:#f5f5f5; --muted:#b9b9b9;
+    --brand:#ffbd59; --brand2:#ff7733; --line:#313131;
 
-    --heat-rgb: 255,233,59;
-    --heat-min: .06;
-    --heat-max: .24;
-    --heat-outline: .45;
-    --heat-radius: 8px;
+    /* Heatmap tint (brand-ish) */
+    --heat-rgb:255,189,89;   /* brand yellow */
+    --heat-min:.06;          /* min alpha */
+    --heat-max:.22;          /* max alpha */
+    --heat-top-outline:.42;  /* alpha for top outline */
+    --heat-radius:8px;       /* rounded heatmap cells */
   }
-
   *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
-  header{position:sticky;top:0;z-index:5;background:#111622;border-bottom:3px solid var(--brand);padding:14px 16px}
-  h1{margin:0;font-size:1.12rem;letter-spacing:.3px;color:var(--brand)}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif}
+  header{position:sticky;top:0;z-index:5;background:#1f1f1f;border-bottom:3px solid var(--brand);padding:14px 16px}
+  h1{margin:0;font-size:1.1rem;letter-spacing:.3px;color:var(--brand)}
   .user-controls{position:absolute;right:16px;top:12px;display:flex;gap:10px;align-items:center}
   .chip{font-size:.85rem;color:#ddd}
-  .btn{background:var(--brand);color:#111;border:0;border-radius:10px;padding:9px 12px;font-weight:800;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
-  .btn.secondary{background:#172033;color:#d8e0ef;border:1px solid #2e3b54}
-  .btn.ghost{background:transparent;border:1px dashed #40506f;color:#cbd4e6}
-  .shell{max-width:1180px;margin:20px auto;padding:0 12px}
-
-  .section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:14px}
+  .btn{background:var(--brand);color:var(--panel);border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn.secondary{background:#2a2a2a;color:#ddd;border:1px solid #3a3a3a}
+  .shell{max-width:1100px;margin:22px auto;padding:0 12px}
+  .section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
   .section h2{margin:0 0 10px;color:var(--brand)}
-  .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-  .input, select{background:#121826;color:#e7eefb;border:1px solid #31415f;border-radius:10px;padding:8px 10px;min-height:38px}
-  .input::placeholder{color:#9fb0cf}
-  .pill{background:#172033;padding:4px 8px;border-radius:999px;color:#c5d0e6;border:1px solid #2d3b57}
-  .muted{color:var(--muted)}
-  .tag{display:inline-flex;align-items:center;gap:6px;background:#172033;border:1px solid #2e3b54;color:#cbd7f3;padding:4px 8px;border-radius:999px;font-size:.86rem}
-
-  .grid2{display:grid;grid-template-columns:repeat(2,minmax(280px,1fr));gap:12px}
+  .grid2{display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:12px}
   .grid3{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:12px}
-  @media (max-width: 980px){ .grid3{grid-template-columns:repeat(2,1fr)} }
-  @media (max-width: 640px){ .grid2,.grid3{grid-template-columns:1fr} }
+  .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px}
+  .card h3{margin:0 0 6px;color:var(--brand2);font-size:1.0rem}
+  .kpis{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+  .kpi{background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:6px 8px;font-size:.9rem}
 
-  .kpis{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:10px}
-  .kpi{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px}
-  .kpi .t{font-size:.8rem;letter-spacing:.3px;color:#b7c2da}
-  .kpi .v{font-size:1.3rem;font-weight:800}
-  @media (max-width: 980px){ .kpis{grid-template-columns:repeat(3,1fr)} }
-  @media (max-width: 620px){ .kpis{grid-template-columns:repeat(2,1fr)} }
+  .bar{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+  .bar label{color:var(--muted);font-size:.9rem}
+  .input{background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:7px 10px}
+  .muted{color:var(--muted)}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#222;border:1px solid #2a2a2a;font-size:.8rem}
 
-  table{width:100%;border-collapse:separate;border-spacing:0 8px;font-size:.95rem}
-  thead th{background:#141a28;text-align:left;border-radius:10px;padding:8px 8px}
-  tbody td{background:#0f1522;border:1px solid #273350}
-  th,td{padding:8px 8px;vertical-align:top}
-  td{border-radius:10px}
-  td.right, th.right{text-align:right}
-  td[data-key]{ transition: background-color .18s ease, box-shadow .18s ease; border-radius: var(--heat-radius); background-clip: padding-box; }
-  td.heat-top{ box-shadow: inset 0 0 0 1px rgba(var(--heat-rgb), var(--heat-outline)); }
-
+  /* Collapsible */
   details.accordion{
     background:var(--panel);
     border:1px solid var(--line);
-    border-radius:14px;
-    padding:0;margin-bottom:14px;
+    border-radius:12px;
+    padding:0;
+    margin-bottom:14px;
   }
   details.accordion > summary{
-    list-style:none;cursor:pointer;padding:12px 14px;color:var(--brand);font-weight:800;border-bottom:1px solid var(--line);user-select:none;
+    list-style:none;cursor:pointer;padding:12px 14px;color:var(--brand);font-weight:700;border-bottom:1px solid var(--line);user-select:none;
   }
   details.accordion[open] > summary{ border-bottom-color:var(--line); }
   details.accordion > .accordion-body{ padding:12px; }
 
-  /* Clickable player names */
-  .linklike{
-    background:transparent;border:0;padding:0;margin:0;
-    color:#7fd2ff;text-decoration:underline;cursor:pointer;font:inherit;
+  /* Tables */
+  table{width:100%;border-collapse:separate;border-spacing:0 6px;font-size:.92rem}
+  thead th{background:#191919;position:sticky;top:0;text-align:left;border-radius:8px;padding:8px 6px}
+  tbody tr td{border-bottom:none}
+  th,td{padding:6px 6px;vertical-align:top}
+  .right{text-align:right}
+  td[data-key]{transition:background-color .18s ease, box-shadow .18s ease; border-radius:var(--heat-radius); background-clip:padding-box;}
+  td.heat-top{box-shadow:inset 0 0 0 1px rgba(var(--heat-rgb), var(--heat-top-outline));}
+
+  /* Player mini panel */
+  .mini{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .mini h4{margin:0 0 6px;color:var(--brand)}
+  .rowlist{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow:auto}
+  .rowitem{display:grid;grid-template-columns:1fr repeat(5,70px);gap:8px;background:#101010;border:1px solid #2a2a2a;border-radius:10px;padding:6px 8px}
+  .rowitem .right{text-align:right}
+
+  @media (max-width: 900px){
+    .grid2,.grid3{grid-template-columns:1fr}
+    .mini{grid-template-columns:1fr}
+    .rowitem{grid-template-columns:1fr repeat(5,64px)}
   }
 </style>
 </head>
 <body>
 <header>
-  <h1>FFBR — LOPS Player Focus (Per Player)</h1>
+  <h1>FFBR — LOPS Data</h1>
   <div class="user-controls">
-    <a class="btn secondary" href="dashboard.html">← Dashboard</a>
     <span class="chip" id="user-info">Checking login…</span>
     <button class="btn" id="logoutBtn">Logout</button>
   </div>
@@ -92,188 +89,108 @@
 
 <div class="shell">
 
-  <!-- Filters -->
+  <!-- Global Filters -->
   <div class="section">
     <h2>Filters</h2>
     <div class="bar">
-      <label class="pill">Day
-        <select id="fDay" class="input" style="min-width:140px"><option value="__all__">All</option></select>
+      <label>Tournament
+        <select id="gTournament" class="input" style="min-width:260px">
+          <option value="__all__" selected>All tournaments</option>
+        </select>
       </label>
-      <label class="pill">Match
-        <select id="fMatch" class="input" style="min-width:140px"><option value="__all__">All</option></select>
+      <label>Player
+        <input list="playerList" id="playerSearch" class="input" style="min-width:240px" placeholder="Type player name…">
+        <datalist id="playerList"></datalist>
       </label>
-      <label class="pill">Map
-        <select id="fMap" class="input" style="min-width:160px"><option value="__all__">All</option></select>
-      </label>
-      <input id="fTeam" class="input" placeholder="Search team…" style="min-width:180px"/>
-      <input id="fPlayer" class="input" placeholder="Search player…" style="min-width:180px"/>
-      <button class="btn ghost" id="clearFilters">Clear</button>
+      <button class="btn secondary" id="gReset">Reset</button>
     </div>
-    <div class="muted" id="scopeText">—</div>
+    <div class="muted" id="filterHint">—</div>
   </div>
 
-  <!-- KPIs -->
+  <!-- Overview -->
   <div class="section">
     <h2>Overview</h2>
-    <div class="kpis" id="kpiWrap"></div>
+    <div class="grid3">
+      <div class="card">
+        <h3>Dataset</h3>
+        <div class="kpis" id="kpiDataset">—</div>
+      </div>
+      <div class="card">
+        <h3>Kills & Damage</h3>
+        <div class="kpis" id="kpiDamage">—</div>
+      </div>
+      <div class="card">
+        <h3>Accuracy / Headshots</h3>
+        <div class="kpis" id="kpiHS">—</div>
+      </div>
+    </div>
   </div>
 
-  <!-- NEW: Per-Player Mini Panel -->
-  <details class="accordion" id="playerMini">
-    <summary>Player Mini Panel — Pick Profile & Rates</summary>
-    <div class="accordion-body">
-      <div class="bar" style="margin-bottom:10px">
-        <label>Player
-          <select id="ppPlayerSelect" class="input" style="min-width:260px"></select>
-        </label>
-        <span id="ppTeamTag" class="tag" title="Dominant team for this player" hidden>—</span>
-        <button class="btn secondary" id="ppClear">Clear</button>
-      </div>
-
-      <div class="kpis" id="ppKPIs" style="margin-bottom:10px"></div>
-
-      <div class="grid2">
-        <div class="section" style="margin:0">
-          <h3 style="margin:0 0 8px;color:#ffd84a">Active Skills — Player Picks</h3>
-          <div id="ppActive">—</div>
-        </div>
-        <div class="section" style="margin:0">
-          <h3 style="margin:0 0 8px;color:#ffd84a">Pet Skills — Player Picks</h3>
-          <div id="ppPet">—</div>
-        </div>
-      </div>
-    </div>
-  </details>
-
-  <!-- Per-Player Metrics (Totals + per-match rates) -->
+  <!-- Usage tables -->
   <details class="accordion" open>
-    <summary>Per-Player Metrics — Kills, Assists, Headshots, Damage, Grenade</summary>
-    <div class="accordion-body">
-      <div class="bar" style="margin-bottom:10px">
-        <label>Sort
-          <select id="ppSortKey" class="input">
-            <option value="kills" selected>Kills (total)</option>
-            <option value="assists">Assists (total)</option>
-            <option value="headshots">Headshots (total)</option>
-            <option value="damage">Damage (total)</option>
-            <option value="nades">Grenade Kills (total)</option>
-            <option value="kpm">Kills / Match</option>
-            <option value="apm">Assists / Match</option>
-            <option value="hspm">Headshots / Match</option>
-            <option value="dmgpm">Damage / Match</option>
-            <option value="nad_pm">Nades / Match</option>
-            <option value="points">Points (total)</option>
-            <option value="ppm">Points / Match</option>
-            <option value="player">Player A→Z</option>
-          </select>
-        </label>
-        <button class="btn secondary" id="ppSortDir" data-dir="desc">Desc</button>
-      </div>
-      <div id="tblPerPlayer">Loading…</div>
-    </div>
-  </details>
-
-  <!-- Player Stat Spotlights -->
-  <details class="accordion" open>
-    <summary>Player Stat Spotlights (Top 10)</summary>
-    <div class="accordion-body">
-      <div class="grid3">
-        <div class="section" style="margin:0">
-          <h3 style="margin:0 0 8px;color:#ffd84a">Eliminations</h3>
-          <div id="top10Kills">Loading…</div>
-        </div>
-        <div class="section" style="margin:0">
-          <h3 style="margin:0 0 8px;color:#ffd84a">Assists</h3>
-          <div id="top10Assists">Loading…</div>
-        </div>
-        <div class="section" style="margin:0">
-          <h3 style="margin:0 0 8px;color:#ffd84a">Points</h3>
-          <div id="top10Points">Loading…</div>
-        </div>
-      </div>
-
-      <div class="grid3" style="margin-top:12px">
-        <div class="section" style="margin:0">
-          <h3 style="margin:0 0 8px;color:#ffd84a">Kills / Match</h3>
-          <div id="top10KPM">Loading…</div>
-        </div>
-        <div class="section" style="margin:0">
-          <h3 style="margin:0 0 8px;color:#ffd84a">Points / Match</h3>
-          <div id="top10PPM">Loading…</div>
-        </div>
-        <div class="section" style="margin:0" id="mvpSpot" hidden>
-          <h3 style="margin:0 0 8px;color:#ffd84a">MVPs</h3>
-          <div id="top10MVP">Loading…</div>
-        </div>
-      </div>
-
-      <div class="grid3" id="extraStaticWrap" style="margin-top:12px"></div>
-      <div class="grid3" id="extraMetricsWrap" style="margin-top:12px"></div>
-    </div>
-  </details>
-
-  <!-- Pick Rates — Active & Pet -->
-  <details class="accordion" open>
-    <summary>Pick Rates — Active Skills & Pet Skills</summary>
-    <div class="accordion-body">
-      <div class="grid2">
-        <div class="section" style="margin:0">
-          <h3 style="margin:0 0 8px;color:#ffd84a">Active Skills</h3>
-          <div id="tblActive">Loading…</div>
-        </div>
-        <div class="section" style="margin:0">
-          <h3 style="margin:0 0 8px;color:#ffd84a">Pet Skills</h3>
-          <div id="tblPet">Loading…</div>
-        </div>
-      </div>
-    </div>
-  </details>
-
-  <!-- Player Leaderboard (legacy compact) -->
-  <details class="accordion">
-    <summary>Player Leaderboard (Compact)</summary>
+    <summary>Active Skill Usage</summary>
     <div class="accordion-body">
       <div class="bar">
-        <label>Sort
-          <select id="playerSortKey" class="input">
-            <option value="kills" selected>Kills</option>
-            <option value="assists">Assists</option>
-            <option value="points">Points</option>
-            <option value="kpm">Kills / match</option>
-            <option value="ppm">Points / match</option>
-            <option value="mvp">MVPs</option>
-            <option value="player">Player A→Z</option>
-          </select>
-        </label>
-        <button class="btn secondary" id="playerSortDir" data-dir="desc">Desc</button>
+        <span class="muted">Counts & performance by Active Skill</span>
       </div>
-      <div id="tblPlayers">Loading…</div>
+      <div class="card" style="margin:0">
+        <div id="tblActiveSkill">Loading…</div>
+      </div>
     </div>
   </details>
 
-  <!-- Data Explorer -->
-  <details class="accordion">
-    <summary>Data Explorer</summary>
+  <details class="accordion" open>
+    <summary>Pet Usage</summary>
     <div class="accordion-body">
-      <div class="bar" style="margin-bottom:10px">
-        <label>Columns
-          <select id="explCols" class="input" multiple size="6" style="min-width:280px"></select>
-        </label>
-        <label>Limit
-          <select id="explLimit" class="input">
-            <option>100</option><option selected>500</option><option>1000</option><option>2000</option><option>4000</option>
+      <div class="bar">
+        <span class="muted">Counts & performance by Pet</span>
+      </div>
+      <div class="card" style="margin:0">
+        <div id="tblPet">Loading…</div>
+      </div>
+    </div>
+  </details>
+
+  <!-- Players -->
+  <details class="accordion" open>
+    <summary>Top Players — Eliminations</summary>
+    <div class="accordion-body">
+      <div class="bar">
+        <label>Sort by
+          <select id="topSort" class="input">
+            <option value="kills" selected>Kills</option>
+            <option value="damage">Damage</option>
+            <option value="assists">Assists</option>
+            <option value="hsr">Headshot %</option>
+            <option value="grenade">Grenade Kills</option>
           </select>
         </label>
-        <button class="btn secondary" id="explRefresh">Refresh</button>
+        <label>Limit
+          <select id="topLimit" class="input">
+            <option>10</option><option>20</option><option>30</option><option>50</option>
+          </select>
+        </label>
       </div>
-      <div id="tblExplorer">—</div>
+      <div class="card" style="margin:0">
+        <div id="tblTopPlayers">Loading…</div>
+      </div>
+    </div>
+  </details>
+
+  <!-- Player Mini Panel -->
+  <details class="accordion" open>
+    <summary>Player Explorer</summary>
+    <div class="accordion-body">
+      <div id="miniPanel" class="card" style="margin:0">
+        <div class="muted">Select a player from “Player” in Filters, or click a row in Top Players.</div>
+      </div>
     </div>
   </details>
 
 </div>
 
 <script>
-/* ===== Supabase & Auth ===== */
+/* ====== Supabase init + auth ====== */
 const client = supabase.createClient(
   'https://gkugecflfddkpitlrmws.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
@@ -285,714 +202,556 @@ const client = supabase.createClient(
   const ui = document.getElementById('user-info');
   if (ui && session.user?.email) ui.textContent = `Logged in as: ${session.user.email}`;
 })();
+
 document.getElementById('logoutBtn').onclick = async () => {
-  await client.auth.signOut(); window.location.href = 'index.html';
+  await client.auth.signOut();
+  window.location.href = 'index.html';
 };
 
-/* ===== Utils ===== */
+/* ====== Utilities ====== */
 const el = id => document.getElementById(id);
 const norm = v => (v==null ? '' : String(v).trim());
-const low  = v => norm(v).toLowerCase();
 const n = v => {
-  if (v==null) return 0;
-  if (typeof v === 'number') return isFinite(v) ? v : 0;
-  const s = String(v).replace(/[, ]/g,'').trim();
-  const m = s.match(/^(-?\d+(\.\d+)?)$/);
-  return m ? Number(m[1]) : 0;
+  if (v == null || v === '') return 0;
+  const x = typeof v === 'number' ? v : parseFloat(String(v).replace(/,/g,''));
+  return Number.isFinite(x) ? x : 0;
 };
 const uniq = arr => Array.from(new Set(arr));
-const sum = (arr,key) => arr.reduce((t,r)=>t+n(r[key]),0);
-const escapeHtml = s => s.replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+const groupBy = (arr, keyFn) => {
+  const m = new Map();
+  for (const r of arr){ const k = keyFn(r); if (!m.has(k)) m.set(k, []); m.get(k).push(r); }
+  return m;
+};
+const sum = (arr,key) => arr.reduce((t,r)=> t + n(r[key]), 0);
+const fmt = (x,d=0)=>Number(n(x)).toFixed(d);
+const fmtPct = x => isFinite(x) ? (x*100).toFixed(1)+'%' : '—';
 
-/* case-insensitive getter with aliases */
+/* Case-insensitive getter over an object */
 function getCI(obj, ...names){
-  for (const name of names){
-    if (obj[name] != null && obj[name] !== '') return obj[name];
-    const key = Object.keys(obj).find(k => k.toLowerCase() === String(name).toLowerCase());
-    if (key && obj[key] != null && obj[key] !== '') return obj[key];
+  if (!obj) return '';
+  const keys = Object.keys(obj);
+  for (const want of names){
+    const idx = keys.find(k => k.toLowerCase() === String(want).toLowerCase());
+    if (idx) return obj[idx];
   }
-  return null;
+  // partial/regex fallbacks (e.g., "Grenade kill")
+  for (const want of names){
+    const rx = new RegExp('^'+String(want).replace(/\s+/g,'\\s*')+'$','i');
+    const k2 = keys.find(k => rx.test(k));
+    if (k2) return obj[k2];
+  }
+  return '';
 }
 
-function pct(x){ x=Number(x); return isFinite(x)? (x*100).toFixed(1)+'%' : '—'; }
-function renderTable(list, cols){
-  if (!list.length) return '<div class="muted">No rows.</div>';
-  const head = `<thead><tr>${cols.map(c=>`<th class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
-  const body = '<tbody>' + list.map(r=>{
-    const tds = cols.map(c=>{
-      let v = r[c.key];
-      if (c.fmt==='pct') v = pct(v);
-      else if (c.fmt==='1d') v = isFinite(v)? Number(v).toFixed(1) : '—';
-      else if (c.fmt==='2d') v = isFinite(v)? Number(v).toFixed(2) : '—';
-      else if (v==null || v==='') v = '—';
-      return `<td class="${c.right?'right':''}" data-key="${c.key}">${escapeHtml(String(v))}</td>`;
-    }).join('');
-    return `<tr>${tds}</tr>`;
-  }).join('') + '</tbody>';
-  return `<table>${head}${body}</table>`;
-}
-
-/* ===== Data & Normalization ===== */
-let RAW = [];
-let VIEW = [];
-let ALL_COLS = [];
-let filter = { day:'__all__', match:'__all__', map:'__all__', team:'', player:'' };
-
+/* ====== Normalization ====== */
 function normalizeRow(r){
   const o = {...r};
+  // Tournament fields
+  o._tournament = norm(getCI(o,'Tournament','tournament','Event','Series'));
+  o._tournament_id = n(getCI(o,'tournament_id','Tournament ID','TID','ID'));
+  o._created = getCI(o,'created_at','Created','Timestamp') || null;
 
-  // columns you highlighted
-  const KILLS_col       = getCI(o, 'KILLS','Kills','Kill','Total Kill');
-  const ASSISTS_col     = getCI(o, 'ASSISTS','Assist','Assists');
-  const HEADSHOTRS_col  = getCI(o, 'HEADSHOTRS','HEADSHOTS','Headshots','Headshot','HS');
-  const DAMAGE_col      = getCI(o, 'DAMAGE','Damage');
-  const GRENADE_col     = getCI(o, 'Grenade kill','Grenade Kill','Grenade Kills');
+  // Player (primary: "Player name")
+  let pn = norm(getCI(o,'Player name','Player Name'));
+  if (!pn) pn = norm(getCI(o,'Player','player','IGN','ign','Player IGN','InGameName','IGName'));
+  o._player = pn;
 
-  // meta
-  o._team   = norm(getCI(o,'TeamName','Team','team','TAG','tag'));
-  o._player = norm(getCI(o,'Player','IGN','Player IGN','InGameName','IGName','player','ign'));
-  o._map    = norm(getCI(o,'Map','map'));
-  o._day    = norm(getCI(o,'Day','day','WkDay','D'));
-  o._match  = norm(getCI(o,'Match','match','Game','MatchNo'));
+  // Team (best-effort)
+  o._team = norm(getCI(o,'Team','TEAM','TeamName','Team Name','TAG','Tag'));
 
-  // placement/points
-  o._place   = n(getCI(o,'Placement','placement','Place'));
-  const rankScore  = n(getCI(o,'RankingScore','Ranking Score'));
-  const killScore  = n(getCI(o,'KillingScore','Killing Score'));
-  const totalScore = n(getCI(o,'TotalScore','Total Score','Total','Total Points'));
-  o._points = totalScore || (rankScore + killScore);
+  // Map (optional)
+  o._map = norm(getCI(o,'Map','map','Match Map'));
 
-  // core stats
-  o._kills     = n(KILLS_col);
-  o._assists   = n(ASSISTS_col);
-  o._headshots = n(HEADSHOTRS_col);
-  o._damage    = n(DAMAGE_col);
-  o._nade      = n(GRENADE_col);
+  // Core numbers
+  o.kills     = n(getCI(o,'KILLS','Kills','Kill'));
+  o.assists   = n(getCI(o,'ASSISTS','Assists','Assist'));
+  // HEADSHOTRS (typo) + variants
+  o.headshots = n(getCI(o,'HEADSHOTRS','HEADSHOTS','Headshots','HS','Head shot','Head-shot'));
+  o.damage    = n(getCI(o,'DAMAGE','Damage','DMG'));
+  // grenade
+  const gk = getCI(o,'Grenade kill','Grenade kills','Grenade','Nade Kills','Nade');
+  o.grenade   = n(gk);
 
-  // booyah flag
-  o._booyah = n(getCI(o,'Booyah','booyah'));
-  if (!o._booyah) o._booyah = (o._place===1) ? 1 : 0;
+  // Active Skill / Pet
+  o.active_skill = norm(getCI(o,'Active Skill','Active','Skill','ActiveSkill'));
+  o.pet          = norm(getCI(o,'Pet','Pet Name','PetName'));
 
-  // picks
-  o._active = norm(getCI(o,'Active Skill','SkillActive','Skill Active','Active'));
-  o._pet    = norm(getCI(o,'Pet Skill Name','PetSkill','Pet'));
-
-  // per-game key
-  o._pgkey = `${low(o._day)}|${low(o._match)}|${low(o._map)}|${low(o._player)}`;
   return o;
 }
 
-/* ===== Fetch ===== */
-async function fetchAll(){
-  const CHUNK=2000; let from=0; const out=[];
+/* ====== Fetch all from ffbr_lopsdata (paginated) ====== */
+async function fetchAllRows(){
+  const CHUNK = 1000;
+  let from = 0;
+  const out = [];
   for(;;){
-    const { data, error } = await client.from('ffbr_lopsdata')
+    const { data, error } = await client
+      .from('ffbr_lopsdata')
       .select('*')
-      .order('id',{ascending:true})
-      .range(from, from+CHUNK-1);
-    if (error){ console.error('fetch error', error); break; }
-    if (!data?.length) break;
-    out.push(...data);
-    from += data.length;
+      .order('tournament_id', { ascending: true, nullsFirst:true }) // stable order across pages
+      .order('id', { ascending: true, nullsFirst:true })
+      .range(from, from + CHUNK - 1);
+
+    if (error){ console.error('ffbr_lopsdata fetch failed:', error); break; }
+    const rows = data || [];
+    if (!rows.length) break;
+    out.push(...rows);
+    from += rows.length;
   }
-  return out;
+
+  // Normalize & strip obvious header echoes like TeamName-only rows
+  const normed = out.map(normalizeRow).filter(r => r._player || r.kills || r.damage || r.assists || r.headshots);
+  const filtered = normed.filter(r => String(r._team).toLowerCase() !== 'teamname'); // safety
+
+  return filtered;
 }
 
-/* ===== Filters ===== */
-function applyFilters(){
-  const qTeam = low(filter.team);
-  const qPlayer = low(filter.player);
-  VIEW = RAW.filter(r=>{
-    if (filter.day   !== '__all__' && low(r._day)   !== low(filter.day)) return false;
-    if (filter.match !== '__all__' && low(r._match) !== low(filter.match)) return false;
-    if (filter.map   !== '__all__' && low(r._map)   !== low(filter.map)) return false;
-    if (qTeam && !low(r._team).includes(qTeam)) return false;
-    if (qPlayer && !low(r._player).includes(qPlayer)) return false;
-    return true;
+/* ====== Tournament indexing & default (prefer FFWS GLOBAL FINALS 2025) ====== */
+const PREFERRED_LATEST_NAME = 'ffws global finals 2025';
+
+function tournamentsIndex(rows){
+  const m = new Map(); // key: lower(name) -> {name, idMax, count}
+  for (const r of rows){
+    const name = norm(r._tournament); if (!name) continue;
+    const key = name.toLowerCase();
+    const id  = n(r._tournament_id);
+    if (!m.has(key)) m.set(key, { name, idMax: Number.isFinite(id)? id : -Infinity, count: 1 });
+    else {
+      const o = m.get(key);
+      if (Number.isFinite(id)) o.idMax = Math.max(o.idMax, id);
+      o.count++;
+    }
+  }
+  return m;
+}
+function defaultTournamentName(rows){
+  const idx = tournamentsIndex(rows);
+  if (!idx.size) return null;
+  for (const v of idx.values()){
+    if (v.name.toLowerCase() === PREFERRED_LATEST_NAME) return v.name;
+  }
+  // else choose highest idMax then by count
+  const all = Array.from(idx.values()).sort((a,b)=>{
+    const af = Number.isFinite(a.idMax), bf = Number.isFinite(b.idMax);
+    if (af && bf && a.idMax !== b.idMax) return b.idMax - a.idMax;
+    if (a.count !== b.count) return b.count - a.count;
+    return a.name.localeCompare(b.name);
   });
-  el('scopeText').textContent =
-    `Rows: ${VIEW.length} • Days: ${uniq(VIEW.map(r=>r._day)).length} • Matches: ${uniq(VIEW.map(r=>r._match)).length} • Teams: ${uniq(VIEW.map(r=>r._team)).length} • Players: ${uniq(VIEW.map(r=>r._player)).length}`;
+  return all[0].name;
 }
-
-/* ===== KPIs ===== */
-function renderKPIs(){
-  const games = uniq(VIEW.map(r=> `${r._day}|${r._match}|${r._map}`)).length;
-  const teams = uniq(VIEW.map(r=> r._team)).length;
-  const players = uniq(VIEW.map(r=> r._player)).length;
-  const totalPts = VIEW.reduce((t,r)=> t + n(r._points), 0);
-  const totalKills = VIEW.reduce((t,r)=> t + n(r._kills), 0);
-  const totalAssists = VIEW.reduce((t,r)=> t + n(r._assists), 0);
-
-  el('kpiWrap').innerHTML = [
-    ['Games', games],
-    ['Teams', teams],
-    ['Players', players],
-    ['Total Points', totalPts],
-    ['Total Kills', totalKills],
-    ['Total Assists', totalAssists]
-  ].map(([t,v])=>`
-    <div class="kpi">
-      <div class="t">${t}</div>
-      <div class="v">${typeof v==='number'? v.toLocaleString(): v}</div>
-    </div>
-  `).join('');
-}
-
-/* ===== Aggregations ===== */
-function groupBy(arr, keyFn){ const m=new Map(); for (const r of arr){ const k=keyFn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r);} return m; }
-
-function computePlayerAgg(){
-  const gamesByPlayer = new Map(); // player -> Set of game keys
-  const byPlayer = new Map();      // player -> agg
-  for (const r of VIEW){
-    if (!r._player) continue;
-    if (!byPlayer.has(r._player)) byPlayer.set(r._player, {
-      player: r._player, team: r._team,
-      points:0, kills:0, assists:0, headshots:0, damage:0, nades:0, mvp:0
-    });
-    const a = byPlayer.get(r._player);
-    a.points    += n(r._points);
-    a.kills     += n(r._kills);
-    a.assists   += n(r._assists);
-    a.headshots += n(r._headshots);
-    a.damage    += n(r._damage);
-    a.nades     += n(r._nade);
-    a.mvp       += n(r._mvp);
-
-    if (!gamesByPlayer.has(r._player)) gamesByPlayer.set(r._player, new Set());
-    gamesByPlayer.get(r._player).add(r._pgkey);
-  }
-  const out=[];
-  for (const [player, a] of byPlayer){
-    const matches = gamesByPlayer.get(player)?.size || 0;
-    out.push({
-      player, team: a.team, matches,
-      points:a.points, kills:a.kills, assists:a.assists,
-      headshots:a.headshots, damage:a.damage, nades:a.nades,
-      ppm: matches? a.points/matches : 0,
-      kpm: matches? a.kills/matches : 0,
-      apm: matches? a.assists/matches : 0,
-      hspm: matches? a.headshots/matches : 0,
-      dmgpm: matches? a.damage/matches : 0,
-      nad_pm: matches? a.nades/matches : 0,
-      mvp:a.mvp
-    });
-  }
-  return out;
-}
-
-/* ===== Spotlights (Top-10) ===== */
-function topN(rows, key, n=10){
-  const arr = rows.slice().sort((a,b)=> (+b[key]) - (+a[key]) || a.player.localeCompare(b.player));
-  return arr.slice(0,n);
-}
-function renderTop10(){
-  const base = computePlayerAgg();
-  const cols = (extra)=>[
-    {label:'#', key:'rank', right:true},
-    {label:'Player', key:'player'},
-    {label:'Team', key:'team'},
-    ...extra
-  ];
-  // Kills
-  el('top10Kills').innerHTML = renderTable(topN(base,'kills').map((r,i)=>({...r,rank:i+1})), cols([
-    {label:'Kills', key:'kills', right:true},
-    {label:'Matches', key:'matches', right:true},
-    {label:'KPM', key:'kpm', right:true, fmt:'1d'}
-  ]));
-  // Assists
-  el('top10Assists').innerHTML = renderTable(topN(base,'assists').map((r,i)=>({...r,rank:i+1})), cols([
-    {label:'Assists', key:'assists', right:true},
-    {label:'Matches', key:'matches', right:true},
-    {label:'APM', key:'apm', right:true, fmt:'1d'}
-  ]));
-  // Points
-  el('top10Points').innerHTML = renderTable(topN(base,'points').map((r,i)=>({...r,rank:i+1})), cols([
-    {label:'Points', key:'points', right:true},
-    {label:'Matches', key:'matches', right:true},
-    {label:'PPM', key:'ppm', right:true, fmt:'1d'}
-  ]));
-  // KPM
-  el('top10KPM').innerHTML = renderTable(topN(base.filter(r=>r.matches>0),'kpm').map((r,i)=>({...r,rank:i+1})), cols([
-    {label:'KPM', key:'kpm', right:true, fmt:'1d'},
-    {label:'Kills', key:'kills', right:true},
-    {label:'Matches', key:'matches', right:true}
-  ]));
-  // PPM
-  el('top10PPM').innerHTML = renderTable(topN(base.filter(r=>r.matches>0),'ppm').map((r,i)=>({...r,rank:i+1})), cols([
-    {label:'PPM', key:'ppm', right:true, fmt:'1d'},
-    {label:'Points', key:'points', right:true},
-    {label:'Matches', key:'matches', right:true}
-  ]));
-
-  // MVPs visible only if present
-  const hasMVP = base.some(r=> r.mvp>0);
-  if (hasMVP){
-    el('top10MVP').innerHTML = renderTable(topN(base,'mvp').map((r,i)=>({...r,rank:i+1})), cols([
-      {label:'MVPs', key:'mvp', right:true},
-      {label:'Matches', key:'matches', right:true}
-    ]));
-    el('mvpSpot').hidden = false;
-  } else {
-    el('mvpSpot').hidden = true;
-  }
-
-  // make players clickable in these tables
-  makePlayerCellsClickable('top10Kills');
-  makePlayerCellsClickable('top10Assists');
-  makePlayerCellsClickable('top10Points');
-  makePlayerCellsClickable('top10KPM');
-  makePlayerCellsClickable('top10PPM');
-  makePlayerCellsClickable('top10MVP');
-}
-
-/* ===== Static extras from your named columns (per-player) ===== */
-function renderExtraStatic(base){
-  const wrap = el('extraStaticWrap');
-  wrap.innerHTML = '';
-  const blocks = [
-    { field:'headshots', label:'Headshots' },
-    { field:'damage',    label:'Damage' },
-    { field:'nades',     label:'Grenade Kills' }
-  ];
-  let rendered = 0;
-  for (const c of blocks){
-    const list = topN(base, c.field).slice(0,10).map((r,i)=>({rank:i+1, player:r.player, team:r.team, value:r[c.field]}));
-    if (!list.length || list.every(x=>!x.value)) continue;
-    const block = document.createElement('div');
-    block.className='section'; block.style.margin='0';
-    block.innerHTML = `
-      <h3 style="margin:0 0 8px;color:#ffd84a">${c.label}</h3>
-      ${renderTable(list, [
-        {label:'#', key:'rank', right:true},
-        {label:'Player', key:'player'},
-        {label:'Team', key:'team'},
-        {label:c.label, key:'value', right:true}
-      ])}
-    `;
-    wrap.appendChild(block); rendered++;
-  }
-  if (!rendered){
-    wrap.innerHTML = '<div class="muted">No Headshots/Damage/Grenade metrics present.</div>';
-  }
-  makePlayerCellsClickable('extraStaticWrap');
-}
-
-/* ===== Auto-detected extra metrics (optional) ===== */
-const EXTRA_CANDIDATES = [
-  { key:'headshots', label:'Headshots', patterns:[/head ?shot/i, /\bhs\b/i] },
-  { key:'damage',    label:'Damage',    patterns:[/damage/i] },
-  { key:'revives',   label:'Revives',   patterns:[/revive/i, /rescues?/i] },
-  { key:'heals',     label:'Heals',     patterns:[/heal/i] },
-  { key:'knocks',    label:'Knockdowns',patterns:[/knock/i, /down/i] },
-];
-function findNumericCols(patterns){
-  return ALL_COLS.filter(c => patterns.some(p=> p.test(c)));
-}
-function aggregateExtraByPlayer(cols){
-  const map = new Map();
-  if (!cols.length) return [];
-  for (const r of VIEW){
-    if (!r._player) continue;
-    const val = cols.reduce((t,c)=> t + n(r[c]), 0);
-    if (!val) continue;
-    if (!map.has(r._player)) map.set(r._player, { player:r._player, team:r._team, value:0 });
-    map.get(r._player).value += val;
-  }
-  return Array.from(map.values());
-}
-function renderExtraMetrics(base){
-  const wrap = el('extraMetricsWrap');
-  wrap.innerHTML = '';
-  let rendered = 0;
-  for (const cand of EXTRA_CANDIDATES){
-    const cols = findNumericCols(cand.patterns);
-    const agg = aggregateExtraByPlayer(cols);
-    if (!agg.length) continue;
-    const top = agg.sort((a,b)=> b.value - a.value || a.player.localeCompare(b.player)).slice(0,10)
-                   .map((r,i)=>({rank:i+1, ...r}));
-    const block = document.createElement('div');
-    block.className = 'section'; block.style.margin = '0';
-    block.innerHTML = `
-      <h3 style="margin:0 0 8px;color:#ffd84a">${cand.label} (auto)</h3>
-      ${renderTable(top, [
-        {label:'#', key:'rank', right:true},
-        {label:'Player', key:'player'},
-        {label:'Team', key:'team'},
-        {label:cand.label, key:'value', right:true}
-      ])}
-    `;
-    wrap.appendChild(block);
-    rendered++;
-  }
-  if (!rendered){
-    wrap.innerHTML = '<div class="muted">No additional auto-detected metrics.</div>';
-  }
-  makePlayerCellsClickable('extraMetricsWrap');
-}
-
-/* ===== Picks (overall) ===== */
-function tally(list){
-  const m=new Map();
-  for(const v of list){ const k=norm(v); if(!k) continue; m.set(k,(m.get(k)||0)+1); }
-  return Array.from(m.entries()).map(([name,count])=>({name,count}));
-}
-function renderPickTable(items, mountId, title){
-  const total = items.reduce((t,x)=>t+x.count,0) || 1;
-  const rows = items.sort((a,b)=> b.count-a.count || a.name.localeCompare(b.name))
-                    .slice(0,50)
-                    .map((x,i)=>({ rank:i+1, name:x.name, count:x.count, rate:x.count/total }));
-  el(mountId).innerHTML = renderTable(rows, [
-    {label:'#', key:'rank', right:true},
-    {label:title, key:'name'},
-    {label:'Count', key:'count', right:true},
-    {label:'Pick %', key:'rate', right:true, fmt:'pct'}
-  ]);
-}
-function renderPickRates(){
-  const act = VIEW.map(r=> r._active).filter(Boolean);
-  const pet = VIEW.map(r=> r._pet).filter(Boolean);
-
-  el('tblActive').innerHTML = '—';
-  el('tblPet').innerHTML = '—';
-
-  if (act.length) renderPickTable(tally(act), 'tblActive', 'Active Skill');
-  else el('tblActive').innerHTML = '<div class="muted">No Active Skill column detected.</div>';
-
-  if (pet.length) renderPickTable(tally(pet), 'tblPet', 'Pet Skill');
-  else el('tblPet').innerHTML = '<div class="muted">No Pet Skill column detected.</div>';
-}
-
-/* ===== Legacy compact player table ===== */
-function computePlayerTable(){
-  const base = computePlayerAgg();
-  return base.map(r=>({
-    player:r.player, team:r.team, matches:r.matches,
-    points:r.points, ppm:r.ppm,
-    kills:r.kills, kpm:r.kpm,
-    assists:r.assists,
-    mvp:r.mvp
-  }));
-}
-function renderPlayerTable(){
-  const key = el('playerSortKey').value;
-  const dir = el('playerSortDir').dataset.dir;
-  const mult = dir==='asc' ? 1 : -1;
-
-  const rows = computePlayerTable();
-  rows.sort((a,b)=>{
-    if (key==='player') return mult * a.player.localeCompare(b.player);
-    return mult * ((+a[key]) - (+b[key]));
+function uniqueTournaments(rows){
+  const idx = tournamentsIndex(rows);
+  const items = Array.from(idx.values()).sort((a,b)=>{
+    const af = Number.isFinite(a.idMax), bf = Number.isFinite(b.idMax);
+    if (af && bf && a.idMax !== b.idMax) return b.idMax - a.idMax;
+    if (a.count !== b.count) return b.count - a.count;
+    return a.name.localeCompare(b.name);
   });
-
-  el('tblPlayers').innerHTML = renderTable(rows, [
-    {label:'Player', key:'player'},
-    {label:'Team', key:'team'},
-    {label:'Matches', key:'matches', right:true},
-    {label:'Points', key:'points', right:true},
-    {label:'PPM', key:'ppm', right:true, fmt:'1d'},
-    {label:'Kills', key:'kills', right:true},
-    {label:'KPM', key:'kpm', right:true, fmt:'1d'},
-    {label:'Assists', key:'assists', right:true},
-    {label:'MVPs', key:'mvp', right:true},
-  ]);
-
-  makePlayerCellsClickable('tblPlayers');
+  return items;
 }
 
-/* ===== NEW: Per-Player Metrics Table ===== */
-function renderPerPlayer(){
-  const key = el('ppSortKey').value;
-  const dir = el('ppSortDir').dataset.dir;
-  const mult = dir==='asc' ? 1 : -1;
-
-  const rows = computePlayerAgg();
-  rows.sort((a,b)=>{
-    if (key==='player') return mult * a.player.localeCompare(b.player);
-    return mult * ((+a[key]) - (+b[key]));
-  });
-
-  el('tblPerPlayer').innerHTML = renderTable(rows, [
-    {label:'Player', key:'player'},
-    {label:'Team', key:'team'},
-    {label:'Matches', key:'matches', right:true},
-
-    {label:'Points', key:'points', right:true},
-    {label:'PPM', key:'ppm', right:true, fmt:'1d'},
-
-    {label:'Kills', key:'kills', right:true},
-    {label:'KPM', key:'kpm', right:true, fmt:'1d'},
-
-    {label:'Assists', key:'assists', right:true},
-    {label:'APM', key:'apm', right:true, fmt:'1d'},
-
-    {label:'Headshots', key:'headshots', right:true},
-    {label:'HS / M', key:'hspm', right:true, fmt:'1d'},
-
-    {label:'Damage', key:'damage', right:true},
-    {label:'DMG / M', key:'dmgpm', right:true, fmt:'1d'},
-
-    {label:'Grenade', key:'nades', right:true},
-    {label:'Nade / M', key:'nad_pm', right:true, fmt:'1d'}
-  ]);
-
-  makePlayerCellsClickable('tblPerPlayer');
-}
-
-/* ===== Explorer ===== */
-function renderExplorer(){
-  const sel = el('explCols');
-  const limit = Number(el('explLimit').value)||500;
-  const cols = Array.from(sel.selectedOptions).map(o=>o.value);
-  const rows = VIEW.slice(0, limit).map(r=>{
-    const obj={}; for (const c of cols){ obj[c] = r[c]; } return obj;
-  });
-  el('tblExplorer').innerHTML = renderTable(rows, cols.map(c=>({label:c,key:c})));
-}
-
-/* ===== Populate filters ===== */
-function populateFilters(){
-  const days   = ['__all__'].concat(uniq(RAW.map(r=>r._day)).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).filter(Boolean));
-  const matches= ['__all__'].concat(uniq(RAW.map(r=>r._match)).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).filter(Boolean));
-  const maps   = ['__all__'].concat(uniq(RAW.map(r=>r._map)).sort((a,b)=>a.localeCompare(b)).filter(Boolean));
-
-  el('fDay').innerHTML    = days.map(v=> `<option value="${escapeHtml(v)}">${v==='__all__'?'All':escapeHtml(v)}</option>`).join('');
-  el('fMatch').innerHTML  = matches.map(v=> `<option value="${escapeHtml(v)}">${v==='__all__'?'All':escapeHtml(v)}</option>`).join('');
-  el('fMap').innerHTML    = maps.map(v=> `<option value="${escapeHtml(v)}">${v==='__all__'?'All':escapeHtml(v)}</option>`).join('');
-}
-
-/* ===== Player Mini Panel state + helpers ===== */
+/* ====== Global state ====== */
+let ALL = [];
 let CURRENT_PLAYER = '';
 
-function playerNamesFromView(){
-  return uniq(VIEW.map(r=>r._player).filter(Boolean)).sort((a,b)=>a.localeCompare(b));
-}
-function dominantTeamForPlayer(player){
-  const m=new Map();
-  for (const r of VIEW){ if (r._player===player){ const t=r._team||'—'; m.set(t,(m.get(t)||0)+1); } }
-  let best='—',max=-1; for (const [t,c] of m){ if (c>max){ max=c; best=t; } }
-  return best;
-}
-function setCurrentPlayer(name){
-  CURRENT_PLAYER = name || '';
-  renderMiniPanel();
+/* ====== Filtering ====== */
+function selectedTournament(){ return (el('gTournament')?.value || '__all__').trim(); }
+function baseRowsByTournament(rows){
+  const t = selectedTournament();
+  if (t === '__all__') return rows;
+  const lf = t.toLowerCase();
+  return rows.filter(r => r._tournament.toLowerCase() === lf);
 }
 
-/* Make the 'Player' cells clickable in any rendered table inside a container */
-function makePlayerCellsClickable(containerId){
+/* ====== Rendering helpers ====== */
+function renderSimpleTable(list, cols){
+  if (!list.length) return '<div class="muted">No rows.</div>';
+  const head = `<thead><tr>${cols.map(c=>`<th class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
+  const body = `<tbody>${list.map(r=>`<tr>${cols.map(c=>{
+    let v = r[c.key];
+    if (c.format==='pct') v = isFinite(v) ? (v*100).toFixed(1)+'%' : '—';
+    else if (c.format==='1d') v = isFinite(v) ? Number(v).toFixed(1) : '—';
+    else if (c.format==='2d') v = isFinite(v) ? Number(v).toFixed(2) : '—';
+    else if (c.format==='0d') v = isFinite(v) ? Number(v).toFixed(0) : '—';
+    return `<td data-key="${c.key}" class="${c.right?'right':''}">${(v==null||v==='')?'—':v}</td>`;
+  }).join('')}</tr>`).join('')}</tbody>`;
+  return `<table>${head}${body}</table>`;
+}
+
+/* ====== Quantile-band Heatmap (5 bands) ====== */
+function applyColumnHeatmap(containerId, keys){
   const wrap = el(containerId);
-  if (!wrap) return;
-  const tables = wrap.querySelectorAll('table');
-  tables.forEach(table=>{
-    const ths = Array.from(table.querySelectorAll('thead th'));
-    const idx = ths.findIndex(th => th.textContent.trim().toLowerCase() === 'player');
-    if (idx === -1) return;
-    table.querySelectorAll('tbody tr').forEach(tr=>{
-      const td = tr.children[idx];
-      if (!td) return;
-      const name = td.textContent.trim();
-      if (!name) return;
-      td.innerHTML = `<button class="linklike" data-player="${escapeHtml(name)}">${escapeHtml(name)}</button>`;
-    });
+  const table = wrap?.querySelector('table'); if (!table) return;
+
+  table.querySelectorAll('td[data-key]').forEach(td=>{
+    td.style.backgroundColor = '';
+    td.classList.remove('heat-top');
   });
+
+  const styles = getComputedStyle(document.documentElement);
+  const rgb    = styles.getPropertyValue('--heat-rgb') || '255,189,89';
+  const minA   = parseFloat(styles.getPropertyValue('--heat-min')) || .06;
+  const maxA   = parseFloat(styles.getPropertyValue('--heat-max')) || .22;
+  const radius = styles.getPropertyValue('--heat-radius') || '8px';
+  const BANDS  = 5;
+
+  for (const key of keys){
+    const cells = Array.from(table.querySelectorAll(`td[data-key="${key}"]`));
+    if (!cells.length) continue;
+
+    const entries = cells.map((td,i)=>{
+      const raw = (td.textContent||'').trim().replace('%','').replace(/,/g,'');
+      const v = parseFloat(raw);
+      return { td, i, v: isFinite(v) ? v : null };
+    }).filter(e => e.v != null);
+
+    if (!entries.length) continue;
+
+    const asc = entries.slice().sort((a,b)=> a.v - b.v);
+    const n = asc.length;
+    const topVal = asc[n-1].v;
+
+    const bandByIndex = new Map();
+    asc.forEach((e, rank)=>{
+      const p = (n<=1) ? 1 : (rank / (n - 1)); // 0..1
+      const band = Math.min(BANDS-1, Math.floor(p * BANDS)); // 0..4
+      bandByIndex.set(e.i, band);
+    });
+
+    cells.forEach((td, i)=>{
+      const band = bandByIndex.get(i);
+      if (band == null) return;
+      const alpha = minA + ((band)/(BANDS-1)) * (maxA - minA);
+      td.style.backgroundColor = `rgba(${rgb}, ${alpha.toFixed(3)})`;
+      td.style.borderRadius = radius;
+      td.style.backgroundClip = 'padding-box';
+
+      const raw = (td.textContent||'').trim().replace('%','').replace(/,/g,'');
+      const v = parseFloat(raw);
+      if (isFinite(v) && v === topVal) td.classList.add('heat-top');
+    });
+  }
 }
 
-/* Wire global click to set player from any clickable name */
-document.addEventListener('click', (e)=>{
-  const b = e.target.closest('button.linklike[data-player]');
-  if (b){
-    setCurrentPlayer(b.dataset.player);
-    const pnl = el('playerMini'); pnl.open = true;
-    const sel = el('ppPlayerSelect');
-    if (sel){ sel.value = b.dataset.player; }
+/* ====== KPIs ====== */
+function renderKPIs(rows){
+  const players = uniq(rows.map(r=>r._player).filter(Boolean));
+  const matches = rows.length;
+  const totalKills = sum(rows,'kills');
+  const totalAssists = sum(rows,'assists');
+  const totalHS = sum(rows,'headshots');
+  const totalDmg = sum(rows,'damage');
+  const totalG = sum(rows,'grenade');
+
+  el('kpiDataset').innerHTML = `
+    <div class="kpi">Rows <strong>${matches}</strong></div>
+    <div class="kpi">Players <strong>${players.length}</strong></div>
+    <div class="kpi">Avg Kills/row <strong>${fmt(matches? totalKills/matches : 0,2)}</strong></div>
+    <div class="kpi">Avg Dmg/row <strong>${fmt(matches? totalDmg/matches : 0,0)}</strong></div>
+  `;
+  el('kpiDamage').innerHTML = `
+    <div class="kpi">Kills <strong>${totalKills}</strong></div>
+    <div class="kpi">Assists <strong>${totalAssists}</strong></div>
+    <div class="kpi">Grenade Kills <strong>${totalG}</strong></div>
+    <div class="kpi">Damage <strong>${fmt(totalDmg,0)}</strong></div>
+  `;
+  const hsr = totalKills>0 ? (totalHS/totalKills) : 0;
+  el('kpiHS').innerHTML = `
+    <div class="kpi">Headshots <strong>${totalHS}</strong></div>
+    <div class="kpi">HS Rate <strong>${fmtPct(hsr)}</strong></div>
+  `;
+}
+
+/* ====== Usage: Active Skill & Pet ====== */
+function aggregateByKey(rows, key){
+  const g = groupBy(rows, r=> norm(r[key]) || '—');
+  const out = [];
+  for (const [name,list] of g.entries()){
+    const picks = list.length;
+    const players = uniq(list.map(r=>r._player).filter(Boolean)).length;
+    const kills = sum(list,'kills');
+    const assists = sum(list,'assists');
+    const dmg = sum(list,'damage');
+    const hs = sum(list,'headshots');
+    const gk = sum(list,'grenade');
+    out.push({
+      name, picks, players,
+      kills, assists, damage:dmg, headshots:hs, grenade:gk,
+      kpr: picks? kills/picks : 0,
+      dpr: picks? dmg/picks : 0,
+      hsr: kills? hs/kills : 0,
+      usage: rows.length? picks/rows.length : 0
+    });
   }
-});
+  // sort by picks desc then kills desc
+  out.sort((a,b)=> b.picks - a.picks || b.kills - a.kills || a.name.localeCompare(b.name));
+  return out;
+}
 
-/* Render mini panel UI + data */
-function renderMiniPanel(){
-  // Populate dropdown from current VIEW
-  const players = playerNamesFromView();
-  const sel = el('ppPlayerSelect');
-  sel.innerHTML = `<option value="">— Select a player —</option>` + players.map(p=>`<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
-  if (CURRENT_PLAYER && players.includes(CURRENT_PLAYER)) sel.value = CURRENT_PLAYER;
+function renderActiveSkill(rows){
+  const agg = aggregateByKey(rows, 'active_skill');
+  const cols = [
+    {label:'Active Skill', key:'name'},
+    {label:'Picks', key:'picks', right:true},
+    {label:'Players', key:'players', right:true},
+    {label:'Usage %', key:'usage', format:'pct', right:true},
+    {label:'Kills', key:'kills', right:true},
+    {label:'Assists', key:'assists', right:true},
+    {label:'Damage', key:'damage', right:true},
+    {label:'HS', key:'headshots', right:true},
+    {label:'HS %', key:'hsr', format:'pct', right:true},
+    {label:'Grenade', key:'grenade', right:true},
+    {label:'Kills/row', key:'kpr', format:'2d', right:true},
+    {label:'Dmg/row', key:'dpr', format:'1d', right:true},
+  ];
+  el('tblActiveSkill').innerHTML = renderSimpleTable(agg, cols);
+  applyColumnHeatmap('tblActiveSkill', ['picks','players','usage','kills','assists','damage','headshots','grenade','kpr','dpr','hsr']);
+}
 
-  const teamTag = el('ppTeamTag');
-  const kpiMount = el('ppKPIs');
-  const actMount = el('ppActive');
-  const petMount = el('ppPet');
+function renderPet(rows){
+  const agg = aggregateByKey(rows, 'pet');
+  const cols = [
+    {label:'Pet', key:'name'},
+    {label:'Picks', key:'picks', right:true},
+    {label:'Players', key:'players', right:true},
+    {label:'Usage %', key:'usage', format:'pct', right:true},
+    {label:'Kills', key:'kills', right:true},
+    {label:'Assists', key:'assists', right:true},
+    {label:'Damage', key:'damage', right:true},
+    {label:'HS', key:'headshots', right:true},
+    {label:'HS %', key:'hsr', format:'pct', right:true},
+    {label:'Grenade', key:'grenade', right:true},
+    {label:'Kills/row', key:'kpr', format:'2d', right:true},
+    {label:'Dmg/row', key:'dpr', format:'1d', right:true},
+  ];
+  el('tblPet').innerHTML = renderSimpleTable(agg, cols);
+  applyColumnHeatmap('tblPet', ['picks','players','usage','kills','assists','damage','headshots','grenade','kpr','dpr','hsr']);
+}
 
-  if (!CURRENT_PLAYER || !players.includes(CURRENT_PLAYER)){
-    teamTag.hidden = true; teamTag.textContent = '—';
-    kpiMount.innerHTML = '<div class="muted">Select a player to view KPIs & pick profile.</div>';
-    actMount.innerHTML = '—';
-    petMount.innerHTML = '—';
+/* ====== Top Players ====== */
+function aggregatePlayers(rows){
+  const byP = groupBy(rows, r=> r._player || '—');
+  const out = [];
+  for (const [player, list] of byP.entries()){
+    if (!player || player==='—') continue;
+    const team = uniq(list.map(r=>r._team).filter(Boolean)).join(', ');
+    const cnt = list.length;
+    const kills = sum(list,'kills');
+    const assists = sum(list,'assists');
+    const hs = sum(list,'headshots');
+    const dmg = sum(list,'damage');
+    const gk = sum(list,'grenade');
+    out.push({
+      player, team, rows:cnt,
+      kills, assists, damage:dmg, headshots:hs, grenade:gk,
+      kpr: cnt? kills/cnt : 0,
+      dpr: cnt? dmg/cnt : 0,
+      hsr: kills? hs/kills : 0
+    });
+  }
+  return out;
+}
+function renderTopPlayers(rows){
+  const sortKey = el('topSort')?.value || 'kills';
+  const limit = parseInt(el('topLimit')?.value || '10',10);
+  const agg = aggregatePlayers(rows);
+  const dir = (sortKey==='hsr') ? 'desc' : 'desc';
+  agg.sort((a,b)=>{
+    if (sortKey==='player') return a.player.localeCompare(b.player);
+    const av = Number(a[sortKey]); const bv = Number(b[sortKey]);
+    if (!isFinite(av) && !isFinite(bv)) return 0;
+    if (!isFinite(av)) return 1;
+    if (!isFinite(bv)) return -1;
+    return dir==='desc' ? (bv - av) : (av - bv);
+  });
+  const cut = agg.slice(0, limit);
+
+  const cols = [
+    {label:'Player', key:'player'},
+    {label:'Team', key:'team'},
+    {label:'Rows', key:'rows', right:true},
+    {label:'Kills', key:'kills', right:true},
+    {label:'Assists', key:'assists', right:true},
+    {label:'HS', key:'headshots', right:true},
+    {label:'HS %', key:'hsr', format:'pct', right:true},
+    {label:'Grenade', key:'grenade', right:true},
+    {label:'Damage', key:'damage', right:true},
+    {label:'Kills/row', key:'kpr', format:'2d', right:true},
+    {label:'Dmg/row', key:'dpr', format:'1d', right:true},
+  ];
+  el('tblTopPlayers').innerHTML = renderSimpleTable(cut, cols);
+  applyColumnHeatmap('tblTopPlayers', ['kills','assists','headshots','hsr','grenade','damage','kpr','dpr','rows']);
+
+  // make rows clickable -> mini panel
+  const table = el('tblTopPlayers').querySelector('table');
+  if (table){
+    const bodyRows = table.querySelectorAll('tbody tr');
+    bodyRows.forEach((tr)=>{
+      const name = (tr.querySelector('td[data-key="player"]')?.textContent || '').trim();
+      if (!name) return;
+      tr.style.cursor = 'pointer';
+      tr.addEventListener('click', ()=>{
+        CURRENT_PLAYER = name;
+        el('playerSearch').value = name;
+        renderMiniPanel(baseRowsByTournament(ALL), name);
+        // scroll to player explorer
+        document.querySelector('#miniPanel')?.scrollIntoView({behavior:'smooth', block:'start'});
+      });
+    });
+  }
+}
+
+/* ====== Player Mini Panel ====== */
+function renderMiniPanel(rows, playerName){
+  const list = rows.filter(r => (r._player||'').toLowerCase() === playerName.toLowerCase());
+  const box = el('miniPanel');
+  if (!list.length){
+    box.innerHTML = `<div class="muted">No rows for <b>${playerName}</b> in current scope.</div>`;
     return;
   }
+  const team = uniq(list.map(r=>r._team).filter(Boolean)).join(', ') || '—';
+  const cnt = list.length;
+  const kills = sum(list,'kills');
+  const assists = sum(list,'assists');
+  const hs = sum(list,'headshots');
+  const dmg = sum(list,'damage');
+  const gk = sum(list,'grenade');
+  const hsr = kills? hs/kills : 0;
 
-  const rows = VIEW.filter(r=>r._player===CURRENT_PLAYER);
-  const matches = uniq(rows.map(r=>r._pgkey)).length;
+  // by Active Skill
+  const byAS = aggregateByKey(list,'active_skill');
+  // by Pet
+  const byPet = aggregateByKey(list,'pet');
 
-  // Per-player KPIs
-  const points = rows.reduce((t,r)=> t + n(r._points), 0);
-  const kills  = rows.reduce((t,r)=> t + n(r._kills), 0);
-  const assists= rows.reduce((t,r)=> t + n(r._assists), 0);
-  const hshots = rows.reduce((t,r)=> t + n(r._headshots), 0);
-  const damage = rows.reduce((t,r)=> t + n(r._damage), 0);
-  const nades  = rows.reduce((t,r)=> t + n(r._nade), 0);
-
-  const ppm = matches? points/matches : 0;
-  const kpm = matches? kills/matches  : 0;
-  const apm = matches? assists/matches: 0;
-  const hspm= matches? hshots/matches : 0;
-  const dmgpm=matches? damage/matches : 0;
-  const nadpm=matches? nades/matches  : 0;
-
-  const domTeam = dominantTeamForPlayer(CURRENT_PLAYER);
-  teamTag.textContent = `Team: ${domTeam}`; teamTag.hidden = false;
-
-  kpiMount.innerHTML = [
-    ['Matches', matches],
-    ['Points', points],
-    ['PPM', ppm.toFixed(1)],
-    ['Kills', kills],
-    ['KPM', kpm.toFixed(1)],
-    ['Assists', assists],
-    ['APM', apm.toFixed(1)],
-    ['Headshots', hshots],
-    ['HS/M', hspm.toFixed(1)],
-    ['Damage', damage],
-    ['DMG/M', dmgpm.toFixed(1)],
-    ['Grenade', nades],
-    ['Nade/M', nadpm.toFixed(1)],
-  ].map(([t,v])=>`
-    <div class="kpi">
-      <div class="t">${t}</div>
-      <div class="v">${typeof v==='number'? v.toLocaleString(): v}</div>
+  const topRows = list.slice(-10); // last 10 rows as “recent”
+  const recent = topRows.map(r=>`
+    <div class="rowitem">
+      <div><span class="pill">${r._map||'—'}</span> <span class="muted">• ${r._tournament||'—'}</span></div>
+      <div class="right" title="Kills">${fmt(r.kills)}</div>
+      <div class="right" title="Assists">${fmt(r.assists)}</div>
+      <div class="right" title="HS">${fmt(r.headshots)}</div>
+      <div class="right" title="Grenade">${fmt(r.grenade)}</div>
+      <div class="right" title="Damage">${fmt(r.damage)}</div>
     </div>
   `).join('');
 
-  // Per-player pick tallies
-  const act = rows.map(r=> r._active).filter(Boolean);
-  const pet = rows.map(r=> r._pet).filter(Boolean);
+  box.innerHTML = `
+    <div class="mini">
+      <div>
+        <h3>${playerName} <span class="muted">(${team})</span></h3>
+        <div class="kpis">
+          <div class="kpi">Rows <strong>${cnt}</strong></div>
+          <div class="kpi">Kills <strong>${kills}</strong> <span class="muted">(${fmt(kills/cnt,2)}/row)</span></div>
+          <div class="kpi">Assists <strong>${assists}</strong> <span class="muted">(${fmt(assists/cnt,2)}/row)</span></div>
+          <div class="kpi">Grenade <strong>${gk}</strong></div>
+          <div class="kpi">Damage <strong>${fmt(dmg,0)}</strong> <span class="muted">(${fmt(dmg/cnt,0)}/row)</span></div>
+          <div class="kpi">HS <strong>${hs}</strong> <span class="muted">(${fmtPct(hsr)})</span></div>
+        </div>
+        <h4>Recent (last 10)</h4>
+        <div class="rowlist">${recent || '<div class="muted">—</div>'}</div>
+      </div>
+      <div>
+        <h4>By Active Skill</h4>
+        ${renderSimpleTable(byAS.slice(0,8), [
+          {label:'Active', key:'name'},
+          {label:'Picks', key:'picks', right:true},
+          {label:'Kills', key:'kills', right:true},
+          {label:'HS %', key:'hsr', format:'pct', right:true},
+        ])}
+        <div style="height:10px"></div>
+        <h4>By Pet</h4>
+        ${renderSimpleTable(byPet.slice(0,8), [
+          {label:'Pet', key:'name'},
+          {label:'Picks', key:'picks', right:true},
+          {label:'Kills', key:'kills', right:true},
+          {label:'HS %', key:'hsr', format:'pct', right:true},
+        ])}
+      </div>
+    </div>
+  `;
 
-  if (act.length){
-    const items = tally(act);
-    const total = items.reduce((t,x)=>t+x.count,0) || 1;
-    const rowsAct = items.sort((a,b)=> b.count-a.count || a.name.localeCompare(b.name))
-                         .slice(0,30)
-                         .map((x,i)=>({ rank:i+1, name:x.name, count:x.count, rate:x.count/total }));
-    actMount.innerHTML = renderTable(rowsAct, [
-      {label:'#', key:'rank', right:true},
-      {label:'Active Skill', key:'name'},
-      {label:'Count', key:'count', right:true},
-      {label:'Pick %', key:'rate', right:true, fmt:'pct'}
-    ]);
-  } else {
-    actMount.innerHTML = '<div class="muted">No Active Skill picks for this player.</div>';
-  }
-
-  if (pet.length){
-    const items = tally(pet);
-    const total = items.reduce((t,x)=>t+x.count,0) || 1;
-    const rowsPet = items.sort((a,b)=> b.count-a.count || a.name.localeCompare(b.name))
-                         .slice(0,30)
-                         .map((x,i)=>({ rank:i+1, name:x.name, count:x.count, rate:x.count/total }));
-    petMount.innerHTML = renderTable(rowsPet, [
-      {label:'#', key:'rank', right:true},
-      {label:'Pet Skill', key:'name'},
-      {label:'Count', key:'count', right:true},
-      {label:'Pick %', key:'rate', right:true, fmt:'pct'}
-    ]);
-  } else {
-    petMount.innerHTML = '<div class="muted">No Pet Skill picks for this player.</div>';
-  }
-}
-
-/* ===== Wire mini panel controls ===== */
-function wireMiniPanelUI(){
-  el('ppPlayerSelect').addEventListener('change', e=>{
-    setCurrentPlayer(e.target.value || '');
+  // heatmaps inside mini (small sets)
+  const miniEl = box;
+  miniEl.querySelectorAll('table').forEach((t,i)=>{
+    const id = `mini_${i}`;
+    const wrap = document.createElement('div');
+    wrap.id = id;
+    t.parentElement.replaceChildren(wrap);
+    wrap.appendChild(t);
+    applyColumnHeatmap(id, ['picks','kills','hsr']);
   });
-  el('ppClear').addEventListener('click', ()=>{
-    setCurrentPlayer('');
-    el('ppPlayerSelect').value = '';
-  });
 }
 
-/* ===== Sorting / UI Wiring ===== */
-function wireUI(){
-  el('fDay').addEventListener('change', e=>{ filter.day=e.target.value; refreshAll(); });
-  el('fMatch').addEventListener('change', e=>{ filter.match=e.target.value; refreshAll(); });
-  el('fMap').addEventListener('change', e=>{ filter.map=e.target.value; refreshAll(); });
-  el('fTeam').addEventListener('input', e=>{ filter.team=e.target.value; refreshAll(); });
-  el('fPlayer').addEventListener('input', e=>{ filter.player=e.target.value; refreshAll(); });
-  el('clearFilters').onclick = ()=>{
-    filter={ day:'__all__', match:'__all__', map:'__all__', team:'', player:'' };
-    populateFilters();
-    el('fTeam').value=''; el('fPlayer').value='';
-    refreshAll();
-  };
-
-  el('playerSortKey').addEventListener('change', renderPlayerTable);
-  el('playerSortDir').onclick = ()=>{
-    const b=el('playerSortDir'); b.dataset.dir = (b.dataset.dir==='desc'?'asc':'desc'); b.textContent = b.dataset.dir==='desc'?'Desc':'Asc';
-    renderPlayerTable();
-  };
-
-  el('ppSortKey').addEventListener('change', renderPerPlayer);
-  el('ppSortDir').onclick = ()=>{
-    const b=el('ppSortDir'); b.dataset.dir = (b.dataset.dir==='desc'?'asc':'desc'); b.textContent = b.dataset.dir==='desc'?'Desc':'Asc';
-    renderPerPlayer();
-  };
-
-  el('explRefresh').onclick = renderExplorer;
-
-  wireMiniPanelUI();
+/* ====== Map filter options: players list & tournaments ====== */
+function populatePlayersDatalist(rows){
+  const names = uniq(rows.map(r=>r._player).filter(Boolean)).sort((a,b)=>a.localeCompare(b));
+  const dl = el('playerList');
+  dl.innerHTML = names.map(nm=>`<option value="${nm}">`).join('');
 }
 
-/* ===== Refresh pipeline ===== */
-function refreshAll(){
-  const prevPlayer = CURRENT_PLAYER;
-  applyFilters();
-  renderKPIs();
-  renderPerPlayer();   // per-player big table
-  renderTop10();       // spotlights
-  renderPickRates();   // global picks
-  renderPlayerTable(); // legacy compact
+function populateGlobalTournament(){
+  const sel = el('gTournament');
+  const items = uniqueTournaments(ALL);
+  const latest = defaultTournamentName(ALL);
 
-  // mini panel: re-populate list, keep selection if still visible
-  const players = playerNamesFromView();
-  if (!players.includes(prevPlayer)) {
+  sel.innerHTML = `<option value="__all__">All tournaments</option>` +
+    items.map(o=> `<option value="${o.name.replaceAll('"','&quot;')}">${o.name}</option>`).join('');
+
+  sel.value = latest || '__all__';
+  updateFilterHint();
+}
+function updateFilterHint(){
+  const t = selectedTournament();
+  const rows = baseRowsByTournament(ALL).length;
+  el('filterHint').textContent = t==='__all__'
+    ? `Scope: All tournaments • Rows: ${rows}`
+    : `Scope: ${t} • Rows: ${rows} • Default prefers “FFWS GLOBAL FINALS 2025”, else latest by tournament_id`;
+}
+
+/* ====== Wiring ====== */
+function renderAll(){
+  const base = baseRowsByTournament(ALL);
+  renderKPIs(base);
+  renderActiveSkill(base);
+  renderPet(base);
+  renderTopPlayers(base);
+
+  // refresh datalist (once is fine; cheap to do again)
+  populatePlayersDatalist(base);
+
+  // if a player is currently selected, refresh mini
+  if (CURRENT_PLAYER) renderMiniPanel(base, CURRENT_PLAYER);
+}
+
+async function initial(){
+  // controls
+  el('topSort').addEventListener('change', ()=> renderTopPlayers(baseRowsByTournament(ALL)));
+  el('topLimit').addEventListener('change', ()=> renderTopPlayers(baseRowsByTournament(ALL)));
+  el('gTournament').addEventListener('change', ()=> { updateFilterHint(); renderAll(); });
+  el('gReset').addEventListener('click', ()=>{
+    el('gTournament').value = defaultTournamentName(ALL) || '__all__';
+    el('playerSearch').value = '';
     CURRENT_PLAYER = '';
-  } else {
-    CURRENT_PLAYER = prevPlayer;
-  }
-  renderMiniPanel();
+    el('gTournament').dispatchEvent(new Event('change'));
+  });
+  el('playerSearch').addEventListener('change', (e)=>{
+    const name = (e.target.value||'').trim();
+    CURRENT_PLAYER = name;
+    renderMiniPanel(baseRowsByTournament(ALL), name);
+  });
 
-  if (el('explCols').options.length) renderExplorer();
+  // data
+  ALL = await fetchAllRows();
+
+  // populate tournament filter & players
+  populateGlobalTournament();
+  populatePlayersDatalist(ALL);
+
+  // render all for default scope
+  renderAll();
 }
 
-/* ===== Explorer ===== */
-function populateExplorerCols(){
-  const expl = el('explCols');
-  const defaultCols = ['_day','_match','_map','_team','_player','_points','_kills','_assists','_place','_booyah','_active','_pet','_headshots','_damage','_nade'];
-  const items = uniq(defaultCols.concat(ALL_COLS)).filter(c=>!/^_pgkey$/.test(c));
-  expl.innerHTML = items.map(c=> `<option value="${escapeHtml(c)}" ${defaultCols.includes(c)?'selected':''}>${escapeHtml(c)}</option>`).join('');
-}
-
-/* ===== Init ===== */
-async function init(){
-  const raw = await fetchAll();
-  RAW = raw.map(normalizeRow);
-  ALL_COLS = uniq(RAW.flatMap(r=>Object.keys(r)));
-
-  populateFilters();
-  populateExplorerCols();
-  wireUI();
-  refreshAll();
-}
-
-init();
+initial();
 </script>
 </body>
 </html>
