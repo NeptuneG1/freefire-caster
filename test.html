@@ -42,8 +42,6 @@
   .right{text-align:right}
   td[data-key]{transition:background-color .18s ease, box-shadow .18s ease;border-radius:var(--heat-radius);background-clip:padding-box}
   td.heat-top{box-shadow:inset 0 0 0 1px rgba(var(--heat-rgb), var(--heat-top-outline))}
-  .skillcell{display:flex;align-items:center;gap:8px}
-  .skillcell img{width:28px;height:28px;object-fit:cover;border-radius:6px;border:1px solid #2a2a2a;background:#0f0f0f}
   @media (max-width: 880px){ .grid2{grid-template-columns:1fr} }
 </style>
 </head>
@@ -62,7 +60,7 @@
     <h2>Player</h2>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
       <label style="flex:1;min-width:240px">
-        <input type="search" id="playerSearch" placeholder="Type and press Enter…" class="btn secondary" style="width:100%;padding:10px">
+        <input type="search" id="playerSearch" placeholder="Type a name and press Enter…" class="btn secondary" style="width:100%;padding:10px">
       </label>
       <label>
         <select id="playerSelect" class="btn secondary" style="min-width:220px;padding:10px">
@@ -103,7 +101,7 @@
 
   <!-- GLOBAL: ACTIVE SKILL (ALL PLAYERS) -->
   <details class="accordion" open>
-    <summary>Active Skill Usage — All Players (Top 10)</summary>
+    <summary>Active Skill Usage — All Players (Top 10 by count)</summary>
     <div class="accordion-body">
       <div class="card" style="margin:0">
         <div id="tblActive">—</div>
@@ -113,7 +111,7 @@
 
   <!-- GLOBAL: PET (ALL PLAYERS) -->
   <details class="accordion" open>
-    <summary>Pet Usage — All Players (Top 10)</summary>
+    <summary>Pet Usage — All Players (Top 10 by count)</summary>
     <div class="accordion-body">
       <div class="card" style="margin:0">
         <div id="tblPet">—</div>
@@ -140,13 +138,11 @@ const client = supabase.createClient(
 );
 (async ()=>{
   const { data: { session } } = await client.auth.getSession();
-  // If your RLS allows anon reads you can comment out the redirect:
-  if (!session) { /* window.location.href = 'index.html'; */ }
+  if (!session) { /* Allow anon read if RLS permits */ }
   const ui = document.getElementById('user-info');
   if (ui && session?.user?.email) ui.textContent = `Logged in as: ${session.user.email}`;
   else ui.textContent = 'Anon access';
 })();
-
 document.getElementById('logoutBtn').onclick = async () => {
   await client.auth.signOut();
   window.location.href = 'index.html';
@@ -161,7 +157,9 @@ const n = v => {
   return Number.isFinite(x) ? x : 0;
 };
 const uniq = arr => Array.from(new Set(arr));
-const sum = (arr, k) => arr.reduce((t,r)=> t + n(r[k]), 0);
+function sum(arr, k){ let t=0; for(const r of arr) t += n(r[k]); return t; }
+
+/* column-insensitive getter */
 function getCI(obj, ...names){
   if (!obj) return '';
   const keys = Object.keys(obj);
@@ -174,7 +172,6 @@ function getCI(obj, ...names){
     const k = keys.find(x => rx.test(x));
     if (k) return obj[k];
   }
-  // fuzzy: collapse whitespace and compare
   const wantLow = names.map(s => String(s).toLowerCase().replace(/\s+/g,' ').trim());
   for (const k of keys){
     const lk = k.toLowerCase().replace(/\s+/g,' ').trim();
@@ -202,50 +199,7 @@ function normalizeRow(r){
   return o;
 }
 
-/* ===== Character index (character.json) ===== */
-let CHARIDX = new Map();
-const NC = s => (s||'').toLowerCase().replace(/\s+/g,' ').trim();
-
-function dig(obj, ...paths){
-  for (const p of paths){
-    try{
-      const parts = Array.isArray(p) ? p : String(p).split('.');
-      let cur = obj;
-      for (const seg of parts){ if (cur==null) break; cur = cur[seg]; }
-      if (cur != null && cur !== '') return cur;
-    }catch{}
-  }
-  return '';
-}
-function indexCharacters(list){
-  const m = new Map();
-  for (const c of list){
-    const name = norm(c.name || c.Name || c.character || c.title);
-    const portrait = dig(c, 'icon','image','portrait','img','images.portrait','images.icon') || '';
-    const activeName = dig(c, 'active.name','skill.active.name','skill.name','activeSkill.name','ability.active.name') || name;
-    const activeDesc = dig(c, 'active.desc','skill.active.desc','skill.description','activeSkill.description','ability.active.description') || '';
-    const aliases = (c.aliases || c.Aliases || []).map(norm).filter(Boolean);
-    const keyset = new Set([name, ...aliases]);
-    keyset.forEach(k => m.set(NC(k), { name, portrait, activeName, activeDesc }));
-  }
-  return m;
-}
-async function loadCharacters(){
-  try{
-    const resp = await fetch('character.json', { cache:'no-store' });
-    if (resp.ok){
-      const json = await resp.json();
-      CHARIDX = indexCharacters(json);
-    }
-  }catch(e){ console.warn('character.json fetch failed:', e); }
-}
-function charInfoForActive(activeName){
-  if (!activeName) return null;
-  const key = NC(activeName);
-  return CHARIDX.get(key) || null;
-}
-
-/* ===== Data fetch (no fragile order) ===== */
+/* ===== Data fetch (simple paging, no fragile order) ===== */
 async function fetchAllRows(){
   const CHUNK = 1000;
   let from = 0;
@@ -262,12 +216,12 @@ async function fetchAllRows(){
     from += rows.length;
   }
   const normed = out.map(normalizeRow);
-  // show basic status
-  document.getElementById('pickerHint').textContent = `Loaded ${normed.length} rows • Columns detected (example): ${Object.keys(out[0]||{}).slice(0,8).join(', ')}${Object.keys(out[0]||{}).length>8?'…':''}`;
+  document.getElementById('pickerHint').textContent =
+    `Loaded ${normed.length} rows • Columns detected (example): ${Object.keys(out[0]||{}).slice(0,8).join(', ')}${Object.keys(out[0]||{}).length>8?'…':''}`;
   return normed.filter(r => r._player);
 }
 
-/* ===== Heatmap ===== */
+/* ===== Heatmap (optional) ===== */
 function applyColumnHeatmap(containerId, keys){
   const wrap = el(containerId);
   const table = wrap?.querySelector('table'); if (!table) return;
@@ -327,10 +281,9 @@ function renderSimpleTable(list, cols){
   }).join('')}</tr>`).join('')}</tbody>`;
   return `<table>${head}${body}</table>`;
 }
-
 function identityBlock(playerName, rows){
-  const teams = uniq(rows.map(r=>r._team).filter(Boolean)).join(', ') || '—';
-  const tourns = uniq(rows.map(r=>r._tournament).filter(Boolean)).length;
+  const teams = Array.from(new Set(rows.map(r=>r._team).filter(Boolean))).join(', ') || '—';
+  const tourns = new Set(rows.map(r=>r._tournament).filter(Boolean)).size;
   return `
     <div style="display:flex;gap:12px;align-items:center">
       <div style="width:72px;height:72px;border:1px solid #2a2a2a;border-radius:10px;background:#111;display:flex;align-items:center;justify-content:center;font-weight:800">${(playerName||'?').slice(0,2).toUpperCase()}</div>
@@ -340,7 +293,6 @@ function identityBlock(playerName, rows){
       </div>
     </div>`;
 }
-
 function kpisForPlayer(rows){
   const cnt = rows.length;
   const kills = sum(rows,'kills');
@@ -393,86 +345,45 @@ function renderRecent(rows){
   applyColumnHeatmap('tblRecent', ['kills','assists','headshots','grenade','damage']);
 }
 
-// Aggregate helper
-function aggregateBy(rows, key){
-  const m = new Map();
+/* ===== GLOBAL AGGREGATES (COUNTS ONLY) ===== */
+function countByName(rows, key){
+  // Case/space-insensitive grouping; display first-seen original label
+  const m = new Map(); // normKey -> {name, count}
   for (const r of rows){
-    const k = norm(r[key]) || '—';
-    if (!m.has(k)) m.set(k, []);
-    m.get(k).push(r);
+    const raw = norm(r[key]);
+    if (!raw) continue;
+    const k = raw.toLowerCase().replace(/\s+/g,' ').trim();
+    if (!m.has(k)) m.set(k, { name: raw, picks: 0 });
+    m.get(k).picks += 1;
   }
-  const out = [];
-  for (const [name, list] of m.entries()){
-    const picks = list.length;
-    const kills = sum(list,'kills');
-    const assists = sum(list,'assists');
-    const headshots = sum(list,'headshots');
-    const grenade = sum(list,'grenade');
-    const damage = sum(list,'damage');
-    out.push({
-      name, picks, kills, assists, headshots, grenade, damage,
-      kpr: picks? kills/picks : 0,
-      dpr: picks? damage/picks : 0,
-      hsr: kills? headshots/kills : 0
-    });
-  }
-  return out;
+  return Array.from(m.values());
 }
 
-// GLOBAL: Active (ALL players)
 function renderActiveGlobal(allRows){
-  const agg = aggregateBy(allRows, 'active')
-    .sort((a,b)=> b.picks - a.picks || b.kills - a.kills || a.name.localeCompare(b.name))
+  const list = countByName(allRows, 'active')
+    .sort((a,b)=> b.picks - a.picks || a.name.localeCompare(b.name))
     .slice(0,10);
   const cols = [
-    { label:'Active Skill', key:'name', html:(r)=>{
-        const ci = charInfoForActive(r.name);
-        if (ci){
-          const tip = (ci.activeDesc||'').replace(/"/g,'&quot;');
-          return `<div class="skillcell" title="${tip}">
-            <img src="${ci.portrait||''}" alt="${ci.name||r.name}">
-            <div><div style="font-weight:700">${ci.name||r.name}</div>
-            <div class="muted" style="font-size:.78rem;line-height:1.2">${ci.activeName||''}</div></div>
-          </div>`;
-        }
-        return `<div class="skillcell"><img src="" alt="" style="display:none"><div><div style="font-weight:700">${r.name||'—'}</div></div></div>`;
-      }},
+    { label:'Active Skill', key:'name' },
     { label:'Picks', key:'picks', right:true },
-    { label:'Kills', key:'kills', right:true },
-    { label:'Assists', key:'assists', right:true },
-    { label:'HS', key:'headshots', right:true },
-    { label:'HS %', key:'hsr', format:'pct', right:true },
-    { label:'Grenade', key:'grenade', right:true },
-    { label:'Damage', key:'damage', right:true },
-    { label:'Kills/row', key:'kpr', format:'2d', right:true },
-    { label:'Dmg/row', key:'dpr', format:'1d', right:true },
   ];
-  el('tblActive').innerHTML = renderSimpleTable(agg, cols);
-  applyColumnHeatmap('tblActive', ['picks','kills','assists','headshots','hsr','grenade','damage','kpr','dpr']);
+  el('tblActive').innerHTML = renderSimpleTable(list, cols);
+  applyColumnHeatmap('tblActive', ['picks']);
 }
 
-// GLOBAL: Pet (ALL players)
 function renderPetGlobal(allRows){
-  const agg = aggregateBy(allRows, 'pet')
-    .sort((a,b)=> b.picks - a.picks || b.kills - a.kills || a.name.localeCompare(b.name))
+  const list = countByName(allRows, 'pet')
+    .sort((a,b)=> b.picks - a.picks || a.name.localeCompare(b.name))
     .slice(0,10);
   const cols = [
     { label:'Pet', key:'name' },
     { label:'Picks', key:'picks', right:true },
-    { label:'Kills', key:'kills', right:true },
-    { label:'Assists', key:'assists', right:true },
-    { label:'HS', key:'headshots', right:true },
-    { label:'HS %', key:'hsr', format:'pct', right:true },
-    { label:'Grenade', key:'grenade', right:true },
-    { label:'Damage', key:'damage', right:true },
-    { label:'Kills/row', key:'kpr', format:'2d', right:true },
-    { label:'Dmg/row', key:'dpr', format:'1d', right:true },
   ];
-  el('tblPet').innerHTML = renderSimpleTable(agg, cols);
-  applyColumnHeatmap('tblPet', ['picks','kills','assists','headshots','hsr','grenade','damage','kpr','dpr']);
+  el('tblPet').innerHTML = renderSimpleTable(list, cols);
+  applyColumnHeatmap('tblPet', ['picks']);
 }
 
-// GLOBAL: Top 10 players by kills
+/* ===== GLOBAL: Top 10 players by kills ===== */
 function renderTopKillers(allRows){
   const m = new Map();
   for (const r of allRows){
@@ -526,7 +437,6 @@ function selectPlayer(name){
   renderOverview(CURRENT_PLAYER, rows);
   renderRecent(rows);
 
-  // highlight chip
   document.querySelectorAll('.chipbtn').forEach(b=>{
     b.classList.toggle('active', b.getAttribute('data-name').toLowerCase() === CURRENT_PLAYER.toLowerCase());
   });
@@ -546,13 +456,11 @@ function copyLinkToClipboard(){
 
 /* ===== Wiring ===== */
 async function initial(){
-  await loadCharacters();
-  ALL = await fetchAllRows(); // robust fetch + normalize
+  ALL = await fetchAllRows();
 
-  // Build player lists
   buildPlayerLists(ALL);
 
-  // Global tables (NOT player-dependent)
+  // Global, player-independent tables
   renderActiveGlobal(ALL);
   renderPetGlobal(ALL);
   renderTopKillers(ALL);
@@ -560,16 +468,13 @@ async function initial(){
   // URL ?player=
   const url = new URL(window.location.href);
   const qp = (url.searchParams.get('player')||'').trim();
-  if (qp){
-    selectPlayer(qp);
-  }
+  if (qp){ selectPlayer(qp); }
 
   // Search enter
   el('playerSearch').addEventListener('keydown', (e)=>{
     if (e.key === 'Enter'){
       const name = (e.target.value||'').trim();
       if (!name) return;
-      // prefer exact match
       const names = uniq(ALL.map(r=>r._player).filter(Boolean));
       const exact = names.find(nm=> nm.toLowerCase() === name.toLowerCase());
       selectPlayer(exact || name);
@@ -596,7 +501,6 @@ async function initial(){
   };
   el('copyLink').onclick = copyLinkToClipboard;
 }
-
 initial();
 </script>
 </body>
