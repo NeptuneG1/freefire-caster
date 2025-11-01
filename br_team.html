@@ -13,7 +13,7 @@
       /* Compact team tiles (wrap grid, no horiz scroll) */
       --tile-w: 96px; --tile-h: 104px; --logo:44px; --code-fs:.74rem;
 
-      /* Softer heatmap tint (brand-ish) */
+      /* Heatmap tint (brand-ish) */
       --heat-rgb: 255,189,89;   /* brand yellow */
       --heat-min: .06;          /* min alpha */
       --heat-max: .22;          /* max alpha */
@@ -355,13 +355,11 @@ let ALL = [];        // rows (normalized) limited by TAG
 let TEAM_ROWS = [];  // current team rows after tournament filter
 let CURRENT_TEAM = null;
 
-/* ========= Normalizer (handles tag/TAG + common alt names) ========= */
+/* ========= Normalizer ========= */
 function normalizeRow(r){
   r._tag = norm(r.tag ?? r.TAG ?? '');
-  // normalize optional tournament id variants if they exist
   if (r.tournament_id == null && r.tourn_id != null) r.tournament_id = r.tourn_id;
   if (r.tournament_id == null && r.tournamentId != null) r.tournament_id = r.tournamentId;
-
   if (r.elimination == null) r.elimination = r.elims ?? r.kills ?? 0;
   if (r.placement   == null) r.placement   = r.place ?? 0;
   if (r.top3        == null) r.top3        = r.top_3 ?? 0;
@@ -377,7 +375,7 @@ function metaFromCode(code){
   return code ? TEAM_BY_CODE[code.toLowerCase()] : null;
 }
 
-/* ========= Fetch ffbr_data (safe select/order) ========= */
+/* ========= Fetch ffbr_data ========= */
 async function fetchAllRows(){
   const CHUNK = 1000;
   let from = 0;
@@ -407,16 +405,15 @@ async function fetchAllRows(){
   const limited = normalized.filter(r => ALLOWED_TAGS.has(norm(r._tag).toUpperCase()));
 
   if (!limited.length){
-    console.warn('No rows matched ALLOWED_TAGS. First few raw rows (for debugging):', normalized.slice(0,5));
+    console.warn('No rows matched ALLOWED_TAGS. First few raw rows:', normalized.slice(0,5));
   }
   return limited;
 }
 
 /* ========= Tournament indexing & default pick ========= */
-const PREFERRED_LATEST_NAME = 'ffws global finals 2025'; // force this if present
+const PREFERRED_LATEST_NAME = 'ffws global finals 2025';
 
 function tournamentsIndex(rows){
-  // key by lower(name); keep max id and max tuple
   const map = new Map();
   for (const r of rows){
     const name = norm(r.tournament); if (!name) continue;
@@ -424,11 +421,7 @@ function tournamentsIndex(rows){
     const id  = Number(r.tournament_id);
     const tup = keyTuple(r);
     if (!map.has(key)){
-      map.set(key, {
-        name,
-        idMax: Number.isFinite(id) ? id : -Infinity,
-        tupMax: tup
-      });
+      map.set(key, { name, idMax: Number.isFinite(id) ? id : -Infinity, tupMax: tup });
     } else {
       const o = map.get(key);
       if (Number.isFinite(id)) o.idMax = Math.max(o.idMax, id);
@@ -437,32 +430,23 @@ function tournamentsIndex(rows){
   }
   return map;
 }
-
 function defaultTournamentName(rows){
   const idx = tournamentsIndex(rows);
   if (!idx.size) return null;
-
-  // 1) If preferred title exists, use it
   for (const v of idx.values()){
     if (v.name.toLowerCase() === PREFERRED_LATEST_NAME) return v.name;
   }
-
-  // 2) Else, pick by highest tournament_id if any are finite
   const withId = Array.from(idx.values()).filter(v => Number.isFinite(v.idMax) && v.idMax !== -Infinity);
   if (withId.length){
     withId.sort((a,b)=> b.idMax - a.idMax || cmpTuple(b.tupMax, a.tupMax));
     return withId[0].name;
   }
-
-  // 3) Else, fallback to tuple recency
   const all = Array.from(idx.values()).sort((a,b)=> cmpTuple(b.tupMax, a.tupMax));
   return all[0].name;
 }
-
 function uniqueTournaments(rows){
   const idx = tournamentsIndex(rows);
   const items = Array.from(idx.values());
-  // sort by idMax desc (finite first), then tuple desc, then name
   items.sort((a,b)=>{
     const aId = Number.isFinite(a.idMax), bId = Number.isFinite(b.idMax);
     if (aId && bId){
@@ -477,7 +461,6 @@ function uniqueTournaments(rows){
   });
   return items;
 }
-
 function populateGlobalTournament(){
   const sel = el('gTournament');
   if (!sel) return;
@@ -491,7 +474,6 @@ function populateGlobalTournament(){
   sel.value = latest || '__all__';
   updateFilterHint();
 }
-
 function selectedTournament(){ return (el('gTournament')?.value || '__all__').trim(); }
 function baseRowsByTournament(rows){
   const t = selectedTournament();
@@ -621,47 +603,66 @@ function renderSimpleTable(list, cols){
   return `<table>${head}${body}</table>`;
 }
 
-/* ========= Rounded Soft Heatmap ========= */
+/* ========= Quantile-band Heatmap (5 bands) ========= */
 function applyColumnHeatmap(containerId, keys){
   const wrap = el(containerId);
   const table = wrap?.querySelector('table'); if (!table) return;
 
+  // Clear previous styles/classes
   table.querySelectorAll('td[data-key]').forEach(td=>{
-    td.style.backgroundImage = 'none';
     td.style.backgroundColor = '';
     td.classList.remove('heat-top');
   });
+
+  const styles = getComputedStyle(document.documentElement);
+  const rgb   = styles.getPropertyValue('--heat-rgb') || '255,189,89';
+  const minA  = parseFloat(styles.getPropertyValue('--heat-min')) || .06;
+  const maxA  = parseFloat(styles.getPropertyValue('--heat-max')) || .22;
+  const radius= styles.getPropertyValue('--heat-radius') || '8px';
+
+  const BANDS = 5; // quintiles
 
   for (const key of keys){
     const cells = Array.from(table.querySelectorAll(`td[data-key="${key}"]`));
     if (!cells.length) continue;
 
-    const vals = cells.map(td=>{
-      const raw = (td.textContent||'').trim().replace('%','');
+    // Collect numeric values
+    const entries = cells.map((td,i)=>{
+      const raw = (td.textContent||'').trim().replace('%','').replace(/,/g,'');
       const v = parseFloat(raw);
-      return isFinite(v) ? v : null;
-    });
+      return { td, i, v: isFinite(v) ? v : null };
+    }).filter(e => e.v != null);
 
-    const entries = cells.map((td,i)=>({ td, v: vals[i] })).filter(x=>x.v!=null);
     if (!entries.length) continue;
 
-    entries.sort((a,b)=> b.v - a.v);
-    const n = entries.length;
-    const topVal = entries[0].v;
+    // Sort ascending for quantile positions
+    const asc = entries.slice().sort((a,b)=> a.v - b.v);
+    const n = asc.length;
 
-    entries.forEach((e, idx)=>{
-      const pctRank = n <= 1 ? 1 : 1 - (idx / (n - 1)); // 1 top → 0 bottom
-      const eased = Math.pow(pctRank, 0.65);
-      const styles = getComputedStyle(document.documentElement);
-      const minA = parseFloat(styles.getPropertyValue('--heat-min')) || .06;
-      const maxA = parseFloat(styles.getPropertyValue('--heat-max')) || .22;
-      const alpha = minA + (maxA - minA) * eased;
-      const rgb = styles.getPropertyValue('--heat-rgb') || '255,189,89';
+    // Map each cell -> band index [0..4] using rank position
+    const bandByIndex = new Map();
+    asc.forEach((e, rank)=>{
+      const p = (n<=1) ? 1 : (rank / (n - 1));       // 0..1
+      const band = Math.min(BANDS-1, Math.floor(p * BANDS)); // 0..4
+      bandByIndex.set(e.i, band);
+    });
 
-      e.td.style.backgroundColor = `rgba(${rgb}, ${alpha.toFixed(3)})`;
-      e.td.style.borderRadius = styles.getPropertyValue('--heat-radius') || '8px';
-      e.td.style.backgroundClip = 'padding-box';
-      if (e.v === topVal) e.td.classList.add('heat-top');
+    // Top value cell(s) for outline
+    const topVal = asc[n-1].v;
+
+    // Paint
+    cells.forEach((td, i)=>{
+      const band = bandByIndex.get(i);
+      if (band == null) return;
+      const alpha = minA + ( (band)/(BANDS-1) ) * (maxA - minA);
+      td.style.backgroundColor = `rgba(${rgb}, ${alpha.toFixed(3)})`;
+      td.style.borderRadius = radius;
+      td.style.backgroundClip = 'padding-box';
+
+      // Outline highest value
+      const raw = (td.textContent||'').trim().replace('%','').replace(/,/g,'');
+      const v = parseFloat(raw);
+      if (isFinite(v) && v === topVal) td.classList.add('heat-top');
     });
   }
 }
@@ -1014,7 +1015,6 @@ async function initial(){
     renderPerMapAllTeams();
   });
   gReset.addEventListener('click', ()=>{
-    // Reset to preferred name if present, else latest by tournament_id
     const preferred = defaultTournamentName(ALL);
     gSel.value = preferred || '__all__';
     gSel.dispatchEvent(new Event('change'));
