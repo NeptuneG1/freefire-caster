@@ -132,8 +132,8 @@
       <div class="bar">
         <label for="overallSortKey">Sort by</label>
         <select id="overallSortKey" class="input">
-          <option value="total_pm" selected>Total / m</option>
-          <option value="total">Total</option>
+          <option value="total_pm">Total / m</option>
+          <option value="total" selected>Total</option>
           <option value="elims_pm">Elims / m</option>
           <option value="elims">Elims</option>
           <option value="placement_pm">Placement / m</option>
@@ -164,8 +164,8 @@
         </select>
         <label for="perMapSortKey">Sort by</label>
         <select id="perMapSortKey" class="input">
-          <option value="total_pm" selected>Total / m</option>
-          <option value="total">Total</option>
+          <option value="total_pm">Total / m</option>
+          <option value="total" selected>Total</option>
           <option value="elims_pm">Elims / m</option>
           <option value="elims">Elims</option>
           <option value="placement_pm">Placement / m</option>
@@ -544,14 +544,8 @@ function splitToLines(val){
   if (Array.isArray(val)) return val.flat().map(x=>String(x).trim()).filter(Boolean);
   let s=String(val).trim();
   try{ if(/^\s*\[/.test(s)){ const arr=JSON.parse(s); if(Array.isArray(arr)) return arr.flat().map(x=>String(x).trim()).filter(Boolean); } }catch{}
-  s=s.replace(/[•\u2022\u00b7]/g,'\n'); let parts=splitSmart(s);
+  s=s.replace(/[•\u2022\u00b7]/g,'\n'); let parts=s.split(/\r?\n|;|\|/); if(parts.length===1 && s.includes(',')) parts=s.split(',');
   return parts.map(x=>x.trim()).filter(Boolean);
-}
-function splitSmart(s){
-  // split by newlines / semicolons / pipes; fallback to commas if only one token
-  let parts=s.split(/\r?\n|;|\|/);
-  if(parts.length===1 && s.includes(',')) parts=s.split(',');
-  return parts;
 }
 async function fetchTeamInfoBy(codeRaw,nameRaw){
   const codeUp=norm(codeRaw).toUpperCase(); const name=norm(nameRaw);
@@ -588,8 +582,9 @@ function renderTeamInfo(info){
   const rows=picked.map(k=>{
     let v=info[k]; if(v==null||v==='') return '';
     if(k===rewardsKey) v=asListHTML(v);
-    else{ if(typeof v==='object'){try{v=JSON.stringify(v)}catch{} } if(looksLikeURL(v)) v=`<a href="${v}" target="_blank" rel="noopener">${v}</a>`; }
-    return `<tr><th style="width:160px;color:var(--muted);font-weight:600">${prettifyKey(k)}</th><td>${v}</td></tr>`;
+    else{ if(typeof v==='object'){try{v=JSON.stringify(v)}catch{} } if(looksLikeURL(v)) v=`<a href="${v}" target="_blank" rel="noopener">${v}</a>`;
+    }
+    return `<tr><th style="width:160px;color:var(--muted);font-weight:600">${String(k).replace(/_/g,' ')}</th><td>${v}</td></tr>`;
   }).filter(Boolean).join('');
   const logoUrl=info.logo_url||info.logo||'';
   const maybeLogo=logoUrl?`<div style="margin-bottom:8px"><img src="${logoUrl}" alt="team logo" style="width:84px;height:84px;object-fit:contain;border:1px solid #2a2a2a;border-radius:8px;background:#111"></div>`:'';
@@ -721,8 +716,8 @@ function sortRowsGeneric(rows,key,dir){ const mult=dir==='asc'?1:-1;
   });
 }
 function renderOverall(){
-  const sortKey=el('overallSortKey')?.value||'total_pm';
-  const dir=el('overallSortDir')?.dataset?.dir||'desc';
+  const sortKey=el('overallSortKey')?.value || 'total';
+  const dir=el('overallSortDir')?.dataset?.dir || 'desc';
   const rows=aggregateOverall(baseRowsByTournament(ALL));
   sortRowsGeneric(rows,sortKey,dir);
   el('tblOverall').innerHTML = renderSimpleTable(rows, [
@@ -736,7 +731,9 @@ function renderOverall(){
   applyColumnHeatmap('tblOverall', ['total_pm','elims_pm','placement_pm','booyah_rate','matches','booyahs','elims','placement','total']);
 }
 function renderPerMapAllTeams(){
-  const mapSel=el('mapFilter'); const sortKey=el('perMapSortKey')?.value||'total_pm'; const dir=el('perMapSortDir')?.dataset?.dir||'desc';
+  const mapSel=el('mapFilter');
+  const sortKey=el('perMapSortKey')?.value || 'total';
+  const dir=el('perMapSortDir')?.dataset?.dir || 'desc';
   const rows=aggregateTeamsForMap(baseRowsByTournament(ALL), mapSel?.value||'__all__');
   sortRowsGeneric(rows,sortKey,dir);
   el('tblPerMapAllTeams').innerHTML = renderSimpleTable(rows, [
@@ -765,7 +762,6 @@ async function loadTeamMeta(teamObj){
 /* ========= LOPS (ffbr_lopsdata) ========= */
 function normalizeLopsRow(r){
   const o={...r};
-  // basics
   o._created   = getCI(o,'created_at','Created','Timestamp') || null;
   o._id        = n(getCI(o,'id','ID'));
   o._player    = norm(getCI(o,'Player name','Player Name','Player','IGN'));
@@ -777,25 +773,19 @@ function normalizeLopsRow(r){
   o.headshots  = n(getCI(o,'HEADSHOTRS','HEADSHOTS','Headshots','HS'));
   o.damage     = n(getCI(o,'DAMAGE','Damage','DMG'));
   o.grenade    = n(getCI(o,'Grenade kill','Grenade kills','Nade Kills','Grenade'));
-  // active skill (column: skillactive_1)
   o.active     = norm(getCI(o,'skillactive_1','SkillActive_1','Active Skill','Active','SkillActive'));
-  // PET — auto-detect plus wide synonyms
   const petSyns = ['Pet','Pet Name','PetName','Pet 1','pet_1','pet1','SkillPet','skillpet_1','PetName1','PetName_1'];
   o.pet        = norm(getCI(o, PET_COL, ...petSyns));
   return o;
 }
-
-/* detect PET column once from dataset keys */
 function detectPetColumn(rows){
   if(!rows?.length) return null;
   const keys=Object.keys(rows[0]);
   const prefer=['Pet','pet','Pet Name','PetName','Pet 1','pet_1','pet1','SkillPet','skillpet_1','PetName1','PetName_1'];
   for(const k of prefer){ if(keys.includes(k)) return k; }
-  // regex fallback: any key that looks like "pet"
   const cand = keys.find(k => /(^|[^a-z])pet([^a-z]|$)/i.test(k));
   return cand || null;
 }
-
 async function fetchAllLopsRows(){
   const CHUNK=1000; let from=0; const out=[];
   for(;;){
@@ -804,14 +794,11 @@ async function fetchAllLopsRows(){
     const rows=data||[]; if(!rows.length) break;
     out.push(...rows); from+=rows.length;
   }
-  // detect pet column once
   PET_COL = detectPetColumn(out);
   if (PET_COL) console.log('Detected PET column:', PET_COL);
   else console.warn('PET column not auto-detected; using synonyms fallback.');
   return out.map(normalizeLopsRow).filter(r=>r._player);
 }
-
-/* Loose tournament filter for LOPS; fallback to All if no match */
 function baseLopsByTournament(rows){
   const tSel=selectedTournament(); if(tSel==='__all__') return rows;
   const normA = s=> String(s||'').toLowerCase().replace(/\s+/g,' ').trim();
@@ -823,8 +810,6 @@ function baseLopsByTournament(rows){
   if(!hasLoose) return rows;
   return rows.filter(r=>{ const t=normA(r._tournament), tB=normB(r._tournament); return t===selA || t.includes(selA) || tB===selB || tB.includes(selB); });
 }
-
-/* LOPS aggregations + renderers */
 function countByName(rows,key){
   const m=new Map();
   for(const r of rows){ const raw=norm(r[key]); if(!raw) continue;
@@ -884,7 +869,7 @@ async function initial(){
   populateGlobalTournament();
   populateMapFilter();
 
-  // INITIAL RENDER so the tables don't stay on "Loading…"
+  // INITIAL RENDER
   renderOverall();
   renderPerMapAllTeams();
 
@@ -897,7 +882,6 @@ async function initial(){
     }
     renderOverall();
     renderPerMapAllTeams();
-    // LOPS refresh on tourney change
     renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
   });
   el('gTournReset').addEventListener('click', ()=>{
@@ -911,7 +895,10 @@ async function initial(){
     const b=el('overallSortDir'); const cur=b.dataset.dir==='desc'?'asc':'desc'; b.dataset.dir=cur; b.textContent=cur==='desc'?'Desc':'Asc'; renderOverall();
   });
   el('overallReset').addEventListener('click', ()=>{
-    el('overallSortKey').value='total_pm'; el('overallSortDir').dataset.dir='desc'; el('overallSortDir').textContent='Desc'; renderOverall();
+    el('overallSortKey').value='total';
+    el('overallSortDir').dataset.dir='desc';
+    el('overallSortDir').textContent='Desc';
+    renderOverall();
   });
 
   // Per-map controls
@@ -921,7 +908,11 @@ async function initial(){
     const b=el('perMapSortDir'); const cur=b.dataset.dir==='desc'?'asc':'desc'; b.dataset.dir=cur; b.textContent=cur==='desc'?'Desc':'Asc'; renderPerMapAllTeams();
   });
   el('perMapReset').addEventListener('click', ()=>{
-    el('mapFilter').value='__all__'; el('perMapSortKey').value='total_pm'; el('perMapSortDir').dataset.dir='desc'; el('perMapSortDir').textContent='Desc'; renderPerMapAllTeams();
+    el('mapFilter').value='__all__';
+    el('perMapSortKey').value='total';
+    el('perMapSortDir').dataset.dir='desc';
+    el('perMapSortDir').textContent='Desc';
+    renderPerMapAllTeams();
   });
 
   // Default team selection
