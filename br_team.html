@@ -192,7 +192,7 @@
       <div class="bar">
         <label>Top</label>
         <select id="lopsTopKillersTop" class="input">
-          <option>10</option><option selected>20</option><option>50</option><option>100</option>
+          <option selected>10</option><option>20</option><option>50</option><option>100</option>
         </select>
         <span class="muted">Tournament filter applies (loose match; falls back to All if not found).</span>
       </div>
@@ -202,36 +202,33 @@
     </div>
   </details>
 
-  <!-- COLLAPSED: LOPS — Active Skill Usage -->
-  <details class="accordion" id="lopsActiveSection">
-    <summary>Active Skill Usage (All Players)</summary>
+  <!-- NEW: SIDE-BY-SIDE LOPS — Active Skill + Pet Usage (collapsed by default) -->
+  <details class="accordion" id="lopsUsageSection">
+    <summary>Active Skill & Pet Usage (All Players)</summary>
     <div class="accordion-body">
-      <div class="bar">
-        <label>Top</label>
-        <select id="lopsActiveTop" class="input">
-          <option>10</option><option selected>20</option><option>50</option><option>100</option>
-        </select>
-        <span class="muted">Tournament filter applies (loose match; falls back to All if not found).</span>
-      </div>
-      <div class="card" style="margin:0">
-        <div id="tblLopsActive">Loading…</div>
-      </div>
-    </div>
-  </details>
-
-  <!-- COLLAPSED: LOPS — Pet Usage -->
-  <details class="accordion" id="lopsPetSection">
-    <summary>Pet Usage (All Players)</summary>
-    <div class="accordion-body">
-      <div class="bar">
-        <label>Top</label>
-        <select id="lopsPetTop" class="input">
-          <option>10</option><option selected>20</option><option>50</option><option>100</option>
-        </select>
-        <span class="muted">Auto-detects the Pet column (Pet / Pet Name / Pet 1 / pet_1, etc.).</span>
-      </div>
-      <div class="card" style="margin:0">
-        <div id="tblLopsPet">Loading…</div>
+      <div class="grid2">
+        <div class="card">
+          <h3>Active Skill Usage</h3>
+          <div class="bar">
+            <label>Top</label>
+            <select id="lopsActiveTop" class="input">
+              <option selected>10</option><option>20</option><option>50</option><option>100</option>
+            </select>
+            <span class="muted">Tournament filter applies (loose match; falls back to All if not found).</span>
+          </div>
+          <div id="tblLopsActive">Loading…</div>
+        </div>
+        <div class="card">
+          <h3>Pet Usage</h3>
+          <div class="bar">
+            <label>Top</label>
+            <select id="lopsPetTop" class="input">
+              <option selected>10</option><option>20</option><option>50</option><option>100</option>
+            </select>
+            <span class="muted">Auto-detects the Pet column (Pet / Pet Name / Pet 1 / pet_1, etc.).</span>
+          </div>
+          <div id="tblLopsPet">Loading…</div>
+        </div>
       </div>
     </div>
   </details>
@@ -352,18 +349,15 @@ function normalizeRow(r){
 function getCI(obj, ...names){
   if (!obj) return '';
   const keys = Object.keys(obj);
-  // exact (case-insensitive)
   for (const want of names.filter(Boolean)){
     const k = keys.find(x => x.toLowerCase() === String(want).toLowerCase());
     if (k) return obj[k];
   }
-  // whitespace-flex
   for (const want of names.filter(Boolean)){
     const rx = new RegExp('^'+String(want).replace(/\s+/g,'\\s*')+'$','i');
     const k = keys.find(x => rx.test(x));
     if (k) return obj[k];
   }
-  // normalized equality
   const wantLow = names.filter(Boolean).map(s => String(s).toLowerCase().replace(/\s+/g,' ').trim());
   for (const k of keys){
     const lk = k.toLowerCase().replace(/\s+/g,' ').trim();
@@ -828,7 +822,7 @@ function lopsTopPlayersByKills(rows){
   return [...m.values()];
 }
 function renderLopsActive(){
-  const limit=Number(el('lopsActiveTop').value)||20;
+  const limit=Number(el('lopsActiveTop').value)||10; // default 10
   const base=baseLopsByTournament(LOPS_ALL);
   const list=countByName(base,'active').sort((a,b)=> b.picks-a.picks || a.name.localeCompare(b.name)).slice(0,limit);
   const cols=[ {label:'#',key:'rank',right:true,html:(_,i)=>i+1}, {label:'Active Skill',key:'name'}, {label:'Picks',key:'picks',right:true} ];
@@ -836,7 +830,7 @@ function renderLopsActive(){
   applyColumnHeatmap('tblLopsActive', ['picks']);
 }
 function renderLopsPet(){
-  const limit=Number(el('lopsPetTop').value)||20;
+  const limit=Number(el('lopsPetTop').value)||10; // default 10
   const base=baseLopsByTournament(LOPS_ALL);
   const list=countByName(base,'pet').sort((a,b)=> b.picks-a.picks || a.name.localeCompare(b.name)).slice(0,limit);
   const cols=[ {label:'#',key:'rank',right:true,html:(_,i)=>i+1}, {label:'Pet',key:'name'}, {label:'Picks',key:'picks',right:true} ];
@@ -844,7 +838,7 @@ function renderLopsPet(){
   applyColumnHeatmap('tblLopsPet', ['picks']);
 }
 function renderLopsTopKillers(){
-  const limit=Number(el('lopsTopKillersTop').value)||20;
+  const limit=Number(el('lopsTopKillersTop').value)||10; // default 10
   const base=baseLopsByTournament(LOPS_ALL);
   const list=lopsTopPlayersByKills(base).sort((a,b)=> b.kills-a.kills || a.player.localeCompare(b.player)).slice(0,limit);
   const cols=[
