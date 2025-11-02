@@ -185,18 +185,25 @@
     </div>
   </details>
 
-  <!-- MAP PERFORMANCE (selected team) -->
-  <details class="accordion" id="mapPerfSection">
-    <summary>Map Performance (Selected Team)</summary>
+  <!-- MOVED UP & COLLAPSED: LOPS — Top Players by Kills -->
+  <details class="accordion" id="lopsTopKillersSection">
+    <summary>Top Players by Kills</summary>
     <div class="accordion-body">
+      <div class="bar">
+        <label>Top</label>
+        <select id="lopsTopKillersTop" class="input">
+          <option>10</option><option selected>20</option><option>50</option><option>100</option>
+        </select>
+        <span class="muted">Tournament filter applies (loose match; falls back to All if not found).</span>
+      </div>
       <div class="card" style="margin:0">
-        <div id="tblMapTeam">—</div>
+        <div id="tblLopsTopKillers">Loading…</div>
       </div>
     </div>
   </details>
 
-  <!-- NEW: LOPS GLOBAL SECTIONS -->
-  <details class="accordion" open>
+  <!-- COLLAPSED: LOPS — Active Skill Usage -->
+  <details class="accordion" id="lopsActiveSection">
     <summary>Active Skill Usage (All Players)</summary>
     <div class="accordion-body">
       <div class="bar">
@@ -212,7 +219,8 @@
     </div>
   </details>
 
-  <details class="accordion" open>
+  <!-- COLLAPSED: LOPS — Pet Usage -->
+  <details class="accordion" id="lopsPetSection">
     <summary>Pet Usage (All Players)</summary>
     <div class="accordion-body">
       <div class="bar">
@@ -228,18 +236,12 @@
     </div>
   </details>
 
-  <details class="accordion" open>
-    <summary>Top Players by Kills</summary>
+  <!-- PUSHED TO BOTTOM: MAP PERFORMANCE (selected team) -->
+  <details class="accordion" id="mapPerfSection">
+    <summary>Map Performance (Selected Team)</summary>
     <div class="accordion-body">
-      <div class="bar">
-        <label>Top</label>
-        <select id="lopsTopKillersTop" class="input">
-          <option>10</option><option selected>20</option><option>50</option><option>100</option>
-        </select>
-        <span class="muted">Tournament filter applies (loose match; falls back to All if not found).</span>
-      </div>
       <div class="card" style="margin:0">
-        <div id="tblLopsTopKillers">Loading…</div>
+        <div id="tblMapTeam">—</div>
       </div>
     </div>
   </details>
@@ -542,8 +544,14 @@ function splitToLines(val){
   if (Array.isArray(val)) return val.flat().map(x=>String(x).trim()).filter(Boolean);
   let s=String(val).trim();
   try{ if(/^\s*\[/.test(s)){ const arr=JSON.parse(s); if(Array.isArray(arr)) return arr.flat().map(x=>String(x).trim()).filter(Boolean); } }catch{}
-  s=s.replace(/[•\u2022\u00b7]/g,'\n'); let parts=s.split(/\r?\n|;|\|/); if(parts.length===1 && s.includes(',')) parts=s.split(',');
+  s=s.replace(/[•\u2022\u00b7]/g,'\n'); let parts=splitSmart(s);
   return parts.map(x=>x.trim()).filter(Boolean);
+}
+function splitSmart(s){
+  // split by newlines / semicolons / pipes; fallback to commas if only one token
+  let parts=s.split(/\r?\n|;|\|/);
+  if(parts.length===1 && s.includes(',')) parts=s.split(',');
+  return parts;
 }
 async function fetchTeamInfoBy(codeRaw,nameRaw){
   const codeUp=norm(codeRaw).toUpperCase(); const name=norm(nameRaw);
