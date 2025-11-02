@@ -50,6 +50,16 @@
     .grid.compact .char-name, .grid.compact .tooltip { display: none; }
     .compact-name { text-align: center; font-size: 0.7rem; color: #ccc; margin-top: 4px; word-break: break-word; line-height: 1.1; max-width: 72px; }
     .grid.compact .card img:hover { transform: scale(1.05); }
+    #toggleModeBtn {
+      background: #ff7733;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    #toggleModeBtn:hover { background: #ff9655; }
   </style>
 </head>
 <body>
@@ -60,13 +70,18 @@
     <span style="color: #ff59c7;">■ Passive Skill</span>
   </div>
 
+  <div style="text-align:center; margin: 20px 0;">
+    <label style="font-weight:bold; margin-right:10px; color:#ffbd59;">Show Meta For:</label>
+    <button id="toggleModeBtn" onclick="toggleMetaMode()">Battle Royale</button>
+  </div>
+
   <div class="nav-buttons">
     <a href="dashboard.html">← Back to Dashboard</a>
     <a href="character-comparison.html">➤ Compare Characters</a>
     <button class="logout-btn" onclick="logout()">Logout</button>
   </div>
 
-  <h2 style="text-align:center; color:#00d2ff;">Meta Characters</h2>
+  <h2 id="metaTitle" style="text-align:center; color:#00d2ff;">Meta Characters (Battle Royale)</h2>
   <div class="grid" id="metaGrid"><p>Loading meta characters...</p></div>
 
   <h2 style="text-align:center; color:#ff59c7;">Non-Meta Characters</h2>
@@ -76,75 +91,84 @@
   <div id="compactByRole" class="compact-role-container"></div>
 
   <script>
-    fetch('https://neptuneg1.github.io/freefire-caster/character.json')
-      .then(res => res.json())
-      .then(characters => {
-        const metaGrid = document.getElementById('metaGrid');
-        const nonMetaGrid = document.getElementById('nonMetaGrid');
-        const compactByRole = document.getElementById('compactByRole');
-        metaGrid.innerHTML = '';
-        nonMetaGrid.innerHTML = '';
+    let currentMetaMode = 'meta'; // default BR
 
-        characters.forEach(c => {
-          const cardHTML = `
-            <div class="card" tabindex="0" onclick="toggleTooltip(event, this)">
-              <img src="${c.image_url}" alt="${c.name}" class="${c.skill_type === 'Passive' ? 'passive' : 'active'}" />
-              <div class="char-name">${c.name}</div>
-              <div class="tooltip">
-                <strong>${c.name}</strong><br>
-                <em>${c.skill_type} Skill:</em> ${c.skill}<br>
-                ${c.description}<br>
-                <strong>Role:</strong> ${c.role || 'N/A'}
+    function toggleMetaMode() {
+      currentMetaMode = currentMetaMode === 'meta' ? 'cs_meta' : 'meta';
+      document.getElementById('toggleModeBtn').textContent = currentMetaMode === 'meta' ? 'Battle Royale' : 'Clash Squad';
+      document.getElementById('metaTitle').textContent =
+        currentMetaMode === 'meta' ? 'Meta Characters (Battle Royale)' : 'Meta Characters (Clash Squad)';
+      loadCharacterGrids();
+    }
+
+    function loadCharacterGrids() {
+      fetch('https://neptuneg1.github.io/freefire-caster/character.json')
+        .then(res => res.json())
+        .then(characters => {
+          const metaGrid = document.getElementById('metaGrid');
+          const nonMetaGrid = document.getElementById('nonMetaGrid');
+          const compactByRole = document.getElementById('compactByRole');
+          metaGrid.innerHTML = '';
+          nonMetaGrid.innerHTML = '';
+          compactByRole.innerHTML = '';
+
+          characters.forEach(c => {
+            const isMeta = (c[currentMetaMode] || 'no') === 'yes';
+
+            const cardHTML = `
+              <div class="card" tabindex="0" onclick="toggleTooltip(event, this)">
+                <img src="${c.image_url}" alt="${c.name}" class="${c.skill_type === 'Passive' ? 'passive' : 'active'}" />
+                <div class="char-name">${c.name}</div>
+                <div class="tooltip">
+                  <strong>${c.name}</strong><br>
+                  <em>${c.skill_type} Skill:</em> ${c.skill}<br>
+                  ${c.description}<br>
+                  <strong>Role:</strong> ${c.role || 'N/A'}
+                </div>
+              </div>`;
+            (isMeta ? metaGrid : nonMetaGrid).innerHTML += cardHTML;
+          });
+
+          const roleGroups = {};
+          const roleIcons = { Attack: "⚔️", Support: "🛡️", Info: "📡", Heal: "💊", Defense: "🛡️", Scout: "👁️", Other: "❓" };
+          characters.forEach(c => {
+            const role = c.role || 'Other';
+            if (!roleGroups[role]) roleGroups[role] = [];
+            roleGroups[role].push(c);
+          });
+          compactByRole.innerHTML = Object.entries(roleGroups).map(([role, chars]) => `
+            <div class="role-group">
+              <div class="role-title">${roleIcons[role] || "🔸"} ${role}</div>
+              <div class="grid compact">
+                ${chars.map(c => `
+                  <div class="card" tabindex="0">
+                    <img src="${c.image_url}" alt="${c.name}" class="${c.skill_type === 'Passive' ? 'passive' : 'active'}" />
+                    <div class="compact-name">${c.name}</div>
+                  </div>`).join('')}
               </div>
-            </div>`;
-          (c.meta === 'yes' ? metaGrid : nonMetaGrid).innerHTML += cardHTML;
+            </div>`).join('');
         });
-
-        const roleGroups = {};
-        const roleIcons = { Attack: "⚔️", Support: "🛡️", Info: "📡", Heal: "💊", Defense: "🛡️", Scout: "👁️", Other: "❓" };
-        characters.forEach(c => {
-          const role = c.role || 'Other';
-          if (!roleGroups[role]) roleGroups[role] = [];
-          roleGroups[role].push(c);
-        });
-        compactByRole.innerHTML = Object.entries(roleGroups).map(([role, chars]) => `
-          <div class="role-group">
-            <div class="role-title">${roleIcons[role] || "🔸"} ${role}</div>
-            <div class="grid compact">
-              ${chars.map(c => `
-                <div class="card" tabindex="0">
-                  <img src="${c.image_url}" alt="${c.name}" class="${c.skill_type === 'Passive' ? 'passive' : 'active'}" />
-                  <div class="compact-name">${c.name}</div>
-                </div>`).join('')}
-            </div>
-          </div>`).join('');
-      });
+    }
 
     function toggleTooltip(event, card) {
       event.stopPropagation();
-
       document.querySelectorAll('.card').forEach(c => {
         const t = c.querySelector('.tooltip');
         c.classList.remove('active');
         if (t) t.classList.remove('active'), t.style.display = 'none';
       });
-
       const tooltip = card.querySelector('.tooltip');
       if (tooltip) {
         card.classList.add('active');
         tooltip.classList.add('active');
         tooltip.style.display = 'block';
-
         requestAnimationFrame(() => {
           const rect = card.getBoundingClientRect();
           const tooltipRect = tooltip.getBoundingClientRect();
           let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
           let top = rect.bottom + 10;
-
-          // constrain to viewport
           left = Math.max(10, Math.min(left, window.innerWidth - tooltipRect.width - 10));
           top = Math.max(10, Math.min(top, window.innerHeight - tooltipRect.height - 10));
-
           tooltip.style.position = 'fixed';
           tooltip.style.left = `${left}px`;
           tooltip.style.top = `${top}px`;
@@ -159,8 +183,9 @@
         if (t) t.classList.remove('active'), t.style.display = 'none';
       });
     });
+
+    // Initial load
+    loadCharacterGrids();
   </script>
 </body>
 </html>
-
-
