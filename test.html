@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FFBR — Teams (Combined ffbr_data + lops)</title>
+  <title>FFBR — Teams (Combined ffbr_data + lops with helper_team join)</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root{
@@ -106,7 +106,7 @@
     </div>
   </div>
 
-  <!-- NEW: COMBINED TEAM PERFORMANCE -->
+  <!-- COMBINED TEAM PERFORMANCE -->
   <div class="section" id="combinedPerfSection">
     <h2>Selected Team — Combined Performance (ffbr_data + lops)</h2>
     <div class="grid3">
@@ -310,59 +310,92 @@ document.getElementById('logoutBtn').onclick = async () => {
   window.location.href = 'index.html';
 };
 
-/* ========= Teams reference ========= */
-const TEAMS = [
-  { name:"AG",   fullname:"ALL GAMERS",                 region:"SEA",   logo:"https://i.imgur.com/GZxPNXi.png" },
-  { name:"BRU",  fullname:"BURIRAM UNITED ESPORTS",     region:"SEA",   logo:"https://i.imgur.com/ngHig8q.png" },
-  { name:"CLVS", fullname:"CLEAR VISION ESPORTS",       region:"MEA",   logo:"https://i.imgur.com/AXkfYHk.png" },
-  { name:"E1",   fullname:"E1 SPORTS",                  region:"BR",    logo:"https://i.imgur.com/bddVsgm.png" },
-  { name:"EVOS", fullname:"EVOS DIVINE",                region:"SEA",   logo:"https://i.imgur.com/xWCHSwf.png" },
-  { name:"FX",   fullname:"FLUXO",                      region:"BR",    logo:"https://i.imgur.com/OGJ5A7r.png" },
-  { name:"GOW",  fullname:"GOW",                        region:"SEA",   logo:"https://i.imgur.com/CfmGEX6.png" },
-  { name:"HEV",  fullname:"HEAVY",                      region:"SEA",   logo:"https://i.imgur.com/vqVyJSJ.png" },
-  { name:"HS",   fullname:"HOTSHOT ESPORTS",            region:"PK",    logo:"https://i.imgur.com/f8ehquU.png" },
-  { name:"NVL",  fullname:"NOVA LEGION",                region:"LATAM", logo:"https://i.imgur.com/iZmL3FT.png" },
-  { name:"PE",   fullname:"P ESPORTS",                  region:"SEA",   logo:"https://i.imgur.com/kFcOez3.png" },
-  { name:"R7",   fullname:"MOVISTAR R7",                region:"LATAM", logo:"https://i.imgur.com/95lg1Dp.png" },
-  { name:"RC",   fullname:"RED CLIFF",                  region:"BD",    logo:"https://i.imgur.com/kX5wBEZ.png" },
-  { name:"RHK",  fullname:"RED HAWKS",                  region:"BD",    logo:"https://i.imgur.com/E2MJQdH.png" },
-  { name:"RRQ",  fullname:"RRQ KAZU",                   region:"SEA",   logo:"https://i.imgur.com/Afw7WMp.png" },
-  { name:"FLCN", fullname:"TEAM FALCONS",               region:"SEA",   logo:"https://i.imgur.com/DwPXnv1.png" },
-  { name:"TS",   fullname:"TEAM SOLID",                 region:"BR",    logo:"https://i.imgur.com/3Chm42Y.png" },
-  { name:"WAG",  fullname:"WAG",                        region:"SEA",   logo:"https://i.imgur.com/EiRHnoW.png" },
-];
-const TEAM_BY_CODE = Object.fromEntries(TEAMS.map(t => [t.name.toLowerCase(), t]));
-const TEAM_BY_NAME = Object.fromEntries(TEAMS.map(t => [t.fullname.toLowerCase(), t]));
-const ALLOWED_TAGS = new Set(TEAMS.map(t => t.name.toUpperCase()));
-
+/* ========= Helpers ========= */
 const el = id => document.getElementById(id);
 const fmtPct = x => isFinite(x) ? (x*100).toFixed(1)+'%' : '—';
 const n = x => Number(x ?? 0) || 0;
 const norm = v => (v==null ? '' : String(v).trim());
 function looksLikeURL(v){ return /^https?:\/\//i.test(String(v||'')); }
 function sum(arr,k){ let t=0; for(const r of arr) t+= n(r[k]); return t; }
-function safeDiv(a,b){ a=n(a); b=n(b); return b? (a/b) : 0; }
 function groupBy(arr,fn){ const m=new Map(); for(const r of arr){ const k=fn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r);} return m; }
-
 function keyTuple(r){ return [Number(r.year)||0,Number(r.week)||0,Number(r.day)||0,Number(r.match)||0,Number(r.id)||0]; }
 function cmpTuple(a,b){ for(let i=0;i<Math.max(a.length,b.length);i++){const av=a[i]??0,bv=b[i]??0; if(av>bv) return 1; if(av<bv) return -1;} return 0; }
+function normKey(s){ return String(s||'').toLowerCase().replace(/\s+/g,' ').trim(); }
+function normKeyTight(s){ return String(s||'').toLowerCase().replace(/[^\w]+/g,''); }
 
-/* ========= State ========= */
-let ALL = [];        // ffbr_data
-let TEAM_ROWS = [];  // current team rows after tournament filter
+/* ========= Global state (built from helper_team) ========= */
+let TEAMS = [];                 // [{ name: TAG, fullname: TEAM, region: REGION, ew: 'EAST/WEST', logo }]
+let TEAM_BY_CODE = {};          // 'ag' -> meta
+let TEAM_BY_NAME = {};          // 'all gamers global' -> meta
+let ALIASES = new Map();        // alias (loose) -> TAG
+let ALLOWED_TAGS = new Set();   // set of TAG strings
+let ALL = [];                   // ffbr_data (normalized + team recognized)
+let TEAM_ROWS = [];             // ffbr_data for current team + tournament scope
 let CURRENT_TEAM = null;
 
-let LOPS_ALL = [];   // ffbr_lopsdata
-let PET_COL = null;  // auto-detected Pet column name
-let WEAPON_COL = null; // auto-detected Weapon column
-let DEATHS_COL = null; // auto-detected Deaths column
-let KNOCK_COL = null;  // knockdowns
-let VEHICLE_COL = null;// vehicle kills
-let GLOO_USED_COL = null, GLOO_DESTROY_COL = null, REVIVES_COL = null, KILLTIME_COL = null;
+let LOPS_ALL = [];              // ffbr_lopsdata (normalized)
+let PET_COL = null, WEAPON_COL=null, DEATHS_COL=null, KNOCK_COL=null, VEHICLE_COL=null, GLOO_USED_COL=null, GLOO_DESTROY_COL=null, REVIVES_COL=null, KILLTIME_COL=null;
 
-/* ========= Normalizers (ffbr_data) ========= */
+/* ========= Build team index from helper_team ========= */
+async function loadHelperTeams(){
+  const rows = await fetchAllHelperTeams();
+  if (!rows.length){
+    console.warn('[helper_team] returned 0 rows. Check RLS or table name.');
+  }
+  const teams = rows.map(r=>{
+    return {
+      name: norm(r['TAG']).toUpperCase(),
+      fullname: norm(r['TEAM']),
+      region: norm(r['REGION']),
+      ew: norm(r['E/W']),
+      logo: norm(r['LOGO'])
+    };
+  }).filter(t=>t.name);
+
+  TEAMS = teams;
+  TEAM_BY_CODE = Object.fromEntries(TEAMS.map(t => [t.name.toLowerCase(), t]));
+  TEAM_BY_NAME = Object.fromEntries(TEAMS.map(t => [t.fullname.toLowerCase(), t]));
+  ALLOWED_TAGS = new Set(TEAMS.map(t => t.name.toUpperCase()));
+
+  // alias map: TAG, TEAM, ALT NAME 1 (loose + tight)
+  ALIASES = new Map();
+  for (const r of rows){
+    const tag = norm(r['TAG']).toUpperCase();
+    if (!tag) continue;
+    const addAlias = (val)=>{
+      const a = normKey(val);
+      const b = normKeyTight(val);
+      if (a) ALIASES.set(a, tag);
+      if (b) ALIASES.set(b, tag);
+    };
+    addAlias(tag);
+    addAlias(r['TEAM']);
+    addAlias(r['ALT NAME 1']);
+  }
+}
+
+/* canonical: returns TAG (e.g., 'RRQ') or null */
+function canonicalTag(v){
+  const a = normKey(v); if (ALIASES.has(a)) return ALIASES.get(a);
+  const b = normKeyTight(v); if (ALIASES.has(b)) return ALIASES.get(b);
+  return null;
+}
+
+/* ========= helper_team fetch ========= */
+async function fetchAllHelperTeams(){
+  const CHUNK=1000; let from=0; const out=[];
+  for(;;){
+    const { data, error } = await client.from('helper_team').select('*').range(from, from+CHUNK-1);
+    if (error){ console.error('helper_team fetch failed:', error); break; }
+    const rows=data||[]; if(!rows.length) break;
+    out.push(...rows); from+=rows.length;
+  }
+  return out;
+}
+
+/* ========= ffbr_data normalization ========= */
 function normalizeRow(r){
-  r._tag = norm(r.tag ?? r.TAG ?? '');
+  r._tag = norm(r.tag ?? r.TAG ?? r.team ?? r.Team ?? '');
   if (r.tournament_id == null && r.tourn_id != null) r.tournament_id = r.tourn_id;
   if (r.tournament_id == null && r.tournamentId != null) r.tournament_id = r.tournamentId;
   if (r.elimination == null) r.elimination = r.elims ?? r.kills ?? 0;
@@ -370,28 +403,6 @@ function normalizeRow(r){
   if (r.top3        == null) r.top3        = r.top_3 ?? 0;
   return r;
 }
-
-function getCI(obj, ...names){
-  if (!obj) return '';
-  const keys = Object.keys(obj);
-  for (const want of names.filter(Boolean)){
-    const k = keys.find(x => x.toLowerCase() === String(want).toLowerCase());
-    if (k) return obj[k];
-  }
-  for (const want of names.filter(Boolean)){
-    const rx = new RegExp('^'+String(want).replace(/\s+/g,'\\s*')+'$','i');
-    const k = keys.find(x => rx.test(x));
-    if (k) return obj[k];
-  }
-  const wantLow = names.filter(Boolean).map(s => String(s).toLowerCase().replace(/\s+/g,' ').trim());
-  for (const k of keys){
-    const lk = k.toLowerCase().replace(/\s+/g,' ').trim();
-    if (wantLow.includes(lk)) return obj[k];
-  }
-  return '';
-}
-
-/* ========= Fetch ffbr_data ========= */
 async function fetchAllRows(){
   const CHUNK=1000; let from=0; const out=[];
   for(;;){
@@ -408,8 +419,18 @@ async function fetchAllRows(){
     out.push(...rows); from += rows.length;
   }
   const normalized = out.map(normalizeRow);
-  const filtered = normalized.filter(r => ALLOWED_TAGS.has(norm(r._tag).toUpperCase()));
-  return filtered;
+
+  // keep rows that we can map to a known TAG via helper_team
+  const mapped = normalized.map(r=>{
+    const canon = canonicalTag(r._tag);
+    if (canon) r._canon_tag = canon; // store canonical TAG
+    return r;
+  }).filter(r => !!r._canon_tag);
+
+  if (!mapped.length) {
+    console.warn('[ffbr_data] 0 rows after canonical mapping. Check tags vs helper_team aliases.');
+  }
+  return mapped;
 }
 
 /* ========= Tournament helpers (ffbr_data) ========= */
@@ -462,11 +483,10 @@ function updateFilterHint(){
 }
 
 /* ========= Aggregations (ffbr_data) ========= */
-function codeFromRow(r){ const code=norm(r._tag).toUpperCase(); return ALLOWED_TAGS.has(code) ? code : null; }
 function metaFromCode(code){ return code ? TEAM_BY_CODE[code.toLowerCase()] : null; }
 function aggregateOverall(rows){
   const grouped=new Map();
-  for(const r of rows){ const code=codeFromRow(r); if(!code) continue; if(!grouped.has(code)) grouped.set(code,[]); grouped.get(code).push(r); }
+  for(const r of rows){ const code=r._canon_tag; if(!code) continue; if(!grouped.has(code)) grouped.set(code,[]); grouped.get(code).push(r); }
   const out=[];
   for(const [code,list] of grouped.entries()){
     const meta=metaFromCode(code); const m=list.length; if(!m||!meta) continue;
@@ -481,7 +501,7 @@ function aggregateTeamsForMap(rows,mapValue){
   const perTeam=new Map();
   for(const r of rows){
     if(mapValue && mapValue!=='__all__'){ if((norm(r.map)||'').toLowerCase()!==mapValue.toLowerCase()) continue; }
-    const code=codeFromRow(r); if(!code) continue;
+    const code=r._canon_tag; if(!code) continue;
     if(!perTeam.has(code)) perTeam.set(code,[]); perTeam.get(code).push(r);
   }
   const out=[];
@@ -672,6 +692,25 @@ function teamMapPerf(rows){
 }
 
 /* ========= LOPS detection & normalization ========= */
+function getCI(obj, ...names){
+  if (!obj) return '';
+  const keys = Object.keys(obj);
+  for (const want of names.filter(Boolean)){
+    const k = keys.find(x => x.toLowerCase() === String(want).toLowerCase());
+    if (k) return obj[k];
+  }
+  for (const want of names.filter(Boolean)){
+    const rx = new RegExp('^'+String(want).replace(/\s+/g,'\\s*')+'$','i');
+    const k = keys.find(x => rx.test(x));
+    if (k) return obj[k];
+  }
+  const wantLow = names.filter(Boolean).map(s => String(s).toLowerCase().replace(/\s+/g,' ').trim());
+  for (const k of keys){
+    const lk = k.toLowerCase().replace(/\s+/g,' ').trim();
+    if (wantLow.includes(lk)) return obj[k];
+  }
+  return '';
+}
 function detectColumnByRegex(keys, patterns){
   for(const p of patterns){ const found=keys.find(k=>p.test(k)); if(found) return found; }
   return null;
@@ -680,31 +719,18 @@ function detectLopsColumns(rows){
   if(!rows?.length) return;
   const keys=Object.keys(rows[0]);
 
-  // pet
   const petPrefer=['Pet','pet','Pet Name','PetName','Pet 1','pet_1','pet1','SkillPet','skillpet_1','PetName1','PetName_1'];
   PET_COL = petPrefer.find(k=>keys.includes(k)) || detectColumnByRegex(keys,[/pet/i]);
 
-  // weapon
   WEAPON_COL = ['weapon','Weapon','Gun','Primary','Primary Weapon','Loadout','Weapon Name','WeaponName','gun_name']
     .find(k=>keys.includes(k)) || detectColumnByRegex(keys,[/weapon|gun/i]);
 
-  // deaths
   DEATHS_COL = ['Deaths','DEATHS','deaths','Death'].find(k=>keys.includes(k)) || detectColumnByRegex(keys,[/death/i]);
-
-  // knockdowns
   KNOCK_COL = ['Knockdown','Knockdowns','DBNO','Downs','Knocks'].find(k=>keys.includes(k)) || detectColumnByRegex(keys,[/knock|dbno|down/i]);
-
-  // vehicle kills
   VEHICLE_COL = ['Vehicle Kills','VehicleKills','Veh Kills','Vehicle'].find(k=>keys.includes(k)) || detectColumnByRegex(keys,[/veh/i]);
-
-  // gloo walls
   GLOO_USED_COL = ['Gloo Wall Used','Gloo Used','GW Used','GlooUsed'].find(k=>keys.includes(k)) || detectColumnByRegex(keys,[/gloo.*used/i]);
   GLOO_DESTROY_COL = ['Gloo Wall Destroyed','GW Destroyed','GlooDestroyed'].find(k=>keys.includes(k)) || detectColumnByRegex(keys,[/gloo.*destroy/i]);
-
-  // revives
   REVIVES_COL = ['Members Revived','Revives','Teammates Revived','Rescues'].find(k=>keys.includes(k)) || detectColumnByRegex(keys,[/reviv|rescu/i]);
-
-  // kill time / ttk
   KILLTIME_COL = ['Kill Time','kill_time','Time To Kill','TTK'].find(k=>keys.includes(k)) || detectColumnByRegex(keys,[/ttk|kill.?time/i]);
 }
 function normalizeLopsRow(r){
@@ -712,7 +738,8 @@ function normalizeLopsRow(r){
   o._created   = getCI(o,'created_at','Created','Timestamp') || null;
   o._id        = n(getCI(o,'id','ID'));
   o._player    = norm(getCI(o,'Player name','Player Name','Player','IGN'));
-  o._team      = norm(getCI(o,'Team','TAG','TeamName','Team Name'));
+  o._teamRaw   = norm(getCI(o,'Team','TAG','TeamName','Team Name'));
+  o._team      = canonicalTag(o._teamRaw) || o._teamRaw; // map to TAG if possible
   o._map       = norm(getCI(o,'Map','map','Match Map'));
   o._tournament= norm(getCI(o,'Tournament','Event','Series'));
 
@@ -747,7 +774,7 @@ async function fetchAllLopsRows(){
   return out.map(normalizeLopsRow).filter(r=>r._player);
 }
 
-/* ========= Tournament-scope helpers (lops) ========= */
+/* ========= Tournament-scope for lops ========= */
 function baseLopsByTournament(rows){
   const tSel=selectedTournament(); if(tSel==='__all__') return rows;
   const normA = s=> String(s||'').toLowerCase().replace(/\s+/g,' ').trim();
@@ -760,24 +787,23 @@ function baseLopsByTournament(rows){
   return rows.filter(r=>{ const t=normA(r._tournament), tB=normB(r._tournament); return t===selA || t.includes(selA) || tB===selB || tB.includes(selB); });
 }
 
-/* ========= Selected team lops rows ========= */
+/* ========= Selected team helpers ========= */
 function lopsRowsForTeam(all, teamObj){
   if(!teamObj) return [];
-  const code = (teamObj.name||'').trim().toLowerCase();
-  const full = (teamObj.fullname||'').trim().toLowerCase();
+  const selTag = teamObj.name.toUpperCase();
   const base = baseLopsByTournament(all);
   return base.filter(r=>{
-    const t = (r._team||'').toLowerCase();
-    return t===code || t===full || t===teamObj.name || t===teamObj.fullname;
+    const t = (r._team || '').toUpperCase();
+    return t === selTag;
   });
 }
 
-/* ========= Team combined metrics (ffbr_data + lops) ========= */
+/* ========= Team combined metrics ========= */
 function renderTeamCombinedMetrics(){
   const totalsEl = el('teamTotals'), avgsEl = el('teamAverages'), sigEl = el('teamSignals');
   if(!CURRENT_TEAM){ totalsEl.innerHTML=avgsEl.innerHTML=sigEl.innerHTML='—'; return; }
 
-  const games = TEAM_ROWS.length || 0; // per-match rows from ffbr_data
+  const games = TEAM_ROWS.length || 0;
   const teamLops = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
 
   const totals = {
@@ -798,7 +824,6 @@ function renderTeamCombinedMetrics(){
   const hsRate = totals.kills ? (totals.hs / totals.kills) : null;
   const avgKillTime = teamLops.length ? (totals.killTime / teamLops.length) : null;
 
-  // Totals
   totalsEl.innerHTML = `
     <div class="kpi">TOTAL ELIMS <strong>${totals.kills}</strong></div>
     <div class="kpi">TOTAL DMG <strong>${totals.dmg}</strong></div>
@@ -813,7 +838,6 @@ function renderTeamCombinedMetrics(){
     <div class="kpi">GAMES PLAYED <strong>${games}</strong></div>
   `;
 
-  // Per match averages (use ffbr_data games to normalize)
   avgsEl.innerHTML = games ? `
     <div class="kpi">AVG. ELIMS <strong>${(totals.kills/games).toFixed(1)}</strong></div>
     <div class="kpi">AVG. DMG <strong>${(totals.dmg/games).toFixed(0)}</strong></div>
@@ -825,14 +849,13 @@ function renderTeamCombinedMetrics(){
     <div class="kpi">AVG. HS <strong>${(totals.hs/games).toFixed(1)}</strong></div>
   ` : '<div class="muted">No games found for averages.</div>';
 
-  // Signals
   sigEl.innerHTML = `
     <div class="kpi">HEADSHOTS KILL RATE <strong>${hsRate!=null?fmtPct(hsRate):'—'}</strong></div>
     <div class="kpi">KILL TIME <strong>${avgKillTime!=null?avgKillTime.toFixed(2):'—'}</strong></div>
   `;
 }
 
-/* ========= Most used combo (Active + Pet) for team ========= */
+/* ========= Most used combo (Active + Pet) ========= */
 function countCombos(rows){
   const m=new Map();
   for(const r of rows){
@@ -857,7 +880,7 @@ function renderTeamCombos(){
   applyColumnHeatmap('tblTeamCombos', ['picks']);
 }
 
-/* ========= Each player — performance & most used ========= */
+/* ========= Players table ========= */
 function modeOf(arr){
   const m=new Map();
   for(const v of arr.map(norm)){ if(!v) continue; m.set(v,(m.get(v)||0)+1); }
@@ -904,7 +927,7 @@ function renderPlayers(){
   applyColumnHeatmap('tblPlayers', ['kills','assists','dmg','hs','nade','veh','downs','rows']);
 }
 
-/* ========= Map performance by day (selected team) ========= */
+/* ========= By day table (ffbr_data) ========= */
 function dayLabel(r){
   const y=n(r.year), w=n(r.week), d=n(r.day);
   if(y||w||d) return `Y${y||'—'} W${w||'—'} D${d||'—'}`;
@@ -941,10 +964,16 @@ function renderByDay(){
 /* ========= UI: Team grid ========= */
 function renderTeamGrid(filter=''){
   const grid=el('teamGrid'); const q=(filter||'').trim().toLowerCase();
-  const items=TEAMS.filter(t=> !q || t.name.toLowerCase().includes(q) || t.fullname.toLowerCase().includes(q) || (t.region||'').toLowerCase().includes(q));
+  const items=TEAMS.filter(t=>{
+    return !q ||
+      t.name.toLowerCase().includes(q) ||
+      t.fullname.toLowerCase().includes(q) ||
+      (t.region||'').toLowerCase().includes(q) ||
+      (t.ew||'').toLowerCase().includes(q);
+  });
   if(!items.length){ grid.innerHTML='<div class="muted">No matches.</div>'; return; }
   grid.innerHTML = items.map(t=>`
-    <div class="team-tile" data-code="${t.name}" title="${t.fullname} • ${t.region||''}">
+    <div class="team-tile" data-code="${t.name}" title="${t.fullname} • ${t.region||''} • ${t.ew||''}">
       <img class="team-logo" src="${t.logo}" alt="${t.fullname} logo" loading="lazy">
       <div class="team-code">${t.name}</div>
     </div>`).join('');
@@ -966,8 +995,9 @@ function highlightActiveTile(){
 async function selectTeam(teamObj){
   CURRENT_TEAM = teamObj;
   const url=new URL(window.location.href); url.searchParams.set('team', CURRENT_TEAM.name); history.replaceState(null,'',url.toString());
+
   const base=baseRowsByTournament(ALL);
-  TEAM_ROWS = base.filter(r => (norm(r._tag).toUpperCase()||'') === teamObj.name.toUpperCase());
+  TEAM_ROWS = base.filter(r => (r._canon_tag||'') === teamObj.name.toUpperCase());
 
   renderTeamOverview();
   renderTeamCombinedMetrics();
@@ -979,15 +1009,22 @@ async function selectTeam(teamObj){
   highlightActiveTile();
 }
 
-/* ========= Team overview panel (ffbr_data KPIs + map table) ========= */
+/* ========= Team overview panel ========= */
+async function loadTeamMeta(teamObj){
+  const code=(teamObj.name||'').trim(); const name=(teamObj.fullname||'').trim();
+  let info=null;
+  try{ info=await fetchTeamInfoBy(code,name); }catch(e){ console.error('fetchTeamInfoBy threw:',e); uiShowTeamInfoError(`Team info error: ${e.message||e}`); }
+  renderTeamInfo(info);
+  let players=[];
+  try{ const teamId=info && (info.id ?? info.team_id); players=await fetchPlayersBy(code,name,teamId); }
+  catch(e){ console.error('fetchPlayersBy threw:',e); uiShowRosterError(`Player info error: ${e.message||e}`); }
+  renderRoster(players);
+}
 function renderTeamOverview(){
   if(!CURRENT_TEAM){
     el('teamTitle').textContent='Team Overview';
     el('identityBody').innerHTML='Select a team.';
     el('kpiBody').innerHTML='—';
-    el('tblMapTeam')?.innerHTML='—';
-    el('teamInfoBody').innerHTML='—';
-    el('teamRosterBody').innerHTML='—';
     return;
   }
   el('teamTitle').textContent = `Team Overview — ${CURRENT_TEAM.name}`;
@@ -996,7 +1033,7 @@ function renderTeamOverview(){
       <img src="${CURRENT_TEAM.logo}" alt="${CURRENT_TEAM.fullname} logo" style="width:72px;height:72px;object-fit:contain">
       <div>
         <div style="font-size:1.1rem;font-weight:800">${CURRENT_TEAM.name}</div>
-        <div class="muted">${CURRENT_TEAM.fullname} • ${CURRENT_TEAM.region||'—'}</div>
+        <div class="muted">${CURRENT_TEAM.fullname} • ${CURRENT_TEAM.region||'—'} • ${CURRENT_TEAM.ew||'—'}</div>
       </div>
     </div>`;
 
@@ -1011,27 +1048,9 @@ function renderTeamOverview(){
       <div class="kpi">Total <strong>${k.total}</strong> • <strong>${k.total_per_match.toFixed(1)}</strong>/m</div>
       <div class="kpi">Top3 <strong>${fmtPct(k.top3_rate)}</strong></div>
     </div>` : '<div class="muted">No rows.</div>';
-
-  // Map summary (ffbr_data)
-  const rows=teamMapPerf(TEAM_ROWS);
-  if(document.getElementById('tblMapTeam')){
-    document.getElementById('tblMapTeam').innerHTML = renderSimpleTable(rows, [
-      {label:'Map',key:'map'},
-      {label:'Matches',key:'matches',right:true},
-      {label:'Booyahs',key:'booyahs',right:true},
-      {label:'Elims',key:'elims',right:true},
-      {label:'Placement',key:'placement',right:true},
-      {label:'Total',key:'total',right:true},
-      {label:'Booyah %',key:'booyah_rate',format:'pct',right:true},
-      {label:'Elims / m',key:'elims_pm',format:'1d',right:true},
-      {label:'Placement / m',key:'placement_pm',format:'1d',right:true},
-      {label:'Total / m',key:'total_pm',format:'1d',right:true}
-    ]);
-    applyColumnHeatmap('tblMapTeam', ['total_pm','elims_pm','placement_pm','booyah_rate','matches','booyahs','elims','placement','total']);
-  }
 }
 
-/* ========= LOPS global usage widgets ========= */
+/* ========= LOPS global widgets ========= */
 function countByName(rows,key){
   const m=new Map();
   for(const r of rows){ const raw=norm(r[key]); if(!raw) continue;
@@ -1078,89 +1097,108 @@ function renderLopsTopKillers(){
   applyColumnHeatmap('tblLopsTopKillers', ['rows','kills','assists','headshots','grenade','damage']);
 }
 
+/* ========= Overall & Per-Map rendering ========= */
+function sortRowsGeneric(rows,key,dir){ const mult=dir==='asc'?1:-1;
+  return rows.sort((a,b)=>{
+    if(['team','region','code'].includes(key)) return mult * a[key].localeCompare(b[key]);
+    const av=Number(a[key]), bv=Number(b[key]);
+    if(isNaN(av)&&isNaN(bv)) return 0; if(isNaN(av)) return 1*mult; if(isNaN(bv)) return -1*mult; return mult*(av-bv);
+  });
+}
+function renderOverall(){
+  const sortKey=el('overallSortKey')?.value || 'total';
+  const dir=el('overallSortDir')?.dataset?.dir || 'desc';
+  const rows=aggregateOverall(baseRowsByTournament(ALL));
+  sortRowsGeneric(rows,sortKey,dir);
+  el('tblOverall').innerHTML = renderSimpleTable(rows, [
+    {label:'Team',key:'team'},{label:'Code',key:'code'},{label:'Region',key:'region'},
+    {label:'Matches',key:'matches',right:true},{label:'Booyahs',key:'booyahs',right:true},
+    {label:'Elims',key:'elims',right:true},{label:'Placement',key:'placement',right:true},
+    {label:'Total',key:'total',right:true},{label:'Booyah %',key:'booyah_rate',format:'pct',right:true},
+    {label:'Elims / m',key:'elims_pm',format:'1d',right:true},{label:'Placement / m',key:'placement_pm',format:'1d',right:true},
+    {label:'Total / m',key:'total_pm',format:'1d',right:true},{label:'Top-3 %',key:'top3_rate',format:'pct',right:true},
+  ]);
+  applyColumnHeatmap('tblOverall', ['total_pm','elims_pm','placement_pm','booyah_rate','matches','booyahs','elims','placement','total']);
+}
+function renderPerMapAllTeams(){
+  const mapSel=el('mapFilter');
+  const sortKey=el('perMapSortKey')?.value || 'total';
+  const dir=el('perMapSortDir')?.dataset?.dir || 'desc';
+  const rows=aggregateTeamsForMap(baseRowsByTournament(ALL), mapSel?.value||'__all__');
+  sortRowsGeneric(rows,sortKey,dir);
+  el('tblPerMapAllTeams').innerHTML = renderSimpleTable(rows, [
+    {label:'Team',key:'team'},{label:'Code',key:'code'},{label:'Region',key:'region'},
+    {label:'Matches',key:'matches',right:true},{label:'Booyahs',key:'booyahs',right:true},
+    {label:'Elims',key:'elims',right:true},{label:'Placement',key:'placement',right:true},
+    {label:'Total',key:'total',right:true},{label:'Booyah %',key:'booyah_rate',format:'pct',right:true},
+    {label:'Elims / m',key:'elims_pm',format:'1d',right:true},{label:'Placement / m',key:'placement_pm',format:'1d',right:true},
+    {label:'Total / m',key:'total_pm',format:'1d',right:true},{label:'Top-3 %',key:'top3_rate',format:'pct',right:true},
+  ]);
+  applyColumnHeatmap('tblPerMapAllTeams', ['total_pm','elims_pm','placement_pm','booyah_rate','matches','booyahs','elims','placement','total']);
+}
+
 /* ========= Wiring ========= */
 async function initial(){
-  // Team picker
-  renderTeamGrid('');
-  el('teamSearch').addEventListener('input', e=> renderTeamGrid(e.target.value||''));
+  try{
+    await loadHelperTeams(); // 1) must load first (drives aliases & grid)
+    renderTeamGrid('');
+    el('teamSearch').addEventListener('input', e=> renderTeamGrid(e.target.value||''));
 
-  // Load ffbr_data
-  ALL = await fetchAllRows();
-
-  // Tournaments & per-map controls
-  populateGlobalTournament();
-  populateMapFilter();
-
-  // INITIAL RENDER
-  renderOverall();
-  renderPerMapAllTeams();
-
-  el('gTournament').addEventListener('change', ()=>{
-    updateFilterHint(); populateMapFilter();
-    if(CURRENT_TEAM){
-      const base=baseRowsByTournament(ALL);
-      TEAM_ROWS = base.filter(r => (norm(r._tag).toUpperCase()||'') === CURRENT_TEAM.name.toUpperCase());
-      renderTeamOverview();
-      renderTeamCombinedMetrics();
-      renderTeamCombos();
-      renderPlayers();
-      renderByDay();
+    ALL = await fetchAllRows(); // 2) ffbr_data filtered by helper_team aliases
+    if (!ALL.length) {
+      el('filterHint').textContent = 'No ffbr_data rows mapped to helper_team. Check tags/aliases or RLS.';
     }
+
+    populateGlobalTournament();
+    populateMapFilter();
+
     renderOverall();
     renderPerMapAllTeams();
+
+    el('gTournament').addEventListener('change', ()=>{
+      updateFilterHint(); populateMapFilter();
+      if(CURRENT_TEAM){
+        const base=baseRowsByTournament(ALL);
+        TEAM_ROWS = base.filter(r => (r._canon_tag||'') === CURRENT_TEAM.name.toUpperCase());
+        renderTeamOverview();
+        renderTeamCombinedMetrics();
+        renderTeamCombos();
+        renderPlayers();
+        renderByDay();
+      }
+      renderOverall();
+      renderPerMapAllTeams();
+      renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
+    });
+    el('gTournReset').addEventListener('click', ()=>{
+      const preferred=defaultTournamentName(ALL); el('gTournament').value = preferred || '__all__';
+      el('gTournament').dispatchEvent(new Event('change'));
+    });
+
+    // Default team (from ?team= or first)
+    const url=new URL(window.location.href); const qTeam=(url.searchParams.get('team')||'').trim().toLowerCase();
+    if(qTeam){ const found=TEAM_BY_CODE[qTeam] || TEAM_BY_NAME[qTeam]; if(found) await selectTeam(found); }
+    if(!CURRENT_TEAM && TEAMS.length) await selectTeam(TEAMS[0]);
+
+    // LOPS
+    LOPS_ALL = await fetchAllLopsRows();
+    if (!LOPS_ALL.length) console.warn('[ffbr_lopsdata] 0 rows or RLS blocked.');
+
+    renderTeamCombinedMetrics();
+    renderTeamCombos();
+    renderPlayers();
+    renderByDay();
+
     renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
-  });
-  el('gTournReset').addEventListener('click', ()=>{
-    const preferred=defaultTournamentName(ALL); el('gTournament').value = preferred || '__all__';
-    el('gTournament').dispatchEvent(new Event('change'));
-  });
+    el('lopsActiveTop').addEventListener('change', renderLopsActive);
+    el('lopsPetTop').addEventListener('change', renderLopsPet);
+    el('lopsTopKillersTop').addEventListener('change', renderLopsTopKillers);
+    el('teamComboTop').addEventListener('change', renderTeamCombos);
 
-  // Overall controls
-  el('overallSortKey').addEventListener('change', renderOverall);
-  el('overallSortDir').addEventListener('click', ()=>{
-    const b=el('overallSortDir'); const cur=b.dataset.dir==='desc'?'asc':'desc'; b.dataset.dir=cur; b.textContent=cur==='desc'?'Desc':'Asc'; renderOverall();
-  });
-  el('overallReset').addEventListener('click', ()=>{
-    el('overallSortKey').value='total';
-    el('overallSortDir').dataset.dir='desc';
-    el('overallSortDir').textContent='Desc';
-    renderOverall();
-  });
-
-  // Per-map controls
-  el('mapFilter').addEventListener('change', renderPerMapAllTeams);
-  el('perMapSortKey').addEventListener('change', renderPerMapAllTeams);
-  el('perMapSortDir').addEventListener('click', ()=>{
-    const b=el('perMapSortDir'); const cur=b.dataset.dir==='desc'?'asc':'desc'; b.dataset.dir=cur; b.textContent=cur==='desc'?'Desc':'Asc'; renderPerMapAllTeams();
-  });
-  el('perMapReset').addEventListener('click', ()=>{
-    el('mapFilter').value='__all__';
-    el('perMapSortKey').value='total';
-    el('perMapSortDir').dataset.dir='desc';
-    el('perMapSortDir').textContent='Desc';
-    renderPerMapAllTeams();
-  });
-
-  // Default team selection
-  const url=new URL(window.location.href); const qTeam=(url.searchParams.get('team')||'').trim().toLowerCase();
-  if(qTeam){ const found=TEAM_BY_CODE[qTeam] || TEAM_BY_NAME[qTeam]; if(found) await selectTeam(found); }
-  if(!CURRENT_TEAM && TEAMS.length) await selectTeam(TEAMS[0]);
-
-  // LOPS: load + render
-  LOPS_ALL = await fetchAllLopsRows();
-  renderTeamCombinedMetrics();
-  renderTeamCombos();
-  renderPlayers();
-  renderByDay();
-
-  // LOPS global widgets (default top=10)
-  renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
-  el('lopsActiveTop').addEventListener('change', renderLopsActive);
-  el('lopsPetTop').addEventListener('change', renderLopsPet);
-  el('lopsTopKillersTop').addEventListener('change', renderLopsTopKillers);
-
-  // Team combo top selector
-  el('teamComboTop').addEventListener('change', renderTeamCombos);
+  }catch(e){
+    console.error('init error:', e);
+    el('filterHint').textContent = 'Init error. See console.';
+  }
 }
 
 initial();
