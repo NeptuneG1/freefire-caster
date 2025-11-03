@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FFBR — Teams (Combined ffbr_data + lops)</title>
+  <title>FFBR — Teams (Paginated)</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root{
@@ -12,16 +12,32 @@
       --tile-w: 96px; --tile-h: 104px; --logo:44px; --code-fs:.74rem;
       --heat-rgb: 255,189,89; --heat-min:.06; --heat-max:.22; --heat-top-outline:.42; --heat-radius:8px;
       --good:#62e887; --bad:#ff6b6b;
+      --step-h:48px;
     }
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif}
-    header{position:sticky;top:0;z-index:5;background:#1f1f1f;border-bottom:3px solid var(--brand);padding:14px 16px}
+    header{position:sticky;top:0;z-index:20;background:#1f1f1f;border-bottom:3px solid var(--brand);padding:14px 16px}
     h1{margin:0;font-size:1.1rem;letter-spacing:.3px;color:var(--brand)}
     .user-controls{position:absolute;right:16px;top:12px;display:flex;gap:10px;align-items:center}
-    .chip{font-size:.85rem;color:#ddd}
+    .chip{font-size:.85rem;color:#ddd;background:#272727;border:1px solid #3a3a3a;border-radius:999px;padding:4px 10px}
     .btn{background:var(--brand);color:var(--panel);border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
     .btn.secondary{background:#2a2a2a;color:#ddd;border:1px solid #3a3a3a}
+    .btn.ghost{background:transparent;color:#ddd;border:1px solid #3a3a3a}
     .shell{max-width:1180px;margin:22px auto;padding:0 12px}
+
+    /* Pager */
+    .steps{position:sticky;top:61px;z-index:15;background:#151515;border:1px solid var(--line);border-radius:12px;height:var(--step-h);display:flex;align-items:center;gap:8px;padding:6px 8px;margin-bottom:12px}
+    .step{flex:1;min-width:0;display:flex;align-items:center;gap:8px;justify-content:center;height:100%;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f0f;color:#cacaca;font-weight:700;cursor:pointer}
+    .step .num{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:999px;border:1px solid #3a3a3a;background:#1a1a1a;font-size:.9rem}
+    .step.active{outline:2px solid var(--brand);color:#fff}
+    .step .label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pager-nav{display:flex;gap:8px;justify-content:space-between;margin:8px 0 16px}
+    .pager-nav .left, .pager-nav .right{display:flex;gap:8px}
+    .steps-hint{color:var(--muted);font-size:.9rem}
+
+    /* Pages */
+    .page{display:none}
+    .page.active{display:block}
     .section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
     .section h2{margin:0 0 10px;color:var(--brand)}
     .grid2{display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:12px}
@@ -31,29 +47,34 @@
     .kpis{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
     .kpi{background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:6px 10px;font-size:.9rem}
     .kpi strong{font-weight:800}
+    .bar{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+    .bar label{color:var(--muted);font-size:.9rem}
+    .input{background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:7px 10px}
+    .muted{color:var(--muted)}
+
+    /* Team grid */
     .team-grid{display:grid;grid-template-columns: repeat(auto-fill, minmax(var(--tile-w), 1fr));gap:8px;align-items:stretch}
     .team-tile{height:var(--tile-h);background:#131313;border:1px solid #2a2a2a;border-radius:10px;padding:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:transform .1s ease, border-color .1s ease;overflow:hidden}
     .team-tile:hover{transform:translateY(-2px);border-color:#444}
     .team-tile.active{outline:2px solid var(--brand2)}
     .team-logo{ width:var(--logo); height:var(--logo); object-fit:contain; filter:drop-shadow(0 0 8px rgba(0,0,0,.4)) }
     .team-code{ font-weight:800; font-size:var(--code-fs); line-height:1.1; letter-spacing:.2px }
-    .bar{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
-    .bar label{color:var(--muted);font-size:.9rem}
-    .input{background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:7px 10px}
-    .list-compact{margin:0;padding-left:16px}
-    .list-compact li{margin:2px 0}
+
+    /* Tables + heat */
+    table{width:100%;border-collapse:separate;border-spacing:0 6px;font-size:.92rem}
+    thead th{background:#191919;position:sticky;top:0;text-align:left;border-radius:8px;padding:8px 6px;z-index:1}
+    th,td{padding:6px 6px;vertical-align:top}
+    .right{text-align:right}
+    td[data-key]{transition:background-color .18s ease, box-shadow .18s ease;border-radius:var(--heat-radius);background-clip:padding-box}
+    td.heat-top{box-shadow:inset 0 0 0 1px rgba(var(--heat-rgb), var(--heat-top-outline))}
+    .err{background:#2a1111;border:1px solid #4a1a1a;color:#ffb4b4;border-radius:8px;padding:8px 10px}
+
+    /* Collapsibles for Team/Player details */
     details.accordion{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:0;margin-bottom:14px}
     details.accordion > summary{list-style:none;cursor:pointer;padding:12px 14px;color:var(--brand);font-weight:700;border-bottom:1px solid var(--line);user-select:none}
     details.accordion[open] > summary{ border-bottom-color:var(--line) }
     details.accordion > .accordion-body{ padding:12px }
-    table{width:100%;border-collapse:separate;border-spacing:0 6px;font-size:.92rem}
-    thead th{background:#191919;position:sticky;top:0;text-align:left;border-radius:8px;padding:8px 6px}
-    th,td{padding:6px 6px;vertical-align:top}
-    .right{text-align:right}
-    .muted{color:var(--muted)}
-    td[data-key]{transition:background-color .18s ease, box-shadow .18s ease;border-radius:var(--heat-radius);background-clip:padding-box}
-    td.heat-top{box-shadow:inset 0 0 0 1px rgba(var(--heat-rgb), var(--heat-top-outline))}
-    .err{background:#2a1111;border:1px solid #4a1a1a;color:#ffb4b4;border-radius:8px;padding:8px 10px}
+
     @media (max-width: 980px){ .grid3{grid-template-columns:1fr} }
     @media (max-width: 860px){ .grid2{grid-template-columns:1fr} }
   </style>
@@ -62,132 +83,50 @@
 <header>
   <h1>FFBR — Teams</h1>
   <div class="user-controls">
-    <a class="btn secondary" href="dashboard.html">← Dashboard</a>
+    <span class="chip" id="scopeChip" title="Current tournament scope">Loading scope…</span>
     <span class="chip" id="user-info">Checking login…</span>
     <button class="btn" id="logoutBtn">Logout</button>
   </div>
 </header>
 
 <div class="shell">
-  <!-- TEAMS PICKER -->
-  <div class="section">
-    <h2>Select a Team</h2>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
-      <input type="search" id="teamSearch" placeholder="Search team / country / east-west…" class="input" style="flex:1;max-width:420px">
-    </div>
-    <div id="teamGrid" class="team-grid">Loading teams…</div>
-    <div id="teamGridErr"></div>
-  </div>
 
-  <!-- GLOBAL TOURNAMENT FILTER -->
-  <div class="section">
-    <h2>Filters</h2>
-    <div class="bar">
-      <label>Tournament
-        <select id="gTournament" class="input" style="min-width:260px">
-          <option value="__all__" selected>All tournaments</option>
-        </select>
-      </label>
-      <button class="btn secondary" id="gTournReset">Reset</button>
-    </div>
-    <div class="muted" id="filterHint">—</div>
+  <!-- Stepper -->
+  <div class="steps" id="steps">
+    <div class="step" data-page="1"><span class="num">1</span><span class="label">Overall</span></div>
+    <div class="step" data-page="2"><span class="num">2</span><span class="label">Team</span></div>
+    <div class="step" data-page="3"><span class="num">3</span><span class="label">Player</span></div>
   </div>
-
-  <!-- TEAM OVERVIEW -->
-  <div class="section" id="teamHeader">
-    <h2 id="teamTitle">Team Overview</h2>
-    <div class="grid2">
-      <div class="card" id="teamIdentity">
-        <h3>Identity</h3>
-        <div id="identityBody">Select a team.</div>
-      </div>
-      <div class="card" id="teamKPIs">
-        <h3>Key KPIs (ffbr_data)</h3>
-        <div id="kpiBody">—</div>
-      </div>
+  <div class="pager-nav">
+    <div class="left">
+      <button class="btn secondary" id="prevBtn">← Prev</button>
+    </div>
+    <div class="steps-hint">Use ←/→ keys to navigate</div>
+    <div class="right">
+      <button class="btn secondary" id="nextBtn">Next →</button>
     </div>
   </div>
 
-  <!-- NEW: COMBINED TEAM PERFORMANCE -->
-  <div class="section" id="combinedPerfSection">
-    <h2>Selected Team — Combined Performance (ffbr_data + lops)</h2>
-    <div class="grid3">
-      <div class="card">
-        <h3>Totals</h3>
-        <div id="teamTotals" class="kpis">—</div>
-      </div>
-      <div class="card">
-        <h3>Per Match Averages</h3>
-        <div id="teamAverages" class="kpis">—</div>
-      </div>
-      <div class="card">
-        <h3>Signals</h3>
-        <div id="teamSignals" class="kpis">—</div>
-      </div>
-    </div>
-  </div>
+  <!-- ==================== PAGE 1: OVERALL ==================== -->
+  <div class="page" id="page1" data-page="1">
 
-  <!-- TEAM INFO -->
-  <details class="accordion" id="teamInfoSection">
-    <summary>Team Info</summary>
-    <div class="accordion-body">
-      <div class="card" style="margin:0">
-        <div id="teamInfoBody" class="muted">—</div>
-      </div>
-    </div>
-  </details>
-
-  <!-- ROSTER -->
-  <details class="accordion" id="teamRosterSection">
-    <summary>Roster & Accolades</summary>
-    <div class="accordion-body">
-      <div class="card" style="margin:0">
-        <div id="teamRosterBody" class="muted">—</div>
-      </div>
-    </div>
-  </details>
-
-  <!-- MOST USED COMBO CHARACTERS (TEAM) -->
-  <details class="accordion" id="comboSection" open>
-    <summary>Most Used Combo Characters (Active + Pet) — Selected Team</summary>
-    <div class="accordion-body">
+    <!-- GLOBAL TOURNAMENT FILTER -->
+    <div class="section">
+      <h2>Filters</h2>
       <div class="bar">
-        <label>Top</label>
-        <select id="teamComboTop" class="input">
-          <option selected>10</option><option>20</option><option>50</option><option>100</option>
-        </select>
-        <span class="muted">Counts from lops rows of the selected team (tournament scope applies if available).</span>
+        <label>Tournament
+          <select id="gTournament" class="input" style="min-width:260px">
+            <option value="__all__" selected>All tournaments</option>
+          </select>
+        </label>
+        <button class="btn secondary" id="gTournReset">Reset</button>
       </div>
-      <div class="card" style="margin:0">
-        <div id="tblTeamCombos">Loading…</div>
-      </div>
+      <div class="muted" id="filterHint">—</div>
     </div>
-  </details>
 
-  <!-- EACH PLAYER PERFORMANCE (TEAM) -->
-  <details class="accordion" id="playersSection" open>
-    <summary>Each Player — Performance & Most-used (Selected Team)</summary>
-    <div class="accordion-body">
-      <div class="card" style="margin:0">
-        <div id="tblPlayers">Loading…</div>
-      </div>
-    </div>
-  </details>
-
-  <!-- MAP PERFORMANCE BY DAY (TEAM) -->
-  <details class="accordion" id="byDaySection" open>
-    <summary>Map Performance by Day (Selected Team)</summary>
-    <div class="accordion-body">
-      <div class="card" style="margin:0">
-        <div id="tblByDay">—</div>
-      </div>
-    </div>
-  </details>
-
-  <!-- OVERALL PERFORMANCE (all teams) -->
-  <details class="accordion" id="overallSection">
-    <summary>Overall Performance (All Teams)</summary>
-    <div class="accordion-body">
+    <!-- OVERALL PERFORMANCE (all teams) -->
+    <div class="section" id="overallSection">
+      <h2>Overall Performance (All Teams)</h2>
       <div class="bar">
         <label for="overallSortKey">Sort by</label>
         <select id="overallSortKey" class="input">
@@ -210,12 +149,10 @@
         <div id="tblOverall">Loading…</div>
       </div>
     </div>
-  </details>
 
-  <!-- ALL TEAMS — PER-MAP BREAKDOWN -->
-  <details class="accordion" id="perMapAllSection">
-    <summary>All Teams — Per-Map Breakdown</summary>
-    <div class="accordion-body">
+    <!-- ALL TEAMS — PER-MAP BREAKDOWN -->
+    <div class="section" id="perMapAllSection">
+      <h2>All Teams — Per-Map Breakdown</h2>
       <div class="bar">
         <label for="mapFilter">Map</label>
         <select id="mapFilter" class="input" style="min-width:220px">
@@ -242,54 +179,151 @@
         <div id="tblPerMapAllTeams">Loading…</div>
       </div>
     </div>
-  </details>
+  </div>
 
-  <!-- SIDE-BY-SIDE USAGE (ALL PLAYERS, TOURNAMENT-SCOPED WHEN POSSIBLE) -->
-  <details class="accordion" id="lopsUsageSection">
-    <summary>Active Skill & Pet Usage (All Players)</summary>
-    <div class="accordion-body">
+  <!-- ==================== PAGE 2: TEAM ==================== -->
+  <div class="page" id="page2" data-page="2">
+    <div class="section">
+      <h2>Team Selection</h2>
+      <div class="bar">
+        <input type="search" id="teamSearch" placeholder="Search team / country / east-west…" class="input" style="flex:1;max-width:420px">
+        <span class="chip">Scope: <span id="scopeChipTeam">—</span> • <a href="#" id="editFilters1" class="btn ghost" style="padding:4px 10px">Edit filters</a></span>
+      </div>
+      <div id="teamGrid" class="team-grid">Loading teams…</div>
+      <div id="teamGridErr"></div>
+    </div>
+
+    <div class="section" id="teamHeader">
+      <h2 id="teamTitle">Team Overview</h2>
       <div class="grid2">
+        <div class="card" id="teamIdentity">
+          <h3>Identity</h3>
+          <div id="identityBody">Select a team.</div>
+        </div>
+        <div class="card" id="teamKPIs">
+          <h3>Key KPIs (ffbr_data)</h3>
+          <div id="kpiBody">—</div>
+        </div>
+      </div>
+      <!-- By Map (injected) -->
+    </div>
+
+    <div class="section" id="combinedPerfSection">
+      <h2>Selected Team — Combined Performance (ffbr_data + lops)</h2>
+      <div class="grid3">
         <div class="card">
-          <h3>Active Skill Usage</h3>
-          <div class="bar">
-            <label>Top</label>
-            <select id="lopsActiveTop" class="input">
-              <option selected>10</option><option>20</option><option>50</option><option>100</option>
-            </select>
-            <span class="muted">Tournament filter applies only if lops has a tournament label.</span>
-          </div>
-          <div id="tblLopsActive">Loading…</div>
+          <h3>Totals</h3>
+          <div id="teamTotals" class="kpis">—</div>
         </div>
         <div class="card">
-          <h3>Pet Usage</h3>
-          <div class="bar">
-            <label>Top</label>
-            <select id="lopsPetTop" class="input">
-              <option selected>10</option><option>20</option><option>50</option><option>100</option>
-            </select>
-            <span class="muted">Uses “Pet Skill Name”.</span>
-          </div>
-          <div id="tblLopsPet">Loading…</div>
+          <h3>Per Match Averages</h3>
+          <div id="teamAverages" class="kpis">—</div>
+        </div>
+        <div class="card">
+          <h3>Signals</h3>
+          <div id="teamSignals" class="kpis">—</div>
         </div>
       </div>
     </div>
-  </details>
 
-  <!-- TOP KILLERS (ALL PLAYERS) -->
-  <details class="accordion" id="lopsTopKillersSection">
-    <summary>Top Players by Kills</summary>
-    <div class="accordion-body">
+    <details class="accordion" id="teamInfoSection">
+      <summary>Team Info</summary>
+      <div class="accordion-body">
+        <div class="card" style="margin:0">
+          <div id="teamInfoBody" class="muted">—</div>
+        </div>
+      </div>
+    </details>
+
+    <details class="accordion" id="teamRosterSection">
+      <summary>Roster & Accolades</summary>
+      <div class="accordion-body">
+        <div class="card" style="margin:0">
+          <div id="teamRosterBody" class="muted">—</div>
+        </div>
+      </div>
+    </details>
+
+    <details class="accordion" id="comboSection" open>
+      <summary>Most Used Combo Characters (Active + Pet) — Selected Team</summary>
+      <div class="accordion-body">
+        <div class="bar">
+          <label>Top</label>
+          <select id="teamComboTop" class="input">
+            <option selected>10</option><option>20</option><option>50</option><option>100</option>
+          </select>
+        </div>
+        <div class="card" style="margin:0">
+          <div id="tblTeamCombos">Loading…</div>
+        </div>
+      </div>
+    </details>
+
+    <details class="accordion" id="byDaySection" open>
+      <summary>Map Performance by Day (Selected Team)</summary>
+      <div class="accordion-body">
+        <div class="card" style="margin:0">
+          <div id="tblByDay">—</div>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <!-- ==================== PAGE 3: PLAYER ==================== -->
+  <div class="page" id="page3" data-page="3">
+    <div class="section">
+      <h2>Player — Selected Team</h2>
       <div class="bar">
-        <label>Top</label>
-        <select id="lopsTopKillersTop" class="input">
-          <option selected>10</option><option>20</option><option>50</option><option>100</option>
-        </select>
+        <span class="chip">Scope: <span id="scopeChipPlayer">—</span> • <a href="#" id="editFilters2" class="btn ghost" style="padding:4px 10px">Edit filters</a></span>
       </div>
       <div class="card" style="margin:0">
-        <div id="tblLopsTopKillers">Loading…</div>
+        <div id="tblPlayers">Loading…</div>
       </div>
     </div>
-  </details>
+
+    <details class="accordion" id="lopsTopKillersSection">
+      <summary>Top Players by Kills (All Players)</summary>
+      <div class="accordion-body">
+        <div class="bar">
+          <label>Top</label>
+          <select id="lopsTopKillersTop" class="input">
+            <option selected>10</option><option>20</option><option>50</option><option>100</option>
+          </select>
+        </div>
+        <div class="card" style="margin:0">
+          <div id="tblLopsTopKillers">Loading…</div>
+        </div>
+      </div>
+    </details>
+
+    <details class="accordion" id="lopsUsageSection">
+      <summary>Active Skill & Pet Usage (All Players)</summary>
+      <div class="accordion-body">
+        <div class="grid2">
+          <div class="card">
+            <h3>Active Skill Usage</h3>
+            <div class="bar">
+              <label>Top</label>
+              <select id="lopsActiveTop" class="input">
+                <option selected>10</option><option>20</option><option>50</option><option>100</option>
+              </select>
+            </div>
+            <div id="tblLopsActive">Loading…</div>
+          </div>
+          <div class="card">
+            <h3>Pet Usage</h3>
+            <div class="bar">
+              <label>Top</label>
+              <select id="lopsPetTop" class="input">
+                <option selected>10</option><option>20</option><option>50</option><option>100</option>
+              </select>
+            </div>
+            <div id="tblLopsPet">Loading…</div>
+          </div>
+        </div>
+      </div>
+    </details>
+  </div>
 
 </div>
 
@@ -317,11 +351,38 @@ const fmtPct = x => isFinite(x) ? (x*100).toFixed(1)+'%' : '—';
 const n = x => Number(x ?? 0) || 0;
 const norm = v => (v==null ? '' : String(v).trim());
 function looksLikeURL(v){ return /^https?:\/\//i.test(String(v||'')); }
-function sum(arr,k){ let t=0; for(const r of arr) t+= n(r[k]); return t; }
-function safeDiv(a,b){ a=n(a); b=n(b); return b? (a/b) : 0; }
+function sum(arr,k){ let t=0; for(const r of arr) t+= Number(r?.[k] ?? 0) || 0; return t; }
+function safeDiv(a,b){ a=Number(a??0)||0; b=Number(b??0)||0; return b? (a/b) : 0; }
 function groupBy(arr,fn){ const m=new Map(); for(const r of arr){ const k=fn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r);} return m; }
 function keyTuple(r){ return [Number(r.year)||0,Number(r.week)||0,Number(r.day)||0,Number(r.match)||0,Number(r.id)||0]; }
 function cmpTuple(a,b){ for(let i=0;i<Math.max(a.length,b.length);i++){const av=a[i]??0,bv=b[i]??0; if(av>bv) return 1; if(av<bv) return -1;} return 0; }
+
+/* ========= Pager ========= */
+const PAGES = [1,2,3];
+function setActiveStep(p){
+  document.querySelectorAll('.step').forEach(s=>{
+    s.classList.toggle('active', String(s.dataset.page)===String(p));
+  });
+}
+function showPage(p){
+  const target = document.querySelector(`.page[data-page="${p}"]`);
+  if(!target) return;
+  document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active'));
+  target.classList.add('active');
+  setActiveStep(p);
+  localStorage.setItem('ffbr_page', String(p));
+  const url=new URL(window.location.href); url.searchParams.set('p', String(p)); history.replaceState(null,'',url.toString());
+}
+function currentPage(){
+  const url=new URL(window.location.href);
+  const qp = Number(url.searchParams.get('p'));
+  if(PAGES.includes(qp)) return qp;
+  const ls = Number(localStorage.getItem('ffbr_page'));
+  if(PAGES.includes(ls)) return ls;
+  return 1;
+}
+function nextPage(){ const p=currentPage(); const idx=PAGES.indexOf(p); const np=PAGES[Math.min(PAGES.length-1, idx+1)]; showPage(np); }
+function prevPage(){ const p=currentPage(); const idx=PAGES.indexOf(p); const pp=PAGES[Math.max(0, idx-1)]; showPage(pp); }
 
 /* ========= State ========= */
 let TEAMS = [];          // from helper_team
@@ -329,7 +390,7 @@ let TEAM_BY_CODE = {};   // code -> meta
 let TEAM_BY_NAME = {};   // fullname -> meta
 let ALLOWED_TAGS = new Set();
 
-let ALL = [];        // ffbr_data after normalize + filter by ALLOWED_TAGS
+let ALL = [];        // ffbr_data filtered by ALLOWED_TAGS
 let TEAM_ROWS = [];  // ffbr_data of selected team (after tournament scope)
 let CURRENT_TEAM = null;
 
@@ -353,7 +414,6 @@ async function fetchHelperTeams(){
       name: code,
       fullname: norm(r.TEAM) || code,
       logo: norm(r.LOGO) || '',
-      // tournament conf (E/W) and country/region code
       ew: norm(r['E/W']) || '',
       region: norm(r.REGION) || '',
       alt: norm(r['ALT NAME 1']) || ''
@@ -390,12 +450,11 @@ async function fetchAllRows(){
     out.push(...rows); from += rows.length;
   }
   const normalized = out.map(normalizeRow);
-  // Only keep teams present in helper_team
   const filtered = normalized.filter(r => ALLOWED_TAGS.has(r._tag));
   return filtered;
 }
 
-/* ========= Tournament helpers (ffbr_data) ========= */
+/* ========= Tournament helpers ========= */
 const PREFERRED_LATEST_NAME = 'ffws global finals 2025';
 function tournamentsIndex(rows){
   const map=new Map();
@@ -439,9 +498,13 @@ function baseRowsByTournament(rows){
 }
 function updateFilterHint(){
   const t=selectedTournament(); const total=baseRowsByTournament(ALL).length;
-  el('filterHint').textContent = t==='__all__'
+  const text = t==='__all__'
     ? `Scope: All tournaments • Rows: ${total}`
     : `Scope: ${t} • Rows: ${total} • Default prefers “FFWS GLOBAL FINALS 2025”, else latest by tournament_id`;
+  el('filterHint').textContent = text;
+  el('scopeChip').textContent = t==='__all__' ? 'All tournaments' : t;
+  el('scopeChipTeam').textContent = el('scopeChip').textContent;
+  el('scopeChipPlayer').textContent = el('scopeChip').textContent;
 }
 
 /* ========= Aggregations (ffbr_data) ========= */
@@ -539,7 +602,7 @@ function uiShowTeamInfoError(msg){ el('teamInfoBody').innerHTML = `<div class="m
 function uiShowRosterError(msg){ el('teamRosterBody').innerHTML = `<div class="muted" style="white-space:pre-wrap">${msg}</div>`; }
 function asListHTML(val){
   const items = splitToLines(val); if(!items.length) return '—';
-  return `<ul class="list-compact">${items.map(it=>`<li>${it}</li>`).join('')}</ul>`;
+  return `<ul class="list-compact" style="margin:0;padding-left:16px">${items.map(it=>`<li>${it}</li>`).join('')}</ul>`;
 }
 function splitToLines(val){
   if (val == null) return [];
@@ -656,7 +719,7 @@ function teamMapPerf(rows){
   return out.sort((a,b)=> b.total_pm - a.total_pm || b.matches - a.matches || a.map.localeCompare(b.map));
 }
 
-/* ========= LOPS normalize (no SQL view) ========= */
+/* ========= LOPS normalize ========= */
 function normLopsRow(r){
   const get = (k, alt=[]) => {
     if (r[k] != null) return r[k];
@@ -720,16 +783,7 @@ async function fetchAllLopsRows(){
   }
   return out.map(normLopsRow).filter(r=>r._player && r._team);
 }
-
-/* ========= LOPS tournament scope =========
-   Current dataset sample has no tournament field → we keep ALL rows.
-   If future lops has tournament names, you can add detection here. */
-function baseLopsByTournament(rows){
-  // no-op filter since lops lacks tournament labels reliably
-  return rows;
-}
-
-/* ========= Selected team lops rows ========= */
+function baseLopsByTournament(rows){ return rows; } // no tournament field in lops currently
 function lopsRowsForTeam(all, teamObj){
   if(!teamObj) return [];
   const code = (teamObj.name||'').trim().toUpperCase();
@@ -737,12 +791,12 @@ function lopsRowsForTeam(all, teamObj){
   return base.filter(r=> (r._team||'').toUpperCase() === code);
 }
 
-/* ========= Team combined metrics (ffbr_data + lops) ========= */
+/* ========= Team combined metrics ========= */
 function renderTeamCombinedMetrics(){
   const totalsEl = el('teamTotals'), avgsEl = el('teamAverages'), sigEl = el('teamSignals');
   if(!CURRENT_TEAM){ totalsEl.innerHTML=avgsEl.innerHTML=sigEl.innerHTML='—'; return; }
 
-  const games = TEAM_ROWS.length || 0; // per-match rows from ffbr_data
+  const games = TEAM_ROWS.length || 0;
   const teamLops = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
 
   const totals = {
@@ -764,12 +818,10 @@ function renderTeamCombinedMetrics(){
     vehDist:     sum(teamLops,'vehicle_move_distance'),
     mvp:         sum(teamLops,'mvp')
   };
-  // Derived signals (no deaths → no K/D)
-  const acc = safeDiv(totals.hits, totals.shots);                 // aim accuracy
-  const hsRate = safeDiv(totals.hs, totals.kills);                // HS per kill
+  const acc = safeDiv(totals.hits, totals.shots);
+  const hsRate = safeDiv(totals.hs, totals.kills);
   const avgSurvival = teamLops.length ? (totals.survival / teamLops.length) : 0;
 
-  // Totals
   totalsEl.innerHTML = `
     <div class="kpi">TOTAL ELIMS <strong>${totals.kills}</strong></div>
     <div class="kpi">TOTAL DMG <strong>${totals.dmg}</strong></div>
@@ -784,8 +836,6 @@ function renderTeamCombinedMetrics(){
     <div class="kpi">MVPs <strong>${totals.mvp}</strong></div>
     <div class="kpi">GAMES PLAYED <strong>${games}</strong></div>
   `;
-
-  // Per match averages (normalize by ffbr_data games when available)
   avgsEl.innerHTML = games ? `
     <div class="kpi">AVG ELIMS <strong>${(totals.kills/games).toFixed(1)}</strong></div>
     <div class="kpi">AVG DMG <strong>${(totals.dmg/games).toFixed(0)}</strong></div>
@@ -796,7 +846,6 @@ function renderTeamCombinedMetrics(){
     <div class="kpi">AVG HEADSHOTS <strong>${(totals.hs/games).toFixed(1)}</strong></div>
   ` : '<div class="muted">No games found for averages.</div>';
 
-  // Signals
   sigEl.innerHTML = `
     <div class="kpi">ACCURACY <strong>${fmtPct(acc)}</strong></div>
     <div class="kpi">HS / KILL <strong>${isFinite(hsRate)?hsRate.toFixed(2):'—'}</strong></div>
@@ -829,7 +878,7 @@ function renderTeamCombos(){
   applyColumnHeatmap('tblTeamCombos', ['picks']);
 }
 
-/* ========= Each player — performance & most used ========= */
+/* ========= Each player — performance & most used (selected team) ========= */
 function modeOf(arr){
   const m=new Map();
   for(const v of arr.map(norm)){ if(!v) continue; m.set(v,(m.get(v)||0)+1); }
@@ -1011,7 +1060,7 @@ async function selectTeam(teamObj){
   highlightActiveTile();
 }
 
-/* ========= Team overview panel (ffbr_data KPIs + map table) ========= */
+/* ========= Team overview ========= */
 function renderTeamOverview(){
   if(!CURRENT_TEAM){
     el('teamTitle').textContent='Team Overview';
@@ -1044,14 +1093,14 @@ function renderTeamOverview(){
       <div class="kpi">Top3 <strong>${fmtPct(k.top3_rate)}</strong></div>
     </div>` : '<div class="muted">No rows.</div>';
 
-  // Map summary (ffbr_data)
-  const rows=teamMapPerf(TEAM_ROWS);
+  // By Map table (inject panel once)
   if(!document.getElementById('tblMapTeam')){
     const panel = document.createElement('div');
     panel.className='card';
     panel.innerHTML = `<h3>By Map</h3><div id="tblMapTeam"></div>`;
     el('teamHeader').appendChild(panel);
   }
+  const rows=teamMapPerf(TEAM_ROWS);
   document.getElementById('tblMapTeam').innerHTML = renderSimpleTable(rows, [
     {label:'Map',key:'map'},
     {label:'Matches',key:'matches',right:true},
@@ -1067,7 +1116,7 @@ function renderTeamOverview(){
   applyColumnHeatmap('tblMapTeam', ['total_pm','elims_pm','placement_pm','booyah_rate','matches','booyahs','elims','placement','total']);
 }
 
-/* ========= LOPS global usage widgets ========= */
+/* ========= LOPS global widgets ========= */
 function countByName(rows,key){
   const m=new Map();
   for(const r of rows){ const raw=norm(r[key]); if(!raw) continue;
@@ -1124,15 +1173,26 @@ async function loadTeamMeta(teamObj){
 
 /* ========= Wiring ========= */
 async function initial(){
+  // Pager wires
+  document.querySelectorAll('.step').forEach(s=> s.addEventListener('click', ()=> showPage(Number(s.dataset.page))));
+  el('prevBtn').addEventListener('click', prevPage);
+  el('nextBtn').addEventListener('click', nextPage);
+  window.addEventListener('keydown', e=>{
+    if (e.key === 'ArrowLeft') prevPage();
+    if (e.key === 'ArrowRight') nextPage();
+  });
+  el('editFilters1').addEventListener('click', (e)=>{ e.preventDefault(); showPage(1); });
+  el('editFilters2').addEventListener('click', (e)=>{ e.preventDefault(); showPage(1); });
+
   // 1) Load teams from helper_team
   TEAMS = await fetchHelperTeams();
   if(!TEAMS.length){
     el('teamGrid').innerHTML = '<div class="muted">No teams loaded. Check helper_team & RLS.</div>';
-    return;
+  } else {
+    buildTeamIndexes();
+    renderTeamGrid('');
+    el('teamSearch').addEventListener('input', e=> renderTeamGrid(e.target.value||''));
   }
-  buildTeamIndexes();
-  renderTeamGrid('');
-  el('teamSearch').addEventListener('input', e=> renderTeamGrid(e.target.value||''));
 
   // 2) Load ffbr_data (filter by helper_team tags)
   ALL = await fetchAllRows();
@@ -1197,19 +1257,25 @@ async function initial(){
   if(qTeam){ const found=TEAM_BY_CODE[qTeam] || TEAM_BY_NAME[qTeam]; if(found) await selectTeam(found); }
   if(!CURRENT_TEAM && TEAMS.length) await selectTeam(TEAMS[0]);
 
-  // 6) LOPS: load + render (no-tournament scope currently)
+  // 6) LOPS: load + render
   LOPS_ALL = await fetchAllLopsRows();
   renderTeamCombinedMetrics();
   renderTeamCombos();
   renderPlayers();
   renderByDay();
-
-  // 7) LOPS global widgets
   renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
-  el('lopsActiveTop').addEventListener('change', renderLopsActive);
-  el('lopsPetTop').addEventListener('change', renderLopsPet);
-  el('lopsTopKillersTop').addEventListener('change', renderLopsTopKillers);
+
+  // Start on requested/remembered page
+  showPage(currentPage());
 }
+
+// Update scope chips initially
+function bootstrapScopeChips(){
+  el('scopeChip').textContent = 'All tournaments';
+  el('scopeChipTeam').textContent = 'All tournaments';
+  el('scopeChipPlayer').textContent = 'All tournaments';
+}
+bootstrapScopeChips();
 
 initial();
 </script>
