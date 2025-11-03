@@ -1,146 +1,308 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>FFBR — Player Performance</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-  :root{
-    --bg:#0e0e0e; --panel:#1b1b1b; --panel2:#141414; --ink:#f5f5f5; --muted:#b9b9b9;
-    --brand:#ffbd59; --brand2:#ff7733; --line:#313131;
-    --heat-rgb:255,189,89; --heat-min:.06; --heat-max:.22; --heat-top-outline:.42; --heat-radius:8px;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif}
-  header{position:sticky;top:0;z-index:5;background:#1f1f1f;border-bottom:3px solid var(--brand);padding:14px 16px}
-  h1{margin:0;font-size:1.1rem;letter-spacing:.3px;color:var(--brand)}
-  .user-controls{position:absolute;right:16px;top:12px;display:flex;gap:10px;align-items:center}
-  .chip{font-size:.85rem;color:#ddd}
-  .btn{background:var(--brand);color:var(--panel);border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
-  .btn.secondary{background:#2a2a2a;color:#ddd;border:1px solid #3a3a3a}
-  .shell{max-width:1100px;margin:22px auto;padding:0 12px}
-  .section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
-  .section h2{margin:0 0 10px;color:var(--brand)}
-  .grid2{display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:12px}
-  .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px}
-  .card h3{margin:0 0 6px;color:var(--brand2);font-size:1.0rem}
-  .kpis{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
-  .kpi{background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:6px 8px;font-size:.9rem}
-  .muted{color:var(--muted)}
-  .chips{display:flex;flex-wrap:wrap;gap:8px}
-  .chipbtn{cursor:pointer;border:1px solid #3a3a3a;background:#1a1a1a;color:#e6e6e6;border-radius:999px;padding:6px 10px;font-weight:700}
-  .chipbtn:hover{border-color:#555}
-  .chipbtn.active{background:var(--brand2);color:#111;border-color:#000}
-  details.accordion{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:0;margin-bottom:14px}
-  details.accordion > summary{list-style:none;cursor:pointer;padding:12px 14px;color:var(--brand);font-weight:700;border-bottom:1px solid var(--line);user-select:none}
-  details.accordion[open] > summary{border-bottom-color:var(--line)}
-  details.accordion > .accordion-body{padding:12px}
-  table{width:100%;border-collapse:separate;border-spacing:0 6px;font-size:.92rem}
-  thead th{background:#191919;position:sticky;top:0;text-align:left;border-radius:8px;padding:8px 6px}
-  th,td{padding:6px 6px;vertical-align:top}
-  .right{text-align:right}
-  td[data-key]{transition:background-color .18s ease, box-shadow .18s ease;border-radius:var(--heat-radius);background-clip:padding-box}
-  td.heat-top{box-shadow:inset 0 0 0 1px rgba(var(--heat-rgb), var(--heat-top-outline))}
-  @media (max-width: 880px){ .grid2{grid-template-columns:1fr} }
-</style>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FFBR — Teams (Combined ffbr_data + lops)</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{
+      --bg:#0e0e0e; --panel:#1b1b1b; --panel2:#141414; --ink:#f5f5f5; --muted:#b9b9b9;
+      --brand:#ffbd59; --brand2:#ff7733; --line:#313131;
+      --tile-w: 96px; --tile-h: 104px; --logo:44px; --code-fs:.74rem;
+      --heat-rgb: 255,189,89; --heat-min:.06; --heat-max:.22; --heat-top-outline:.42; --heat-radius:8px;
+      --good:#62e887; --bad:#ff6b6b;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif}
+    header{position:sticky;top:0;z-index:5;background:#1f1f1f;border-bottom:3px solid var(--brand);padding:14px 16px}
+    h1{margin:0;font-size:1.1rem;letter-spacing:.3px;color:var(--brand)}
+    .user-controls{position:absolute;right:16px;top:12px;display:flex;gap:10px;align-items:center}
+    .chip{font-size:.85rem;color:#ddd}
+    .btn{background:var(--brand);color:var(--panel);border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
+    .btn.secondary{background:#2a2a2a;color:#ddd;border:1px solid #3a3a3a}
+    .shell{max-width:1180px;margin:22px auto;padding:0 12px}
+    .section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
+    .section h2{margin:0 0 10px;color:var(--brand)}
+    .grid2{display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:12px}
+    .grid3{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:12px}
+    .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px}
+    .card h3{margin:0 0 6px;color:var(--brand2);font-size:1.0rem}
+    .kpis{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+    .kpi{background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:6px 10px;font-size:.9rem}
+    .kpi strong{font-weight:800}
+    .team-grid{display:grid;grid-template-columns: repeat(auto-fill, minmax(var(--tile-w), 1fr));gap:8px;align-items:stretch}
+    .team-tile{height:var(--tile-h);background:#131313;border:1px solid #2a2a2a;border-radius:10px;padding:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:transform .1s ease, border-color .1s ease;overflow:hidden}
+    .team-tile:hover{transform:translateY(-2px);border-color:#444}
+    .team-tile.active{outline:2px solid var(--brand2)}
+    .team-logo{ width:var(--logo); height:var(--logo); object-fit:contain; filter:drop-shadow(0 0 8px rgba(0,0,0,.4)) }
+    .team-code{ font-weight:800; font-size:var(--code-fs); line-height:1.1; letter-spacing:.2px }
+    .bar{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+    .bar label{color:var(--muted);font-size:.9rem}
+    .input{background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:7px 10px}
+    .list-compact{margin:0;padding-left:16px}
+    .list-compact li{margin:2px 0}
+    details.accordion{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:0;margin-bottom:14px}
+    details.accordion > summary{list-style:none;cursor:pointer;padding:12px 14px;color:var(--brand);font-weight:700;border-bottom:1px solid var(--line);user-select:none}
+    details.accordion[open] > summary{ border-bottom-color:var(--line) }
+    details.accordion > .accordion-body{ padding:12px }
+    table{width:100%;border-collapse:separate;border-spacing:0 6px;font-size:.92rem}
+    thead th{background:#191919;position:sticky;top:0;text-align:left;border-radius:8px;padding:8px 6px}
+    th,td{padding:6px 6px;vertical-align:top}
+    .right{text-align:right}
+    .muted{color:var(--muted)}
+    td[data-key]{transition:background-color .18s ease, box-shadow .18s ease;border-radius:var(--heat-radius);background-clip:padding-box}
+    td.heat-top{box-shadow:inset 0 0 0 1px rgba(var(--heat-rgb), var(--heat-top-outline))}
+    @media (max-width: 980px){ .grid3{grid-template-columns:1fr} }
+    @media (max-width: 860px){ .grid2{grid-template-columns:1fr} }
+  </style>
 </head>
 <body>
 <header>
-  <h1>FFBR — Player Performance</h1>
+  <h1>FFBR — Teams</h1>
   <div class="user-controls">
+    <a class="btn secondary" href="dashboard.html">← Dashboard</a>
     <span class="chip" id="user-info">Checking login…</span>
     <button class="btn" id="logoutBtn">Logout</button>
   </div>
 </header>
 
 <div class="shell">
-  <!-- PLAYER FILTER -->
+  <!-- TEAMS PICKER -->
   <div class="section">
-    <h2>Player</h2>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
-      <label style="flex:1;min-width:240px">
-        <input type="search" id="playerSearch" placeholder="Type a name and press Enter…" class="btn secondary" style="width:100%;padding:10px">
-      </label>
-      <label>
-        <select id="playerSelect" class="btn secondary" style="min-width:220px;padding:10px">
-          <option value="">— Select player —</option>
-        </select>
-      </label>
-      <button class="btn secondary" id="clearPlayer">Clear</button>
-      <button class="btn" id="copyLink">Copy Link</button>
+    <h2>Select a Team</h2>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+      <input type="search" id="teamSearch" placeholder="Search team / region…" class="input" style="flex:1;max-width:420px">
     </div>
-    <div class="muted" id="pickerHint">Loading…</div>
-    <div id="playerChips" class="chips">—</div>
+    <div id="teamGrid" class="team-grid">Loading teams…</div>
   </div>
 
-  <!-- OVERVIEW -->
-  <div class="section" id="playerHeader">
-    <h2 id="playerTitle">Player Overview</h2>
+  <!-- GLOBAL TOURNAMENT FILTER -->
+  <div class="section">
+    <h2>Filters</h2>
+    <div class="bar">
+      <label>Tournament
+        <select id="gTournament" class="input" style="min-width:260px">
+          <option value="__all__" selected>All tournaments</option>
+        </select>
+      </label>
+      <button class="btn secondary" id="gTournReset">Reset</button>
+    </div>
+    <div class="muted" id="filterHint">—</div>
+  </div>
+
+  <!-- TEAM OVERVIEW -->
+  <div class="section" id="teamHeader">
+    <h2 id="teamTitle">Team Overview</h2>
     <div class="grid2">
-      <div class="card" id="playerIdentity">
+      <div class="card" id="teamIdentity">
         <h3>Identity</h3>
-        <div id="identityBody" class="muted">Select a player.</div>
+        <div id="identityBody">Select a team.</div>
       </div>
-      <div class="card" id="playerKPIs">
-        <h3>Key KPIs</h3>
+      <div class="card" id="teamKPIs">
+        <h3>Key KPIs (ffbr_data)</h3>
         <div id="kpiBody">—</div>
       </div>
     </div>
   </div>
 
-  <!-- RECENT ENTRIES (Top 10 for selected player) -->
-  <details class="accordion" open>
-    <summary>Recent Entries (Top 10)</summary>
+  <!-- NEW: COMBINED TEAM PERFORMANCE -->
+  <div class="section" id="combinedPerfSection">
+    <h2>Selected Team — Combined Performance (ffbr_data + lops)</h2>
+    <div class="grid3">
+      <div class="card">
+        <h3>Totals</h3>
+        <div id="teamTotals" class="kpis">—</div>
+      </div>
+      <div class="card">
+        <h3>Per Match Averages</h3>
+        <div id="teamAverages" class="kpis">—</div>
+      </div>
+      <div class="card">
+        <h3>Signals</h3>
+        <div id="teamSignals" class="kpis">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEAM INFO -->
+  <details class="accordion" id="teamInfoSection">
+    <summary>Team Info</summary>
     <div class="accordion-body">
       <div class="card" style="margin:0">
-        <div id="tblRecent">—</div>
+        <div id="teamInfoBody" class="muted">—</div>
       </div>
     </div>
   </details>
 
-  <!-- GLOBAL: ACTIVE SKILL (ALL PLAYERS) -->
-  <details class="accordion" open>
-    <summary>Active Skill Usage — All Players (Top 10 by count)</summary>
+  <!-- ROSTER -->
+  <details class="accordion" id="teamRosterSection">
+    <summary>Roster & Accolades</summary>
     <div class="accordion-body">
       <div class="card" style="margin:0">
-        <div id="tblActive">—</div>
+        <div id="teamRosterBody" class="muted">—</div>
       </div>
     </div>
   </details>
 
-  <!-- GLOBAL: PET (ALL PLAYERS) -->
-  <details class="accordion" open>
-    <summary>Pet Usage — All Players (Top 10 by count)</summary>
+  <!-- MOST USED COMBO CHARACTERS (TEAM) -->
+  <details class="accordion" id="comboSection" open>
+    <summary>Most Used Combo Characters (Active + Pet) — Selected Team</summary>
     <div class="accordion-body">
+      <div class="bar">
+        <label>Top</label>
+        <select id="teamComboTop" class="input">
+          <option selected>10</option><option>20</option><option>50</option><option>100</option>
+        </select>
+        <span class="muted">Counts from lops rows of the selected team (tournament scope applies).</span>
+      </div>
       <div class="card" style="margin:0">
-        <div id="tblPet">—</div>
+        <div id="tblTeamCombos">Loading…</div>
       </div>
     </div>
   </details>
 
-  <!-- GLOBAL: TOP 10 PLAYERS BY KILLS -->
-  <details class="accordion" open>
-    <summary>Top 10 Players by Kills</summary>
+  <!-- EACH PLAYER PERFORMANCE (TEAM) -->
+  <details class="accordion" id="playersSection" open>
+    <summary>Each Player — Performance & Most-used (Selected Team)</summary>
     <div class="accordion-body">
       <div class="card" style="margin:0">
-        <div id="tblTopKillers">—</div>
+        <div id="tblPlayers">Loading…</div>
       </div>
     </div>
   </details>
+
+  <!-- MAP PERFORMANCE BY DAY (TEAM) -->
+  <details class="accordion" id="byDaySection" open>
+    <summary>Map Performance by Day (Selected Team)</summary>
+    <div class="accordion-body">
+      <div class="card" style="margin:0">
+        <div id="tblByDay">—</div>
+      </div>
+    </div>
+  </details>
+
+  <!-- OVERALL PERFORMANCE (all teams) -->
+  <details class="accordion" id="overallSection">
+    <summary>Overall Performance (All Teams)</summary>
+    <div class="accordion-body">
+      <div class="bar">
+        <label for="overallSortKey">Sort by</label>
+        <select id="overallSortKey" class="input">
+          <option value="total_pm">Total / m</option>
+          <option value="total" selected>Total</option>
+          <option value="elims_pm">Elims / m</option>
+          <option value="elims">Elims</option>
+          <option value="placement_pm">Placement / m</option>
+          <option value="placement">Placement</option>
+          <option value="booyah_rate">Booyah %</option>
+          <option value="booyahs">Booyahs</option>
+          <option value="matches">Matches</option>
+          <option value="top3_rate">Top-3 %</option>
+          <option value="team">Team (A→Z)</option>
+        </select>
+        <button class="btn secondary" id="overallSortDir" data-dir="desc" title="Toggle ascending/descending">Desc</button>
+        <button class="btn secondary" id="overallReset">Reset</button>
+      </div>
+      <div class="card" style="margin:0">
+        <div id="tblOverall">Loading…</div>
+      </div>
+    </div>
+  </details>
+
+  <!-- ALL TEAMS — PER-MAP BREAKDOWN -->
+  <details class="accordion" id="perMapAllSection">
+    <summary>All Teams — Per-Map Breakdown</summary>
+    <div class="accordion-body">
+      <div class="bar">
+        <label for="mapFilter">Map</label>
+        <select id="mapFilter" class="input" style="min-width:220px">
+          <option value="__all__" selected>All maps</option>
+        </select>
+        <label for="perMapSortKey">Sort by</label>
+        <select id="perMapSortKey" class="input">
+          <option value="total_pm">Total / m</option>
+          <option value="total" selected>Total</option>
+          <option value="elims_pm">Elims / m</option>
+          <option value="elims">Elims</option>
+          <option value="placement_pm">Placement / m</option>
+          <option value="placement">Placement</option>
+          <option value="booyah_rate">Booyah %</option>
+          <option value="booyahs">Booyahs</option>
+          <option value="matches">Matches</option>
+          <option value="top3_rate">Top-3 %</option>
+          <option value="team">Team (A→Z)</option>
+        </select>
+        <button class="btn secondary" id="perMapSortDir" data-dir="desc" title="Toggle ascending/descending">Desc</button>
+        <button class="btn secondary" id="perMapReset">Reset</button>
+      </div>
+      <div class="card" style="margin:0">
+        <div id="tblPerMapAllTeams">Loading…</div>
+      </div>
+    </div>
+  </details>
+
+  <!-- SIDE-BY-SIDE USAGE (ALL PLAYERS, TOURNAMENT-SCOPED) -->
+  <details class="accordion" id="lopsUsageSection">
+    <summary>Active Skill & Pet Usage (All Players)</summary>
+    <div class="accordion-body">
+      <div class="grid2">
+        <div class="card">
+          <h3>Active Skill Usage</h3>
+          <div class="bar">
+            <label>Top</label>
+            <select id="lopsActiveTop" class="input">
+              <option selected>10</option><option>20</option><option>50</option><option>100</option>
+            </select>
+            <span class="muted">Tournament filter applies (loose match; falls back to All if not found).</span>
+          </div>
+          <div id="tblLopsActive">Loading…</div>
+        </div>
+        <div class="card">
+          <h3>Pet Usage</h3>
+          <div class="bar">
+            <label>Top</label>
+            <select id="lopsPetTop" class="input">
+              <option selected>10</option><option>20</option><option>50</option><option>100</option>
+            </select>
+            <span class="muted">Auto-detects the Pet column (Pet / Pet Name / Pet 1 / pet_1, etc.).</span>
+          </div>
+          <div id="tblLopsPet">Loading…</div>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <!-- TOP KILLERS (ALL PLAYERS, TOURNAMENT-SCOPED) -->
+  <details class="accordion" id="lopsTopKillersSection">
+    <summary>Top Players by Kills</summary>
+    <div class="accordion-body">
+      <div class="bar">
+        <label>Top</label>
+        <select id="lopsTopKillersTop" class="input">
+          <option selected>10</option><option>20</option><option>50</option><option>100</option>
+        </select>
+        <span class="muted">Tournament filter applies (loose match; falls back to All if not found).</span>
+      </div>
+      <div class="card" style="margin:0">
+        <div id="tblLopsTopKillers">Loading…</div>
+      </div>
+    </div>
+  </details>
+
 </div>
 
 <script>
-/* ===== Supabase ===== */
+/* ========= Supabase init + auth ========= */
 const client = supabase.createClient(
   'https://gkugecflfddkpitlrmws.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
 );
-(async ()=>{
+
+(async () => {
   const { data: { session } } = await client.auth.getSession();
-  if (!session) { /* Allow anon read if RLS permits */ }
   const ui = document.getElementById('user-info');
-  if (ui && session?.user?.email) ui.textContent = `Logged in as: ${session.user.email}`;
+  if (session?.user?.email) ui.textContent = `Logged in as: ${session.user.email}`;
   else ui.textContent = 'Anon access';
 })();
 document.getElementById('logoutBtn').onclick = async () => {
@@ -148,31 +310,80 @@ document.getElementById('logoutBtn').onclick = async () => {
   window.location.href = 'index.html';
 };
 
-/* ===== Utils ===== */
-const el = id => document.getElementById(id);
-const norm = v => (v==null ? '' : String(v).trim());
-const n = v => {
-  if (v == null || v === '') return 0;
-  const x = typeof v === 'number' ? v : parseFloat(String(v).replace(/,/g,''));
-  return Number.isFinite(x) ? x : 0;
-};
-const uniq = arr => Array.from(new Set(arr));
-function sum(arr, k){ let t=0; for(const r of arr) t += n(r[k]); return t; }
+/* ========= Teams reference ========= */
+const TEAMS = [
+  { name:"AG",   fullname:"ALL GAMERS",                 region:"SEA",   logo:"https://i.imgur.com/GZxPNXi.png" },
+  { name:"BRU",  fullname:"BURIRAM UNITED ESPORTS",     region:"SEA",   logo:"https://i.imgur.com/ngHig8q.png" },
+  { name:"CLVS", fullname:"CLEAR VISION ESPORTS",       region:"MEA",   logo:"https://i.imgur.com/AXkfYHk.png" },
+  { name:"E1",   fullname:"E1 SPORTS",                  region:"BR",    logo:"https://i.imgur.com/bddVsgm.png" },
+  { name:"EVOS", fullname:"EVOS DIVINE",                region:"SEA",   logo:"https://i.imgur.com/xWCHSwf.png" },
+  { name:"FX",   fullname:"FLUXO",                      region:"BR",    logo:"https://i.imgur.com/OGJ5A7r.png" },
+  { name:"GOW",  fullname:"GOW",                        region:"SEA",   logo:"https://i.imgur.com/CfmGEX6.png" },
+  { name:"HEV",  fullname:"HEAVY",                      region:"SEA",   logo:"https://i.imgur.com/vqVyJSJ.png" },
+  { name:"HS",   fullname:"HOTSHOT ESPORTS",            region:"PK",    logo:"https://i.imgur.com/f8ehquU.png" },
+  { name:"NVL",  fullname:"NOVA LEGION",                region:"LATAM", logo:"https://i.imgur.com/iZmL3FT.png" },
+  { name:"PE",   fullname:"P ESPORTS",                  region:"SEA",   logo:"https://i.imgur.com/kFcOez3.png" },
+  { name:"R7",   fullname:"MOVISTAR R7",                region:"LATAM", logo:"https://i.imgur.com/95lg1Dp.png" },
+  { name:"RC",   fullname:"RED CLIFF",                  region:"BD",    logo:"https://i.imgur.com/kX5wBEZ.png" },
+  { name:"RHK",  fullname:"RED HAWKS",                  region:"BD",    logo:"https://i.imgur.com/E2MJQdH.png" },
+  { name:"RRQ",  fullname:"RRQ KAZU",                   region:"SEA",   logo:"https://i.imgur.com/Afw7WMp.png" },
+  { name:"FLCN", fullname:"TEAM FALCONS",               region:"SEA",   logo:"https://i.imgur.com/DwPXnv1.png" },
+  { name:"TS",   fullname:"TEAM SOLID",                 region:"BR",    logo:"https://i.imgur.com/3Chm42Y.png" },
+  { name:"WAG",  fullname:"WAG",                        region:"SEA",   logo:"https://i.imgur.com/EiRHnoW.png" },
+];
+const TEAM_BY_CODE = Object.fromEntries(TEAMS.map(t => [t.name.toLowerCase(), t]));
+const TEAM_BY_NAME = Object.fromEntries(TEAMS.map(t => [t.fullname.toLowerCase(), t]));
+const ALLOWED_TAGS = new Set(TEAMS.map(t => t.name.toUpperCase()));
 
-/* column-insensitive getter */
+const el = id => document.getElementById(id);
+const fmtPct = x => isFinite(x) ? (x*100).toFixed(1)+'%' : '—';
+const n = x => Number(x ?? 0) || 0;
+const norm = v => (v==null ? '' : String(v).trim());
+function looksLikeURL(v){ return /^https?:\/\//i.test(String(v||'')); }
+function sum(arr,k){ let t=0; for(const r of arr) t+= n(r[k]); return t; }
+function safeDiv(a,b){ a=n(a); b=n(b); return b? (a/b) : 0; }
+function groupBy(arr,fn){ const m=new Map(); for(const r of arr){ const k=fn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r);} return m; }
+
+function keyTuple(r){ return [Number(r.year)||0,Number(r.week)||0,Number(r.day)||0,Number(r.match)||0,Number(r.id)||0]; }
+function cmpTuple(a,b){ for(let i=0;i<Math.max(a.length,b.length);i++){const av=a[i]??0,bv=b[i]??0; if(av>bv) return 1; if(av<bv) return -1;} return 0; }
+
+/* ========= State ========= */
+let ALL = [];        // ffbr_data
+let TEAM_ROWS = [];  // current team rows after tournament filter
+let CURRENT_TEAM = null;
+
+let LOPS_ALL = [];   // ffbr_lopsdata
+let PET_COL = null;  // auto-detected Pet column name
+let WEAPON_COL = null; // auto-detected Weapon column
+let DEATHS_COL = null; // auto-detected Deaths column
+let KNOCK_COL = null;  // knockdowns
+let VEHICLE_COL = null;// vehicle kills
+let GLOO_USED_COL = null, GLOO_DESTROY_COL = null, REVIVES_COL = null, KILLTIME_COL = null;
+
+/* ========= Normalizers (ffbr_data) ========= */
+function normalizeRow(r){
+  r._tag = norm(r.tag ?? r.TAG ?? '');
+  if (r.tournament_id == null && r.tourn_id != null) r.tournament_id = r.tourn_id;
+  if (r.tournament_id == null && r.tournamentId != null) r.tournament_id = r.tournamentId;
+  if (r.elimination == null) r.elimination = r.elims ?? r.kills ?? 0;
+  if (r.placement   == null) r.placement   = r.place ?? 0;
+  if (r.top3        == null) r.top3        = r.top_3 ?? 0;
+  return r;
+}
+
 function getCI(obj, ...names){
   if (!obj) return '';
   const keys = Object.keys(obj);
-  for (const want of names){
+  for (const want of names.filter(Boolean)){
     const k = keys.find(x => x.toLowerCase() === String(want).toLowerCase());
     if (k) return obj[k];
   }
-  for (const want of names){
+  for (const want of names.filter(Boolean)){
     const rx = new RegExp('^'+String(want).replace(/\s+/g,'\\s*')+'$','i');
     const k = keys.find(x => rx.test(x));
     if (k) return obj[k];
   }
-  const wantLow = names.map(s => String(s).toLowerCase().replace(/\s+/g,' ').trim());
+  const wantLow = names.filter(Boolean).map(s => String(s).toLowerCase().replace(/\s+/g,' ').trim());
   for (const k of keys){
     const lk = k.toLowerCase().replace(/\s+/g,' ').trim();
     if (wantLow.includes(lk)) return obj[k];
@@ -180,327 +391,778 @@ function getCI(obj, ...names){
   return '';
 }
 
-/* ===== Normalizer for ffbr_lopsdata ===== */
-function normalizeRow(r){
-  const o = {...r};
+/* ========= Fetch ffbr_data ========= */
+async function fetchAllRows(){
+  const CHUNK=1000; let from=0; const out=[];
+  for(;;){
+    const { data, error } = await client.from('ffbr_data').select('*')
+      .order('year',{ascending:true,nullsFirst:true})
+      .order('week',{ascending:true,nullsFirst:true})
+      .order('day',{ascending:true,nullsFirst:true})
+      .order('match',{ascending:true,nullsFirst:true})
+      .order('id',{ascending:true})
+      .range(from, from+CHUNK-1);
+    if (error){ console.error('ffbr_data fetch failed:', error); break; }
+    const rows = data||[];
+    if (!rows.length) break;
+    out.push(...rows); from += rows.length;
+  }
+  const normalized = out.map(normalizeRow);
+  const filtered = normalized.filter(r => ALLOWED_TAGS.has(norm(r._tag).toUpperCase()));
+  return filtered;
+}
+
+/* ========= Tournament helpers (ffbr_data) ========= */
+const PREFERRED_LATEST_NAME = 'ffws global finals 2025';
+function tournamentsIndex(rows){
+  const map=new Map();
+  for(const r of rows){
+    const name=norm(r.tournament); if(!name) continue;
+    const key=name.toLowerCase(); const id=Number(r.tournament_id); const tup=keyTuple(r);
+    if(!map.has(key)) map.set(key,{name,idMax:Number.isFinite(id)?id:-Infinity,tupMax:tup});
+    else{ const o=map.get(key); if(Number.isFinite(id)) o.idMax=Math.max(o.idMax,id); if(cmpTuple(tup,o.tupMax)>0) o.tupMax=tup; }
+  }
+  return map;
+}
+function defaultTournamentName(rows){
+  const idx=tournamentsIndex(rows); if(!idx.size) return null;
+  for(const v of idx.values()){ if(v.name.toLowerCase()===PREFERRED_LATEST_NAME) return v.name; }
+  const withId=[...idx.values()].filter(v=>Number.isFinite(v.idMax)&&v.idMax!==-Infinity);
+  if(withId.length){ withId.sort((a,b)=> b.idMax - a.idMax || cmpTuple(b.tupMax,a.tupMax)); return withId[0].name; }
+  const all=[...idx.values()].sort((a,b)=> cmpTuple(b.tupMax,a.tupMax));
+  return all[0].name;
+}
+function uniqueTournaments(rows){
+  const idx=tournamentsIndex(rows); const items=[...idx.values()];
+  items.sort((a,b)=>{
+    const aId=Number.isFinite(a.idMax), bId=Number.isFinite(b.idMax);
+    if(aId && bId){ if(b.idMax!==a.idMax) return b.idMax-a.idMax; const t=cmpTuple(b.tupMax,a.tupMax); if(t) return t; return a.name.localeCompare(b.name); }
+    if(aId && !bId) return -1; if(!aId && bId) return 1;
+    const t=cmpTuple(b.tupMax,a.tupMax); if(t) return t; return a.name.localeCompare(b.name);
+  });
+  return items;
+}
+function populateGlobalTournament(){
+  const sel=el('gTournament'); if(!sel) return;
+  const items=uniqueTournaments(ALL); const latest=defaultTournamentName(ALL);
+  sel.innerHTML=`<option value="__all__">All tournaments</option>` + items.map(o=>`<option value="${o.name.replaceAll('"','&quot;')}">${o.name}</option>`).join('');
+  sel.value = latest || '__all__';
+  updateFilterHint();
+}
+function selectedTournament(){ return (el('gTournament')?.value || '__all__').trim(); }
+function baseRowsByTournament(rows){
+  const t=selectedTournament(); if(t==='__all__') return rows;
+  const lf=t.toLowerCase(); return rows.filter(r=> norm(r.tournament).toLowerCase()===lf);
+}
+function updateFilterHint(){
+  const t=selectedTournament(); const total=baseRowsByTournament(ALL).length;
+  el('filterHint').textContent = t==='__all__'
+    ? `Scope: All tournaments • Rows: ${total}`
+    : `Scope: ${t} • Rows: ${total} • Default prefers “FFWS GLOBAL FINALS 2025”, else latest by tournament_id`;
+}
+
+/* ========= Aggregations (ffbr_data) ========= */
+function codeFromRow(r){ const code=norm(r._tag).toUpperCase(); return ALLOWED_TAGS.has(code) ? code : null; }
+function metaFromCode(code){ return code ? TEAM_BY_CODE[code.toLowerCase()] : null; }
+function aggregateOverall(rows){
+  const grouped=new Map();
+  for(const r of rows){ const code=codeFromRow(r); if(!code) continue; if(!grouped.has(code)) grouped.set(code,[]); grouped.get(code).push(r); }
+  const out=[];
+  for(const [code,list] of grouped.entries()){
+    const meta=metaFromCode(code); const m=list.length; if(!m||!meta) continue;
+    const booyahs=sum(list,'booyah'), elims=sum(list,'elimination'), place=sum(list,'placement'), total=sum(list,'total');
+    out.push({ team:meta.fullname, code:meta.name, region:meta.region||'—', matches:m,
+      booyahs, elims, placement:place, total,
+      booyah_rate:booyahs/m, elims_pm:elims/m, placement_pm:place/m, total_pm:total/m, top3_rate: sum(list,'top3')/m });
+  }
+  return out;
+}
+function aggregateTeamsForMap(rows,mapValue){
+  const perTeam=new Map();
+  for(const r of rows){
+    if(mapValue && mapValue!=='__all__'){ if((norm(r.map)||'').toLowerCase()!==mapValue.toLowerCase()) continue; }
+    const code=codeFromRow(r); if(!code) continue;
+    if(!perTeam.has(code)) perTeam.set(code,[]); perTeam.get(code).push(r);
+  }
+  const out=[];
+  for(const [code,list] of perTeam.entries()){
+    const meta=metaFromCode(code); const m=list.length; if(!m||!meta) continue;
+    const booyahs=sum(list,'booyah'), elims=sum(list,'elimination'), place=sum(list,'placement'), total=sum(list,'total');
+    out.push({ team:meta.fullname, code:meta.name, region:meta.region||'—', matches:m,
+      booyahs, elims, placement:place, total,
+      booyah_rate:booyahs/m, elims_pm:elims/m, placement_pm:place/m, total_pm:total/m, top3_rate: sum(list,'top3')/m });
+  }
+  return out;
+}
+function uniqueMaps(rows){ const s=new Set(); for(const r of rows){ const m=norm(r.map); if(m) s.add(m); } return [...s].sort((a,b)=>a.localeCompare(b)); }
+function populateMapFilter(){
+  const sel=el('mapFilter'); const current=sel.value||'__all__';
+  const items=uniqueMaps(baseRowsByTournament(ALL));
+  sel.innerHTML=`<option value="__all__">All maps</option>` + items.map(m=>`<option value="${m.replaceAll('"','&quot;')}">${m}</option>`).join('');
+  const exists=[...sel.options].some(op=>op.value===current); sel.value = exists ? current : '__all__';
+}
+
+/* ========= Generic table + heat ========= */
+function renderSimpleTable(list, cols){
+  if (!list.length) return '<div class="muted">No rows.</div>';
+  const head = `<thead><tr>${cols.map(c=>`<th data-key="${c.key}" class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
+  const body = `<tbody>${list.map((r,i)=>`<tr>${
+    cols.map(c=>{
+      let v;
+      if (typeof c.html==='function'){ v=c.html(r,i); }
+      else {
+        v=r[c.key];
+        if (c.format==='pct') v=isFinite(v)?(v*100).toFixed(1)+'%':'—';
+        else if (c.format==='1d') v=isFinite(v)?Number(v).toFixed(1):'—';
+        else if (c.format==='2d') v=isFinite(v)?Number(v).toFixed(2):'—';
+        else if (c.format==='0d') v=isFinite(v)?Number(v).toFixed(0):'—';
+        if (c.link && v && looksLikeURL(v)) v=`<a href="${v}" target="_blank" rel="noopener">${v}</a>`;
+      }
+      return `<td data-key="${c.key}" class="${c.right?'right':''}">${(v==null||v==='')?'—':v}</td>`;
+    }).join('')
+  }</tr>`).join('')}</tbody>`;
+  return `<table>${head}${body}</table>`;
+}
+function applyColumnHeatmap(containerId, keys){
+  const wrap=el(containerId); const table=wrap?.querySelector('table'); if(!table) return;
+  table.querySelectorAll('td[data-key]').forEach(td=>{ td.style.backgroundColor=''; td.classList.remove('heat-top'); });
+  const styles=getComputedStyle(document.documentElement);
+  const rgb=styles.getPropertyValue('--heat-rgb')||'255,189,89';
+  const minA=parseFloat(styles.getPropertyValue('--heat-min'))||.06;
+  const maxA=parseFloat(styles.getPropertyValue('--heat-max'))||.22;
+  const radius=styles.getPropertyValue('--heat-radius')||'8px';
+  const BANDS=5;
+  for(const key of keys){
+    const cells=[...table.querySelectorAll(`td[data-key="${key}"]`)];
+    if(!cells.length) continue;
+    const entries=cells.map((td,i)=>{ const raw=(td.textContent||'').trim().replace('%','').replace(/,/g,''); const v=parseFloat(raw); return {td,i,v:isFinite(v)?v:null}; }).filter(e=>e.v!=null);
+    if(!entries.length) continue;
+    const asc=entries.slice().sort((a,b)=>a.v-b.v); const n=asc.length; const bandByIndex=new Map();
+    asc.forEach((e,rank)=>{ const p=(n<=1)?1:(rank/(n-1)); const band=Math.min(BANDS-1,Math.floor(p*BANDS)); bandByIndex.set(e.i,band); });
+    const topVal=asc[n-1].v;
+    cells.forEach((td,i)=>{ const band=bandByIndex.get(i); if(band==null) return;
+      const alpha=minA + (band/(BANDS-1))*(maxA-minA);
+      td.style.backgroundColor=`rgba(${rgb}, ${alpha.toFixed(3)})`; td.style.borderRadius=radius; td.style.backgroundClip='padding-box';
+      const raw=(td.textContent||'').trim().replace('%','').replace(/,/g,''); const v=parseFloat(raw);
+      if(isFinite(v)&&v===topVal) td.classList.add('heat-top');
+    });
+  }
+}
+
+/* ========= Team Info & Roster ========= */
+function uiShowTeamInfoError(msg){ el('teamInfoBody').innerHTML = `<div class="muted" style="white-space:pre-wrap">${msg}</div>`; }
+function uiShowRosterError(msg){ el('teamRosterBody').innerHTML = `<div class="muted" style="white-space:pre-wrap">${msg}</div>`; }
+function asListHTML(val){
+  const items = splitToLines(val); if(!items.length) return '—';
+  return `<ul class="list-compact">${items.map(it=>`<li>${it}</li>`).join('')}</ul>`;
+}
+function splitToLines(val){
+  if (val == null) return [];
+  if (Array.isArray(val)) return val.flat().map(x=>String(x).trim()).filter(Boolean);
+  let s=String(val).trim();
+  try{ if(/^\s*\[/.test(s)){ const arr=JSON.parse(s); if(Array.isArray(arr)) return arr.flat().map(x=>String(x).trim()).filter(Boolean); } }catch{}
+  s=s.replace(/[•\u2022\u00b7]/g,'\n'); let parts=s.split(/\r?\n|;|\|/); if(parts.length===1 && s.includes(',')) parts=s.split(',');
+  return parts.map(x=>x.trim()).filter(Boolean);
+}
+async function fetchTeamInfoBy(codeRaw,nameRaw){
+  const codeUp=norm(codeRaw).toUpperCase(); const name=norm(nameRaw);
+  try{
+    let res=await client.from('br_team_info').select('*').eq('"Team Initials"', codeUp).limit(1);
+    if(res.error) throw res.error;
+    if(res.data?.length) return res.data[0];
+    const like=`*${name}*`; const tries=[ ['team_name','ilike',like], ['team','ilike',like], ['team_code','eq',codeUp], ['code','eq',codeUp] ];
+    for(const [col,op,val] of tries){ const q=await client.from('br_team_info').select('*')[op](col,val).limit(1); if(!q.error && q.data?.length) return q.data[0]; }
+  }catch(e){ console.error('br_team_info fetch error:', e); uiShowTeamInfoError(`Team info error: ${e.message||e}`); }
+  return null;
+}
+async function fetchPlayersBy(codeRaw,nameRaw,teamId){
+  const codeUp=norm(codeRaw).toUpperCase(); const name=norm(nameRaw);
+  try{
+    let res=await client.from('br_player_info').select('*').eq('"TAG"', codeUp);
+    if(res.error) throw res.error;
+    if(res.data?.length) return res.data;
+    if(teamId!=null){ const r2=await client.from('br_player_info').select('*').eq('team_id', teamId); if(!r2.error && r2.data?.length) return r2.data; }
+    const like=`*${name}*`; const tries=[ ['team_name','ilike',like], ['team','ilike',like], ['team_code','eq',codeUp], ['code','eq',codeUp] ];
+    for(const [col,op,val] of tries){ const q=await client.from('br_player_info').select('*')[op](col,val); if(!q.error && q.data?.length) return q.data; }
+  }catch(e){ console.error('br_player_info fetch error:', e); uiShowRosterError(`Player info error: ${e.message||e}`); }
+  return [];
+}
+function renderTeamInfo(info){
+  const box=el('teamInfoBody');
+  if(!info){ box.innerHTML='<div class="muted">No team info found.</div>'; return; }
+  const keys=Object.keys(info);
+  const rewardsKey = keys.find(k=>k.toLowerCase()==='rewards') || keys.find(k=>/reward/i.test(k));
+  const hide=new Set(['id','created_at','updated_at','code','team_code','team','team_name','logo','logo_url','photo','image','image_url']);
+  const preferred=['Team Initials','country','region','founded','coach','manager','owner','org','sponsor','hq','tagline','website','twitter','facebook','youtube','instagram','tiktok','discord'];
+  if (rewardsKey) preferred.push(rewardsKey);
+  const picked=[...preferred.filter(k=>keys.includes(k)), ...keys.filter(k=>!preferred.includes(k) && !hide.has(k))];
+  const rows=picked.map(k=>{
+    let v=info[k]; if(v==null||v==='') return '';
+    if(k===rewardsKey) v=asListHTML(v);
+    else{ if(typeof v==='object'){try{v=JSON.stringify(v)}catch{} } if(looksLikeURL(v)) v=`<a href="${v}" target="_blank" rel="noopener">${v}</a>`;
+    }
+    return `<tr><th style="width:160px;color:var(--muted);font-weight:600">${String(k).replace(/_/g,' ')}</th><td>${v}</td></tr>`;
+  }).filter(Boolean).join('');
+  const logoUrl=info.logo_url||info.logo||'';
+  const maybeLogo=logoUrl?`<div style="margin-bottom:8px"><img src="${logoUrl}" alt="team logo" style="width:84px;height:84px;object-fit:contain;border:1px solid #2a2a2a;border-radius:8px;background:#111"></div>`:'';
+  box.innerHTML = `${maybeLogo}<table>${rows || '<tr><td class="muted">No visible fields.</td></tr>'}</table>`;
+}
+function renderRoster(players){
+  const box=el('teamRosterBody');
+  if(!players?.length){ box.innerHTML='<div class="muted">No players found.</div>'; return; }
+  const keys=Object.keys(players[0]||{});
+  const avatarKey=keys.find(k=>/photo|avatar|image|picture/i.test(k))||null;
+  const ignKey=keys.find(k=>/ign|nickname|in.?game.?name|player.?name/i.test(k))||'name';
+  const roleKey=keys.find(k=>/role|position/i.test(k))||null;
+  const countryKey=keys.find(k=>/country|nation/i.test(k))||null;
+  const ageKey=keys.find(k=>/^age$/i.test(k))||null;
+  const accolKey=keys.includes('Accolades')?'Accolades':(keys.find(k=>/accolade|achievement|title|awards/i.test(k))||null);
+  const formerKey=keys.find(k=>/former(\s|_)?teams?/i.test(k.toLowerCase()))||null;
+
+  const rows=players.slice().sort((a,b)=> String(a[roleKey]||'').localeCompare(String(b[roleKey]||'')) || String(a[ignKey]||'').localeCompare(String(b[ignKey]||''))).map(p=>{
+    const avatar=avatarKey&&p[avatarKey]?`<img src="${p[avatarKey]}" alt="" style="width:38px;height:38px;object-fit:cover;border-radius:8px;border:1px solid #2a2a2a">`:'';
+    const ign=p[ignKey]??'—';
+    const role=roleKey?(p[roleKey]??'—'):'—';
+    const country=countryKey?(p[countryKey]??'—'):'—';
+    const age=ageKey?(p[ageKey]??'—'):'—';
+    const accHTML=accolKey?asListHTML(p[accolKey]):'—';
+    const formerHTML=formerKey?asListHTML(p[formerKey]):'—';
+    return { avatar, ign, role, country, age, formerHTML, accHTML };
+  });
+
+  box.innerHTML = renderSimpleTable(rows, [
+    {label:'', key:'avatar'},
+    {label:'IGN', key:'ign'},
+    {label:'Role', key:'role'},
+    {label:'Country', key:'country'},
+    {label:'Age', key:'age', right:true},
+    {label:'Former Team', key:'formerHTML'},
+    {label:'Accolades', key:'accHTML'},
+  ]);
+}
+
+/* ========= Team (ffbr_data) quick KPIs ========= */
+function kpiDataset(rows){
+  const matches = rows.length;
+  const booyahs = sum(rows,'booyah');
+  const total   = sum(rows,'total');
+  const elims   = sum(rows,'elimination');
+  const place   = sum(rows,'placement');
+  const damage  = sum(rows,'damage');
+  const top3    = sum(rows,'top3');
+  return {
+    matches, booyahs, elims, placement:place, total,
+    booyah_rate: matches? booyahs/matches : 0,
+    total_per_match: matches? total/matches : 0,
+    elims_per_match: matches? elims/matches : 0,
+    place_per_match: matches? place/matches : 0,
+    dmg_per_match: matches? damage/matches : 0,
+    top3_rate: matches? top3/matches : 0
+  };
+}
+function teamMapPerf(rows){
+  const g = groupBy(rows, r=>r.map||'—');
+  const out=[];
+  for(const [map,list] of g.entries()){
+    const m=list.length, booyahs=sum(list,'booyah'), elims=sum(list,'elimination'), place=sum(list,'placement'), total=sum(list,'total');
+    out.push({ map, matches:m, booyahs, elims, placement:place, total,
+      booyah_rate:m?booyahs/m:0, elims_pm:m?elims/m:0, placement_pm:m?place/m:0, total_pm:m?total/m:0 });
+  }
+  return out.sort((a,b)=> b.total_pm - a.total_pm || b.matches - a.matches || a.map.localeCompare(b.map));
+}
+
+/* ========= LOPS detection & normalization ========= */
+function detectColumnByRegex(keys, patterns){
+  for(const p of patterns){ const found=keys.find(k=>p.test(k)); if(found) return found; }
+  return null;
+}
+function detectLopsColumns(rows){
+  if(!rows?.length) return;
+  const keys=Object.keys(rows[0]);
+
+  // pet
+  const petPrefer=['Pet','pet','Pet Name','PetName','Pet 1','pet_1','pet1','SkillPet','skillpet_1','PetName1','PetName_1'];
+  PET_COL = petPrefer.find(k=>keys.includes(k)) || detectColumnByRegex(keys,[/pet/i]);
+
+  // weapon
+  WEAPON_COL = ['weapon','Weapon','Gun','Primary','Primary Weapon','Loadout','Weapon Name','WeaponName','gun_name']
+    .find(k=>keys.includes(k)) || detectColumnByRegex(keys,[/weapon|gun/i]);
+
+  // deaths
+  DEATHS_COL = ['Deaths','DEATHS','deaths','Death'].find(k=>keys.includes(k)) || detectColumnByRegex(keys,[/death/i]);
+
+  // knockdowns
+  KNOCK_COL = ['Knockdown','Knockdowns','DBNO','Downs','Knocks'].find(k=>keys.includes(k)) || detectColumnByRegex(keys,[/knock|dbno|down/i]);
+
+  // vehicle kills
+  VEHICLE_COL = ['Vehicle Kills','VehicleKills','Veh Kills','Vehicle'].find(k=>keys.includes(k)) || detectColumnByRegex(keys,[/veh/i]);
+
+  // gloo walls
+  GLOO_USED_COL = ['Gloo Wall Used','Gloo Used','GW Used','GlooUsed'].find(k=>keys.includes(k)) || detectColumnByRegex(keys,[/gloo.*used/i]);
+  GLOO_DESTROY_COL = ['Gloo Wall Destroyed','GW Destroyed','GlooDestroyed'].find(k=>keys.includes(k)) || detectColumnByRegex(keys,[/gloo.*destroy/i]);
+
+  // revives
+  REVIVES_COL = ['Members Revived','Revives','Teammates Revived','Rescues'].find(k=>keys.includes(k)) || detectColumnByRegex(keys,[/reviv|rescu/i]);
+
+  // kill time / ttk
+  KILLTIME_COL = ['Kill Time','kill_time','Time To Kill','TTK'].find(k=>keys.includes(k)) || detectColumnByRegex(keys,[/ttk|kill.?time/i]);
+}
+function normalizeLopsRow(r){
+  const o={...r};
   o._created   = getCI(o,'created_at','Created','Timestamp') || null;
   o._id        = n(getCI(o,'id','ID'));
   o._player    = norm(getCI(o,'Player name','Player Name','Player','IGN'));
   o._team      = norm(getCI(o,'Team','TAG','TeamName','Team Name'));
   o._map       = norm(getCI(o,'Map','map','Match Map'));
+  o._tournament= norm(getCI(o,'Tournament','Event','Series'));
+
   o.kills      = n(getCI(o,'KILLS','Kills','Kill'));
   o.assists    = n(getCI(o,'ASSISTS','Assists','Assist'));
-  o.headshots  = n(getCI(o,'HEADSHOTRS','HEADSHOTS','Headshots','HS'));
+  o.headshots  = n(getCI(o,'HEADSHOTS','HEADSHOTRS','Headshots','HS'));
   o.damage     = n(getCI(o,'DAMAGE','Damage','DMG'));
   o.grenade    = n(getCI(o,'Grenade kill','Grenade kills','Nade Kills','Grenade'));
-  o.active     = norm(getCI(o,'Active Skill','Active','Skill','ActiveSkill'));
-  o.pet        = norm(getCI(o,'Pet','Pet Name','PetName'));
-  o._tournament= norm(getCI(o,'Tournament','Event','Series'));
+
+  o.deaths     = n(getCI(o, DEATHS_COL));
+  o.knockdowns = n(getCI(o, KNOCK_COL));
+  o.vehicle    = n(getCI(o, VEHICLE_COL));
+  o.gloo_used  = n(getCI(o, GLOO_USED_COL));
+  o.gloo_break = n(getCI(o, GLOO_DESTROY_COL));
+  o.revives    = n(getCI(o, REVIVES_COL));
+  o.kill_time  = n(getCI(o, KILLTIME_COL));
+
+  o.active     = norm(getCI(o,'skillactive_1','SkillActive_1','Active Skill','Active','SkillActive'));
+  o.pet        = norm(getCI(o, PET_COL, 'Pet','Pet Name','Pet 1','pet_1','pet1','SkillPet','skillpet_1'));
+  o.weapon     = norm(getCI(o, WEAPON_COL, 'Weapon','Gun','Primary','Weapon Name'));
   return o;
 }
-
-/* ===== Data fetch (simple paging, no fragile order) ===== */
-async function fetchAllRows(){
-  const CHUNK = 1000;
-  let from = 0;
-  const out = [];
+async function fetchAllLopsRows(){
+  const CHUNK=1000; let from=0; const out=[];
   for(;;){
-    const { data, error } = await client
-      .from('ffbr_lopsdata')
-      .select('*')
-      .range(from, from + CHUNK - 1);
-    if (error){ console.error('ffbr_lopsdata fetch failed:', error); break; }
-    const rows = data || [];
-    if (!rows.length) break;
-    out.push(...rows);
-    from += rows.length;
+    const { data, error } = await client.from('ffbr_lopsdata').select('*').range(from, from+CHUNK-1);
+    if(error){ console.error('ffbr_lopsdata fetch failed:', error); break; }
+    const rows=data||[]; if(!rows.length) break;
+    out.push(...rows); from+=rows.length;
   }
-  const normed = out.map(normalizeRow);
-  document.getElementById('pickerHint').textContent =
-    `Loaded ${normed.length} rows • Columns detected (example): ${Object.keys(out[0]||{}).slice(0,8).join(', ')}${Object.keys(out[0]||{}).length>8?'…':''}`;
-  return normed.filter(r => r._player);
+  detectLopsColumns(out);
+  return out.map(normalizeLopsRow).filter(r=>r._player);
 }
 
-/* ===== Heatmap (optional) ===== */
-function applyColumnHeatmap(containerId, keys){
-  const wrap = el(containerId);
-  const table = wrap?.querySelector('table'); if (!table) return;
-  table.querySelectorAll('td[data-key]').forEach(td=>{
-    td.style.backgroundColor = ''; td.classList.remove('heat-top');
+/* ========= Tournament-scope helpers (lops) ========= */
+function baseLopsByTournament(rows){
+  const tSel=selectedTournament(); if(tSel==='__all__') return rows;
+  const normA = s=> String(s||'').toLowerCase().replace(/\s+/g,' ').trim();
+  const normB = s=> String(s||'').toLowerCase().replace(/[^\w]+/g,'');
+  const selA=normA(tSel), selB=normB(tSel);
+  const lopsNames=new Set(rows.map(r=>normA(r._tournament)).filter(Boolean));
+  if(!lopsNames.size) return rows;
+  const hasLoose=[...lopsNames].some(t=>{ if(!t) return false; const tB=normB(t); return t===selA || t.includes(selA) || tB===selB || tB.includes(selB); });
+  if(!hasLoose) return rows;
+  return rows.filter(r=>{ const t=normA(r._tournament), tB=normB(r._tournament); return t===selA || t.includes(selA) || tB===selB || tB.includes(selB); });
+}
+
+/* ========= Selected team lops rows ========= */
+function lopsRowsForTeam(all, teamObj){
+  if(!teamObj) return [];
+  const code = (teamObj.name||'').trim().toLowerCase();
+  const full = (teamObj.fullname||'').trim().toLowerCase();
+  const base = baseLopsByTournament(all);
+  return base.filter(r=>{
+    const t = (r._team||'').toLowerCase();
+    return t===code || t===full || t===teamObj.name || t===teamObj.fullname;
   });
-  const styles = getComputedStyle(document.documentElement);
-  const rgb    = styles.getPropertyValue('--heat-rgb') || '255,189,89';
-  const minA   = parseFloat(styles.getPropertyValue('--heat-min')) || .06;
-  const maxA   = parseFloat(styles.getPropertyValue('--heat-max')) || .22;
-  const radius = styles.getPropertyValue('--heat-radius') || '8px';
-  const BANDS  = 5;
-  for (const key of keys){
-    const cells = Array.from(table.querySelectorAll(`td[data-key="${key}"]`));
-    if (!cells.length) continue;
-    const entries = cells.map((td,i)=>{
-      const raw = (td.textContent||'').trim().replace('%','').replace(/,/g,'');
-      const v = parseFloat(raw);
-      return { td, i, v: isFinite(v) ? v : null };
-    }).filter(e => e.v != null);
-    if (!entries.length) continue;
-    const asc = entries.slice().sort((a,b)=> a.v - b.v);
-    const n   = asc.length;
-    const topVal = asc[n-1].v;
-    const bandByIndex = new Map();
-    asc.forEach((e, rank)=>{
-      const p = (n<=1) ? 1 : (rank/(n-1));
-      const band = Math.min(BANDS-1, Math.floor(p * BANDS));
-      bandByIndex.set(e.i, band);
-    });
-    cells.forEach((td,i)=>{
-      const band = bandByIndex.get(i);
-      if (band == null) return;
-      const alpha = minA + ((band)/(BANDS-1)) * (maxA - minA);
-      td.style.backgroundColor = `rgba(${rgb}, ${alpha.toFixed(3)})`;
-      td.style.borderRadius = radius;
-      td.style.backgroundClip = 'padding-box';
-      const raw = (td.textContent||'').trim().replace('%','').replace(/,/g,'');
-      const v = parseFloat(raw);
-      if (isFinite(v) && v === topVal) td.classList.add('heat-top');
-    });
-  }
 }
 
-/* ===== Render helpers ===== */
-function renderSimpleTable(list, cols){
-  if (!list.length) return '<div class="muted">No rows.</div>';
-  const head = `<thead><tr>${cols.map(c=>`<th class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
-  const body = `<tbody>${list.map(r=>`<tr>${cols.map(c=>{
-    let v = r[c.key];
-    if (c.html) v = c.html(r);
-    else if (c.format==='pct') v = isFinite(v) ? (v*100).toFixed(1)+'%' : '—';
-    else if (c.format==='1d') v = isFinite(v) ? Number(v).toFixed(1) : '—';
-    else if (c.format==='2d') v = isFinite(v) ? Number(v).toFixed(2) : '—';
-    else if (c.format==='0d') v = isFinite(v) ? Number(v).toFixed(0) : '—';
-    return `<td data-key="${c.key}" class="${c.right?'right':''}">${(v==null||v==='')?'—':v}</td>`;
-  }).join('')}</tr>`).join('')}</tbody>`;
-  return `<table>${head}${body}</table>`;
+/* ========= Team combined metrics (ffbr_data + lops) ========= */
+function renderTeamCombinedMetrics(){
+  const totalsEl = el('teamTotals'), avgsEl = el('teamAverages'), sigEl = el('teamSignals');
+  if(!CURRENT_TEAM){ totalsEl.innerHTML=avgsEl.innerHTML=sigEl.innerHTML='—'; return; }
+
+  const games = TEAM_ROWS.length || 0; // per-match rows from ffbr_data
+  const teamLops = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
+
+  const totals = {
+    kills:       sum(teamLops,'kills'),
+    dmg:         sum(teamLops,'damage'),
+    assists:     sum(teamLops,'assists'),
+    knock:       sum(teamLops,'knockdowns'),
+    deaths:      sum(teamLops,'deaths'),
+    glooUsed:    sum(teamLops,'gloo_used'),
+    glooBreak:   sum(teamLops,'gloo_break'),
+    revives:     sum(teamLops,'revives'),
+    nade:        sum(teamLops,'grenade'),
+    vehicle:     sum(teamLops,'vehicle'),
+    hs:          sum(teamLops,'headshots'),
+    killTime:    sum(teamLops,'kill_time')
+  };
+  const kd = totals.deaths ? (totals.kills / totals.deaths) : null;
+  const hsRate = totals.kills ? (totals.hs / totals.kills) : null;
+  const avgKillTime = teamLops.length ? (totals.killTime / teamLops.length) : null;
+
+  // Totals
+  totalsEl.innerHTML = `
+    <div class="kpi">TOTAL ELIMS <strong>${totals.kills}</strong></div>
+    <div class="kpi">TOTAL DMG <strong>${totals.dmg}</strong></div>
+    <div class="kpi">TOTAL ASSISTS <strong>${totals.assists}</strong></div>
+    <div class="kpi">TOTAL KNOCKDOWN <strong>${totals.knock}</strong></div>
+    <div class="kpi">GLOO WALL USED <strong>${totals.glooUsed}</strong></div>
+    <div class="kpi">GLOO WALL DESTROYED <strong>${totals.glooBreak}</strong></div>
+    <div class="kpi">MEMBERS REVIVED <strong>${totals.revives}</strong></div>
+    <div class="kpi">GRENADE KILLS <strong>${totals.nade}</strong></div>
+    <div class="kpi">VEHICLE KILLS <strong>${totals.vehicle}</strong></div>
+    <div class="kpi">HEADSHOTS <strong>${totals.hs}</strong></div>
+    <div class="kpi">GAMES PLAYED <strong>${games}</strong></div>
+  `;
+
+  // Per match averages (use ffbr_data games to normalize)
+  avgsEl.innerHTML = games ? `
+    <div class="kpi">AVG. ELIMS <strong>${(totals.kills/games).toFixed(1)}</strong></div>
+    <div class="kpi">AVG. DMG <strong>${(totals.dmg/games).toFixed(0)}</strong></div>
+    <div class="kpi">AVG. ASSISTS <strong>${(totals.assists/games).toFixed(1)}</strong></div>
+    <div class="kpi">AVG. KD <strong>${kd!=null?kd.toFixed(2):'—'}</strong></div>
+    <div class="kpi">AVG. GLOO USED <strong>${(totals.glooUsed/games).toFixed(1)}</strong></div>
+    <div class="kpi">AVG. GLOO DESTROYED <strong>${(totals.glooBreak/games).toFixed(1)}</strong></div>
+    <div class="kpi">AVG. REVIVES <strong>${(totals.revives/games).toFixed(1)}</strong></div>
+    <div class="kpi">AVG. HS <strong>${(totals.hs/games).toFixed(1)}</strong></div>
+  ` : '<div class="muted">No games found for averages.</div>';
+
+  // Signals
+  sigEl.innerHTML = `
+    <div class="kpi">HEADSHOTS KILL RATE <strong>${hsRate!=null?fmtPct(hsRate):'—'}</strong></div>
+    <div class="kpi">KILL TIME <strong>${avgKillTime!=null?avgKillTime.toFixed(2):'—'}</strong></div>
+  `;
 }
-function identityBlock(playerName, rows){
-  const teams = Array.from(new Set(rows.map(r=>r._team).filter(Boolean))).join(', ') || '—';
-  const tourns = new Set(rows.map(r=>r._tournament).filter(Boolean)).size;
-  return `
+
+/* ========= Most used combo (Active + Pet) for team ========= */
+function countCombos(rows){
+  const m=new Map();
+  for(const r of rows){
+    const a=norm(r.active), p=norm(r.pet);
+    if(!a && !p) continue;
+    const key = `${a} + ${p}`.trim();
+    const k = key.toLowerCase();
+    if(!m.has(k)) m.set(k,{combo:key,picks:0});
+    m.get(k).picks++;
+  }
+  return [...m.values()];
+}
+function renderTeamCombos(){
+  const limit=Number(el('teamComboTop').value)||10;
+  const base=lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
+  const list=countCombos(base).sort((a,b)=> b.picks-a.picks || a.combo.localeCompare(b.combo)).slice(0,limit);
+  el('tblTeamCombos').innerHTML = renderSimpleTable(list.map((r,i)=>({...r,rank:i+1})), [
+    {label:'#',key:'rank',right:true,html:(_,i)=>i+1},
+    {label:'Combo',key:'combo'},
+    {label:'Picks',key:'picks',right:true}
+  ]);
+  applyColumnHeatmap('tblTeamCombos', ['picks']);
+}
+
+/* ========= Each player — performance & most used ========= */
+function modeOf(arr){
+  const m=new Map();
+  for(const v of arr.map(norm)){ if(!v) continue; m.set(v,(m.get(v)||0)+1); }
+  let best='', cnt=0;
+  for(const [k,v] of m.entries()){ if(v>cnt){best=k;cnt=v;} }
+  return best||'—';
+}
+function renderPlayers(){
+  const base=lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
+  if(!base.length){ el('tblPlayers').innerHTML='<div class="muted">No lops rows for team.</div>'; return; }
+  const g = groupBy(base, r=>r._player||'—');
+  const rows=[];
+  for(const [player,list] of g.entries()){
+    const kills=sum(list,'kills'), assists=sum(list,'assists'), dmg=sum(list,'damage');
+    const hs=sum(list,'headshots'), nade=sum(list,'grenade'), veh=sum(list,'vehicle'), downs=sum(list,'knockdowns');
+    const deaths=sum(list,'deaths');
+    const kd = deaths? kills/deaths : null;
+    rows.push({
+      player, rows:list.length,
+      kills, assists, dmg, hs, nade, veh, downs,
+      kd: kd!=null?kd:NaN,
+      active:modeOf(list.map(r=>r.active)),
+      pet:modeOf(list.map(r=>r.pet)),
+      weapon:modeOf(list.map(r=>r.weapon)),
+    });
+  }
+  rows.sort((a,b)=> b.kills-a.kills || a.player.localeCompare(b.player));
+  el('tblPlayers').innerHTML = renderSimpleTable(rows.map((r,i)=>({...r,rank:i+1})), [
+    {label:'#',key:'rank',right:true,html:(_,i)=>i+1},
+    {label:'Player',key:'player'},
+    {label:'Rows',key:'rows',right:true},
+    {label:'Kills',key:'kills',right:true},
+    {label:'Assists',key:'assists',right:true},
+    {label:'Damage',key:'dmg',right:true},
+    {label:'HS',key:'hs',right:true},
+    {label:'Grenade',key:'nade',right:true},
+    {label:'Vehicle',key:'veh',right:true},
+    {label:'Knockdowns',key:'downs',right:true},
+    {label:'K/D',key:'kd',right:true,html:r=>isFinite(r.kd)?r.kd.toFixed(2):'—'},
+    {label:'Most Active',key:'active'},
+    {label:'Most Pet',key:'pet'},
+    {label:'Most Weapon',key:'weapon'},
+  ]);
+  applyColumnHeatmap('tblPlayers', ['kills','assists','dmg','hs','nade','veh','downs','rows']);
+}
+
+/* ========= Map performance by day (selected team) ========= */
+function dayLabel(r){
+  const y=n(r.year), w=n(r.week), d=n(r.day);
+  if(y||w||d) return `Y${y||'—'} W${w||'—'} D${d||'—'}`;
+  const date = norm(r.date||r.match_date||'');
+  return date||'—';
+}
+function renderByDay(){
+  if(!TEAM_ROWS.length){ el('tblByDay').innerHTML='<div class="muted">No rows.</div>'; return; }
+  const g = groupBy(TEAM_ROWS, r=> `${dayLabel(r)}|${norm(r.map)}`);
+  const out=[];
+  for(const [key,list] of g.entries()){
+    const [day,map] = key.split('|');
+    const m=list.length, booyahs=sum(list,'booyah'), elims=sum(list,'elimination'), place=sum(list,'placement'), total=sum(list,'total');
+    out.push({ day, map:map||'—', matches:m, booyahs, elims, placement:place, total,
+      booyah_rate:m?booyahs/m:0, elims_pm:m?elims/m:0, placement_pm:m?place/m:0, total_pm:m?total/m:0 });
+  }
+  out.sort((a,b)=> a.day.localeCompare(b.day) || b.total_pm-a.total_pm || a.map.localeCompare(b.map));
+  el('tblByDay').innerHTML = renderSimpleTable(out, [
+    {label:'Day',key:'day'},
+    {label:'Map',key:'map'},
+    {label:'Matches',key:'matches',right:true},
+    {label:'Booyahs',key:'booyahs',right:true},
+    {label:'Elims',key:'elims',right:true},
+    {label:'Placement',key:'placement',right:true},
+    {label:'Total',key:'total',right:true},
+    {label:'Booyah %',key:'booyah_rate',format:'pct',right:true},
+    {label:'Elims / m',key:'elims_pm',format:'1d',right:true},
+    {label:'Placement / m',key:'placement_pm',format:'1d',right:true},
+    {label:'Total / m',key:'total_pm',format:'1d',right:true},
+  ]);
+  applyColumnHeatmap('tblByDay', ['total_pm','elims_pm','placement_pm','booyah_rate','matches','booyahs','elims','placement','total']);
+}
+
+/* ========= UI: Team grid ========= */
+function renderTeamGrid(filter=''){
+  const grid=el('teamGrid'); const q=(filter||'').trim().toLowerCase();
+  const items=TEAMS.filter(t=> !q || t.name.toLowerCase().includes(q) || t.fullname.toLowerCase().includes(q) || (t.region||'').toLowerCase().includes(q));
+  if(!items.length){ grid.innerHTML='<div class="muted">No matches.</div>'; return; }
+  grid.innerHTML = items.map(t=>`
+    <div class="team-tile" data-code="${t.name}" title="${t.fullname} • ${t.region||''}">
+      <img class="team-logo" src="${t.logo}" alt="${t.fullname} logo" loading="lazy">
+      <div class="team-code">${t.name}</div>
+    </div>`).join('');
+  grid.querySelectorAll('.team-tile').forEach(tile=>{
+    tile.onclick=()=>{ const code=tile.getAttribute('data-code').toLowerCase(); const info=TEAM_BY_CODE[code];
+      if(info){ selectTeam(info); tile.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'}); }
+    };
+  });
+  highlightActiveTile();
+}
+function highlightActiveTile(){
+  const grid=el('teamGrid'); if(!grid) return;
+  [...grid.querySelectorAll('.team-tile')].forEach(div=>{
+    const code=div.getAttribute('data-code'); div.classList.toggle('active', !!CURRENT_TEAM && CURRENT_TEAM.name===code);
+  });
+}
+
+/* ========= Selection ========= */
+async function selectTeam(teamObj){
+  CURRENT_TEAM = teamObj;
+  const url=new URL(window.location.href); url.searchParams.set('team', CURRENT_TEAM.name); history.replaceState(null,'',url.toString());
+  const base=baseRowsByTournament(ALL);
+  TEAM_ROWS = base.filter(r => (norm(r._tag).toUpperCase()||'') === teamObj.name.toUpperCase());
+
+  renderTeamOverview();
+  renderTeamCombinedMetrics();
+  renderTeamCombos();
+  renderPlayers();
+  renderByDay();
+
+  await loadTeamMeta(teamObj);
+  highlightActiveTile();
+}
+
+/* ========= Team overview panel (ffbr_data KPIs + map table) ========= */
+function renderTeamOverview(){
+  if(!CURRENT_TEAM){
+    el('teamTitle').textContent='Team Overview';
+    el('identityBody').innerHTML='Select a team.';
+    el('kpiBody').innerHTML='—';
+    el('tblMapTeam')?.innerHTML='—';
+    el('teamInfoBody').innerHTML='—';
+    el('teamRosterBody').innerHTML='—';
+    return;
+  }
+  el('teamTitle').textContent = `Team Overview — ${CURRENT_TEAM.name}`;
+  el('identityBody').innerHTML = `
     <div style="display:flex;gap:12px;align-items:center">
-      <div style="width:72px;height:72px;border:1px solid #2a2a2a;border-radius:10px;background:#111;display:flex;align-items:center;justify-content:center;font-weight:800">${(playerName||'?').slice(0,2).toUpperCase()}</div>
+      <img src="${CURRENT_TEAM.logo}" alt="${CURRENT_TEAM.fullname} logo" style="width:72px;height:72px;object-fit:contain">
       <div>
-        <div style="font-size:1.1rem;font-weight:800">${playerName||'—'}</div>
-        <div class="muted">${teams} • ${tourns||0} tournament(s)</div>
+        <div style="font-size:1.1rem;font-weight:800">${CURRENT_TEAM.name}</div>
+        <div class="muted">${CURRENT_TEAM.fullname} • ${CURRENT_TEAM.region||'—'}</div>
       </div>
     </div>`;
-}
-function kpisForPlayer(rows){
-  const cnt = rows.length;
-  const kills = sum(rows,'kills');
-  const assists = sum(rows,'assists');
-  const hs = sum(rows,'headshots');
-  const dmg = sum(rows,'damage');
-  const gk = sum(rows,'grenade');
-  return {
-    rows: cnt, kills, assists, hs, dmg, gk,
-    kpr: cnt? kills/cnt : 0,
-    apr: cnt? assists/cnt : 0,
-    dpr: cnt? dmg/cnt : 0,
-    hsr: kills? hs/kills : 0,
-  };
-}
-function renderOverview(player, rows){
-  el('playerTitle').textContent = player ? `Player Overview — ${player}` : 'Player Overview';
-  el('identityBody').innerHTML = player ? identityBlock(player, rows) : 'Select a player.';
-  const k = kpisForPlayer(rows);
-  el('kpiBody').innerHTML = k.rows ? `
+
+  const k=kpiDataset(TEAM_ROWS);
+  el('kpiBody').innerHTML = k.matches ? `
     <div class="kpis">
-      <div class="kpi">Rows <strong>${k.rows}</strong></div>
-      <div class="kpi">Kills <strong>${k.kills}</strong> <span class="muted">(${k.kpr.toFixed(2)}/row)</span></div>
-      <div class="kpi">Assists <strong>${k.assists}</strong> <span class="muted">(${k.apr.toFixed(2)}/row)</span></div>
-      <div class="kpi">Grenade <strong>${k.gk}</strong></div>
-      <div class="kpi">Damage <strong>${Math.round(k.dmg)}</strong> <span class="muted">(${Math.round(k.dpr)}/row)</span></div>
-      <div class="kpi">Headshots <strong>${k.hs}</strong> <span class="muted">(${(k.hsr*100).toFixed(1)}%)</span></div>
-    </div>` : '<div class="muted">—</div>';
-}
+      <div class="kpi">Rows <strong>${k.matches}</strong></div>
+      <div class="kpi">Booyahs <strong>${k.booyahs}</strong> (<strong>${fmtPct(k.booyah_rate)}</strong>)</div>
+      <div class="kpi">Elims <strong>${k.elims}</strong> • <strong>${k.elims_per_match.toFixed(1)}</strong>/m</div>
+      <div class="kpi">Placement <strong>${k.placement}</strong> • <strong>${k.place_per_match.toFixed(1)}</strong>/m</div>
+      <div class="kpi">Damage <strong>${k.dmg_per_match.toFixed(0)}</strong>/m</div>
+      <div class="kpi">Total <strong>${k.total}</strong> • <strong>${k.total_per_match.toFixed(1)}</strong>/m</div>
+      <div class="kpi">Top3 <strong>${fmtPct(k.top3_rate)}</strong></div>
+    </div>` : '<div class="muted">No rows.</div>';
 
-/* ===== Tables ===== */
-// Recent for selected player
-function renderRecent(rows){
-  const sorted = rows.slice().sort((a,b)=>{
-    const ad = new Date(a._created||0).getTime() || 0;
-    const bd = new Date(b._created||0).getTime() || 0;
-    if (ad !== bd) return bd - ad;
-    return (b._id||0) - (a._id||0);
-  }).slice(0,10);
-  const cols = [
-    { label:'Map', key:'_map' },
-    { label:'Tournament', key:'_tournament' },
-    { label:'Kills', key:'kills', right:true },
-    { label:'Assists', key:'assists', right:true },
-    { label:'HS', key:'headshots', right:true },
-    { label:'Grenade', key:'grenade', right:true },
-    { label:'Damage', key:'damage', right:true },
-  ];
-  el('tblRecent').innerHTML = renderSimpleTable(sorted, cols);
-  applyColumnHeatmap('tblRecent', ['kills','assists','headshots','grenade','damage']);
-}
-
-/* ===== GLOBAL AGGREGATES (COUNTS ONLY) ===== */
-function countByName(rows, key){
-  // Case/space-insensitive grouping; display first-seen original label
-  const m = new Map(); // normKey -> {name, count}
-  for (const r of rows){
-    const raw = norm(r[key]);
-    if (!raw) continue;
-    const k = raw.toLowerCase().replace(/\s+/g,' ').trim();
-    if (!m.has(k)) m.set(k, { name: raw, picks: 0 });
-    m.get(k).picks += 1;
+  // Map summary (ffbr_data)
+  const rows=teamMapPerf(TEAM_ROWS);
+  if(document.getElementById('tblMapTeam')){
+    document.getElementById('tblMapTeam').innerHTML = renderSimpleTable(rows, [
+      {label:'Map',key:'map'},
+      {label:'Matches',key:'matches',right:true},
+      {label:'Booyahs',key:'booyahs',right:true},
+      {label:'Elims',key:'elims',right:true},
+      {label:'Placement',key:'placement',right:true},
+      {label:'Total',key:'total',right:true},
+      {label:'Booyah %',key:'booyah_rate',format:'pct',right:true},
+      {label:'Elims / m',key:'elims_pm',format:'1d',right:true},
+      {label:'Placement / m',key:'placement_pm',format:'1d',right:true},
+      {label:'Total / m',key:'total_pm',format:'1d',right:true}
+    ]);
+    applyColumnHeatmap('tblMapTeam', ['total_pm','elims_pm','placement_pm','booyah_rate','matches','booyahs','elims','placement','total']);
   }
-  return Array.from(m.values());
 }
 
-function renderActiveGlobal(allRows){
-  const list = countByName(allRows, 'active')
-    .sort((a,b)=> b.picks - a.picks || a.name.localeCompare(b.name))
-    .slice(0,10);
-  const cols = [
-    { label:'Active Skill', key:'name' },
-    { label:'Picks', key:'picks', right:true },
-  ];
-  el('tblActive').innerHTML = renderSimpleTable(list, cols);
-  applyColumnHeatmap('tblActive', ['picks']);
-}
-
-function renderPetGlobal(allRows){
-  const list = countByName(allRows, 'pet')
-    .sort((a,b)=> b.picks - a.picks || a.name.localeCompare(b.name))
-    .slice(0,10);
-  const cols = [
-    { label:'Pet', key:'name' },
-    { label:'Picks', key:'picks', right:true },
-  ];
-  el('tblPet').innerHTML = renderSimpleTable(list, cols);
-  applyColumnHeatmap('tblPet', ['picks']);
-}
-
-/* ===== GLOBAL: Top 10 players by kills ===== */
-function renderTopKillers(allRows){
-  const m = new Map();
-  for (const r of allRows){
-    const p = r._player;
-    if (!p) continue;
-    if (!m.has(p)) m.set(p,{player:p, kills:0, assists:0, headshots:0, grenade:0, damage:0, rows:0});
-    const o = m.get(p);
-    o.kills += r.kills; o.assists += r.assists; o.headshots += r.headshots; o.grenade += r.grenade; o.damage += r.damage; o.rows++;
+/* ========= LOPS global usage widgets ========= */
+function countByName(rows,key){
+  const m=new Map();
+  for(const r of rows){ const raw=norm(r[key]); if(!raw) continue;
+    const k=raw.toLowerCase().replace(/\s+/g,' ').trim();
+    if(!m.has(k)) m.set(k,{name:raw,picks:0}); m.get(k).picks += 1;
   }
-  const list = Array.from(m.values()).sort((a,b)=> b.kills - a.kills || a.player.localeCompare(b.player)).slice(0,10);
-  const cols = [
-    { label:'Player', key:'player' },
-    { label:'Rows', key:'rows', right:true },
-    { label:'Kills', key:'kills', right:true },
-    { label:'Assists', key:'assists', right:true },
-    { label:'HS', key:'headshots', right:true },
-    { label:'Grenade', key:'grenade', right:true },
-    { label:'Damage', key:'damage', right:true },
-  ];
-  el('tblTopKillers').innerHTML = renderSimpleTable(list, cols);
-  applyColumnHeatmap('tblTopKillers', ['rows','kills','assists','headshots','grenade','damage']);
+  return [...m.values()];
 }
-
-/* ===== Player list & selection ===== */
-let ALL = [];
-let CURRENT_PLAYER = '';
-
-function buildPlayerLists(allRows){
-  const names = uniq(allRows.map(r=>r._player).filter(Boolean)).sort((a,b)=> a.localeCompare(b));
-  const sel = el('playerSelect');
-  sel.innerHTML = `<option value="">— Select player —</option>` + names.map(nm=>`<option value="${nm.replaceAll('"','&quot;')}">${nm}</option>`).join('');
-  // Quick chips: top 10 by kills
-  const m = new Map();
-  for (const r of allRows){
-    if (!r._player) continue;
-    if (!m.has(r._player)) m.set(r._player, 0);
-    m.set(r._player, m.get(r._player) + r.kills);
+function lopsTopPlayersByKills(rows){
+  const m=new Map();
+  for(const r of rows){
+    const p=r._player; if(!p) continue;
+    if(!m.has(p)) m.set(p,{player:p, team:r._team||'—', kills:0, assists:0, headshots:0, grenade:0, damage:0, rows:0});
+    const o=m.get(p); o.kills+=r.kills; o.assists+=r.assists; o.headshots+=r.headshots; o.grenade+=r.grenade; o.damage+=r.damage; o.rows++;
   }
-  const chips = Array.from(m.entries()).map(([p,k])=>({p,k})).sort((a,b)=> b.k - a.k || a.p.localeCompare(b.p)).slice(0,10);
-  el('playerChips').innerHTML = chips.map(x=>`<button class="chipbtn" data-name="${x.p}">${x.p} <span class="muted">• ${x.k}</span></button>`).join('') || '<div class="muted">No players.</div>';
-  el('playerChips').querySelectorAll('.chipbtn').forEach(btn=> btn.onclick = ()=> selectPlayer(btn.getAttribute('data-name')));
-  el('pickerHint').textContent = `${names.length} unique players • Top 10 chips shown below`;
+  return [...m.values()];
+}
+function renderLopsActive(){
+  const limit=Number(el('lopsActiveTop').value)||10;
+  const base=baseLopsByTournament(LOPS_ALL);
+  const list=countByName(base,'active').sort((a,b)=> b.picks-a.picks || a.name.localeCompare(b.name)).slice(0,limit);
+  const cols=[ {label:'#',key:'rank',right:true,html:(_,i)=>i+1}, {label:'Active Skill',key:'name'}, {label:'Picks',key:'picks',right:true} ];
+  el('tblLopsActive').innerHTML = renderSimpleTable(list.map((r,i)=>({...r,rank:i+1})), cols);
+  applyColumnHeatmap('tblLopsActive', ['picks']);
+}
+function renderLopsPet(){
+  const limit=Number(el('lopsPetTop').value)||10;
+  const base=baseLopsByTournament(LOPS_ALL);
+  const list=countByName(base,'pet').sort((a,b)=> b.picks-a.picks || a.name.localeCompare(b.name)).slice(0,limit);
+  const cols=[ {label:'#',key:'rank',right:true,html:(_,i)=>i+1}, {label:'Pet',key:'name'}, {label:'Picks',key:'picks',right:true} ];
+  el('tblLopsPet').innerHTML = renderSimpleTable(list.map((r,i)=>({...r,rank:i+1})), cols);
+  applyColumnHeatmap('tblLopsPet', ['picks']);
+}
+function renderLopsTopKillers(){
+  const limit=Number(el('lopsTopKillersTop').value)||10;
+  const base=baseLopsByTournament(LOPS_ALL);
+  const list=lopsTopPlayersByKills(base).sort((a,b)=> b.kills-a.kills || a.player.localeCompare(b.player)).slice(0,limit);
+  const cols=[
+    {label:'#',key:'rank',right:true,html:(_,i)=>i+1},{label:'Player',key:'player'},{label:'Team',key:'team'},
+    {label:'Rows',key:'rows',right:true},{label:'Kills',key:'kills',right:true},{label:'Assists',key:'assists',right:true},
+    {label:'HS',key:'headshots',right:true},{label:'Grenade',key:'grenade',right:true},{label:'Damage',key:'damage',right:true},
+  ];
+  el('tblLopsTopKillers').innerHTML = renderSimpleTable(list.map((r,i)=>({...r,rank:i+1})), cols);
+  applyColumnHeatmap('tblLopsTopKillers', ['rows','kills','assists','headshots','grenade','damage']);
 }
 
-function selectPlayer(name){
-  CURRENT_PLAYER = (name||'').trim();
-  el('playerSearch').value = CURRENT_PLAYER;
-  el('playerSelect').value = CURRENT_PLAYER;
-
-  const rows = ALL.filter(r => (r._player||'').toLowerCase() === CURRENT_PLAYER.toLowerCase());
-  renderOverview(CURRENT_PLAYER, rows);
-  renderRecent(rows);
-
-  document.querySelectorAll('.chipbtn').forEach(b=>{
-    b.classList.toggle('active', b.getAttribute('data-name').toLowerCase() === CURRENT_PLAYER.toLowerCase());
-  });
-}
-
-/* Copy link (?player=) */
-function copyLinkToClipboard(){
-  const url = new URL(window.location.href);
-  if (CURRENT_PLAYER) url.searchParams.set('player', CURRENT_PLAYER);
-  else url.searchParams.delete('player');
-  navigator.clipboard.writeText(url.toString()).then(()=>{
-    const btn = el('copyLink'); const old = btn.textContent;
-    btn.textContent = 'Copied!';
-    setTimeout(()=> btn.textContent = old, 1200);
-  });
-}
-
-/* ===== Wiring ===== */
+/* ========= Wiring ========= */
 async function initial(){
+  // Team picker
+  renderTeamGrid('');
+  el('teamSearch').addEventListener('input', e=> renderTeamGrid(e.target.value||''));
+
+  // Load ffbr_data
   ALL = await fetchAllRows();
 
-  buildPlayerLists(ALL);
+  // Tournaments & per-map controls
+  populateGlobalTournament();
+  populateMapFilter();
 
-  // Global, player-independent tables
-  renderActiveGlobal(ALL);
-  renderPetGlobal(ALL);
-  renderTopKillers(ALL);
+  // INITIAL RENDER
+  renderOverall();
+  renderPerMapAllTeams();
 
-  // URL ?player=
-  const url = new URL(window.location.href);
-  const qp = (url.searchParams.get('player')||'').trim();
-  if (qp){ selectPlayer(qp); }
-
-  // Search enter
-  el('playerSearch').addEventListener('keydown', (e)=>{
-    if (e.key === 'Enter'){
-      const name = (e.target.value||'').trim();
-      if (!name) return;
-      const names = uniq(ALL.map(r=>r._player).filter(Boolean));
-      const exact = names.find(nm=> nm.toLowerCase() === name.toLowerCase());
-      selectPlayer(exact || name);
+  el('gTournament').addEventListener('change', ()=>{
+    updateFilterHint(); populateMapFilter();
+    if(CURRENT_TEAM){
+      const base=baseRowsByTournament(ALL);
+      TEAM_ROWS = base.filter(r => (norm(r._tag).toUpperCase()||'') === CURRENT_TEAM.name.toUpperCase());
+      renderTeamOverview();
+      renderTeamCombinedMetrics();
+      renderTeamCombos();
+      renderPlayers();
+      renderByDay();
     }
+    renderOverall();
+    renderPerMapAllTeams();
+    renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
+  });
+  el('gTournReset').addEventListener('click', ()=>{
+    const preferred=defaultTournamentName(ALL); el('gTournament').value = preferred || '__all__';
+    el('gTournament').dispatchEvent(new Event('change'));
   });
 
-  // Dropdown change
-  el('playerSelect').addEventListener('change', e=>{
-    const v = (e.target.value||'').trim();
-    if (!v) return;
-    selectPlayer(v);
+  // Overall controls
+  el('overallSortKey').addEventListener('change', renderOverall);
+  el('overallSortDir').addEventListener('click', ()=>{
+    const b=el('overallSortDir'); const cur=b.dataset.dir==='desc'?'asc':'desc'; b.dataset.dir=cur; b.textContent=cur==='desc'?'Desc':'Asc'; renderOverall();
+  });
+  el('overallReset').addEventListener('click', ()=>{
+    el('overallSortKey').value='total';
+    el('overallSortDir').dataset.dir='desc';
+    el('overallSortDir').textContent='Desc';
+    renderOverall();
   });
 
-  // Clear & copy
-  el('clearPlayer').onclick = ()=>{
-    CURRENT_PLAYER = '';
-    el('playerSearch').value = '';
-    el('playerSelect').value = '';
-    el('playerTitle').textContent = 'Player Overview';
-    el('identityBody').innerHTML = 'Select a player.';
-    el('kpiBody').innerHTML = '—';
-    el('tblRecent').innerHTML = '—';
-    document.querySelectorAll('.chipbtn').forEach(b=> b.classList.remove('active'));
-  };
-  el('copyLink').onclick = copyLinkToClipboard;
+  // Per-map controls
+  el('mapFilter').addEventListener('change', renderPerMapAllTeams);
+  el('perMapSortKey').addEventListener('change', renderPerMapAllTeams);
+  el('perMapSortDir').addEventListener('click', ()=>{
+    const b=el('perMapSortDir'); const cur=b.dataset.dir==='desc'?'asc':'desc'; b.dataset.dir=cur; b.textContent=cur==='desc'?'Desc':'Asc'; renderPerMapAllTeams();
+  });
+  el('perMapReset').addEventListener('click', ()=>{
+    el('mapFilter').value='__all__';
+    el('perMapSortKey').value='total';
+    el('perMapSortDir').dataset.dir='desc';
+    el('perMapSortDir').textContent='Desc';
+    renderPerMapAllTeams();
+  });
+
+  // Default team selection
+  const url=new URL(window.location.href); const qTeam=(url.searchParams.get('team')||'').trim().toLowerCase();
+  if(qTeam){ const found=TEAM_BY_CODE[qTeam] || TEAM_BY_NAME[qTeam]; if(found) await selectTeam(found); }
+  if(!CURRENT_TEAM && TEAMS.length) await selectTeam(TEAMS[0]);
+
+  // LOPS: load + render
+  LOPS_ALL = await fetchAllLopsRows();
+  renderTeamCombinedMetrics();
+  renderTeamCombos();
+  renderPlayers();
+  renderByDay();
+
+  // LOPS global widgets (default top=10)
+  renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
+  el('lopsActiveTop').addEventListener('change', renderLopsActive);
+  el('lopsPetTop').addEventListener('change', renderLopsPet);
+  el('lopsTopKillersTop').addEventListener('change', renderLopsTopKillers);
+
+  // Team combo top selector
+  el('teamComboTop').addEventListener('change', renderTeamCombos);
 }
+
 initial();
 </script>
 </body>
