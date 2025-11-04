@@ -73,15 +73,6 @@
     #veil .box{background:#121212;border:1px solid #2a2a2a;border-radius:12px;padding:14px 16px;color:#ddd}
     #veil.hide{display:none}
 
-    /* === Skill cards === */
-    .skill-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
-    .skill-card{display:flex;gap:10px;align-items:center;background:#121212;border:1px solid #2a2a2a;border-radius:10px;padding:8px;transition:transform .08s ease,border-color .08s ease}
-    .skill-card:hover{transform:translateY(-1px);border-color:#484848}
-    .skill-pic{width:52px;height:52px;border-radius:10px;overflow:hidden;border:1px solid #333;background:#0e0e0e;display:grid;place-items:center;font-weight:800;color:#aaa}
-    .skill-pic img{width:100%;height:100%;object-fit:cover;display:block}
-    .skill-meta{min-width:0}
-    .skill-name{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .skill-count{font-size:.85rem;color:var(--muted)}
     @media (max-width: 980px){ .grid3{grid-template-columns:1fr} }
     @media (max-width: 860px){ .grid2{grid-template-columns:1fr} }
   </style>
@@ -206,16 +197,22 @@
           <div id="kpiBody">—</div>
         </div>
       </div>
-    </div>
 
-    <div class="section" id="combinedPerfSection">
-      <h2>Selected Team — Combined Performance</h2>
-      <div class="grid3">
+      <!-- Moved here: Combined Performance -->
+      <div class="grid3" style="margin-top:12px">
         <div class="card"><h3>Totals</h3><div id="teamTotals" class="kpis">—</div></div>
         <div class="card"><h3>Per Match Averages</h3><div id="teamAverages" class="kpis">—</div></div>
         <div class="card"><h3>Signals</h3><div id="teamSignals" class="kpis">—</div></div>
       </div>
     </div>
+
+    <!-- New location: By Map in its own collapsible -->
+    <details class="accordion" id="byMapSection">
+      <summary>By Map — Selected Team</summary>
+      <div class="accordion-body">
+        <div class="card" style="margin:0"><div id="tblMapTeam">—</div></div>
+      </div>
+    </details>
 
     <details class="accordion" id="teamInfoSection">
       <summary>Team Info</summary>
@@ -239,31 +236,22 @@
           <label>Top</label>
           <select id="teamActiveTop" class="input"><option>10</option><option>20</option><option>50</option><option>100</option></select>
         </div>
-        <div class="card" style="margin:0 0 8px 0"><div id="tblTeamActive">Loading…</div></div>
-        <div class="card" style="margin:0">
-          <h3>Cards view</h3>
-          <div id="cardsTeamActive" class="skill-grid">—</div>
-        </div>
+        <div class="card" style="margin:0"><div id="tblTeamActive">Loading…</div></div>
       </div>
     </details>
 
-    <details class="accordion" id="teamPassiveSection">
-      <summary>Most Used Passive Skills — Selected Team</summary>
+    <details class="accordion" id="teamPetSection">
+      <summary>Most Used Pets — Selected Team</summary>
       <div class="accordion-body">
         <div class="bar">
           <label>Top</label>
-          <select id="teamPassiveTop" class="input"><option>10</option><option>20</option><option>50</option><option>100</option></select>
+          <select id="teamPetTop" class="input"><option>10</option><option>20</option><option>50</option><option>100</option></select>
         </div>
-        <div class="card" style="margin:0">
-          <div id="cardsTeamPassive" class="skill-grid">—</div>
-        </div>
+        <div class="card" style="margin:0"><div id="tblTeamPet">Loading…</div></div>
       </div>
     </details>
 
-    <details class="accordion" id="byDayTotalSection">
-      <summary>Team Performance by Day (Total, all maps)</summary>
-      <div class="accordion-body"><div class="card" style="margin:0"><div id="tblByDayTotal">—</div></div></div>
-    </details>
+    <!-- Removed: Team Performance by Day (Total, all maps) -->
 
     <details class="accordion" id="byDaySection">
       <summary>Team Performance by Day by Map (Selected Team)</summary>
@@ -316,55 +304,6 @@ const client = supabase.createClient(
   'https://gkugecflfddkpitlrmws.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
 );
-
-/* ============ Character index (from character.json) ============ */
-/** Change the path if needed */
-const CHAR_JSON_URL = './character.json';
-const CHAR_INDEX = new Map(); // normName -> {name, img}
-
-const normKey = s => String(s||'')
-  .normalize('NFD').replace(/[\u0300-\u036f]/g,'')  // strip accents
-  .toLowerCase().replace(/[^a-z0-9\s]/g,'')         // keep alnum+space
-  .replace(/\s+/g,' ').trim();
-
-function _addCharIndex(name, img){
-  const k = normKey(name);
-  if(!k) return;
-  if(!CHAR_INDEX.has(k)) CHAR_INDEX.set(k, {name, img: img||''});
-}
-function buildCharIndex(data){
-  if(Array.isArray(data)){
-    for(const row of data){
-      const name = row.name || row.Name || row.display || row.title || '';
-      const img = row.icon || row.image || row.img || row.portrait || row.url || row.image_url || '';
-      if(name) _addCharIndex(name, img);
-      const aliases = [].concat(row.aliases||[], row.alt_names||[], row.alts||[]);
-      for(const a of aliases){ if(a) _addCharIndex(a, img); }
-    }
-  }else{
-    // object map: { "Name": {image: "..."} }
-    for(const [k,v] of Object.entries(data||{})){
-      const img = (v && (v.icon||v.image||v.img||v.portrait||v.url||v.image_url)) || '';
-      _addCharIndex(k, img);
-      const aliases = [].concat(v?.aliases||[], v?.alt_names||[], v?.alts||[]);
-      for(const a of aliases){ if(a) _addCharIndex(a, img); }
-    }
-  }
-}
-async function loadCharacterIndex(){
-  try{
-    const res = await fetch(CHAR_JSON_URL, {cache:'no-store'});
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const data = await res.json();
-    buildCharIndex(data);
-  }catch(e){
-    console.warn('Failed to load character.json:', e.message||e);
-  }
-}
-function imgForCharacter(name){
-  const hit = CHAR_INDEX.get(normKey(name));
-  return hit?.img || '';
-}
 
 /* ============ Small utils ============ */
 const el = id => document.getElementById(id);
@@ -768,56 +707,6 @@ function mapCharName(id, fallback=''){
   return fallback || `ID ${key}`;
 }
 
-/* ===== Skill card helpers (Active/Passive) ===== */
-function topActivesForTeam(limit){
-  const base = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
-  const m = new Map(); // normName -> {name, picks}
-  for(const r of base){
-    const name = mapCharName(r.char1, r.charActives?.[0] || r.active || '');
-    const k = normKey(name);
-    if(!k) continue;
-    if(!m.has(k)) m.set(k,{name, picks:0});
-    m.get(k).picks++;
-  }
-  const arr=[...m.values()];
-  arr.sort((a,b)=> b.picks-a.picks || a.name.localeCompare(b.name));
-  return arr.slice(0, limit);
-}
-function topPassivesForTeam(limit){
-  const base = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
-  const m = new Map(); // normName -> {name, picks}
-  for(const r of base){
-    const p2 = mapCharName(r.char2, r.charActives?.[1] || '');
-    const p3 = mapCharName(r.char3, r.charActives?.[2] || '');
-    const p4 = mapCharName(r.char4, r.charActives?.[3] || '');
-    for(const nm of [p2,p3,p4]){
-      const k = normKey(nm);
-      if(!k) continue;
-      if(!m.has(k)) m.set(k,{name:nm, picks:0});
-      m.get(k).picks++;
-    }
-  }
-  const arr=[...m.values()];
-  arr.sort((a,b)=> b.picks-a.picks || a.name.localeCompare(b.name));
-  return arr.slice(0, limit);
-}
-function renderSkillCards(containerId, items){
-  const wrap = el(containerId);
-  if(!wrap) return;
-  if(!items.length){ wrap.innerHTML = '<div class="muted">No skills found.</div>'; return; }
-  wrap.innerHTML = items.map(it=>{
-    const url = imgForCharacter(it.name);
-    const pic = url ? `<img src="${url}" alt="${it.name}">` : `<div class="skill-pic">?</div>`;
-    return `<div class="skill-card" title="${it.name}">
-      <div class="skill-pic">${url?`<img src="${url}" alt="${it.name}">`:`<span>${(it.name||'?').slice(0,1).toUpperCase()}</span>`}</div>
-      <div class="skill-meta">
-        <div class="skill-name">${it.name}</div>
-        <div class="skill-count">${it.picks} pick${it.picks===1?'':'s'}</div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
 /* Renders */
 function renderOverall(){
   const rows = aggregateOverall(baseRowsByTournament(ALL));
@@ -877,26 +766,24 @@ function kpiAndByMap(){
       <div class="kpi">Top3 <strong>${fmtPct(k.top3_rate)}</strong></div>
     </div>` : '<div class="muted">No rows.</div>';
 
-  // By Map panel inside header
-  if(!document.getElementById('tblMapTeam')){
-    const panel = document.createElement('div');
-    panel.className='card'; panel.innerHTML = `<h3>By Map</h3><div id="tblMapTeam"></div>`;
-    el('teamHeader').appendChild(panel);
-  }
+  // Render By Map into the dedicated collapsible section
   const rows=teamMapPerf(TEAM_ROWS);
-  document.getElementById('tblMapTeam').innerHTML = renderSimpleTable(rows, [
-    {label:'Map',key:'map'},
-    {label:'Matches',key:'matches',right:true},
-    {label:'Booyahs',key:'booyahs',right:true},
-    {label:'Elims',key:'elims',right:true},
-    {label:'Placement',key:'placement',right:true},
-    {label:'Total',key:'total',right:true},
-    {label:'Booyah %',key:'booyah_rate',format:'pct',right:true},
-    {label:'Elims / m',key:'elims_pm',format:'1d',right:true},
-    {label:'Placement / m',key:'placement_pm',format:'1d',right:true},
-    {label:'Total / m',key:'total_pm',format:'1d',right:true}
-  ]);
-  applyColumnHeatmap('tblMapTeam', ['total_pm','elims_pm','placement_pm','booyah_rate','matches','booyahs','elims','placement','total']);
+  const mapWrap = document.getElementById('tblMapTeam');
+  if(mapWrap){
+    mapWrap.innerHTML = renderSimpleTable(rows, [
+      {label:'Map',key:'map'},
+      {label:'Matches',key:'matches',right:true},
+      {label:'Booyahs',key:'booyahs',right:true},
+      {label:'Elims',key:'elims',right:true},
+      {label:'Placement',key:'placement',right:true},
+      {label:'Total',key:'total',right:true},
+      {label:'Booyah %',key:'booyah_rate',format:'pct',right:true},
+      {label:'Elims / m',key:'elims_pm',format:'1d',right:true},
+      {label:'Placement / m',key:'placement_pm',format:'1d',right:true},
+      {label:'Total / m',key:'total_pm',format:'1d',right:true}
+    ]);
+    applyColumnHeatmap('tblMapTeam', ['total_pm','elims_pm','placement_pm','booyah_rate','matches','booyahs','elims','placement','total']);
+  }
 }
 function renderTeamCombinedMetrics(){
   const totalsEl = el('teamTotals'), avgsEl = el('teamAverages'), sigEl = el('teamSignals');
@@ -944,21 +831,7 @@ function renderTeamActiveUsage(){
     {label:'Picks',key:'picks',right:true},
   ]);
   applyColumnHeatmap('tblTeamActive', ['picks']);
-
-  // Cards view (use char1 mapping for better alignment with IDs)
-  renderTeamActiveCards();
 }
-function renderTeamActiveCards(){
-  const limit=Number(el('teamActiveTop').value)||10;
-  const items = topActivesForTeam(limit);
-  renderSkillCards('cardsTeamActive', items);
-}
-function renderTeamPassiveCards(){
-  const limit=Number(el('teamPassiveTop').value)||10;
-  const items = topPassivesForTeam(limit);
-  renderSkillCards('cardsTeamPassive', items);
-}
-
 function renderTeamPetUsage(){
   const limit=Number(el('teamPetTop').value)||10;
   const list=countByName(lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM),'pet')
@@ -995,28 +868,6 @@ function renderPlayers(){
   applyColumnHeatmap('tblPlayers', ['kills','assists','dmg','hs','nade','veh','downs','rows']);
 }
 
-/* Team Performance by Day (Total, all maps) */
-function renderByDayTotal(){
-  if(!TEAM_ROWS.length){ el('tblByDayTotal').innerHTML='<div class="muted">No rows.</div>'; return; }
-  const dayKey = r => `Y${n(r.year)||'—'} W${n(r.week)||'—'} D${n(r.day)||'—'}`;
-  const g = groupBy(TEAM_ROWS, dayKey);
-  const out=[];
-  for(const [day,list] of g.entries()){
-    const m=list.length, booyahs=sum(list,'booyah'), elims=sum(list,'elimination'), place=sum(list,'placement'), total=sum(list,'total');
-    out.push({ day, matches:m, booyahs, elims, placement:place, total,
-      booyah_rate:m?booyahs/m:0, elims_pm:m?elims/m:0, placement_pm:m?place/m:0, total_pm:m?total/m:0 });
-  }
-  out.sort((a,b)=> a.day.localeCompare(b.day) || b.total_pm-a.total_pm);
-  el('tblByDayTotal').innerHTML = renderSimpleTable(out, [
-    {label:'Day',key:'day'},
-    {label:'Matches',key:'matches',right:true},{label:'Booyahs',key:'booyahs',right:true},
-    {label:'Elims',key:'elims',right:true},{label:'Placement',key:'placement',right:true},{label:'Total',key:'total',right:true},
-    {label:'Booyah %',key:'booyah_rate',format:'pct',right:true},{label:'Elims / m',key:'elims_pm',format:'1d',right:true},
-    {label:'Placement / m',key:'placement_pm',format:'1d',right:true},{label:'Total / m',key:'total_pm',format:'1d',right:true},
-  ]);
-  applyColumnHeatmap('tblByDayTotal', ['total_pm','elims_pm','placement_pm','booyah_rate','matches','booyahs','elims','placement','total']);
-}
-
 /* Team Performance by Day by Map — Pivot */
 function renderByDay(){
   if(!TEAM_ROWS.length){
@@ -1025,13 +876,11 @@ function renderByDay(){
   }
   const dayLabel = r => `Y${n(r.year)||'—'} W${n(r.week)||'—'} D${n(r.day)||'—'}`;
 
-  // unique ordered sets
   const daySet = new Set(), mapSet = new Set();
   for(const r of TEAM_ROWS){ mapSet.add(norm(r.map) || '—'); daySet.add(dayLabel(r)); }
   const days = [...daySet].sort((a,b)=> a.localeCompare(b));
   const maps = [...mapSet].sort((a,b)=> a.localeCompare(b));
 
-  // totals[map][day] = sum(total)
   const totals = new Map();
   for(const r of TEAM_ROWS){
     const m = norm(r.map) || '—';
@@ -1064,7 +913,6 @@ function renderCharUsage(){
   const base = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
   if(!base.length){ el('tblCharUsage').innerHTML='<div class="muted">No rows.</div>'; return; }
 
-  // player -> {player, rows, active: Map(name->count), passive: Map(name->count)}
   const per = new Map();
   function ensure(player){
     if(!per.has(player)) per.set(player,{player, rows:0, active:new Map(), passive:new Map()});
@@ -1091,14 +939,17 @@ function renderCharUsage(){
     arr.sort((a,b)=> b.c-a.c || a.name.localeCompare(b.name));
     return arr.map(x=>`${x.name} × ${x.c}`).join(', ') || '—';
   }
+  function totalMap(m){ let t=0; for(const v of m.values()) t+=v; return t; }
 
   let rows = [...per.values()].map((o,i)=>({
     player:o.player, rows:o.rows,
+    activeCount: totalMap(o.active),
+    passiveCount: totalMap(o.passive),
     activeList: listToText(o.active),
     passiveList: listToText(o.passive),
   }));
 
-  rows.sort((a,b)=> a.player.localeCompare(b.player));
+  rows.sort((a,b)=> (b.activeCount+b.passiveCount) - (a.activeCount+a.passiveCount) || a.player.localeCompare(b.player));
   rows = rows.slice(0, topN);
 
   el('tblCharUsage').innerHTML = renderSimpleTable(rows, [
@@ -1106,6 +957,8 @@ function renderCharUsage(){
     {label:'Active', key:'activeList'},
     {label:'Passive', key:'passiveList'},
   ]);
+
+  applyColumnHeatmap('tblCharUsage', ['rows','activeCount','passiveCount']);
 }
 
 /* Team grid */
@@ -1138,10 +991,8 @@ async function selectTeam(teamObj){
   kpiAndByMap();
   renderTeamCombinedMetrics();
   renderTeamActiveUsage();
-  renderTeamPassiveCards();
   renderTeamPetUsage();
   renderPlayers();
-  renderByDayTotal();
   renderByDay();
   renderCharUsage();
   highlightActiveTile();
@@ -1159,7 +1010,7 @@ function wireControls(){
     renderPerMapAllTeams();
     if(CURRENT_TEAM){
       TEAM_ROWS = baseRowsByTournament(ALL).filter(r => (norm(r._tag).toUpperCase()||'') === CURRENT_TEAM.name.toUpperCase());
-      kpiAndByMap(); renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPassiveCards(); renderTeamPetUsage(); renderPlayers(); renderByDayTotal(); renderByDay(); renderCharUsage();
+      kpiAndByMap(); renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDay(); renderCharUsage();
       fetchPlayersBy(CURRENT_TEAM.name).then(renderRoster).catch(()=>{});
     }
     renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
@@ -1194,8 +1045,8 @@ function wireControls(){
   });
 
   el('teamSearch').addEventListener('input', e=> renderTeamGrid(e.target.value||''));
-  el('teamActiveTop').addEventListener('change', ()=>{ renderTeamActiveUsage(); renderTeamActiveCards(); });
-  el('teamPassiveTop').addEventListener('change', renderTeamPassiveCards);
+  el('teamActiveTop').addEventListener('change', renderTeamActiveUsage);
+  el('teamPetTop').addEventListener('change', renderTeamPetUsage);
   el('lopsActiveTop').addEventListener('change', renderLopsActive);
   el('lopsPetTop').addEventListener('change', renderLopsPet);
   el('lopsTopKillersTop').addEventListener('change', renderLopsTopKillers);
@@ -1228,10 +1079,9 @@ async function initial(){
 
     LOPS_ALL = await fetchAllLopsRows();
     await fetchMatchApiMap(); // only type=2
-    await loadCharacterIndex(); // build CHAR_INDEX for images
 
-    // Renders depending on LOPS + mapping + character images
-    renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPassiveCards(); renderTeamPetUsage(); renderPlayers(); renderByDayTotal(); renderByDay(); renderCharUsage();
+    // Renders depending on LOPS + mapping
+    renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDay(); renderCharUsage();
     renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
 
     wireControls();
