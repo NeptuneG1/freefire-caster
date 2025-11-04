@@ -260,12 +260,15 @@
       <div class="accordion-body"><div class="card" style="margin:0"><div id="tblByDay">—</div></div></div>
     </details>
 
+    <!-- Character Usage — Per Player + Summary -->
     <details class="accordion" id="charUsageSection">
-      <summary>Character Usage — Roster View (Char1 Active • Char3–4 Passive)</summary>
+      <summary>Character Usage — Per Player (Active & Passive counts)</summary>
       <div class="accordion-body">
         <div class="card" style="margin:0"><div id="tblCharRoster">Loading…</div></div>
         <div class="muted" style="margin-top:6px" id="charMapHint">—</div>
+
         <hr style="border:0;border-top:1px solid #2a2a2a;margin:12px 0">
+
         <div class="bar">
           <label>Top (summary)</label>
           <select id="charUsageTop" class="input"><option>10</option><option>20</option><option>50</option><option>100</option></select>
@@ -355,7 +358,7 @@ el('logoutBtn').onclick = async () => { await client.auth.signOut(); location.re
 let TEAMS=[]; let TEAM_BY_CODE={}; let TEAM_BY_NAME={}; let ALLOWED_TAGS=new Set();
 let ALL=[]; let TEAM_ROWS=[]; let CURRENT_TEAM=null;
 let LOPS_ALL=[];
-let MATCH_API_MAP = new Map(); // id(string) -> name (only where type==2)
+let MATCH_API_MAP = new Map(); // id(string)->name (only type==2)
 
 /* ============ Helper: build team indexes ============ */
 function buildTeamIndexes(){
@@ -572,7 +575,7 @@ function renderRoster(players){
   const countryKey=keys.find(k=>/country|nation/i.test(k))||null;
   const ageKey=keys.find(k=>/^age$/i.test(k))||null;
   const accolKey=keys.includes('Accolades')?'Accolades':(keys.find(k=>/accolade|achievement|title|awards/i.test(k))||null);
-  const formerKey=(keys.find(k=>/former(\s|_)?teams?/i.test(String(k)))||'Former Team');
+  const formerKey=keys.find(k=>/former(\s|_)?teams?/i.test(k.toLowerCase()))||'Former Team';
   const rows=players.slice().sort((a,b)=> String(a[roleKey]||'').localeCompare(String(b[roleKey]||'')) || String(a[ignKey]||'').localeCompare(String(b[ignKey]||''))).map(p=>{
     const avatar=avatarKey&&p[avatarKey]?`<img src="${p[avatarKey]}" alt="" style="width:38px;height:38px;object-fit:cover;border-radius:8px;border:1px solid #2a2a2a">`:'';
     const ign=p[ignKey]??'—';
@@ -692,35 +695,51 @@ function sortRows(rows, key, dir, isText=false){
     : ((a[key]??0) - (b[key]??0)));
 }
 
-/* ============ match_api mapping (ONLY type==2) ============ */
+/* ============ match_api mapping (Character IDs -> Names for type==2) ============ */
 async function fetchMatchApiMap(){
-  MATCH_API_MAP.clear();
+  // Primary: strict type==2 on 'match_api'
   try{
-    // Prefer server-side filter; if it fails (e.g., type stored as text), fall back to client filtering.
-    let { data, error } = await client.from('match_api').select('id,name,type').eq('type', 2);
-    if (error) {
-      console.warn('match_api eq(type,2) failed:', error.message||error);
-      // Try fetching all and filter locally
-      const alt = await client.from('match_api').select('id,name,type').limit(5000);
-      if (alt.error) throw alt.error;
-      data = alt.data || [];
+    const { data, error } = await client.from('match_api').select('*').eq('type', 2);
+    if(!error && Array.isArray(data) && data.length){
+      MATCH_API_MAP.clear();
+      for(const r of data){
+        const id = String(r.id ?? r.ID ?? r.code ?? r.item_id ?? '').trim();
+        const nm = String(r.name ?? r.NAME ?? r.title ?? r.item_name ?? '').trim();
+        const tp = String(r.type ?? r.TYPE ?? r.Type ?? '').trim();
+        if(id && nm && (tp==='2' || tp===2)) MATCH_API_MAP.set(id, nm);
+      }
+      if(MATCH_API_MAP.size){
+        el('charMapHint').textContent = `Character map loaded from "match_api" (type==2): ${MATCH_API_MAP.size} entries.`;
+        return true;
+      }
     }
-    const filtered = (data||[]).filter(r=>{
-      const t = (r.type==null? null : String(r.type).trim());
-      return t === '2';
-    });
-    for (const r of filtered){
-      const id = String(r.id ?? '').trim();
-      const nm = String(r.name ?? '').trim();
-      if (id && nm) MATCH_API_MAP.set(id, nm);
-    }
-    el('charMapHint').textContent = `match_api mapped (type==2 only): ${MATCH_API_MAP.size} characters.`;
-    return true;
-  }catch(e){
-    console.warn('match_api fetch error:', e.message||e);
-    el('charMapHint').textContent = 'Could not load match_api (type==2). Showing raw IDs / fallbacks.';
-    return false;
+  }catch(e){ console.warn('match_api strict fetch error', e.message||e); }
+
+  // Fallback: read and filter by type==2 client-side if schema differs
+  const candidates = ['match_api','match_api_items','match_api_data','ff_match_api','match_api_catalog'];
+  for(const table of candidates){
+    try{
+      const { data, error } = await client.from(table).select('*').limit(5000);
+      if(error) { console.warn('match_api try', table, error.message||error); continue; }
+      if(Array.isArray(data) && data.length){
+        MATCH_API_MAP.clear();
+        for(const r of data){
+          const id = String(r.id ?? r.ID ?? r.code ?? r.item_id ?? '').trim();
+          const nm = String(r.name ?? r.NAME ?? r.title ?? r.item_name ?? '').trim();
+          const tpRaw = r.type ?? r.TYPE ?? r.Type ?? r.category ?? '';
+          const tp = String(tpRaw).trim().toLowerCase();
+          const isType2 = (tp==='2' || tp===2 || tp==='character' || /char/.test(tp)) ? (tp==='2' || tp===2 || /char/.test(tp)) : false;
+          if(id && nm && isType2) MATCH_API_MAP.set(id, nm);
+        }
+        if(MATCH_API_MAP.size){
+          el('charMapHint').textContent = `Character map loaded from "${table}" (filtered to type==2): ${MATCH_API_MAP.size} entries.`;
+          return true;
+        }
+      }
+    }catch(e){ console.warn('match_api fallback fetch error', e.message||e); }
   }
+  el('charMapHint').textContent = 'Could not locate a match_api table with type==2; showing raw IDs / fallbacks.';
+  return false;
 }
 function mapCharName(id, fallback=''){
   const key = String(id||'').trim();
@@ -936,24 +955,87 @@ function renderByDay(){
   applyColumnHeatmap('tblByDay', ['total_pm','elims_pm','placement_pm','booyah_rate','matches','booyahs','elims','placement','total']);
 }
 
-/* Character Usage — summary (type==2 mapping) */
+/* Character Usage — Per Player (Active & Passive counts) */
+function renderCharRoster(){
+  const base = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
+  if(!base.length){
+    el('tblCharRoster').innerHTML='<div class="muted">No rows.</div>';
+    return;
+  }
+
+  // group rows by player
+  const byPlayer = groupBy(base, r=> r._player || '—');
+
+  const rows = [];
+  for (const [player, list] of byPlayer.entries()) {
+    const actCounts = new Map();     // name -> count (Char1)
+    const passCounts = new Map();    // name -> count (Char2–4)
+
+    for (const r of list) {
+      // Active (Char1)
+      const c1 = String(r.char1 || '').trim();
+      if (c1 && c1 !== '0' && c1.toUpperCase() !== 'NULL') {
+        // map using type==2; fallback to row's active text if mapping missing
+        const aName = mapCharName(c1, r.charActives?.[0] || '');
+        if (aName) actCounts.set(aName, (actCounts.get(aName)||0) + 1);
+      }
+
+      // Passives (Char2–4)
+      for (const id of [r.char2, r.char3, r.char4]) {
+        const k = String(id || '').trim();
+        if (k && k !== '0' && k.toUpperCase() !== 'NULL') {
+          const pName = mapCharName(k, '');
+          if (pName) passCounts.set(pName, (passCounts.get(pName)||0) + 1);
+        }
+      }
+    }
+
+    // format: "Name × N", sorted by count desc then name asc
+    function fmt(map){
+      if (!map.size) return '—';
+      return [...map.entries()]
+        .sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0]))
+        .map(([name, cnt]) => `${name} × ${cnt}`)
+        .join(', ');
+    }
+
+    rows.push({
+      player,
+      actives: fmt(actCounts),
+      passives: fmt(passCounts),
+      _rows: list.length
+    });
+  }
+
+  // Order: players with more rows first, then alphabetically
+  rows.sort((a,b)=> b._rows - a._rows || a.player.localeCompare(b.player));
+
+  el('tblCharRoster').innerHTML = renderSimpleTable(rows, [
+    {label:'Player', key:'player'},
+    {label:'Active (Char 1)', key:'actives'},
+    {label:'Passive (Char 2–4)', key:'passives'}
+  ]);
+}
+
+/* Character Usage — Team summary (top N by total picks across Char1–4) */
 function renderCharUsage(){
   const top = Number(el('charUsageTop').value)||10;
   const base = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
   if(!base.length){ el('tblCharUsage').innerHTML='<div class="muted">No rows.</div>'; return; }
   const counts = new Map(); // id -> {id,name,total,pos1,pos2,pos3,pos4}
   function bump(id, pos, fallbackName=''){
-    if(!id || id==='0' || id==='NULL') return;
+    if(!id || id==='0' || String(id).toUpperCase()==='NULL') return;
     const key=String(id).trim();
     if(!counts.has(key)) counts.set(key,{id:key,name:mapCharName(key,fallbackName),total:0,pos1:0,pos2:0,pos3:0,pos4:0});
     const o=counts.get(key);
-    o.total++; o['pos'+pos]++;
+    o.total++;
+    o['pos'+pos]++;
   }
   for(const r of base){
     bump(r.char1,1, r.charActives?.[0]||'');
-    bump(r.char2,2, r.charActives?.[1]||'');
-    bump(r.char3,3, r.charActives?.[2]||'');
-    bump(r.char4,4, r.charActives?.[3]||'');
+    bump(r.char2,2, '');
+    bump(r.char3,3, '');
+    bump(r.char4,4, '');
   }
   const list = [...counts.values()].sort((a,b)=> b.total-a.total || a.name.localeCompare(b.name)).slice(0,top);
   el('tblCharUsage').innerHTML = renderSimpleTable(list.map((r,i)=>({...r,rank:i+1})), [
@@ -965,35 +1047,6 @@ function renderCharUsage(){
     {label:'Pos3',key:'pos3',right:true},{label:'Pos4',key:'pos4',right:true},
   ]);
   applyColumnHeatmap('tblCharUsage', ['total','pos1','pos2','pos3','pos4']);
-}
-
-/* Character Usage — Roster View (Char1 Active • Char3–4 Passive) */
-function renderCharRoster(){
-  const base = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
-  if(!base.length){ el('tblCharRoster').innerHTML='<div class="muted">No rows.</div>'; return; }
-  // Use the latest row per player (or most frequent loadout)
-  const g = groupBy(base, r=>r._player||'—');
-  const rows=[];
-  for(const [player,list] of g.entries()){
-    // pick most frequent char IDs per slot
-    const pickMode = (arr) => {
-      const m=new Map(); for(const x of arr){ const k=String(x||'').trim(); if(!k) continue; m.set(k,(m.get(k)||0)+1); }
-      let best='', cnt=0; for(const [k,c] of m){ if(c>cnt){best=k; cnt=c;} }
-      return best;
-    };
-    const c1 = pickMode(list.map(r=>r.char1));
-    const c3 = pickMode(list.map(r=>r.char3));
-    const c4 = pickMode(list.map(r=>r.char4));
-    const activeName = mapCharName(c1, list[0]?.charActives?.[0]||'');
-    const passiveNames = [c3,c4].map(id=>mapCharName(id,'')).filter(Boolean);
-    rows.push({ player, active: activeName || '—', passive: passiveNames.length? passiveNames.join(' + ') : '—' });
-  }
-  rows.sort((a,b)=> a.player.localeCompare(b.player));
-  el('tblCharRoster').innerHTML = renderSimpleTable(rows, [
-    {label:'Player', key:'player'},
-    {label:'Active (Char 1)', key:'active'},
-    {label:'Passive (Char 3–4)', key:'passive'},
-  ]);
 }
 
 /* ============ Team grid ============ */
@@ -1030,10 +1083,10 @@ async function selectTeam(teamObj){
   renderPlayers();
   renderByDayTotal();
   renderByDay();
-  renderCharUsage();
   renderCharRoster();
+  renderCharUsage();
   highlightActiveTile();
-  // Team meta + roster
+  // Team meta + roster (roster is driven by the same team filter)
   const info = await fetchTeamInfoBy(teamObj.name, teamObj.fullname); renderTeamInfo(info);
   const roster = await fetchPlayersBy(teamObj.name); renderRoster(roster);
 }
@@ -1050,7 +1103,7 @@ function wireControls(){
     renderPerMapAllTeams();
     if(CURRENT_TEAM){
       TEAM_ROWS = baseRowsByTournament(ALL).filter(r => (norm(r._tag).toUpperCase()||'') === CURRENT_TEAM.name.toUpperCase());
-      kpiAndByMap(); renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDayTotal(); renderByDay(); renderCharUsage(); renderCharRoster();
+      kpiAndByMap(); renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDayTotal(); renderByDay(); renderCharRoster(); renderCharUsage();
       fetchPlayersBy(CURRENT_TEAM.name).then(renderRoster).catch(()=>{});
     }
     renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
@@ -1098,7 +1151,7 @@ function wireControls(){
   el('lopsPetTop').addEventListener('change', renderLopsPet);
   el('lopsTopKillersTop').addEventListener('change', renderLopsTopKillers);
 
-  // Char usage
+  // Character usage controls
   el('charUsageTop').addEventListener('change', renderCharUsage);
 }
 
@@ -1136,11 +1189,12 @@ async function initial(){
     // LOPS data
     LOPS_ALL = await fetchAllLopsRows();
 
-    // match_api mapping (STRICT: type==2 only)
+    // match_api mapping (strict type==2)
     await fetchMatchApiMap();
 
-    // Initial team renders that depend on LOPS + mapping
-    renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDayTotal(); renderByDay(); renderCharUsage(); renderCharRoster();
+    // Initial renders that depend on LOPS + mapping
+    renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDayTotal(); renderByDay();
+    renderCharRoster(); renderCharUsage();
     renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
 
     // Wire events after data is ready (prevents early triggers)
@@ -1161,16 +1215,7 @@ async function initial(){
 /* ============ LOPS global renders ============ */
 function renderLopsActive(){ const limit=Number(el('lopsActiveTop').value)||10; const list=countByName(LOPS_ALL,'active').sort((a,b)=> b.picks-a.picks || a.name.localeCompare(b.name)).slice(0,limit); el('tblLopsActive').innerHTML = renderSimpleTable(list.map((r,i)=>({...r,rank:i+1})), [{label:'#',key:'rank',right:true,html:(_,i)=>i+1},{label:'Active Skill',key:'name'},{label:'Picks',key:'picks',right:true}]); applyColumnHeatmap('tblLopsActive', ['picks']); }
 function renderLopsPet(){ const limit=Number(el('lopsPetTop').value)||10; const list=countByName(LOPS_ALL,'pet').sort((a,b)=> b.picks-a.picks || a.name.localeCompare(b.name)).slice(0,limit); el('tblLopsPet').innerHTML = renderSimpleTable(list.map((r,i)=>({...r,rank:i+1})), [{label:'#',key:'rank',right:true,html:(_,i)=>i+1},{label:'Pet',key:'name'},{label:'Picks',key:'picks',right:true}]); applyColumnHeatmap('tblLopsPet', ['picks']); }
-function renderLopsTopKillers(){
-  const limit=Number(el('lopsTopKillersTop').value)||10;
-  const list=lopsTopPlayersByKills(LOPS_ALL).sort((a,b)=> b.kills-a.kills || a.player.localeCompare(b.player)).slice(0,limit);
-  el('tblLopsTopKillers').innerHTML = renderSimpleTable(list.map((r,i)=>({...r,rank:i+1})), [
-    {label:'#',key:'rank',right:true,html:(_,i)=>i+1},{label:'Player',key:'player'},{label:'Team',key:'team'},
-    {label:'Rows',key:'rows',right:true},{label:'Kills',key:'kills',right:true},{label:'Assists',key:'assists',right:true},
-    {label:'HS',key:'headshots',right:true},{label:'Grenade',key:'grenade',right:true},{label:'Damage',key:'damage',right:true}
-  ]);
-  applyColumnHeatmap('tblLopsTopKillers', ['rows','kills','assists','headshots','grenade','damage']);
-}
+function renderLopsTopKillers(){ const limit=Number(el('lopsTopKillersTop').value)||10; const list=lopsTopPlayersByKills(LOPS_ALL).sort((a,b)=> b.kills-a.kills || a.player.localeCompare(b.player)).slice(0,limit); el('tblLopsTopKillers').innerHTML = renderSimpleTable(list.map((r,i)=>({...r,rank:i+1})), [{label:'#',key:'rank',right:true,html:(_,i)=>i+1},{label:'Player',key:'player'},{label:'Team',key:'team'},{label:'Rows',key:'rows',right:true},{label:'Kills',key:'kills',right:true},{label:'Assists',key:'assists',right:true},{label:'HS',key:'headshots',right:true},{label:'Grenade',key:'grenade',right:true},{label:'Damage',key:'damage',right:true}]); applyColumnHeatmap('tblLopsTopKillers', ['rows','kills','assists','headshots','grenade','damage']); }
 
 initial();
 </script>
