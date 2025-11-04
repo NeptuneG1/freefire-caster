@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FFBR — Teams (Merged Team + Players)</title>
+  <title>FFBR — Teams </title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root{
@@ -186,7 +186,7 @@
     </div>
 
     <div class="section" id="teamHeader">
-      <h2 id="teamTitle">Team Overview</h2>
+      <h2 id="teamTitle">Selected Team — Overview</h2>
       <div class="grid2">
         <div class="card" id="teamIdentity">
           <h3>Identity</h3>
@@ -198,7 +198,7 @@
         </div>
       </div>
 
-      <!-- Moved here: Combined Performance -->
+      <!-- Combined Performance lives inside Overview -->
       <div class="grid3" style="margin-top:12px">
         <div class="card"><h3>Totals</h3><div id="teamTotals" class="kpis">—</div></div>
         <div class="card"><h3>Per Match Averages</h3><div id="teamAverages" class="kpis">—</div></div>
@@ -206,60 +206,48 @@
       </div>
     </div>
 
-    <!-- New location: By Map in its own collapsible -->
+    <!-- Players becomes an accordion -->
+    <details class="accordion" id="playersSection">
+      <summary>Selected Team — Players</summary>
+      <div class="accordion-body">
+        <div class="card" style="margin:0"><div id="tblPlayers">Loading…</div></div>
+      </div>
+    </details>
+
+    <!-- By Map moved AFTER Players -->
     <details class="accordion" id="byMapSection">
-      <summary>By Map — Selected Team</summary>
+      <summary>Selected Team — By Map</summary>
       <div class="accordion-body">
         <div class="card" style="margin:0"><div id="tblMapTeam">—</div></div>
       </div>
     </details>
 
-    <details class="accordion" id="teamInfoSection">
-      <summary>Team Info</summary>
-      <div class="accordion-body"><div class="card" style="margin:0"><div id="teamInfoBody" class="muted">—</div></div></div>
-    </details>
-
-    <details class="accordion" id="teamRosterSection">
-      <summary>Roster & Accolades</summary>
-      <div class="accordion-body"><div class="card" style="margin:0"><div id="teamRosterBody" class="muted">—</div></div></div>
-    </details>
-
-    <div class="section" id="playersSection">
-      <h2>Players — Selected Team</h2>
-      <div class="card" style="margin:0"><div id="tblPlayers">Loading…</div></div>
-    </div>
-
-    <details class="accordion" id="teamActiveSection">
-      <summary>Most Used Active Skills — Selected Team</summary>
+    <!-- Combine Selected Team Active + Pet usage (mirrors Global usage layout) -->
+    <details class="accordion" id="teamUsageSection">
+      <summary>Selected Team — Active Skill & Pet Usage</summary>
       <div class="accordion-body">
-        <div class="bar">
-          <label>Top</label>
-          <select id="teamActiveTop" class="input"><option>10</option><option>20</option><option>50</option><option>100</option></select>
+        <div class="grid2">
+          <div class="card">
+            <h3>Active Skill Usage</h3>
+            <div class="bar"><label>Top</label><select id="teamActiveTop" class="input"><option>10</option><option>20</option><option>50</option><option>100</option></select></div>
+            <div id="tblTeamActive">Loading…</div>
+          </div>
+          <div class="card">
+            <h3>Pet Usage</h3>
+            <div class="bar"><label>Top</label><select id="teamPetTop" class="input"><option>10</option><option>20</option><option>50</option><option>100</option></select></div>
+            <div id="tblTeamPet">Loading…</div>
+          </div>
         </div>
-        <div class="card" style="margin:0"><div id="tblTeamActive">Loading…</div></div>
       </div>
     </details>
-
-    <details class="accordion" id="teamPetSection">
-      <summary>Most Used Pets — Selected Team</summary>
-      <div class="accordion-body">
-        <div class="bar">
-          <label>Top</label>
-          <select id="teamPetTop" class="input"><option>10</option><option>20</option><option>50</option><option>100</option></select>
-        </div>
-        <div class="card" style="margin:0"><div id="tblTeamPet">Loading…</div></div>
-      </div>
-    </details>
-
-    <!-- Removed: Team Performance by Day (Total, all maps) -->
 
     <details class="accordion" id="byDaySection">
-      <summary>Team Performance by Day by Map (Selected Team)</summary>
+      <summary>Selected Team — Performance by Day by Map</summary>
       <div class="accordion-body"><div class="card" style="margin:0"><div id="tblByDay">—</div></div></div>
     </details>
 
     <details class="accordion" id="charUsageSection">
-      <summary>Character Usage — Per Player Active+Passive</summary>
+      <summary>Selected Team — Character Usage (Per Player Active+Passive)</summary>
       <div class="accordion-body">
         <div class="bar">
           <label>Top players</label>
@@ -268,6 +256,16 @@
         <div class="card" style="margin:0"><div id="tblCharUsage">Loading…</div></div>
         <div class="muted" style="margin-top:6px" id="charMapHint">—</div>
       </div>
+    </details>
+
+    <details class="accordion" id="teamInfoSection">
+      <summary>Selected Team — Team Info</summary>
+      <div class="accordion-body"><div class="card" style="margin:0"><div id="teamInfoBody" class="muted">—</div></div></div>
+    </details>
+
+    <details class="accordion" id="teamRosterSection">
+      <summary>Selected Team — Roster & Accolades</summary>
+      <div class="accordion-body"><div class="card" style="margin:0"><div id="teamRosterBody" class="muted">—</div></div></div>
     </details>
 
     <details class="accordion" id="lopsTopKillersSection">
@@ -744,10 +742,10 @@ function renderPerMapAllTeams(){
 }
 function kpiAndByMap(){
   if(!CURRENT_TEAM){
-    el('teamTitle').textContent='Team Overview';
+    el('teamTitle').textContent='Selected Team — Overview';
     el('identityBody').innerHTML='Select a team.'; el('kpiBody').innerHTML='—'; return;
   }
-  el('teamTitle').textContent = `Team Overview — ${CURRENT_TEAM.name}`;
+  el('teamTitle').textContent = `Selected Team — Overview`;
   el('identityBody').innerHTML = `
     <div style="display:flex;gap:12px;align-items:center">
       <img src="${CURRENT_TEAM.logo}" alt="${CURRENT_TEAM.fullname} logo" style="width:72px;height:72px;object-fit:contain" onerror="this.style.visibility='hidden'">
@@ -766,7 +764,7 @@ function kpiAndByMap(){
       <div class="kpi">Top3 <strong>${fmtPct(k.top3_rate)}</strong></div>
     </div>` : '<div class="muted">No rows.</div>';
 
-  // Render By Map into the dedicated collapsible section
+  // Render By Map into its dedicated collapsible section
   const rows=teamMapPerf(TEAM_ROWS);
   const mapWrap = document.getElementById('tblMapTeam');
   if(mapWrap){
