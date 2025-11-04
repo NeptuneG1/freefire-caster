@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FFBR — Teams (Loaded on Open)</title>
+  <title>FFBR — Teams (Merged Team + Players)</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root{
@@ -100,8 +100,7 @@
 
   <div class="steps" id="steps">
     <div class="step" data-page="1"><span class="num">1</span><span class="label">Overall</span></div>
-    <div class="step" data-page="2"><span class="num">2</span><span class="label">Team</span></div>
-    <div class="step" data-page="3"><span class="num">3</span><span class="label">Player</span></div>
+    <div class="step" data-page="2"><span class="num">2</span><span class="label">Team + Players</span></div>
   </div>
   <div class="pager-nav">
     <button class="btn secondary" id="prevBtn">← Prev</button>
@@ -181,7 +180,7 @@
     </div>
   </div>
 
-  <!-- PAGE 2 -->
+  <!-- PAGE 2: TEAM + PLAYERS -->
   <div class="page" id="page2" data-page="2">
     <div class="section">
       <h2>Team Selection</h2>
@@ -221,13 +220,19 @@
       <div class="accordion-body"><div class="card" style="margin:0"><div id="teamInfoBody" class="muted">—</div></div></div>
     </details>
 
-    <details class="accordion" id="teamRosterSection">
+    <details class="accordion" id="teamRosterSection" open>
       <summary>Roster & Accolades</summary>
       <div class="accordion-body"><div class="card" style="margin:0"><div id="teamRosterBody" class="muted">—</div></div></div>
     </details>
 
+    <!-- Players of selected team (moved here) -->
+    <div class="section" id="playersSection">
+      <h2>Players — Selected Team</h2>
+      <div class="card" style="margin:0"><div id="tblPlayers">Loading…</div></div>
+    </div>
+
     <!-- Split combos into Active Skill and Pet -->
-    <details class="accordion" id="teamActiveSection" open>
+    <details class="accordion" id="teamActiveSection">
       <summary>Most Used Active Skills — Selected Team</summary>
       <div class="accordion-body">
         <div class="bar">
@@ -238,7 +243,7 @@
       </div>
     </details>
 
-    <details class="accordion" id="teamPetSection" open>
+    <details class="accordion" id="teamPetSection">
       <summary>Most Used Pets — Selected Team</summary>
       <div class="accordion-body">
         <div class="bar">
@@ -249,22 +254,14 @@
       </div>
     </details>
 
-    <details class="accordion" id="byDaySection" open>
+    <details class="accordion" id="byDaySection">
       <summary>Team Performance by Day (Selected Team)</summary>
       <div class="accordion-body"><div class="card" style="margin:0"><div id="tblByDay">—</div></div></div>
     </details>
-  </div>
 
-  <!-- PAGE 3 -->
-  <div class="page" id="page3" data-page="3">
-    <div class="section">
-      <h2>Player — Selected Team</h2>
-      <div class="bar"><span class="chip">Scope: <span id="scopeChipPlayer">—</span> • <a href="#" id="editFilters2" class="btn ghost" style="padding:4px 10px">Edit filters</a></span></div>
-      <div class="card" style="margin:0"><div id="tblPlayers">Loading…</div></div>
-    </div>
-
+    <!-- Optional: keep global views collapsed -->
     <details class="accordion" id="lopsTopKillersSection">
-      <summary>Top Players by Kills (All Players)</summary>
+      <summary>Global — Top Players by Kills</summary>
       <div class="accordion-body">
         <div class="bar"><label>Top</label><select id="lopsTopKillersTop" class="input"><option>10</option><option>20</option><option>50</option><option>100</option></select></div>
         <div class="card" style="margin:0"><div id="tblLopsTopKillers">Loading…</div></div>
@@ -272,7 +269,7 @@
     </details>
 
     <details class="accordion" id="lopsUsageSection">
-      <summary>Active Skill & Pet Usage (All Players)</summary>
+      <summary>Global — Active Skill & Pet Usage</summary>
       <div class="accordion-body">
         <div class="grid2">
           <div class="card">
@@ -315,8 +312,8 @@ function gerr(msg){
   console.error('[FFBR]', msg);
 }
 
-/* ============ Pager ============ */
-const PAGES=[1,2,3];
+/* ============ Pager (2 pages now) ============ */
+const PAGES=[1,2];
 function setActiveStep(p){ document.querySelectorAll('.step').forEach(s=> s.classList.toggle('active', String(s.dataset.page)===String(p))); }
 function showPage(p){
   const target=document.querySelector(`.page[data-page="${p}"]`); if(!target) return;
@@ -421,7 +418,6 @@ function updateFilterHint(){
   const chip = t==='__all__' ? 'All tournaments' : t;
   el('scopeChip').textContent = 'Scope: ' + chip;
   el('scopeChipTeam').textContent = chip;
-  el('scopeChipPlayer').textContent = chip;
 }
 
 /* ============ Tables + heat ============ */
@@ -507,7 +503,7 @@ function asListHTML(val){
 }
 function splitToLines(val){
   if (val == null) return [];
-  if (Array.isArray(val)) return val.flat().map(x=>String(x).trim()).filter(Boolean);
+  if (Array.isArray(val) ) return val.flat().map(x=>String(x).trim()).filter(Boolean);
   let s=String(val).trim();
   try{ if(/^\s*\[/.test(s)){ const arr=JSON.parse(s); if(Array.isArray(arr)) return arr.flat().map(x=>String(x).trim()).filter(Boolean); } }catch{}
   s=s.replace(/[•\u2022\u00b7]/g,'\n');
@@ -625,7 +621,8 @@ function normLopsRow(r){
     knockdowns: toI(get('Knock Down')), vehicle: toI(get('Vehicle Kill')), grenade: nadeKills,
     gloo_used: toI(get('IcewallUse')), gloo_break: glooDestroyed, medkits: toI(get('MedkitUse')),
     moving_distance: toI(get('MovingDistance')), vehicle_move_distance: toI(get('Vehicle Move Distance')),
-    revives: revivesGiven, revived: toI(get('RevivedTimes')), survival_time: toI(get('Survival Time')),
+    revives: toI(get('ReviveTeammateTimes')) + toI(get('Revive Teammate Nums')),
+    revived: toI(get('RevivedTimes')), survival_time: toI(get('Survival Time')),
     active: norm(get('SkillActive',['Active','SkillActive_1'])) || '',
     pet: norm(get('Pet Skill Name',['Pet','Pet Name'])) || '',
     mvp: toI(get('MVP')) ? 1 : 0,
@@ -657,7 +654,7 @@ function lopsTopPlayersByKills(rows){
   return [...m.values()];
 }
 
-/* ============ SORT HELPERS (fix DESC default) ============ */
+/* ============ SORT HELPERS (DESC default) ============ */
 function sortRows(rows, key, dir, isText=false){
   if(isText){
     return rows.sort((a,b)=> dir==='desc'
@@ -673,7 +670,7 @@ function sortRows(rows, key, dir, isText=false){
 function renderOverall(){
   const rows = aggregateOverall(baseRowsByTournament(ALL));
   const sortKey = el('overallSortKey').value;
-  const dir = el('overallSortDir').dataset.dir; // 'desc' or 'asc'
+  const dir = el('overallSortDir').dataset.dir;
   if (sortKey==='team'){
     sortRows(rows, 'team', dir, true);
   }else{
@@ -892,7 +889,7 @@ async function selectTeam(teamObj){
   renderPlayers();
   renderByDay();
   highlightActiveTile();
-  // Optional: team meta
+  // Team meta + roster (roster is driven by the same team filter)
   const info = await fetchTeamInfoBy(teamObj.name, teamObj.fullname); renderTeamInfo(info);
   const roster = await fetchPlayersBy(teamObj.name); renderRoster(roster);
 }
@@ -910,6 +907,8 @@ function wireControls(){
     if(CURRENT_TEAM){
       TEAM_ROWS = baseRowsByTournament(ALL).filter(r => (norm(r._tag).toUpperCase()||'') === CURRENT_TEAM.name.toUpperCase());
       kpiAndByMap(); renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDay();
+      // re-pull roster for selected team in the new scope
+      fetchPlayersBy(CURRENT_TEAM.name).then(renderRoster).catch(()=>{});
     }
     renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
   });
@@ -962,7 +961,6 @@ async function initial(){
     // Session chip
     el('scopeChip').textContent='Scope: —';
     el('scopeChipTeam').textContent='—';
-    el('scopeChipPlayer').textContent='—';
 
     // Load primary datasets
     ALL = await fetchAllRows();
@@ -998,7 +996,7 @@ async function initial(){
     wireControls();
 
     // Show UI once everything is ready
-    showPage(1);
+    showPage(2); // land where selection + roster lives
     el('veil').classList.add('hide');
   }catch(e){
     gerr('Fatal error initializing page:\n\n'+(e.stack||e.message||e));
