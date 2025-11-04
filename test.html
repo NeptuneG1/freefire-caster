@@ -912,26 +912,55 @@ function renderPlayers(){
 }
 
 /* Team Performance by Day (Total, all maps) */
-function renderByDayTotal(){
-  if(!TEAM_ROWS.length){ el('tblByDayTotal').innerHTML='<div class="muted">No rows.</div>'; return; }
-  const dayKey = r => `Y${n(r.year)||'—'} W${n(r.week)||'—'} D${n(r.day)||'—'}`;
-  const g = groupBy(TEAM_ROWS, dayKey);
-  const out=[];
-  for(const [day,list] of g.entries()){
-    const m=list.length, booyahs=sum(list,'booyah'), elims=sum(list,'elimination'), place=sum(list,'placement'), total=sum(list,'total');
-    out.push({ day, matches:m, booyahs, elims, placement:place, total,
-      booyah_rate:m?booyahs/m:0, elims_pm:m?elims/m:0, placement_pm:m?place/m:0, total_pm:m?total/m:0 });
+/* Team Performance by Day by Map — Pivot (rows: Map, cols: Day, value: Total) */
+function renderByDay(){
+  if(!TEAM_ROWS.length){
+    el('tblByDay').innerHTML = '<div class="muted">No rows.</div>';
+    return;
   }
-  out.sort((a,b)=> a.day.localeCompare(b.day) || b.total_pm-a.total_pm);
-  el('tblByDayTotal').innerHTML = renderSimpleTable(out, [
-    {label:'Day',key:'day'},
-    {label:'Matches',key:'matches',right:true},{label:'Booyahs',key:'booyahs',right:true},
-    {label:'Elims',key:'elims',right:true},{label:'Placement',key:'placement',right:true},{label:'Total',key:'total',right:true},
-    {label:'Booyah %',key:'booyah_rate',format:'pct',right:true},{label:'Elims / m',key:'elims_pm',format:'1d',right:true},
-    {label:'Placement / m',key:'placement_pm',format:'1d',right:true},{label:'Total / m',key:'total_pm',format:'1d',right:true},
-  ]);
-  applyColumnHeatmap('tblByDayTotal', ['total_pm','elims_pm','placement_pm','booyah_rate','matches','booyahs','elims','placement','total']);
+
+  const dayLabel = r => `Y${n(r.year)||'—'} W${n(r.week)||'—'} D${n(r.day)||'—'}`;
+
+  // Collect ordered unique days and maps
+  const daySet = new Set();
+  const mapSet = new Set();
+  for(const r of TEAM_ROWS){
+    mapSet.add(norm(r.map) || '—');
+    daySet.add(dayLabel(r));
+  }
+  const days = [...daySet].sort((a,b)=> a.localeCompare(b));
+  const maps = [...mapSet].sort((a,b)=> a.localeCompare(b));
+
+  // Build totals: totals[map][day] = sum(total)
+  const totals = new Map();
+  for(const r of TEAM_ROWS){
+    const m = norm(r.map) || '—';
+    const d = dayLabel(r);
+    if(!totals.has(m)) totals.set(m, new Map());
+    const row = totals.get(m);
+    row.set(d, (row.get(d) || 0) + n(r.total));
+  }
+
+  // Build HTML table (Map as first column, then one column per day)
+  let thead = `<thead><tr><th data-key="map">Map</th>${days.map(d=>`<th data-key="${d}" class="right">${d}</th>`).join('')}</tr></thead>`;
+  let tbody = '<tbody>';
+  for(const m of maps){
+    const row = totals.get(m) || new Map();
+    tbody += `<tr><td data-key="map">${m}</td>` +
+      days.map(d=>{
+        const v = row.get(d);
+        return `<td data-key="${d}" class="right">${(v!=null && isFinite(v)) ? Number(v).toFixed(0) : '—'}</td>`;
+      }).join('') +
+      `</tr>`;
+  }
+  tbody += '</tbody>';
+
+  el('tblByDay').innerHTML = `<table>${thead}${tbody}</table>`;
+
+  // Heatmap across all day columns
+  applyColumnHeatmap('tblByDay', days);
 }
+
 
 /* Team Performance by Day by Map */
 function renderByDay(){
