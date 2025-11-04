@@ -73,6 +73,15 @@
     #veil .box{background:#121212;border:1px solid #2a2a2a;border-radius:12px;padding:14px 16px;color:#ddd}
     #veil.hide{display:none}
 
+    /* === Skill cards === */
+    .skill-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+    .skill-card{display:flex;gap:10px;align-items:center;background:#121212;border:1px solid #2a2a2a;border-radius:10px;padding:8px;transition:transform .08s ease,border-color .08s ease}
+    .skill-card:hover{transform:translateY(-1px);border-color:#484848}
+    .skill-pic{width:52px;height:52px;border-radius:10px;overflow:hidden;border:1px solid #333;background:#0e0e0e;display:grid;place-items:center;font-weight:800;color:#aaa}
+    .skill-pic img{width:100%;height:100%;object-fit:cover;display:block}
+    .skill-meta{min-width:0}
+    .skill-name{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .skill-count{font-size:.85rem;color:var(--muted)}
     @media (max-width: 980px){ .grid3{grid-template-columns:1fr} }
     @media (max-width: 860px){ .grid2{grid-template-columns:1fr} }
   </style>
@@ -81,6 +90,7 @@
 <header>
   <h1>FFBR — Teams</h1>
   <div class="user-controls">
+    <a class="btn secondary" id="homeBtn" href="dashboard.html">← Back to Dashboard</a>
     <span class="chip" id="scopeChip">Scope: —</span>
     <span class="chip" id="user-info">Checking login…</span>
     <button class="btn" id="logoutBtn">Logout</button>
@@ -192,7 +202,7 @@
           <div id="identityBody">Select a team.</div>
         </div>
         <div class="card" id="teamKPIs">
-          <h3>Key KPIs (ffbr_data)</h3>
+          <h3>Key KPIs</h3>
           <div id="kpiBody">—</div>
         </div>
       </div>
@@ -229,18 +239,24 @@
           <label>Top</label>
           <select id="teamActiveTop" class="input"><option>10</option><option>20</option><option>50</option><option>100</option></select>
         </div>
-        <div class="card" style="margin:0"><div id="tblTeamActive">Loading…</div></div>
+        <div class="card" style="margin:0 0 8px 0"><div id="tblTeamActive">Loading…</div></div>
+        <div class="card" style="margin:0">
+          <h3>Cards view</h3>
+          <div id="cardsTeamActive" class="skill-grid">—</div>
+        </div>
       </div>
     </details>
 
-    <details class="accordion" id="teamPetSection">
-      <summary>Most Used Pets — Selected Team</summary>
+    <details class="accordion" id="teamPassiveSection">
+      <summary>Most Used Passive Skills — Selected Team</summary>
       <div class="accordion-body">
         <div class="bar">
           <label>Top</label>
-          <select id="teamPetTop" class="input"><option>10</option><option>20</option><option>50</option><option>100</option></select>
+          <select id="teamPassiveTop" class="input"><option>10</option><option>20</option><option>50</option><option>100</option></select>
         </div>
-        <div class="card" style="margin:0"><div id="tblTeamPet">Loading…</div></div>
+        <div class="card" style="margin:0">
+          <div id="cardsTeamPassive" class="skill-grid">—</div>
+        </div>
       </div>
     </details>
 
@@ -301,6 +317,55 @@ const client = supabase.createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
 );
 
+/* ============ Character index (from character.json) ============ */
+/** Change the path if needed */
+const CHAR_JSON_URL = './character.json';
+const CHAR_INDEX = new Map(); // normName -> {name, img}
+
+const normKey = s => String(s||'')
+  .normalize('NFD').replace(/[\u0300-\u036f]/g,'')  // strip accents
+  .toLowerCase().replace(/[^a-z0-9\s]/g,'')         // keep alnum+space
+  .replace(/\s+/g,' ').trim();
+
+function _addCharIndex(name, img){
+  const k = normKey(name);
+  if(!k) return;
+  if(!CHAR_INDEX.has(k)) CHAR_INDEX.set(k, {name, img: img||''});
+}
+function buildCharIndex(data){
+  if(Array.isArray(data)){
+    for(const row of data){
+      const name = row.name || row.Name || row.display || row.title || '';
+      const img = row.icon || row.image || row.img || row.portrait || row.url || row.image_url || '';
+      if(name) _addCharIndex(name, img);
+      const aliases = [].concat(row.aliases||[], row.alt_names||[], row.alts||[]);
+      for(const a of aliases){ if(a) _addCharIndex(a, img); }
+    }
+  }else{
+    // object map: { "Name": {image: "..."} }
+    for(const [k,v] of Object.entries(data||{})){
+      const img = (v && (v.icon||v.image||v.img||v.portrait||v.url||v.image_url)) || '';
+      _addCharIndex(k, img);
+      const aliases = [].concat(v?.aliases||[], v?.alt_names||[], v?.alts||[]);
+      for(const a of aliases){ if(a) _addCharIndex(a, img); }
+    }
+  }
+}
+async function loadCharacterIndex(){
+  try{
+    const res = await fetch(CHAR_JSON_URL, {cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    buildCharIndex(data);
+  }catch(e){
+    console.warn('Failed to load character.json:', e.message||e);
+  }
+}
+function imgForCharacter(name){
+  const hit = CHAR_INDEX.get(normKey(name));
+  return hit?.img || '';
+}
+
 /* ============ Small utils ============ */
 const el = id => document.getElementById(id);
 const fmtPct = x => isFinite(x) ? (x*100).toFixed(1)+'%' : '—';
@@ -334,6 +399,9 @@ document.querySelectorAll('.step').forEach(s=> s.addEventListener('click', ()=> 
 el('prevBtn').addEventListener('click', prevPage);
 el('nextBtn').addEventListener('click', nextPage);
 window.addEventListener('keydown', e=>{ if(e.key==='ArrowLeft') prevPage(); if(e.key==='ArrowRight') nextPage(); });
+
+/* Jump to filters */
+el('editFilters1').addEventListener('click', e=>{ e.preventDefault(); showPage(1); window.scrollTo({top:0,behavior:'smooth'}); });
 
 /* ============ Session chip ============ */
 (async () => {
@@ -700,6 +768,56 @@ function mapCharName(id, fallback=''){
   return fallback || `ID ${key}`;
 }
 
+/* ===== Skill card helpers (Active/Passive) ===== */
+function topActivesForTeam(limit){
+  const base = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
+  const m = new Map(); // normName -> {name, picks}
+  for(const r of base){
+    const name = mapCharName(r.char1, r.charActives?.[0] || r.active || '');
+    const k = normKey(name);
+    if(!k) continue;
+    if(!m.has(k)) m.set(k,{name, picks:0});
+    m.get(k).picks++;
+  }
+  const arr=[...m.values()];
+  arr.sort((a,b)=> b.picks-a.picks || a.name.localeCompare(b.name));
+  return arr.slice(0, limit);
+}
+function topPassivesForTeam(limit){
+  const base = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
+  const m = new Map(); // normName -> {name, picks}
+  for(const r of base){
+    const p2 = mapCharName(r.char2, r.charActives?.[1] || '');
+    const p3 = mapCharName(r.char3, r.charActives?.[2] || '');
+    const p4 = mapCharName(r.char4, r.charActives?.[3] || '');
+    for(const nm of [p2,p3,p4]){
+      const k = normKey(nm);
+      if(!k) continue;
+      if(!m.has(k)) m.set(k,{name:nm, picks:0});
+      m.get(k).picks++;
+    }
+  }
+  const arr=[...m.values()];
+  arr.sort((a,b)=> b.picks-a.picks || a.name.localeCompare(b.name));
+  return arr.slice(0, limit);
+}
+function renderSkillCards(containerId, items){
+  const wrap = el(containerId);
+  if(!wrap) return;
+  if(!items.length){ wrap.innerHTML = '<div class="muted">No skills found.</div>'; return; }
+  wrap.innerHTML = items.map(it=>{
+    const url = imgForCharacter(it.name);
+    const pic = url ? `<img src="${url}" alt="${it.name}">` : `<div class="skill-pic">?</div>`;
+    return `<div class="skill-card" title="${it.name}">
+      <div class="skill-pic">${url?`<img src="${url}" alt="${it.name}">`:`<span>${(it.name||'?').slice(0,1).toUpperCase()}</span>`}</div>
+      <div class="skill-meta">
+        <div class="skill-name">${it.name}</div>
+        <div class="skill-count">${it.picks} pick${it.picks===1?'':'s'}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 /* Renders */
 function renderOverall(){
   const rows = aggregateOverall(baseRowsByTournament(ALL));
@@ -826,7 +944,21 @@ function renderTeamActiveUsage(){
     {label:'Picks',key:'picks',right:true},
   ]);
   applyColumnHeatmap('tblTeamActive', ['picks']);
+
+  // Cards view (use char1 mapping for better alignment with IDs)
+  renderTeamActiveCards();
 }
+function renderTeamActiveCards(){
+  const limit=Number(el('teamActiveTop').value)||10;
+  const items = topActivesForTeam(limit);
+  renderSkillCards('cardsTeamActive', items);
+}
+function renderTeamPassiveCards(){
+  const limit=Number(el('teamPassiveTop').value)||10;
+  const items = topPassivesForTeam(limit);
+  renderSkillCards('cardsTeamPassive', items);
+}
+
 function renderTeamPetUsage(){
   const limit=Number(el('teamPetTop').value)||10;
   const list=countByName(lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM),'pet')
@@ -944,10 +1076,8 @@ function renderCharUsage(){
 
   for(const r of base){
     const P = ensure(r._player||'—'); P.rows++;
-    // Active = Character 1 (fallback to active name)
     const aName = mapCharName(r.char1, r.charActives?.[0] || r.active || '');
     if(aName && aName!=='—') bump(P.active, aName);
-    // Passives = Characters 2..4 (fallback to actives 2..4)
     const p2 = mapCharName(r.char2, r.charActives?.[1] || '');
     const p3 = mapCharName(r.char3, r.charActives?.[2] || '');
     const p4 = mapCharName(r.char4, r.charActives?.[3] || '');
@@ -961,29 +1091,21 @@ function renderCharUsage(){
     arr.sort((a,b)=> b.c-a.c || a.name.localeCompare(b.name));
     return arr.map(x=>`${x.name} × ${x.c}`).join(', ') || '—';
   }
-  function totalMap(m){ let t=0; for(const v of m.values()) t+=v; return t; }
 
   let rows = [...per.values()].map((o,i)=>({
     player:o.player, rows:o.rows,
-    activeCount: totalMap(o.active),
-    passiveCount: totalMap(o.passive),
     activeList: listToText(o.active),
     passiveList: listToText(o.passive),
   }));
 
-  rows.sort((a,b)=> (b.activeCount+b.passiveCount) - (a.activeCount+a.passiveCount) || a.player.localeCompare(b.player));
+  rows.sort((a,b)=> a.player.localeCompare(b.player));
   rows = rows.slice(0, topN);
 
   el('tblCharUsage').innerHTML = renderSimpleTable(rows, [
     {label:'Player', key:'player'},
-    {label:'Rows', key:'rows', right:true},
-    {label:'Active picks', key:'activeCount', right:true},
-    {label:'Passive picks', key:'passiveCount', right:true},
     {label:'Active', key:'activeList'},
     {label:'Passive', key:'passiveList'},
   ]);
-
-  applyColumnHeatmap('tblCharUsage', ['rows','activeCount','passiveCount']);
 }
 
 /* Team grid */
@@ -1016,6 +1138,7 @@ async function selectTeam(teamObj){
   kpiAndByMap();
   renderTeamCombinedMetrics();
   renderTeamActiveUsage();
+  renderTeamPassiveCards();
   renderTeamPetUsage();
   renderPlayers();
   renderByDayTotal();
@@ -1036,7 +1159,7 @@ function wireControls(){
     renderPerMapAllTeams();
     if(CURRENT_TEAM){
       TEAM_ROWS = baseRowsByTournament(ALL).filter(r => (norm(r._tag).toUpperCase()||'') === CURRENT_TEAM.name.toUpperCase());
-      kpiAndByMap(); renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDayTotal(); renderByDay(); renderCharUsage();
+      kpiAndByMap(); renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPassiveCards(); renderTeamPetUsage(); renderPlayers(); renderByDayTotal(); renderByDay(); renderCharUsage();
       fetchPlayersBy(CURRENT_TEAM.name).then(renderRoster).catch(()=>{});
     }
     renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
@@ -1071,8 +1194,8 @@ function wireControls(){
   });
 
   el('teamSearch').addEventListener('input', e=> renderTeamGrid(e.target.value||''));
-  el('teamActiveTop').addEventListener('change', renderTeamActiveUsage);
-  el('teamPetTop').addEventListener('change', renderTeamPetUsage);
+  el('teamActiveTop').addEventListener('change', ()=>{ renderTeamActiveUsage(); renderTeamActiveCards(); });
+  el('teamPassiveTop').addEventListener('change', renderTeamPassiveCards);
   el('lopsActiveTop').addEventListener('change', renderLopsActive);
   el('lopsPetTop').addEventListener('change', renderLopsPet);
   el('lopsTopKillersTop').addEventListener('change', renderLopsTopKillers);
@@ -1105,9 +1228,10 @@ async function initial(){
 
     LOPS_ALL = await fetchAllLopsRows();
     await fetchMatchApiMap(); // only type=2
+    await loadCharacterIndex(); // build CHAR_INDEX for images
 
-    // Renders depending on LOPS + mapping
-    renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDayTotal(); renderByDay(); renderCharUsage();
+    // Renders depending on LOPS + mapping + character images
+    renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPassiveCards(); renderTeamPetUsage(); renderPlayers(); renderByDayTotal(); renderByDay(); renderCharUsage();
     renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
 
     wireControls();
