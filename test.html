@@ -451,25 +451,51 @@ function renderSimpleTable(list, cols){
   return `<table>${head}${body}</table>`;
 }
 function applyColumnHeatmap(containerId, keys){
-  const wrap=el(containerId); const table=wrap?.querySelector('table'); if(!table) return;
-  table.querySelectorAll('td[data-key]').forEach(td=>{ td.style.backgroundColor=''; td.classList.remove('heat-top'); });
-  const styles=getComputedStyle(document.documentElement);
-  const rgb=styles.getPropertyValue('--heat-rgb')||'255,189,89';
-  const minA=parseFloat(styles.getPropertyValue('--heat-min'))||.06;
-  const maxA=parseFloat(styles.getPropertyValue('--heat-max'))||.22;
-  const BANDS=5;
-  for(const key of keys){
-    const cells=[...table.querySelectorAll(`td[data-key="${key}"]`)];
-    if(!cells.length) continue;
-    const entries=cells.map((td,i)=>{ const raw=(td.textContent||'').trim().replace('%','').replace(/,/g,''); const v=parseFloat(raw); return {td,i,v:isFinite(v)?v:null}; }).filter(e=>e.v!=null);
-    if(!entries.length) continue;
-    const asc=entries.slice().sort((a,b)=>a.v-b.v); const n=asc.length; const bandByIndex=new Map();
-    asc.forEach((e,rank)=>{ const p=(n<=1)?1:(rank/(n-1)); const band=Math.min(BANDS-1,Math.floor(p*BANDS)); bandByIndex.set(e.i,band); });
-    const topVal=asc[n-1].v;
-    cells.forEach((td,i)=>{ const band=bandByIndex.get(i); if(band==null) return;
-      const alpha=minA + (band/(BANDS-1)))*(maxA-minA);
-      td.style.backgroundColor=`rgba(${rgb}, ${alpha.toFixed(3)})`;
-      if(isFinite(parseFloat(td.textContent)) && parseFloat(td.textContent)===topVal) td.classList.add('heat-top');
+  const wrap = el(containerId);
+  const table = wrap?.querySelector('table');
+  if (!table) return;
+
+  table.querySelectorAll('td[data-key]').forEach(td=>{
+    td.style.backgroundColor='';
+    td.classList.remove('heat-top');
+  });
+
+  const styles = getComputedStyle(document.documentElement);
+  const rgb   = styles.getPropertyValue('--heat-rgb') || '255,189,89';
+  const minA  = parseFloat(styles.getPropertyValue('--heat-min')) || .06;
+  const maxA  = parseFloat(styles.getPropertyValue('--heat-max')) || .22;
+  const BANDS = 5;
+
+  for (const key of keys){
+    const cells = [...table.querySelectorAll(`td[data-key="${key}"]`)];
+    if (!cells.length) continue;
+
+    const entries = cells.map((td,i)=>{
+      const raw = (td.textContent||'').trim().replace('%','').replace(/,/g,'');
+      const v = parseFloat(raw);
+      return { td, i, v: isFinite(v) ? v : null };
+    }).filter(e => e.v != null);
+
+    if (!entries.length) continue;
+
+    const asc = entries.slice().sort((a,b)=> a.v - b.v);
+    const n = asc.length;
+    const bandByIndex = new Map();
+    asc.forEach((e,rank)=>{
+      const p = (n<=1) ? 1 : (rank/(n-1));
+      const band = Math.min(BANDS-1, Math.floor(p*BANDS));
+      bandByIndex.set(e.i, band);
+    });
+
+    const topVal = asc[n-1].v;
+
+    cells.forEach((td,i)=>{
+      const band = bandByIndex.get(i);
+      if (band == null) return;
+      const alpha = minA + (band/(BANDS-1))*(maxA-minA);
+      td.style.backgroundColor = `rgba(${rgb}, ${alpha.toFixed(3)})`;
+      const cellVal = parseFloat((td.textContent||'').replace('%','').replace(/,/g,''));
+      if (isFinite(cellVal) && cellVal === topVal) td.classList.add('heat-top');
     });
   }
 }
@@ -699,13 +725,11 @@ async function fetchMatchApiMap(){
       const { data, error } = await client.from(table).select('*').limit(2000);
       if(error) { console.warn('match_api try', table, error.message||error); continue; }
       if(Array.isArray(data) && data.length){
-        // Build id -> name (string keys)
         MATCH_API_MAP.clear();
         for(const r of data){
           const id = String(r.id ?? r.ID ?? r.item_id ?? r.code ?? '').trim();
           const nm = String(r.name ?? r.NAME ?? r.title ?? r.item_name ?? '').trim();
           const type = String(r.type ?? r.TYPE ?? r.category ?? '').toLowerCase();
-          // only accept character-like entries if type is blank OR includes 'char'
           if(!id) continue;
           if(nm){
             if(!type || /char|character|skill|active|passive/.test(type)) MATCH_API_MAP.set(id, nm);
@@ -1113,7 +1137,7 @@ async function initial(){
     renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDayTotal(); renderByDay(); renderCharUsage();
     renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
 
-    // Wire events after data is ready (prevents early triggers)
+    // Wire events after data is ready
     wireControls();
 
     // Collapse all accordion sections by default
