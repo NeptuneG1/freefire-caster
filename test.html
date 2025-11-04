@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FFBR — Teams </title>
+  <title>FFBR — Teams (Merged Team + Players)</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root{
@@ -197,8 +197,6 @@
           <div id="kpiBody">—</div>
         </div>
       </div>
-
-      <!-- Combined Performance lives inside Overview -->
       <div class="grid3" style="margin-top:12px">
         <div class="card"><h3>Totals</h3><div id="teamTotals" class="kpis">—</div></div>
         <div class="card"><h3>Per Match Averages</h3><div id="teamAverages" class="kpis">—</div></div>
@@ -206,7 +204,7 @@
       </div>
     </div>
 
-    <!-- Players becomes an accordion -->
+    <!-- Players (accordion) -->
     <details class="accordion" id="playersSection">
       <summary>Selected Team — Players</summary>
       <div class="accordion-body">
@@ -214,17 +212,24 @@
       </div>
     </details>
 
-    <!-- By Map moved AFTER Players -->
-    <details class="accordion" id="byMapSection">
-      <summary>Selected Team — By Map</summary>
+    <!-- COMBINED: By Map + By Day -->
+    <details class="accordion" id="mapsDaysSection">
+      <summary>Selected Team — By Map & By Day</summary>
       <div class="accordion-body">
-        <div class="card" style="margin:0"><div id="tblMapTeam">—</div></div>
+        <div class="card" style="margin:0 0 12px 0">
+          <h3>By Map</h3>
+          <div id="tblMapTeam">—</div>
+        </div>
+        <div class="card" style="margin:0">
+          <h3>By Day (Pivot by Map)</h3>
+          <div id="tblByDay">—</div>
+        </div>
       </div>
     </details>
 
-    <!-- Combine Selected Team Active + Pet usage (mirrors Global usage layout) -->
-    <details class="accordion" id="teamUsageSection">
-      <summary>Selected Team — Active Skill & Pet Usage</summary>
+    <!-- COMBINED: Team Usage (Actives, Pets) + Per-Player Character Usage -->
+    <details class="accordion" id="teamCharsUsageSection">
+      <summary>Selected Team — Active/Pet Usage & Per-Player Character Usage</summary>
       <div class="accordion-body">
         <div class="grid2">
           <div class="card">
@@ -238,23 +243,15 @@
             <div id="tblTeamPet">Loading…</div>
           </div>
         </div>
-      </div>
-    </details>
-
-    <details class="accordion" id="byDaySection">
-      <summary>Selected Team — Performance by Day by Map</summary>
-      <div class="accordion-body"><div class="card" style="margin:0"><div id="tblByDay">—</div></div></div>
-    </details>
-
-    <details class="accordion" id="charUsageSection">
-      <summary>Selected Team — Character Usage (Per Player Active+Passive)</summary>
-      <div class="accordion-body">
-        <div class="bar">
-          <label>Top players</label>
-          <select id="charUsageTop" class="input"><option>10</option><option>20</option><option>50</option><option>100</option></select>
+        <div class="card" style="margin-top:12px">
+          <h3>Per-Player Character Usage (Active + Passive)</h3>
+          <div class="bar">
+            <label>Top players</label>
+            <select id="charUsageTop" class="input"><option>10</option><option>20</option><option>50</option><option>100</option></select>
+          </div>
+          <div id="tblCharUsage">Loading…</div>
+          <div class="muted" style="margin-top:6px" id="charMapHint">—</div>
         </div>
-        <div class="card" style="margin:0"><div id="tblCharUsage">Loading…</div></div>
-        <div class="muted" style="margin-top:6px" id="charMapHint">—</div>
       </div>
     </details>
 
@@ -764,7 +761,7 @@ function kpiAndByMap(){
       <div class="kpi">Top3 <strong>${fmtPct(k.top3_rate)}</strong></div>
     </div>` : '<div class="muted">No rows.</div>';
 
-  // Render By Map into its dedicated collapsible section
+  // Render By Map into combined section's container
   const rows=teamMapPerf(TEAM_ROWS);
   const mapWrap = document.getElementById('tblMapTeam');
   if(mapWrap){
