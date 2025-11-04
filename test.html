@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FFBR — Teams</title>
+  <title>FFBR — Teams (Merged Team + Players)</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root{
@@ -100,7 +100,7 @@
 
   <div class="steps" id="steps">
     <div class="step" data-page="1"><span class="num">1</span><span class="label">Overall</span></div>
-    <div class="step" data-page="2"><span class="num">2</span><span class="label">Team</span></div>
+    <div class="step" data-page="2"><span class="num">2</span><span class="label">Team + Players</span></div>
   </div>
   <div class="pager-nav">
     <button class="btn secondary" id="prevBtn">← Prev</button>
@@ -140,7 +140,6 @@
           <option value="top3_rate">Top-3 %</option>
           <option value="team">Team (A→Z)</option>
         </select>
-        <!-- default DESC -->
         <button class="btn secondary" id="overallSortDir" data-dir="desc">Desc</button>
         <button class="btn secondary" id="overallReset">Reset</button>
       </div>
@@ -168,9 +167,7 @@
           <option value="booyahs">Booyahs</option>
           <option value="matches">Matches</option>
           <option value="top3_rate">Top-3 %</option>
-          <option value="team">Team (A→Z)</option>
         </select>
-        <!-- default DESC -->
         <button class="btn secondary" id="perMapSortDir" data-dir="desc">Desc</button>
         <button class="btn secondary" id="perMapReset">Reset</button>
       </div>
@@ -220,18 +217,17 @@
       <div class="accordion-body"><div class="card" style="margin:0"><div id="teamInfoBody" class="muted">—</div></div></div>
     </details>
 
-    <details class="accordion" id="teamRosterSection" open>
+    <details class="accordion" id="teamRosterSection">
       <summary>Roster & Accolades</summary>
       <div class="accordion-body"><div class="card" style="margin:0"><div id="teamRosterBody" class="muted">—</div></div></div>
     </details>
 
-    <!-- Players of selected team (moved here) -->
     <div class="section" id="playersSection">
       <h2>Players — Selected Team</h2>
       <div class="card" style="margin:0"><div id="tblPlayers">Loading…</div></div>
     </div>
 
-    <!-- Split combos into Active Skill and Pet -->
+    <!-- Split: Active vs Pet -->
     <details class="accordion" id="teamActiveSection">
       <summary>Most Used Active Skills — Selected Team</summary>
       <div class="accordion-body">
@@ -254,12 +250,29 @@
       </div>
     </details>
 
+    <details class="accordion" id="byDayTotalSection">
+      <summary>Team Performance by Day (Total, all maps)</summary>
+      <div class="accordion-body"><div class="card" style="margin:0"><div id="tblByDayTotal">—</div></div></div>
+    </details>
+
     <details class="accordion" id="byDaySection">
-      <summary>Team Performance by Day (Selected Team)</summary>
+      <summary>Team Performance by Day by Map (Selected Team)</summary>
       <div class="accordion-body"><div class="card" style="margin:0"><div id="tblByDay">—</div></div></div>
     </details>
 
-    <!-- Optional: keep global views collapsed -->
+    <details class="accordion" id="charUsageSection">
+      <summary>Character Usage (Character 1–4 mapped via match_api)</summary>
+      <div class="accordion-body">
+        <div class="bar">
+          <label>Top</label>
+          <select id="charUsageTop" class="input"><option>10</option><option>20</option><option>50</option><option>100</option></select>
+        </div>
+        <div class="card" style="margin:0"><div id="tblCharUsage">Loading…</div></div>
+        <div class="muted" style="margin-top:6px" id="charMapHint">—</div>
+      </div>
+    </details>
+
+    <!-- Global views (collapsed) -->
     <details class="accordion" id="lopsTopKillersSection">
       <summary>Global — Top Players by Kills</summary>
       <div class="accordion-body">
@@ -312,7 +325,7 @@ function gerr(msg){
   console.error('[FFBR]', msg);
 }
 
-/* ============ Pager (2 pages now) ============ */
+/* ============ Pager (2 pages) ============ */
 const PAGES=[1,2];
 function setActiveStep(p){ document.querySelectorAll('.step').forEach(s=> s.classList.toggle('active', String(s.dataset.page)===String(p))); }
 function showPage(p){
@@ -340,6 +353,7 @@ el('logoutBtn').onclick = async () => { await client.auth.signOut(); location.re
 let TEAMS=[]; let TEAM_BY_CODE={}; let TEAM_BY_NAME={}; let ALLOWED_TAGS=new Set();
 let ALL=[]; let TEAM_ROWS=[]; let CURRENT_TEAM=null;
 let LOPS_ALL=[];
+let MATCH_API_MAP = new Map(); // id(string)->name
 
 /* ============ Helper: build team indexes ============ */
 function buildTeamIndexes(){
@@ -453,7 +467,7 @@ function applyColumnHeatmap(containerId, keys){
     asc.forEach((e,rank)=>{ const p=(n<=1)?1:(rank/(n-1)); const band=Math.min(BANDS-1,Math.floor(p*BANDS)); bandByIndex.set(e.i,band); });
     const topVal=asc[n-1].v;
     cells.forEach((td,i)=>{ const band=bandByIndex.get(i); if(band==null) return;
-      const alpha=minA + (band/(BANDS-1))*(maxA-minA);
+      const alpha=minA + (band/(BANDS-1)))*(maxA-minA);
       td.style.backgroundColor=`rgba(${rgb}, ${alpha.toFixed(3)})`;
       if(isFinite(parseFloat(td.textContent)) && parseFloat(td.textContent)===topVal) td.classList.add('heat-top');
     });
@@ -578,7 +592,7 @@ function renderRoster(players){
   ]);
 }
 
-/* ============ Team-specific ============ */
+/* ============ Team-specific basic metrics ============ */
 function kpiDataset(rows){
   const matches=rows.length, booyahs=sum(rows,'booyah'), total=sum(rows,'total'), elims=sum(rows,'elimination'), place=sum(rows,'placement'), damage=sum(rows,'damage'), top3=sum(rows,'top3');
   return {
@@ -614,6 +628,15 @@ function normLopsRow(r){
   const glooDestroyed = toI(get('IcewallDestroyedTimes')) + toI(get('SkylerIceWallDestroy'));
   const revivesGiven  = toI(get('ReviveTeammateTimes')) + toI(get('Revive Teammate Nums'));
   const nadeKills = toI(get('Grenade kill')) + toI(get('Ice Grenade kill')) + toI(get('Dragon Grenade Kill'));
+  // Character IDs 1..4 + fallbacks for Active names
+  const c1 = String(get('Character 1') ?? '').trim();
+  const c2 = String(get('Character 2') ?? '').trim();
+  const c3 = String(get('Character 3') ?? '').trim();
+  const c4 = String(get('Character 4') ?? '').trim();
+  const act1 = norm(get('SkillActive_1',['SkillActive','Active'])) || '';
+  const act2 = norm(get('SkillActive_2')) || '';
+  const act3 = norm(get('SkillActive_3')) || '';
+  const act4 = norm(get('SkillActive_4')) || '';
   return {
     _team: team.toUpperCase(), _player: player, _map: map,
     kills: toI(get('KILLS')), assists: toI(get('ASSISTS')), shots, hits,
@@ -623,9 +646,10 @@ function normLopsRow(r){
     moving_distance: toI(get('MovingDistance')), vehicle_move_distance: toI(get('Vehicle Move Distance')),
     revives: toI(get('ReviveTeammateTimes')) + toI(get('Revive Teammate Nums')),
     revived: toI(get('RevivedTimes')), survival_time: toI(get('Survival Time')),
-    active: norm(get('SkillActive',['Active','SkillActive_1'])) || '',
-    pet: norm(get('Pet Skill Name',['Pet','Pet Name'])) || '',
+    active: act1 || '', pet: norm(get('Pet Skill Name',['Pet','Pet Name'])) || '',
     mvp: toI(get('MVP')) ? 1 : 0,
+    char1: c1, char2: c2, char3: c3, char4: c4,
+    charActives: [act1,act2,act3,act4]
   };
 }
 async function fetchAllLopsRows(){
@@ -666,16 +690,51 @@ function sortRows(rows, key, dir, isText=false){
     : ((a[key]??0) - (b[key]??0)));
 }
 
+/* ============ match_api mapping (Character IDs -> Names) ============ */
+async function fetchMatchApiMap(){
+  // Try a few likely tables; first success wins
+  const candidates = ['match_api','match_api_items','match_api_data','ff_match_api','match_api_catalog'];
+  for(const table of candidates){
+    try{
+      const { data, error } = await client.from(table).select('*').limit(2000);
+      if(error) { console.warn('match_api try', table, error.message||error); continue; }
+      if(Array.isArray(data) && data.length){
+        // Build id -> name (string keys)
+        MATCH_API_MAP.clear();
+        for(const r of data){
+          const id = String(r.id ?? r.ID ?? r.item_id ?? r.code ?? '').trim();
+          const nm = String(r.name ?? r.NAME ?? r.title ?? r.item_name ?? '').trim();
+          const type = String(r.type ?? r.TYPE ?? r.category ?? '').toLowerCase();
+          // only accept character-like entries if type is blank OR includes 'char'
+          if(!id) continue;
+          if(nm){
+            if(!type || /char|character|skill|active|passive/.test(type)) MATCH_API_MAP.set(id, nm);
+          }
+        }
+        if(MATCH_API_MAP.size){
+          el('charMapHint').textContent = `Character IDs mapped from table: ${table} • ${MATCH_API_MAP.size} entries.`;
+          return true;
+        }
+      }
+    }catch(e){ console.warn('match_api fetch error', e.message||e); }
+  }
+  el('charMapHint').textContent = 'Could not locate a match_api table. Showing raw IDs and/or SkillActive fallbacks.';
+  return false;
+}
+function mapCharName(id, fallback=''){
+  const key = String(id||'').trim();
+  if(!key) return fallback || '—';
+  if(MATCH_API_MAP.has(key)) return MATCH_API_MAP.get(key);
+  return fallback || `ID ${key}`;
+}
+
 /* ============ Renders ============ */
 function renderOverall(){
   const rows = aggregateOverall(baseRowsByTournament(ALL));
   const sortKey = el('overallSortKey').value;
   const dir = el('overallSortDir').dataset.dir;
-  if (sortKey==='team'){
-    sortRows(rows, 'team', dir, true);
-  }else{
-    sortRows(rows, sortKey, dir, false);
-  }
+  if (sortKey==='team') sortRows(rows, 'team', dir, true);
+  else sortRows(rows, sortKey, dir, false);
   el('tblOverall').innerHTML = renderSimpleTable(rows, [
     {label:'Team',key:'team'},{label:'Code',key:'code'},{label:'E/W',key:'ew'},{label:'Region',key:'region'},
     {label:'Matches',key:'matches',right:true},{label:'Booyahs',key:'booyahs',right:true},{label:'Elims',key:'elims',right:true},
@@ -692,11 +751,8 @@ function renderPerMapAllTeams(){
   const rows = aggregateTeamsForMap(base, mapSel);
   const sortKey = el('perMapSortKey').value;
   const dir = el('perMapSortDir').dataset.dir;
-  if (sortKey==='team'){
-    sortRows(rows, 'team', dir, true);
-  }else{
-    sortRows(rows, sortKey, dir, false);
-  }
+  if (sortKey==='team') sortRows(rows, 'team', dir, true);
+  else sortRows(rows, sortKey, dir, false);
   el('tblPerMapAllTeams').innerHTML = renderSimpleTable(rows, [
     {label:'Team',key:'team'},{label:'Code',key:'code'},{label:'E/W',key:'ew'},{label:'Region',key:'region'},
     {label:'Matches',key:'matches',right:true},{label:'Booyahs',key:'booyahs',right:true},{label:'Elims',key:'elims',right:true},
@@ -731,7 +787,7 @@ function kpiAndByMap(){
       <div class="kpi">Top3 <strong>${fmtPct(k.top3_rate)}</strong></div>
     </div>` : '<div class="muted">No rows.</div>';
 
-  // By Map
+  // By Map panel inside header
   if(!document.getElementById('tblMapTeam')){
     const panel = document.createElement('div');
     panel.className='card'; panel.innerHTML = `<h3>By Map</h3><div id="tblMapTeam"></div>`;
@@ -834,6 +890,30 @@ function renderPlayers(){
   ]);
   applyColumnHeatmap('tblPlayers', ['kills','assists','dmg','hs','nade','veh','downs','rows']);
 }
+
+/* Team Performance by Day (Total, all maps) */
+function renderByDayTotal(){
+  if(!TEAM_ROWS.length){ el('tblByDayTotal').innerHTML='<div class="muted">No rows.</div>'; return; }
+  const dayKey = r => `Y${n(r.year)||'—'} W${n(r.week)||'—'} D${n(r.day)||'—'}`;
+  const g = groupBy(TEAM_ROWS, dayKey);
+  const out=[];
+  for(const [day,list] of g.entries()){
+    const m=list.length, booyahs=sum(list,'booyah'), elims=sum(list,'elimination'), place=sum(list,'placement'), total=sum(list,'total');
+    out.push({ day, matches:m, booyahs, elims, placement:place, total,
+      booyah_rate:m?booyahs/m:0, elims_pm:m?elims/m:0, placement_pm:m?place/m:0, total_pm:m?total/m:0 });
+  }
+  out.sort((a,b)=> a.day.localeCompare(b.day) || b.total_pm-a.total_pm);
+  el('tblByDayTotal').innerHTML = renderSimpleTable(out, [
+    {label:'Day',key:'day'},
+    {label:'Matches',key:'matches',right:true},{label:'Booyahs',key:'booyahs',right:true},
+    {label:'Elims',key:'elims',right:true},{label:'Placement',key:'placement',right:true},{label:'Total',key:'total',right:true},
+    {label:'Booyah %',key:'booyah_rate',format:'pct',right:true},{label:'Elims / m',key:'elims_pm',format:'1d',right:true},
+    {label:'Placement / m',key:'placement_pm',format:'1d',right:true},{label:'Total / m',key:'total_pm',format:'1d',right:true},
+  ]);
+  applyColumnHeatmap('tblByDayTotal', ['total_pm','elims_pm','placement_pm','booyah_rate','matches','booyahs','elims','placement','total']);
+}
+
+/* Team Performance by Day by Map */
 function renderByDay(){
   if(!TEAM_ROWS.length){ el('tblByDay').innerHTML='<div class="muted">No rows.</div>'; return; }
   const dayLabel=r=> `Y${n(r.year)||'—'} W${n(r.week)||'—'} D${n(r.day)||'—'}`;
@@ -853,6 +933,38 @@ function renderByDay(){
     {label:'Placement / m',key:'placement_pm',format:'1d',right:true},{label:'Total / m',key:'total_pm',format:'1d',right:true},
   ]);
   applyColumnHeatmap('tblByDay', ['total_pm','elims_pm','placement_pm','booyah_rate','matches','booyahs','elims','placement','total']);
+}
+
+/* Character Usage (Character 1–4 mapped via match_api) */
+function renderCharUsage(){
+  const top = Number(el('charUsageTop').value)||10;
+  const base = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
+  if(!base.length){ el('tblCharUsage').innerHTML='<div class="muted">No rows.</div>'; return; }
+  const counts = new Map(); // id -> {id,name,total,pos1,pos2,pos3,pos4}
+  function bump(id, pos, fallbackName=''){
+    if(!id || id==='0' || id==='NULL') return;
+    const key=String(id).trim();
+    if(!counts.has(key)) counts.set(key,{id:key,name:mapCharName(key,fallbackName),total:0,pos1:0,pos2:0,pos3:0,pos4:0});
+    const o=counts.get(key);
+    o.total++;
+    o['pos'+pos]++;
+  }
+  for(const r of base){
+    bump(r.char1,1, r.charActives?.[0]||'');
+    bump(r.char2,2, r.charActives?.[1]||'');
+    bump(r.char3,3, r.charActives?.[2]||'');
+    bump(r.char4,4, r.charActives?.[3]||'');
+  }
+  const list = [...counts.values()].sort((a,b)=> b.total-a.total || a.name.localeCompare(b.name)).slice(0,top);
+  el('tblCharUsage').innerHTML = renderSimpleTable(list.map((r,i)=>({...r,rank:i+1})), [
+    {label:'#',key:'rank',right:true,html:(_,i)=>i+1},
+    {label:'Character',key:'name'},
+    {label:'ID',key:'id'},
+    {label:'Picks',key:'total',right:true},
+    {label:'Pos1',key:'pos1',right:true},{label:'Pos2',key:'pos2',right:true},
+    {label:'Pos3',key:'pos3',right:true},{label:'Pos4',key:'pos4',right:true},
+  ]);
+  applyColumnHeatmap('tblCharUsage', ['total','pos1','pos2','pos3','pos4']);
 }
 
 /* ============ Team grid ============ */
@@ -887,7 +999,9 @@ async function selectTeam(teamObj){
   renderTeamActiveUsage();
   renderTeamPetUsage();
   renderPlayers();
+  renderByDayTotal();
   renderByDay();
+  renderCharUsage();
   highlightActiveTile();
   // Team meta + roster (roster is driven by the same team filter)
   const info = await fetchTeamInfoBy(teamObj.name, teamObj.fullname); renderTeamInfo(info);
@@ -906,8 +1020,7 @@ function wireControls(){
     renderPerMapAllTeams();
     if(CURRENT_TEAM){
       TEAM_ROWS = baseRowsByTournament(ALL).filter(r => (norm(r._tag).toUpperCase()||'') === CURRENT_TEAM.name.toUpperCase());
-      kpiAndByMap(); renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDay();
-      // re-pull roster for selected team in the new scope
+      kpiAndByMap(); renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDayTotal(); renderByDay(); renderCharUsage();
       fetchPlayersBy(CURRENT_TEAM.name).then(renderRoster).catch(()=>{});
     }
     renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
@@ -954,6 +1067,9 @@ function wireControls(){
   el('lopsActiveTop').addEventListener('change', renderLopsActive);
   el('lopsPetTop').addEventListener('change', renderLopsPet);
   el('lopsTopKillersTop').addEventListener('change', renderLopsTopKillers);
+
+  // Char usage
+  el('charUsageTop').addEventListener('change', renderCharUsage);
 }
 
 async function initial(){
@@ -987,16 +1103,24 @@ async function initial(){
     if(qTeam && TEAM_BY_CODE[qTeam]) await selectTeam(TEAM_BY_CODE[qTeam]);
     else if(TEAMS.length) await selectTeam(TEAMS[0]);
 
-    // LOPS data, then team + global usage
+    // LOPS data
     LOPS_ALL = await fetchAllLopsRows();
-    renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDay();
+
+    // match_api mapping (best-effort)
+    await fetchMatchApiMap();
+
+    // Initial team renders that depend on LOPS + mapping
+    renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDayTotal(); renderByDay(); renderCharUsage();
     renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
 
     // Wire events after data is ready (prevents early triggers)
     wireControls();
 
+    // Collapse all accordion sections by default
+    document.querySelectorAll('details.accordion').forEach(d=> d.open=false);
+
     // Show UI once everything is ready
-    showPage(2); // land where selection + roster lives
+    showPage(2); // land on Team + Players
     el('veil').classList.add('hide');
   }catch(e){
     gerr('Fatal error initializing page:\n\n'+(e.stack||e.message||e));
