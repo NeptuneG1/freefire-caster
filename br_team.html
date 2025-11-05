@@ -338,7 +338,7 @@ const PAGES=[1,2];
 function setActiveStep(p){ document.querySelectorAll('.step').forEach(s=> s.classList.toggle('active', String(s.dataset.page)===String(p))); }
 function showPage(p){
   const target=document.querySelector(`.page[data-page="${p}"]`); if(!target) return;
-  document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active')); target.classList.add('active);
+  document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active')); target.classList.add('active');
   setActiveStep(p); localStorage.setItem('ffbr_page', String(p));
   const url=new URL(window.location.href); url.searchParams.set('p', String(p)); history.replaceState(null,'',url.toString());
 }
@@ -536,6 +536,7 @@ async function fetchTeamInfoBy(codeRaw,nameRaw){
 async function fetchPlayersBy(codeRaw){
   const codeUp=norm(codeRaw).toUpperCase();
   try{
+    // Use unquoted column identifier; Supabase handles case-insensitively unless created with quotes.
     const res=await client.from('br_player_info').select('*').eq('TAG', codeUp);
     if(res.error) throw res.error;
     return res.data||[];
@@ -561,7 +562,7 @@ function renderTeamInfo(info){
   box.innerHTML = `${maybeLogo}<table>${rows || '<tr><td class="muted">No visible fields.</td></tr>'}</table>`;
 }
 
-/* ========== ROSTER FIELD PICKERS + AGE PARSER ========== */
+/* ========== ROSTER FIELD PICKERS + AGE PARSER (FIX) ========== */
 function pickKey(keys, patterns){
   for(const rx of patterns){
     const k = keys.find(k => rx.test(k));
@@ -569,7 +570,9 @@ function pickKey(keys, patterns){
   }
   return null;
 }
+// AGE PARSER: extract integer from Age-like, else compute from DOB/Birthdate
 function parseAgeValue(record, ageKey, dobKey){
+  // Try explicit Age column first
   if(ageKey){
     const raw = record[ageKey];
     if(raw!=null && String(raw).trim()!==''){
@@ -577,6 +580,7 @@ function parseAgeValue(record, ageKey, dobKey){
       if(m){ const v = Number(m[1]); if(isFinite(v) && v>=0 && v<130) return v; }
     }
   }
+  // Fallback: compute from DOB/Birthdate/Date of Birth
   if(dobKey){
     const raw = String(record[dobKey] ?? '').trim();
     if(raw){
@@ -598,36 +602,66 @@ function renderRoster(players){
   if(!players?.length){ box.innerHTML='<div class="muted">No players found.</div>'; return; }
 
   const keys=Object.keys(players[0]||{});
+
+  // Prefer exact/specific matches first, then broader fallbacks
   const avatarKey = pickKey(keys, [/photo|avatar|image|picture/i]);
+
+  // IGN detection (prioritized)
   const ignKey = pickKey(keys, [
-    /^ign$/i, /\bplayer\s*ign\b/i, /\bin-?\s*game\s*name\b/i,
+    /^ign$/i,
+    /\bplayer\s*ign\b/i,
+    /\bin-?\s*game\s*name\b/i,
     /\bnick\s*name\b/i, /\bnickname\b/i, /\bhandle\b/i, /\balias\b/i,
-    /\bplayer\s*name\b/i, /^name$/i
+    /\bplayer\s*name\b/i,
+    /^name$/i
   ]) || null;
+
   const roleKey    = pickKey(keys, [/^role$/i, /\bposition\b/i]) || null;
   const countryKey = pickKey(keys, [/^country$/i, /\bnation\b/i]) || null;
+
+  // Age + DOB keys (more tolerant)
   const ageKey = pickKey(keys, [/^age\b/i, /\bage\s*\(?(yrs|years)?\)?/i, /\byears?\s*old\b/i]) || null;
   const dobKey = pickKey(keys, [/\b(dob|birth(date)?|date\s*of\s*birth)\b/i]) || null;
-  const accolKey = keys.includes('Accolades') ? 'Accolades' : pickKey(keys, [/accolade|achievement|title|award/i]) || null;
-  const formerKey = pickKey(keys, [/\b(former|previous|past|ex)[\s_]*teams?\b/i, /\bteam\s*history\b/i, /^Former Team(s)?$/i]) || 'Former Team';
+
+  // Accolades + Former Team keys
+  const accolKey = keys.includes('Accolades') ? 'Accolades'
+                 : pickKey(keys, [/accolade|achievement|title|award/i]) || null;
+
+  const formerKey = pickKey(keys, [
+    /\b(former|previous|past|ex)[\s_]*teams?\b/i,
+    /\bteam\s*history\b/i,
+    /^Former Team(s)?$/i
+  ]) || 'Former Team';
 
   const rows = players.slice().map(p=>{
-    const avatar = avatarKey && p[avatarKey] ? `<img src="${p[avatarKey]}" alt="" style="width:38px;height:38px;object-fit:cover;border-radius:8px;border:1px solid #2a2a2a">` : '';
+    const avatar = avatarKey && p[avatarKey]
+      ? `<img src="${p[avatarKey]}" alt="" style="width:38px;height:38px;object-fit:cover;border-radius:8px;border:1px solid #2a2a2a">`
+      : '';
+
+    // Resolve IGN robustly (never lose it)
     const ign = (() => {
       const tryKeys = ignKey ? [ignKey] : [];
       tryKeys.push('IGN','In-game Name','Player IGN','Player Name','Nickname','Name','name');
-      for(const k of tryKeys){ if(k in p && String(p[k]).trim()!=='') return String(p[k]).trim(); }
+      for(const k of tryKeys){
+        if(k in p && String(p[k]).trim()!=='') return String(p[k]).trim();
+      }
       return '—';
     })();
+
     const role    = roleKey    ? (p[roleKey]    ?? '—') : '—';
     const country = countryKey ? (p[countryKey] ?? '—') : '—';
-    const ageNum  = parseAgeValue(p, ageKey, dobKey);
-    const age     = (ageNum==null) ? (ageKey? String(p[ageKey]??'—'): '—') : ageNum;
+
+    // Age parsing
+    const ageNum = parseAgeValue(p, ageKey, dobKey);
+    const age    = (ageNum==null) ? (ageKey? String(p[ageKey]??'—'): '—') : ageNum;
+
     const accHTML    = accolKey  ? asListHTML(p[accolKey])   : '—';
     const formerHTML = formerKey ? asListHTML(p[formerKey])  : '—';
+
     return { avatar, ign, role, country, age, formerHTML, accHTML };
   });
 
+  // Sort by role then IGN
   rows.sort((a,b)=> String(a.role||'').localeCompare(String(b.role||'')) || String(a.ign||'').localeCompare(String(b.ign||'')));
 
   box.innerHTML = renderSimpleTable(rows, [
@@ -665,7 +699,7 @@ function teamMapPerf(rows){
   return out.sort((a,b)=> b.total_pm - a.total_pm || b.matches - a.matches || a.map.localeCompare(b.map));
 }
 
-/* LOPS normalize (now with Day/Match/Week/Year/Tournament) */
+/* LOPS normalize */
 function normLopsRow(r){
   const get=(k,alt=[])=> r[k]!=null ? r[k] : alt.find(a=>r[a]!=null)!=null ? r[alt.find(a=>r[a]!=null)] : null;
   const toI = v => Number(v ?? 0) || 0;
@@ -685,13 +719,6 @@ function normLopsRow(r){
   const act2 = norm(get('SkillActive_2')) || '';
   const act3 = norm(get('SkillActive_3')) || '';
   const act4 = norm(get('SkillActive_4')) || '';
-  // NEW: timing + scope fields
-  const year = toI(get('year',['Year','YEAR']));
-  const week = toI(get('week',['Week','WEEK']));
-  const day  = toI(get('day',['Day','DAY']));
-  const match= toI(get('match',['Match','MATCH']));
-  const tournament = norm(get('tournament',['Tournament','TOURNAMENT'])) || '';
-
   return {
     _team: team.toUpperCase(), _player: player, _map: map,
     kills: toI(get('KILLS')), assists: toI(get('ASSISTS')), shots, hits,
@@ -704,9 +731,7 @@ function normLopsRow(r){
     active: act1 || '', pet: norm(get('Pet Skill Name',['Pet','Pet Name'])) || '',
     mvp: toI(get('MVP')) ? 1 : 0,
     char1: c1, char2: c2, char3: c3, char4: c4,
-    charActives: [act1,act2,act3,act4],
-    // NEW fields used for LAST PLAYED
-    year, week, day, match, tournament
+    charActives: [act1,act2,act3,act4]
   };
 }
 async function fetchAllLopsRows(){
@@ -720,15 +745,6 @@ async function fetchAllLopsRows(){
   return out.map(normLopsRow).filter(r=>r._player && r._team);
 }
 function lopsRowsForTeam(all, teamObj){ if(!teamObj) return []; const code=(teamObj.name||'').trim().toUpperCase(); return all.filter(r=> (r._team||'').toUpperCase()===code); }
-function lopsRowsForTeamScoped(all, teamObj){
-  const base = lopsRowsForTeam(all, teamObj);
-  const t = selectedTournament();
-  if(t==='__all__') return base;
-  const lf = t.toLowerCase();
-  // only filter if tournament field exists; otherwise keep base
-  const scoped = base.filter(r => (norm(r.tournament).toLowerCase()===lf));
-  return scoped.length ? scoped : base;
-}
 function countByName(rows,key){
   const m=new Map();
   for(const r of rows){ const raw=norm(r[key]); if(!raw) continue; const k=raw.toLowerCase().replace(/\s+/g,' ').trim(); if(!m.has(k)) m.set(k,{name:raw,picks:0}); m.get(k).picks += 1; }
@@ -783,21 +799,6 @@ function mapCharName(id, fallback=''){
   if(!key) return fallback || '—';
   if(MATCH_API_MAP.has(key)) return MATCH_API_MAP.get(key);
   return fallback || `ID ${key}`;
-}
-
-/* ===== LAST PLAYED (from LOPS day+match, scoped to tournament when possible) ===== */
-function lopsLastPlayed(rows){
-  // choose the max by (year, week, day, match). Missing values treated as 0.
-  let best=null;
-  for(const r of rows){
-    const day=n(r.day), match=n(r.match), week=n(r.week), year=n(r.year);
-    if(day===0 && match===0) continue; // need at least one
-    const score = (year*1e9) + (week*1e7) + (day*1e4) + match;
-    if(!best || score>best.score){
-      best = {score, year, week, day, match, map:r._map||'', tournament:r.tournament||''};
-    }
-  }
-  return best;
 }
 
 /* Renders */
@@ -880,26 +881,16 @@ function kpiAndByMap(){
 function renderTeamCombinedMetrics(){
   const totalsEl = el('teamTotals'), avgsEl = el('teamAverages'), sigEl = el('teamSignals');
   if(!CURRENT_TEAM){ totalsEl.innerHTML=avgsEl.innerHTML=sigEl.innerHTML='—'; return; }
-
   const games=TEAM_ROWS.length||0;
-  const teamLopsAll   = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
-  const teamLopsScope = lopsRowsForTeamScoped(LOPS_ALL, CURRENT_TEAM);
-
+  const teamLops=lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
   const totals = {
-    kills:sum(teamLopsAll,'kills'), dmg:sum(teamLopsAll,'damage'), assists:sum(teamLopsAll,'assists'), knock:sum(teamLopsAll,'knockdowns'),
-    glooUsed:sum(teamLopsAll,'gloo_used'), glooBreak:sum(teamLopsAll,'gloo_break'),
-    revives:sum(teamLopsAll,'revives'), nade:sum(teamLopsAll,'grenade'), vehicle:sum(teamLopsAll,'vehicle'), hs:sum(teamLopsAll,'headshots'),
-    shots:sum(teamLopsAll,'shots'), hits:sum(teamLopsAll,'hits'), survival:sum(teamLopsAll,'survival_time'), mvp:sum(teamLopsAll,'mvp')
+    kills:sum(teamLops,'kills'), dmg:sum(teamLops,'damage'), assists:sum(teamLops,'assists'), knock:sum(teamLops,'knockdowns'),
+    glooUsed:sum(teamLops,'gloo_used'), glooBreak:sum(teamLops,'gloo_break'),
+    revives:sum(teamLops,'revives'), nade:sum(teamLops,'grenade'), vehicle:sum(teamLops,'vehicle'), hs:sum(teamLops,'headshots'),
+    shots:sum(teamLops,'shots'), hits:sum(teamLops,'hits'), survival:sum(teamLops,'survival_time'), mvp:sum(teamLops,'mvp')
   };
   const acc=safeDiv(totals.hits, totals.shots);
   const hsRate=safeDiv(totals.hs, totals.kills);
-
-  // LAST PLAYED from scoped LOPS (fallback to all if none)
-  const last = lopsLastPlayed(teamLopsScope.length ? teamLopsScope : teamLopsAll);
-  const lastLabel = last
-    ? `${last.year?`Y${last.year} `:''}${last.week?`W${last.week} `:''}D${last.day} • M${last.match}${last.map?` • ${last.map}`:''}`
-    : '—';
-
   totalsEl.innerHTML = `
     <div class="kpi">TOTAL ELIMS <strong>${totals.kills}</strong></div>
     <div class="kpi">TOTAL DMG <strong>${totals.dmg}</strong></div>
@@ -913,17 +904,14 @@ function renderTeamCombinedMetrics(){
     <div class="kpi">HEADSHOTS <strong>${totals.hs}</strong></div>
     <div class="kpi">MVPs <strong>${totals.mvp}</strong></div>
     <div class="kpi">GAMES PLAYED <strong>${games}</strong></div>`;
-
   avgsEl.innerHTML = games ? `
     <div class="kpi">AVG ELIMS <strong>${(totals.kills/games).toFixed(1)}</strong></div>
     <div class="kpi">AVG DMG <strong>${(totals.dmg/games).toFixed(0)}</strong></div>
     <div class="kpi">AVG ASSISTS <strong>${(totals.assists/games).toFixed(1)}</strong></div>
     <div class="kpi">AVG HEADSHOTS <strong>${(totals.hs/games).toFixed(1)}</strong></div>` : '<div class="muted">No games found for averages.</div>';
-
   sigEl.innerHTML = `
     <div class="kpi">ACCURACY <strong>${fmtPct(acc)}</strong></div>
-    <div class="kpi">HS / KILL <strong>${isFinite(hsRate)?hsRate.toFixed(2):'—'}</strong></div>
-    <div class="kpi">LAST PLAYED <strong>${lastLabel}</strong></div>`;
+    <div class="kpi">HS / KILL <strong>${isFinite(hsRate)?hsRate.toFixed(2):'—'}</strong></div>`;
 }
 function renderTeamActiveUsage(){
   const limit=Number(el('teamActiveTop').value)||10;
