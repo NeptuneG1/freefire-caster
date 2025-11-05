@@ -2,15 +2,22 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"/>
   <title>Clash Squad Draft</title>
+
+  <!-- Supabase JS v2 (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script>
+    // --- Supabase client ---
     const client = supabase.createClient(
       'https://gkugecflfddkpitlrmws.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
     );
 
+    // Enforce login
     client.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
         window.location.href = "index.html";
@@ -88,7 +95,6 @@
     .top-controls a, .top-controls button, .top-controls select, .top-controls label { background: #ffbd59; color: #1c1c1c; padding: 6px 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; text-decoration: none; }
     .top-controls select { padding: 4px 8px; font-weight: bold; background: #2a2a2a; color: #ffbd59; border: 1px solid #555; }
     .top-controls button:hover, .top-controls a:hover { background: #e0a84f; }
-    /* NEW: style the tournament text input to match */
     .top-controls input[type="text"] { padding: 6px 8px; background: #2a2a2a; color: #ffbd59; border: 1px solid #555; border-radius: 5px; font-weight: bold; }
 
     /* Team pick/ban counts section */
@@ -126,17 +132,13 @@
         Enable multiple selection
       </label>
 
-      <!-- Tournament filter for history -->
       <div style="margin-top:10px;">
         <label style="display:block;margin-bottom:4px;">Tournament</label>
-        <select id="tournamentFilter" style="width:200px;" onchange="loadAllDraftRecords()">
-          <!-- options populated by JS -->
-        </select>
+        <select id="tournamentFilter" style="width:200px;" onchange="loadAllDraftRecords()"></select>
       </div>
 
       <br />
-      <select id="teamFilter" size="5" style="width: 200px; margin-top: 6px;" onchange="loadAllDraftRecords()">
-      </select>
+      <select id="teamFilter" size="5" style="width: 200px; margin-top: 6px;" onchange="loadAllDraftRecords()"></select>
     </div>
 
     <div style="display: flex; flex-direction: column; align-items: center; margin-top: 10px;">
@@ -185,7 +187,6 @@
       <option value="Solara">Solara</option>
     </select>
 
-    <!-- NEW: Tournament entry field (with suggestions) -->
     <label for="tournamentInput">Tournament:</label>
     <input type="text" id="tournamentInput" placeholder="Enter tournament name" list="tournamentList" />
     <datalist id="tournamentList"></datalist>
@@ -217,12 +218,8 @@
   </div>
 
   <div class="summary-wrapper">
-    <div>
-      <div class="summary-team" id="summaryLeft"></div>
-    </div>
-    <div>
-      <div class="summary-team" id="summaryRight"></div>
-    </div>
+    <div><div class="summary-team" id="summaryLeft"></div></div>
+    <div><div class="summary-team" id="summaryRight"></div></div>
   </div>
 
   <div class="modal" id="heroModal">
@@ -301,47 +298,65 @@ document.addEventListener('DOMContentLoaded', async () => {
   const today = new Date();
   document.getElementById('matchDate').valueAsDate = today;
   document.getElementById('countTo').valueAsDate = today;
-  const from = new Date(2025, 7, 28);
+  const from = new Date(2025, 7, 28); // Aug 28, 2025
   document.getElementById('countFrom').valueAsDate = from;
 
-  // 3) Ensure session before subscribing
+  // 3) Confirm session and sync Realtime JWT
   const { data: { session } } = await client.auth.getSession();
   if (!session) { window.location.href = "index.html"; return; }
+  if (session?.access_token) client.realtime.setAuth(session.access_token);
+  client.auth.onAuthStateChange((_event, s) => {
+    if (s?.access_token) client.realtime.setAuth(s.access_token);
+  });
 
-  // (Optional) If you rotate tokens elsewhere, keep Realtime in sync:
-  // client.realtime.setAuth(session.access_token);
-
-  // 4) Load initial state
+  // 4) Load initial state (from singleton row)
   await loadDraftState();
 
-  // 5) Subscribe WITH a filter and log channel status
-  const channel = client
-    .channel('draft_changes')
-    .on('postgres_changes',
-      { event: 'UPDATE', schema: 'public', table: 'draft', filter: 'id=eq.1' },
-      (payload) => {
-        // Some Realtime payloads return `record`/`old_record` instead of `new`.
-        const row = payload.new ?? payload.record ?? {};
-        if (row.id === 1) {
-          draftState = row.state;
-          drawDraft();
-          console.log('🔄 Draft state synced from realtime');
-        } else {
-          console.log('⚠️ Update for other row, ignoring:', row.id);
-        }
-      }
-    )
-    .subscribe((status) => console.log('📡 Realtime channel status:', status));
+  // 5) Subscribe to realtime
+  await initRealtime();
 
-  // (Optional) See socket-level events
-  client.realtime.onOpen(() => console.log('🟢 Realtime socket open'));
-  client.realtime.onClose(() => console.log('🔴 Realtime socket closed'));
-  client.realtime.onError((e) => console.log('⛔ Realtime socket error', e));
-
-  // 6) Load history UI
+  // 6) Load history table & filters
   loadAllDraftRecords();
 });
 
+/* ------------------ REALTIME ------------------ */
+async function initRealtime() {
+  // singleton draft row
+  client
+    .channel('realtime:public:draft')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'draft', filter: 'id=eq.1' },
+      (payload) => {
+        const row = payload.new ?? payload.record ?? {};
+        if (row?.id === 1 && row.state) {
+          draftState = row.state;
+          drawDraft();
+          console.log(`🔄 draft ${payload.eventType} via realtime`);
+        }
+      }
+    )
+    .subscribe((status) => console.log('📡 draft channel:', status));
+
+  // live refresh history whenever draft_records change
+  client
+    .channel('realtime:public:draft_records')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'draft_records' },
+      () => {
+        console.log('📣 draft_records changed — refreshing table');
+        loadAllDraftRecords();
+      }
+    )
+    .subscribe((status) => console.log('📡 draft_records channel:', status));
+
+  client.realtime.onOpen(() => console.log('🟢 Realtime socket open'));
+  client.realtime.onClose(() => console.log('🔴 Realtime socket closed'));
+  client.realtime.onError((e) => console.log('⛔ Realtime socket error', e));
+}
+
+/* ------------------ UI RENDER ------------------ */
 function drawDraft(){
   const l=document.getElementById('teamLeft'),r=document.getElementById('teamRight');
   l.innerHTML=''; r.innerHTML='';
@@ -413,6 +428,7 @@ function updateTeamName(teamIndex) {
   draftState.teamNames[teamIndex] = input.value; saveDraftState();
 }
 
+/* ------------------ MODAL ------------------ */
 function openModal(title) {
   document.getElementById('modalTitle').innerText = title;
   const grid = document.getElementById('heroGrid');
@@ -503,6 +519,8 @@ function openModal(title) {
 }
 
 function closeModal(){document.getElementById('heroModal').style.display='none';}
+
+/* ------------------ SUMMARY ------------------ */
 function updateSummary() {
   const left = document.getElementById('summaryLeft');
   const right = document.getElementById('summaryRight');
@@ -604,7 +622,8 @@ function updateSummary() {
   left.innerHTML = `<h3>TEAM LEFT</h3>${buildTeamSummary(0, 0)}`;
   right.innerHTML = `<h3>TEAM RIGHT</h3>${buildTeamSummaryRight(4, 1)}`;
 }
-  
+
+/* ------------------ DRAFT STATE OPS ------------------ */
 function resetDraft() {
   draftState = {
     bans: [null, null],
@@ -632,21 +651,19 @@ function getWeaponArmory(weaponName) {
 }
 
 async function saveDraftState() {
+  // capture top controls into the state (so overlay can show them realtime)
   draftState.matchDate = document.getElementById('matchDate')?.value || '';
   draftState.gameNumber = parseInt(document.getElementById('gameNumberSelect')?.value || '1', 10);
   draftState.teamLeftScore = parseInt(document.getElementById('teamLeftScore')?.value || '0', 10);
   draftState.teamRightScore = parseInt(document.getElementById('teamRightScore')?.value || '0', 10);
   draftState.map = document.getElementById('mapSelect')?.value || 'Bermuda';
 
-  if (!draftState || Object.keys(draftState).length === 0) {
-    console.warn('⚠️ Draft state is empty. Skipping save.');
-    return;
-  }
+  const row = { id: 1, state: draftState, updated_at: new Date().toISOString() };
 
+  // Upsert so it survives if row 1 ever gets deleted
   const { error } = await client
     .from('draft')
-    .update({ state: draftState, updated_at: new Date().toISOString() })
-    .eq('id', 1);
+    .upsert(row, { onConflict: 'id' });
 
   if (error) {
     console.error('❌ Failed to save draft state:', error);
@@ -673,9 +690,14 @@ async function loadDraftState() {
     };
     drawDraft();
     console.log('✅ Draft state loaded');
+  } else {
+    // ensure a row exists so future updates succeed
+    await client.from('draft').insert({ id: 1, state: draftState });
+    console.log('ℹ️ Seeded draft row id=1');
   }
 }
 
+/* ------------------ RECORDS CRUD ------------------ */
 async function loadDraftRecord() {
   const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
   const matchDate = document.getElementById('matchDate').value;
@@ -722,8 +744,6 @@ async function loadDraftRecord() {
     document.getElementById('teamLeftScore').value = draftState.teamLeftScore;
     document.getElementById('teamRightScore').value = draftState.teamRightScore;
     document.getElementById('mapSelect').value = draftState.map;
-
-    // NEW: set tournament field from record
     document.getElementById('tournamentInput').value = data.tournament_name ?? '';
 
     drawDraft();
@@ -739,7 +759,7 @@ async function saveOrUpdateDraft() {
   const teamLeftScore = parseInt(document.getElementById('teamLeftScore').value || '0', 10);
   const teamRightScore = parseInt(document.getElementById('teamRightScore').value || '0', 10);
   const map = document.getElementById('mapSelect').value;
-  const tournamentName = (document.getElementById('tournamentInput').value || '').trim(); // NEW
+  const tournamentName = (document.getElementById('tournamentInput').value || '').trim();
 
   if (!matchDate) {
     alert("⚠️ Please select a match date.");
@@ -771,7 +791,7 @@ async function saveOrUpdateDraft() {
     team_right_score: teamRightScore,
     map: map,
     state: draftState,
-    tournament_name: tournamentName || null, // NEW
+    tournament_name: tournamentName || null,
     updated_at: new Date().toISOString()
   };
 
@@ -785,7 +805,7 @@ async function saveOrUpdateDraft() {
       console.error("Insert Error:", insertError);
     } else {
       alert("✅ Draft saved.");
-      loadAllDraftRecords(); // refresh lists & tournament suggestions
+      loadAllDraftRecords();
     }
   } else {
     console.log("🔁 Updating existing draft record (id =", data.id, ")...");
@@ -797,7 +817,7 @@ async function saveOrUpdateDraft() {
       console.error("Update Error:", updateError);
     } else {
       alert("✅ Draft updated.");
-      loadAllDraftRecords(); // refresh lists & tournament suggestions
+      loadAllDraftRecords();
     }
   }
 };
@@ -810,6 +830,7 @@ function toggleTeamFilterMode() {
   Array.from(filter.options).forEach(o => { o.selected = selected.includes(o.value); });
 }
 
+/* ------------------ HISTORY + CARDS ------------------ */
 async function loadAllDraftRecords() {
   const { data, error } = await client
     .from('draft_records')
@@ -894,7 +915,7 @@ async function loadAllDraftRecords() {
   });
   countTournamentSelect.value = prevTournamentCounts || '__ALL__';
 
-  // Also populate the datalist for the input field (autocomplete)
+  // Autocomplete list for the input
   if (tournamentInputList) {
     tournamentInputList.innerHTML = '';
     Array.from(allTournaments).sort().forEach(tn => {
@@ -984,8 +1005,6 @@ async function loadSpecificDraft(id) {
   document.getElementById('teamLeftScore').value = draftState.teamLeftScore;
   document.getElementById('teamRightScore').value = draftState.teamRightScore;
   document.getElementById('mapSelect').value = draftState.map;
-
-  // NEW: set tournament field from record
   document.getElementById('tournamentInput').value = data.tournament_name ?? '';
 
   drawDraft();
@@ -1109,7 +1128,7 @@ function renderDraftCardSummaries(data) {
   });
 }
 
-/* ===== Team pick/ban counts logic ===== */
+/* ------------------ COUNTS ------------------ */
 async function computeTeamPickBanCounts() {
   const team = document.getElementById('teamCountSelect').value;
   const tourn = (document.getElementById('countTournamentSelect')?.value) || '__ALL__';
