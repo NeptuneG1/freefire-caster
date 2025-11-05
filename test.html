@@ -328,7 +328,17 @@ const client = supabase.createClient(
 
 /* ============ Small utils ============ */
 const el = id => document.getElementById(id);
-const on = (id, evt, fn) => { const e = el(id); if(!e){ console.warn('[bind-miss]', id); return null; } e.addEventListener(evt, fn); return e; };
+const on = (id, evt, fn) => {
+  try{
+    const e = el(id);
+    if(!e){ console.warn('[bind-miss]', id); return null; }
+    e.addEventListener(evt, fn);
+    return e;
+  }catch(err){
+    console.warn('[bind-error]', id, err);
+    return null;
+  }
+};
 const fmtPct = x => isFinite(x) ? (x*100).toFixed(1)+'%' : '—';
 const n = x => Number(x ?? 0) || 0;
 const norm = v => (v==null ? '' : String(v).trim());
@@ -1140,7 +1150,7 @@ function highlightActiveTile(){
   });
 }
 
-/* Selection flow (wrapped in try/catch for safety) */
+/* Selection flow */
 async function selectTeam(teamObj){
   try{
     if(!teamObj) return;
@@ -1159,7 +1169,6 @@ async function selectTeam(teamObj){
     highlightActiveTile();
     const info = await fetchTeamInfoBy(teamObj.name); renderTeamInfo(info);
     const roster = await fetchPlayersBy(teamObj.name); renderRoster(roster);
-    // refresh character tables after roles mapped
     renderCharUsage();
     renderCharUsageByMap();
   }catch(e){
@@ -1170,62 +1179,66 @@ async function selectTeam(teamObj){
 /* Init */
 function populateMapFilter(){ const sel=el('mapFilter'); if(!sel) return; sel.innerHTML = `<option value="__all__">All maps</option>` + uniqueMaps(baseRowsByTournament(ALL)).map(m=>`<option>${m}</option>`).join(''); }
 function wireControls(){
-  on('gTournament','change', ()=>{
-    updateFilterHint();
-    populateMapFilter();
-    renderOverall();
-    renderPerMapAllTeams();
-    if(CURRENT_TEAM){
-      TEAM_ROWS = baseRowsByTournament(ALL).filter(r => (norm(r._tag).toUpperCase()||'') === CURRENT_TEAM.name.toUpperCase());
-      kpiAndByMap(); renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDay(); renderCharUsage();
-      populateCharUsageMapFilter(); renderCharUsageByMap();
-      fetchPlayersBy(CURRENT_TEAM.name).then(p=>{ renderRoster(p); renderCharUsage(); renderCharUsageByMap(); }).catch(()=>{});
-    }
-    renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
-  });
-  on('gTournReset','click', ()=>{
-    const items=tournamentsWithMaxId(ALL);
-    const sel=el('gTournament'); if(!sel) return;
-    sel.value = items.length ? items[0].name : '__all__';
-    sel.dispatchEvent(new Event('change'));
-  });
+  try{
+    on('gTournament','change', ()=>{
+      updateFilterHint();
+      populateMapFilter();
+      renderOverall();
+      renderPerMapAllTeams();
+      if(CURRENT_TEAM){
+        TEAM_ROWS = baseRowsByTournament(ALL).filter(r => (norm(r._tag).toUpperCase()||'') === CURRENT_TEAM.name.toUpperCase());
+        kpiAndByMap(); renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDay(); renderCharUsage();
+        populateCharUsageMapFilter(); renderCharUsageByMap();
+        fetchPlayersBy(CURRENT_TEAM.name).then(p=>{ renderRoster(p); renderCharUsage(); renderCharUsageByMap(); }).catch(()=>{});
+      }
+      renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
+    });
+    on('gTournReset','click', ()=>{
+      const items=tournamentsWithMaxId(ALL);
+      const sel=el('gTournament'); if(!sel) return;
+      sel.value = items.length ? items[0].name : '__all__';
+      sel.dispatchEvent(new Event('change'));
+    });
 
-  on('overallSortKey','change', renderOverall);
-  on('overallSortDir','click', ()=>{
-    const b=el('overallSortDir'); if(!b) return;
-    const cur=b.dataset.dir==='desc'?'asc':'desc';
-    b.dataset.dir=cur; b.textContent=cur==='desc'?'Desc':'Asc'; renderOverall();
-  });
-  on('overallReset','click', ()=>{
-    const sk=el('overallSortKey'); const sd=el('overallSortDir');
-    if(sk) sk.value='total';
-    if(sd){ sd.dataset.dir='desc'; sd.textContent='Desc'; }
-    renderOverall();
-  });
+    on('overallSortKey','change', renderOverall);
+    on('overallSortDir','click', ()=>{
+      const b=el('overallSortDir'); if(!b) return;
+      const cur=b.dataset.dir==='desc'?'asc':'desc';
+      b.dataset.dir=cur; b.textContent=cur==='desc'?'Desc':'Asc'; renderOverall();
+    });
+    on('overallReset','click', ()=>{
+      const sk=el('overallSortKey'); const sd=el('overallSortDir');
+      if(sk) sk.value='total';
+      if(sd){ sd.dataset.dir='desc'; sd.textContent='Desc'; }
+      renderOverall();
+    });
 
-  on('mapFilter','change', renderPerMapAllTeams);
-  on('perMapSortKey','change', renderPerMapAllTeams);
-  on('perMapSortDir','click', ()=>{
-    const b=el('perMapSortDir'); if(!b) return;
-    const cur=b.dataset.dir==='desc'?'asc':'desc';
-    b.dataset.dir=cur; b.textContent=cur==='desc'?'Desc':'Asc'; renderPerMapAllTeams();
-  });
-  on('perMapReset','click', ()=>{
-    const mf=el('mapFilter'); const sk=el('perMapSortKey'); const sd=el('perMapSortDir');
-    if(mf) mf.value='__all__';
-    if(sk) sk.value='total';
-    if(sd){ sd.dataset.dir='desc'; sd.textContent='Desc'; }
-    renderPerMapAllTeams();
-  });
+    on('mapFilter','change', renderPerMapAllTeams);
+    on('perMapSortKey','change', renderPerMapAllTeams);
+    on('perMapSortDir','click', ()=>{
+      const b=el('perMapSortDir'); if(!b) return;
+      const cur=b.dataset.dir==='desc'?'asc':'desc';
+      b.dataset.dir=cur; b.textContent=cur==='desc'?'Desc':'Asc'; renderPerMapAllTeams();
+    });
+    on('perMapReset','click', ()=>{
+      const mf=el('mapFilter'); const sk=el('perMapSortKey'); const sd=el('perMapSortDir');
+      if(mf) mf.value='__all__';
+      if(sk) sk.value='total';
+      if(sd){ sd.dataset.dir='desc'; sd.textContent='Desc'; }
+      renderPerMapAllTeams();
+    });
 
-  on('teamSearch','input', e=> renderTeamGrid(e.target.value||''));
-  on('teamActiveTop','change', renderTeamActiveUsage);
-  on('teamPetTop','change', renderTeamPetUsage);
-  on('lopsActiveTop','change', renderLopsActive);
-  on('lopsPetTop','change', renderLopsPet);
-  on('lopsTopKillersTop','change', renderLopsTopKillers);
-  on('charUsageTop','change', renderCharUsage);
-  on('charUsageMapFilter','change', renderCharUsageByMap);
+    on('teamSearch','input', e=> renderTeamGrid(e.target.value||''));
+    on('teamActiveTop','change', renderTeamActiveUsage);
+    on('teamPetTop','change', renderTeamPetUsage);
+    on('lopsActiveTop','change', renderLopsActive);
+    on('lopsPetTop','change', renderLopsPet);
+    on('lopsTopKillersTop','change', renderLopsTopKillers);
+    on('charUsageTop','change', renderCharUsage);
+    on('charUsageMapFilter','change', renderCharUsageByMap);
+  }catch(e){
+    gerr('wireControls() error:\n\n'+(e.stack||e.message||e));
+  }
 }
 
 async function initial(){
@@ -1233,40 +1246,32 @@ async function initial(){
     const sc=el('scopeChip'); if(sc) sc.textContent='Scope: —';
     const sct=el('scopeChipTeam'); if(sct) sct.textContent='—';
 
-    // 1) Load base data and helper team meta
     ALL = await fetchAllRows();
     TEAMS = await fetchHelperTeams();
     if(!TEAMS.length) TEAMS = deriveTeamsFromData(ALL);
     buildTeamIndexes();
 
-    // 2) Populate filters
     populateGlobalTournament(true);
     populateMapFilter();
 
-    // 3) Preload LOPS + mapping BEFORE first selectTeam()
     LOPS_ALL = await fetchAllLopsRows();
     await fetchMatchApiMap(); // only type=2
 
-    // 4) Initial renders that don't depend on team
     const osd=el('overallSortDir'); if(osd){ osd.dataset.dir='desc'; osd.textContent='Desc'; }
     const pmsd=el('perMapSortDir'); if(pmsd){ pmsd.dataset.dir='desc'; pmsd.textContent='Desc'; }
     renderOverall();
     renderPerMapAllTeams();
 
-    // 5) Team grid + first team selection
     renderTeamGrid('');
     const url=new URL(window.location.href);
     const qTeam=(url.searchParams.get('team')||'').trim().toLowerCase();
     if(qTeam && TEAM_BY_CODE[qTeam]){ await selectTeam(TEAM_BY_CODE[qTeam]); }
     else if(TEAMS.length){ await selectTeam(TEAMS[0]); }
 
-    // 6) Global LOPS dependent renders
     renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
 
-    // 7) Wire controls and finish
     wireControls();
 
-    // Collapse all accordions by default
     document.querySelectorAll('details.accordion').forEach(d=> d.open=false);
 
     showPage(2);
