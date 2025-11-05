@@ -162,7 +162,6 @@
           <option value="booyahs">Booyahs</option>
           <option value="matches">Matches</option>
           <option value="top3_rate">Top-3 %</option>
-          <option value="team">Team (A→Z)</option>
         </select>
         <button class="btn secondary" id="perMapSortDir" data-dir="desc">Desc</button>
         <button class="btn secondary" id="perMapReset">Reset</button>
@@ -296,7 +295,7 @@
           <div class="muted" style="margin-top:6px" id="charMapHint">—</div>
         </div>
 
-        <!-- NEW: Per-Player Character Usage by Map -->
+        <!-- Per-Player Character Usage by Map -->
         <div class="card" style="margin-top:12px">
           <h3>Per-Player Character Usage by Map (Active + Passive)</h3>
           <div class="bar">
@@ -827,15 +826,12 @@ function renderPerMapAllTeams(){
   const rows = aggregateTeamsForMap(base, mapSel);
   const sortKey = el('perMapSortKey').value;
   const dir = el('perMapSortDir').dataset.dir;
-  if (sortKey==='team') sortRows(rows, 'team', dir, true);
-  else sortRows(rows, sortKey, dir, false);
+  sortRows(rows, sortKey, dir, false);
   el('tblPerMapAllTeams').innerHTML = renderSimpleTable(rows, [
-    {label:'Team',key:'team'},{label:'Code',key:'code'},{label:'E/W',key:'ew'},{label:'Region',key:'region'},
     {label:'Matches',key:'matches',right:true},{label:'Booyahs',key:'booyahs',right:true},{label:'Elims',key:'elims',right:true},
     {label:'Placement',key:'placement',right:true},{label:'Total',key:'total',right:true},
     {label:'Booyah %',key:'booyah_rate',format:'pct',right:true},{label:'Elims/m',key:'elims_pm',format:'1d',right:true},
     {label:'Place/m',key:'placement_pm',format:'1d',right:true},{label:'Total/m',key:'total_pm',format:'1d',right:true},
-    {label:'Top3%',key:'top3_rate',format:'pct',right:true},
   ]);
   applyColumnHeatmap('tblPerMapAllTeams', ['total_pm','elims_pm','placement_pm','booyah_rate','matches','booyahs','elims','placement','total']);
 }
@@ -981,7 +977,7 @@ function renderCharUsage(){
   applyColumnHeatmap('tblCharUsage', ['activeCount','passiveCount']);
 }
 
-/* NEW: Character Usage — Per Player by Map */
+/* Per-Player Character Usage — By Map */
 function uniqueTeamMapsFromLops(){
   const base = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
   const set = new Set();
@@ -991,8 +987,14 @@ function uniqueTeamMapsFromLops(){
 function populateCharUsageMapFilter(){
   const sel = el('charUsageMapFilter'); if(!sel) return;
   const maps = uniqueTeamMapsFromLops();
-  sel.innerHTML = maps.length ? maps.map(m=>`<option>${m}</option>`).join('') : '';
-  if(maps.length){ sel.value = maps[0]; }
+  if(!maps.length){
+    sel.innerHTML = '';
+    const tgt = el('tblCharUsageByMap');
+    if(tgt) tgt.innerHTML = '<div class="muted">No map data yet for this team.</div>';
+    return;
+  }
+  sel.innerHTML = maps.map(m=>`<option>${m}</option>`).join('');
+  sel.value = maps[0];
   renderCharUsageByMap();
 }
 function renderCharUsageByMap(){
@@ -1134,26 +1136,31 @@ function highlightActiveTile(){
   });
 }
 
-/* Selection flow */
+/* Selection flow (wrapped in try/catch for safety) */
 async function selectTeam(teamObj){
-  CURRENT_TEAM = teamObj;
-  const url=new URL(window.location.href); url.searchParams.set('team', CURRENT_TEAM.name); history.replaceState(null,'',url.toString());
-  TEAM_ROWS = baseRowsByTournament(ALL).filter(r => (norm(r._tag).toUpperCase()||'') === teamObj.name.toUpperCase());
-  kpiAndByMap();
-  renderTeamCombinedMetrics();
-  renderTeamActiveUsage();
-  renderTeamPetUsage();
-  renderPlayers();
-  renderByDay();
-  renderCharUsage();
-  populateCharUsageMapFilter();
-  renderCharUsageByMap();
-  highlightActiveTile();
-  const info = await fetchTeamInfoBy(teamObj.name); renderTeamInfo(info);
-  const roster = await fetchPlayersBy(teamObj.name); renderRoster(roster);
-  // After roster populated, refresh character tables to inject roles reliably
-  renderCharUsage();
-  renderCharUsageByMap();
+  try{
+    if(!teamObj) return;
+    CURRENT_TEAM = teamObj;
+    const url=new URL(window.location.href); url.searchParams.set('team', CURRENT_TEAM.name); history.replaceState(null,'',url.toString());
+    TEAM_ROWS = baseRowsByTournament(ALL).filter(r => (norm(r._tag).toUpperCase()||'') === teamObj.name.toUpperCase());
+    kpiAndByMap();
+    renderTeamCombinedMetrics();
+    renderTeamActiveUsage();
+    renderTeamPetUsage();
+    renderPlayers();
+    renderByDay();
+    renderCharUsage();
+    populateCharUsageMapFilter();
+    renderCharUsageByMap();
+    highlightActiveTile();
+    const info = await fetchTeamInfoBy(teamObj.name); renderTeamInfo(info);
+    const roster = await fetchPlayersBy(teamObj.name); renderRoster(roster);
+    // refresh character tables after roles mapped
+    renderCharUsage();
+    renderCharUsageByMap();
+  }catch(e){
+    gerr('selectTeam() error:\n\n'+(e.stack||e.message||e));
+  }
 }
 
 /* Init */
@@ -1216,33 +1223,37 @@ async function initial(){
     el('scopeChip').textContent='Scope: —';
     el('scopeChipTeam').textContent='—';
 
+    // 1) Load base data and helper team meta
     ALL = await fetchAllRows();
     TEAMS = await fetchHelperTeams();
     if(!TEAMS.length) TEAMS = deriveTeamsFromData(ALL);
     buildTeamIndexes();
 
+    // 2) Populate filters
     populateGlobalTournament(true);
     populateMapFilter();
 
+    // 3) Preload LOPS + mapping BEFORE first selectTeam()
+    LOPS_ALL = await fetchAllLopsRows();
+    await fetchMatchApiMap(); // only type=2
+
+    // 4) Initial renders that don't depend on team
     el('overallSortDir').dataset.dir='desc'; el('overallSortDir').textContent='Desc';
     el('perMapSortDir').dataset.dir='desc'; el('perMapSortDir').textContent='Desc';
     renderOverall();
     renderPerMapAllTeams();
 
+    // 5) Team grid + first team selection
     renderTeamGrid('');
     const url=new URL(window.location.href);
     const qTeam=(url.searchParams.get('team')||'').trim().toLowerCase();
-    if(qTeam && TEAM_BY_CODE[qTeam]) await selectTeam(TEAM_BY_CODE[qTeam]);
-    else if(TEAMS.length) await selectTeam(TEAMS[0]);
+    if(qTeam && TEAM_BY_CODE[qTeam]){ await selectTeam(TEAM_BY_CODE[qTeam]); }
+    else if(TEAMS.length){ await selectTeam(TEAMS[0]); }
 
-    LOPS_ALL = await fetchAllLopsRows();
-    await fetchMatchApiMap(); // only type=2
-
-    // Renders depending on LOPS + mapping
-    renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDay(); renderCharUsage();
-    populateCharUsageMapFilter(); renderCharUsageByMap();
+    // 6) Global LOPS dependent renders
     renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
 
+    // 7) Wire controls and finish
     wireControls();
 
     // Collapse all accordions by default
