@@ -1178,64 +1178,110 @@ async function selectTeam(teamObj){
 
 /* Init */
 function populateMapFilter(){ const sel=el('mapFilter'); if(!sel) return; sel.innerHTML = `<option value="__all__">All maps</option>` + uniqueMaps(baseRowsByTournament(ALL)).map(m=>`<option>${m}</option>`).join(''); }
+
+/* replace your entire wireControls() with this version */
 function wireControls(){
   try{
-    on('gTournament','change', ()=>{
+    const bind = (id, evt, fn) => {
+      const node = document.getElementById(id);
+      if(!node){ console.warn('[bind-miss]', id); return; }
+      node.addEventListener(evt, (...args) => {
+        try{ fn(...args); }
+        catch(err){ gerr(`[${id}:${evt}] handler error:\n\n`+(err.stack||err.message||err)); }
+      });
+    };
+
+    // Tournament filters
+    bind('gTournament','change', ()=>{
       updateFilterHint();
       populateMapFilter();
       renderOverall();
       renderPerMapAllTeams();
+
       if(CURRENT_TEAM){
         TEAM_ROWS = baseRowsByTournament(ALL).filter(r => (norm(r._tag).toUpperCase()||'') === CURRENT_TEAM.name.toUpperCase());
-        kpiAndByMap(); renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDay(); renderCharUsage();
-        populateCharUsageMapFilter(); renderCharUsageByMap();
-        fetchPlayersBy(CURRENT_TEAM.name).then(p=>{ renderRoster(p); renderCharUsage(); renderCharUsageByMap(); }).catch(()=>{});
+        kpiAndByMap();
+        renderTeamCombinedMetrics();
+        renderTeamActiveUsage();
+        renderTeamPetUsage();
+        renderPlayers();
+        renderByDay();
+        renderCharUsage();
+        populateCharUsageMapFilter();
+        renderCharUsageByMap();
+
+        // refresh roster (also refresh role map used by char-usage tables)
+        fetchPlayersBy(CURRENT_TEAM.name)
+          .then(p=>{ renderRoster(p); renderCharUsage(); renderCharUsageByMap(); })
+          .catch(()=>{ /* ignored */ });
       }
-      renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
-    });
-    on('gTournReset','click', ()=>{
-      const items=tournamentsWithMaxId(ALL);
-      const sel=el('gTournament'); if(!sel) return;
-      sel.value = items.length ? items[0].name : '__all__';
-      sel.dispatchEvent(new Event('change'));
+
+      renderLopsActive();
+      renderLopsPet();
+      renderLopsTopKillers();
     });
 
-    on('overallSortKey','change', renderOverall);
-    on('overallSortDir','click', ()=>{
-      const b=el('overallSortDir'); if(!b) return;
-      const cur=b.dataset.dir==='desc'?'asc':'desc';
-      b.dataset.dir=cur; b.textContent=cur==='desc'?'Desc':'Asc'; renderOverall();
+    bind('gTournReset','click', ()=>{
+      const items=tournamentsWithMaxId(ALL);
+      const sel=document.getElementById('gTournament');
+      if(!sel) return;
+      sel.value = items.length ? items[0].name : '__all__';
+      // Dispatch safely
+      try{ sel.dispatchEvent(new Event('change')); }
+      catch{ /* Safari fallback */ const ev=document.createEvent('HTMLEvents'); ev.initEvent('change',true,false); sel.dispatchEvent(ev); }
     });
-    on('overallReset','click', ()=>{
-      const sk=el('overallSortKey'); const sd=el('overallSortDir');
+
+    // Overall table controls
+    bind('overallSortKey','change', renderOverall);
+    bind('overallSortDir','click', ()=>{
+      const b=document.getElementById('overallSortDir'); if(!b) return;
+      const cur=b.dataset.dir==='desc'?'asc':'desc';
+      b.dataset.dir=cur; b.textContent=cur==='desc'?'Desc':'Asc';
+      renderOverall();
+    });
+    bind('overallReset','click', ()=>{
+      const sk=document.getElementById('overallSortKey');
+      const sd=document.getElementById('overallSortDir');
       if(sk) sk.value='total';
       if(sd){ sd.dataset.dir='desc'; sd.textContent='Desc'; }
       renderOverall();
     });
 
-    on('mapFilter','change', renderPerMapAllTeams);
-    on('perMapSortKey','change', renderPerMapAllTeams);
-    on('perMapSortDir','click', ()=>{
-      const b=el('perMapSortDir'); if(!b) return;
+    // Per-map (all teams) controls
+    bind('mapFilter','change', renderPerMapAllTeams);
+    bind('perMapSortKey','change', renderPerMapAllTeams);
+    bind('perMapSortDir','click', ()=>{
+      const b=document.getElementById('perMapSortDir'); if(!b) return;
       const cur=b.dataset.dir==='desc'?'asc':'desc';
-      b.dataset.dir=cur; b.textContent=cur==='desc'?'Desc':'Asc'; renderPerMapAllTeams();
+      b.dataset.dir=cur; b.textContent=cur==='desc'?'Desc':'Asc';
+      renderPerMapAllTeams();
     });
-    on('perMapReset','click', ()=>{
-      const mf=el('mapFilter'); const sk=el('perMapSortKey'); const sd=el('perMapSortDir');
+    bind('perMapReset','click', ()=>{
+      const mf=document.getElementById('mapFilter');
+      const sk=document.getElementById('perMapSortKey');
+      const sd=document.getElementById('perMapSortDir');
       if(mf) mf.value='__all__';
       if(sk) sk.value='total';
       if(sd){ sd.dataset.dir='desc'; sd.textContent='Desc'; }
       renderPerMapAllTeams();
     });
 
-    on('teamSearch','input', e=> renderTeamGrid(e.target.value||''));
-    on('teamActiveTop','change', renderTeamActiveUsage);
-    on('teamPetTop','change', renderTeamPetUsage);
-    on('lopsActiveTop','change', renderLopsActive);
-    on('lopsPetTop','change', renderLopsPet);
-    on('lopsTopKillersTop','change', renderLopsTopKillers);
-    on('charUsageTop','change', renderCharUsage);
-    on('charUsageMapFilter','change', renderCharUsageByMap);
+    // Team search
+    bind('teamSearch','input', (e)=> renderTeamGrid((e?.target?.value)||''));
+
+    // Usage tops (global + team)
+    bind('teamActiveTop','change', renderTeamActiveUsage);
+    bind('teamPetTop','change', renderTeamPetUsage);
+    bind('lopsActiveTop','change', renderLopsActive);
+    bind('lopsPetTop','change', renderLopsPet);
+    bind('lopsTopKillersTop','change', renderLopsTopKillers);
+
+    // Per-Player Character Usage (topN)
+    bind('charUsageTop','change', renderCharUsage);
+
+    // New: by-map character usage picker
+    bind('charUsageMapFilter','change', renderCharUsageByMap);
+
   }catch(e){
     gerr('wireControls() error:\n\n'+(e.stack||e.message||e));
   }
