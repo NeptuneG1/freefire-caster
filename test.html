@@ -293,29 +293,52 @@ let draftState = {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // 1) Load assets
   characters = await (await fetch('https://neptuneg1.github.io/freefire-caster/character.json')).json();
-  weapons = await (await fetch('https://neptuneg1.github.io/freefire-caster/weapon.json')).json();
+  weapons    = await (await fetch('https://neptuneg1.github.io/freefire-caster/weapon.json')).json();
 
+  // 2) Dates
   const today = new Date();
   document.getElementById('matchDate').valueAsDate = today;
-  // Defaults for team PB counts
   document.getElementById('countTo').valueAsDate = today;
-  const from = new Date(2025, 7, 28); // months are 0-indexed: 7 = August
+  const from = new Date(2025, 7, 28);
   document.getElementById('countFrom').valueAsDate = from;
-  
+
+  // 3) Ensure session before subscribing
+  const { data: { session } } = await client.auth.getSession();
+  if (!session) { window.location.href = "index.html"; return; }
+
+  // (Optional) If you rotate tokens elsewhere, keep Realtime in sync:
+  // client.realtime.setAuth(session.access_token);
+
+  // 4) Load initial state
   await loadDraftState();
 
-  client
-  .channel('public:draft')
-  .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'draft' }, payload => {
-    if (payload.new.id === 1) {
-      draftState = payload.new.state;
-      drawDraft();
-      console.log('🔄 Draft state synced');
-    }
-  })
-  .subscribe();
+  // 5) Subscribe WITH a filter and log channel status
+  const channel = client
+    .channel('draft_changes')
+    .on('postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'draft', filter: 'id=eq.1' },
+      (payload) => {
+        // Some Realtime payloads return `record`/`old_record` instead of `new`.
+        const row = payload.new ?? payload.record ?? {};
+        if (row.id === 1) {
+          draftState = row.state;
+          drawDraft();
+          console.log('🔄 Draft state synced from realtime');
+        } else {
+          console.log('⚠️ Update for other row, ignoring:', row.id);
+        }
+      }
+    )
+    .subscribe((status) => console.log('📡 Realtime channel status:', status));
 
+  // (Optional) See socket-level events
+  client.realtime.onOpen(() => console.log('🟢 Realtime socket open'));
+  client.realtime.onClose(() => console.log('🔴 Realtime socket closed'));
+  client.realtime.onError((e) => console.log('⛔ Realtime socket error', e));
+
+  // 6) Load history UI
   loadAllDraftRecords();
 });
 
