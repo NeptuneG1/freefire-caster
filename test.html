@@ -294,6 +294,11 @@
           <div class="bar">
             <label>Top players</label>
             <select id="charUsageTop" class="input"><option>10</option><option>20</option><option>50</option><option>100</option></select>
+            <!-- NEW: Map filter -->
+            <label>Map</label>
+            <select id="charUsageMapFilter" class="input" style="min-width:180px">
+              <option value="__all__" selected>All maps</option>
+            </select>
           </div>
           <div id="tblCharUsage">Loading…</div>
           <div class="muted" style="margin-top:6px" id="charMapHint">—</div>
@@ -809,6 +814,15 @@ function mapCharName(id, fallback=''){
   return fallback || `ID ${key}`;
 }
 
+/* NEW: Populate map dropdown for Per-Player Character Usage */
+function populateCharUsageMapFilter(){
+  const sel = el('charUsageMapFilter'); if(!sel) return;
+  const teamLops = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
+  const maps = [...new Set(teamLops.map(r=>norm(r._map)).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  sel.innerHTML = `<option value="__all__">All maps</option>` + maps.map(m=>`<option>${m}</option>`).join('');
+  sel.value = '__all__';
+}
+
 /* Renders */
 function renderOverall(){
   const rows = aggregateOverall(baseRowsByTournament(ALL));
@@ -1015,11 +1029,15 @@ function renderByDay(){
   applyColumnHeatmap('tblByDay', days);
 }
 
-/* Character Usage — Per Player (now with Role) */
+/* Character Usage — Per Player (now with Role + Map filter) */
 function renderCharUsage(){
   const topN = Number(el('charUsageTop').value)||10;
-  const base = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
-  if(!base.length){ el('tblCharUsage').innerHTML='<div class="muted">No rows.</div>'; return; }
+  const mapSel = (el('charUsageMapFilter')?.value) || '__all__';
+  let base = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
+  if(mapSel && mapSel !== '__all__'){
+    base = base.filter(r => (norm(r._map)||'').toLowerCase() === mapSel.toLowerCase());
+  }
+  if(!base.length){ el('tblCharUsage').innerHTML='<div class="muted">No lops rows for team.</div>'; return; }
 
   const per = new Map();
   function ensure(player){
@@ -1102,16 +1120,16 @@ async function selectTeam(teamObj){
   renderTeamPetUsage();
   renderPlayers();
   renderByDay();
-  // char usage waits for roster to load (so it can show Role)
   highlightActiveTile();
 
-  // Fetch roster + team info in parallel, then set role map and render
+  // Fetch roster + team info in parallel, then set role map and render char-usage
   const [info, roster] = await Promise.all([
     fetchTeamInfoBy(teamObj.name),
     fetchPlayersBy(teamObj.name)
   ]);
   setRoleMap(roster);
-  renderCharUsage();       // now includes Role
+  populateCharUsageMapFilter();   // NEW: fill maps for current team
+  renderCharUsage();              // now includes Role + Map filter
   renderTeamInfo(info);
   renderRoster(roster);
 }
@@ -1127,9 +1145,10 @@ function wireControls(){
     if(CURRENT_TEAM){
       TEAM_ROWS = baseRowsByTournament(ALL).filter(r => (norm(r._tag).toUpperCase()||'') === CURRENT_TEAM.name.toUpperCase());
       kpiAndByMap(); renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDay();
-      // Role depends on roster; we’ll rebuild map and re-render char usage after we refetch roster here
-      fetchPlayersBy(CURRENT_TEAM.name).then(r=>{ setRoleMap(r); renderCharUsage(); renderRoster(r); }).catch(()=>{ renderCharUsage(); });
+      // Refresh roster-dependent bits
+      fetchPlayersBy(CURRENT_TEAM.name).then(r=>{ setRoleMap(r); renderRoster(r); renderCharUsage(); }).catch(()=>{ renderCharUsage(); });
       fetchTeamInfoBy(CURRENT_TEAM.name).then(renderTeamInfo).catch(()=>{});
+      populateCharUsageMapFilter(); // NEW: keep map list fresh
     }
     renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
   });
@@ -1169,6 +1188,8 @@ function wireControls(){
   el('lopsPetTop').addEventListener('change', renderLopsPet);
   el('lopsTopKillersTop').addEventListener('change', renderLopsTopKillers);
   el('charUsageTop').addEventListener('change', renderCharUsage);
+  // NEW: Map filter listener for Per-Player Character Usage
+  el('charUsageMapFilter').addEventListener('change', renderCharUsage);
 }
 
 async function initial(){
@@ -1201,6 +1222,10 @@ async function initial(){
     // After LOPS + mapping, re-render sections that depend on them.
     renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDay();
     renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
+
+    // NEW: map dropdown + char usage refresh after LOPS are available
+    populateCharUsageMapFilter();
+    renderCharUsage();
 
     wireControls();
 
