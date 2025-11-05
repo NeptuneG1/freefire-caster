@@ -172,7 +172,7 @@
       </div>
     </div>
 
-    <!-- MOVED: Global sections -->
+    <!-- Global sections -->
     <details class="accordion" id="lopsTopKillersSection">
       <summary>Top Players by Kills</summary>
       <div class="accordion-body">
@@ -228,7 +228,7 @@
     </div>
 
     <div class="section" id="teamHeader">
-      <h2 id="teamTitle">Overview</h2>
+      <h2 id="teamTitle">Selected Team — Overview</h2>
       <div class="grid2">
         <div class="card" id="teamIdentity">
           <h3>Identity</h3>
@@ -248,7 +248,7 @@
 
     <!-- Players (accordion) -->
     <details class="accordion" id="playersSection">
-      <summary>Players</summary>
+      <summary>Selected Team — Players</summary>
       <div class="accordion-body">
         <div class="card" style="margin:0"><div id="tblPlayers">Loading…</div></div>
       </div>
@@ -256,7 +256,7 @@
 
     <!-- COMBINED: By Map + By Day -->
     <details class="accordion" id="mapsDaysSection">
-      <summary>By Map & By Day</summary>
+      <summary>Selected Team — By Map & By Day</summary>
       <div class="accordion-body">
         <div class="card" style="margin:0 0 12px 0">
           <h3>By Map</h3>
@@ -271,7 +271,7 @@
 
     <!-- COMBINED: Team Usage (Actives, Pets) + Per-Player Character Usage -->
     <details class="accordion" id="teamCharsUsageSection">
-      <summary>Character and Pet Usage</summary>
+      <summary>Selected Team — Character and Pet Usage</summary>
       <div class="accordion-body">
         <div class="grid2">
           <div class="card">
@@ -510,7 +510,7 @@ function aggregateTeamsForMap(rows,mapValue){
 }
 function uniqueMaps(rows){ const s=new Set(); for(const r of rows){ const m=norm(r.map); if(m) s.add(m); } return [...s].sort((a,b)=>a.localeCompare(b)); }
 
-/* Team + roster info */
+/* Team + roster info helpers */
 function asListHTML(val){
   const items = splitToLines(val); if(!items.length) return '—';
   return `<ul style="margin:0;padding-left:16px">${items.map(it=>`<li>${it}</li>`).join('')}</ul>`;
@@ -527,7 +527,7 @@ function splitToLines(val){
 async function fetchTeamInfoBy(codeRaw,nameRaw){
   const codeUp=norm(codeRaw).toUpperCase();
   try{
-    let res=await client.from('br_team_info').select('*').eq('"Team Initials"', codeUp).limit(1);
+    let res=await client.from('br_team_info').select('*').eq('Team Initials', codeUp).limit(1);
     if(res.error) throw res.error;
     if(res.data?.length) return res.data[0];
   }catch(e){ console.warn('br_team_info fetch error:', e.message||e); }
@@ -536,7 +536,8 @@ async function fetchTeamInfoBy(codeRaw,nameRaw){
 async function fetchPlayersBy(codeRaw){
   const codeUp=norm(codeRaw).toUpperCase();
   try{
-    const res=await client.from('br_player_info').select('*').eq('"TAG"', codeUp);
+    // Use unquoted column identifier; Supabase handles case-insensitively unless created with quotes.
+    const res=await client.from('br_player_info').select('*').eq('TAG', codeUp);
     if(res.error) throw res.error;
     return res.data||[];
   }catch(e){ console.warn('br_player_info fetch error:', e.message||e); return []; }
@@ -560,27 +561,109 @@ function renderTeamInfo(info){
   const maybeLogo=logoUrl?`<div style="margin-bottom:8px"><img src="${logoUrl}" alt="team logo" style="width:84px;height:84px;object-fit:contain;border:1px solid #2a2a2a;border-radius:8px;background:#111"></div>`:'';
   box.innerHTML = `${maybeLogo}<table>${rows || '<tr><td class="muted">No visible fields.</td></tr>'}</table>`;
 }
+
+/* ========== ROSTER FIELD PICKERS + AGE PARSER (FIX) ========== */
+function pickKey(keys, patterns){
+  for(const rx of patterns){
+    const k = keys.find(k => rx.test(k));
+    if(k) return k;
+  }
+  return null;
+}
+// AGE PARSER: extract integer from Age-like, else compute from DOB/Birthdate
+function parseAgeValue(record, ageKey, dobKey){
+  // Try explicit Age column first
+  if(ageKey){
+    const raw = record[ageKey];
+    if(raw!=null && String(raw).trim()!==''){
+      const m = String(raw).match(/(\d{1,3})/);
+      if(m){ const v = Number(m[1]); if(isFinite(v) && v>=0 && v<130) return v; }
+    }
+  }
+  // Fallback: compute from DOB/Birthdate/Date of Birth
+  if(dobKey){
+    const raw = String(record[dobKey] ?? '').trim();
+    if(raw){
+      const d = new Date(raw);
+      if(!isNaN(d.getTime())){
+        const today = new Date();
+        let age = today.getFullYear() - d.getFullYear();
+        const mo = today.getMonth() - d.getMonth();
+        if(mo < 0 || (mo === 0 && today.getDate() < d.getDate())) age--;
+        if(isFinite(age) && age>=0 && age<130) return age;
+      }
+    }
+  }
+  return null;
+}
+
 function renderRoster(players){
   const box=el('teamRosterBody');
   if(!players?.length){ box.innerHTML='<div class="muted">No players found.</div>'; return; }
+
   const keys=Object.keys(players[0]||{});
-  const avatarKey=keys.find(k=>/photo|avatar|image|picture/i.test(k))||null;
-  const ignKey=keys.find(k=>/ign|nickname|in.?game.?name|player.?name/i.test(k))||'name';
-  const roleKey=keys.find(k=>/role|position/i.test(k))||null;
-  const countryKey=keys.find(k=>/country|nation/i.test(k))||null;
-  const ageKey=keys.find(k=>/^age$/i)||null;
-  const accolKey=keys.includes('Accolades')?'Accolades':(keys.find(k=>/accolade|achievement|title|awards/i.test(k))||null);
-  const formerKey=keys.find(k=>/former(\s|_)?teams?/i)||'Former Team';
-  const rows=players.slice().sort((a,b)=> String(a[roleKey]||'').localeCompare(String(b[roleKey]||'')) || String(a[ignKey]||'').localeCompare(String(b[ignKey]||''))).map(p=>{
-    const avatar=avatarKey&&p[avatarKey]?`<img src="${p[avatarKey]}" alt="" style="width:38px;height:38px;object-fit:cover;border-radius:8px;border:1px solid #2a2a2a">`:'';
-    const ign=p[ignKey]??'—';
-    const role=roleKey?(p[roleKey]??'—'):'—';
-    const country=countryKey?(p[countryKey]??'—'):'—';
-    const age=ageKey?(p[ageKey]??'—'):'—';
-    const accHTML=accolKey?asListHTML(p[accolKey]):'—';
-    const formerHTML=formerKey?asListHTML(p[formerKey]):'—';
+
+  // Prefer exact/specific matches first, then broader fallbacks
+  const avatarKey = pickKey(keys, [/photo|avatar|image|picture/i]);
+
+  // IGN detection (prioritized)
+  const ignKey = pickKey(keys, [
+    /^ign$/i,
+    /\bplayer\s*ign\b/i,
+    /\bin-?\s*game\s*name\b/i,
+    /\bnick\s*name\b/i, /\bnickname\b/i, /\bhandle\b/i, /\balias\b/i,
+    /\bplayer\s*name\b/i,
+    /^name$/i
+  ]) || null;
+
+  const roleKey    = pickKey(keys, [/^role$/i, /\bposition\b/i]) || null;
+  const countryKey = pickKey(keys, [/^country$/i, /\bnation\b/i]) || null;
+
+  // Age + DOB keys (more tolerant)
+  const ageKey = pickKey(keys, [/^age\b/i, /\bage\s*\(?(yrs|years)?\)?/i, /\byears?\s*old\b/i]) || null;
+  const dobKey = pickKey(keys, [/\b(dob|birth(date)?|date\s*of\s*birth)\b/i]) || null;
+
+  // Accolades + Former Team keys
+  const accolKey = keys.includes('Accolades') ? 'Accolades'
+                 : pickKey(keys, [/accolade|achievement|title|award/i]) || null;
+
+  const formerKey = pickKey(keys, [
+    /\b(former|previous|past|ex)[\s_]*teams?\b/i,
+    /\bteam\s*history\b/i,
+    /^Former Team(s)?$/i
+  ]) || 'Former Team';
+
+  const rows = players.slice().map(p=>{
+    const avatar = avatarKey && p[avatarKey]
+      ? `<img src="${p[avatarKey]}" alt="" style="width:38px;height:38px;object-fit:cover;border-radius:8px;border:1px solid #2a2a2a">`
+      : '';
+
+    // Resolve IGN robustly (never lose it)
+    const ign = (() => {
+      const tryKeys = ignKey ? [ignKey] : [];
+      tryKeys.push('IGN','In-game Name','Player IGN','Player Name','Nickname','Name','name');
+      for(const k of tryKeys){
+        if(k in p && String(p[k]).trim()!=='') return String(p[k]).trim();
+      }
+      return '—';
+    })();
+
+    const role    = roleKey    ? (p[roleKey]    ?? '—') : '—';
+    const country = countryKey ? (p[countryKey] ?? '—') : '—';
+
+    // Age parsing
+    const ageNum = parseAgeValue(p, ageKey, dobKey);
+    const age    = (ageNum==null) ? (ageKey? String(p[ageKey]??'—'): '—') : ageNum;
+
+    const accHTML    = accolKey  ? asListHTML(p[accolKey])   : '—';
+    const formerHTML = formerKey ? asListHTML(p[formerKey])  : '—';
+
     return { avatar, ign, role, country, age, formerHTML, accHTML };
   });
+
+  // Sort by role then IGN
+  rows.sort((a,b)=> String(a.role||'').localeCompare(String(b.role||'')) || String(a.ign||'').localeCompare(String(b.ign||'')));
+
   box.innerHTML = renderSimpleTable(rows, [
     {label:'', key:'avatar'},
     {label:'IGN', key:'ign'},
@@ -777,7 +860,6 @@ function kpiAndByMap(){
       <div class="kpi">Top3 <strong>${fmtPct(k.top3_rate)}</strong></div>
     </div>` : '<div class="muted">No rows.</div>';
 
-  // Render By Map into combined section's container
   const rows=teamMapPerf(TEAM_ROWS);
   const mapWrap = document.getElementById('tblMapTeam');
   if(mapWrap){
