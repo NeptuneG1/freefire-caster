@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Clash Squad Draft</title>
+
+  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const client = supabase.createClient(
@@ -103,7 +105,6 @@
     table.counts-table { width: 100%; border-collapse: collapse; }
     table.counts-table th, table.counts-table td { border-bottom: 1px solid #333; padding: 6px; text-align: left; font-size: 13px; }
     table.counts-table th { background: #181818; }
-
   </style>
 </head>
 <body>
@@ -266,7 +267,6 @@
 <script>
 let characters = [], weapons = [], currentSlot = null;
 
-// UPDATED: added tournamentName to state
 let draftState = {
   bans: [null, null],
   picks: Array(8).fill(null),
@@ -279,7 +279,7 @@ let draftState = {
   teamLeftScore: 0,
   teamRightScore: 0,
   map: 'Bermuda',
-  tournamentName: '' // NEW
+  tournamentName: ''
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -292,7 +292,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const from = new Date(2025, 7, 28);
   document.getElementById('countFrom').valueAsDate = from;
 
-  // NEW: attach change listeners so any edit updates public.draft
   document.getElementById('matchDate').addEventListener('change', saveDraftState);
   document.getElementById('gameNumberSelect').addEventListener('change', saveDraftState);
   document.getElementById('mapSelect').addEventListener('change', saveDraftState);
@@ -300,19 +299,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('teamRightScore').addEventListener('change', saveDraftState);
   document.getElementById('tournamentInput').addEventListener('change', saveDraftState);
 
-  await loadDraftState(); // loads from public.draft (id=1)
+  await loadDraftState();
 
   client
     .channel('public:draft')
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'draft' }, payload => {
-      if (payload.new.id === 1 && payload.new.state) {
-        draftState = {
-          ...draftState,
-          ...payload.new.state
-        };
-        applyStateToControls(); // NEW: ensure header inputs match state
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'draft' }, payload => {
+      if (payload.new?.id === 1 && payload.new.state) {
+        draftState = { ...draftState, ...payload.new.state };
+        applyStateToControls();
         drawDraft();
-        console.log('🔄 Draft state synced');
+        console.log('🔄 Draft state synced from realtime');
       }
     })
     .subscribe();
@@ -324,7 +320,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       { event: '*', schema: 'public', table: 'draft_records' },
       payload => {
         console.log('📡 draft_records changed', payload);
-        loadAllDraftRecords();  // refresh history + filters
+        loadAllDraftRecords();
       }
     )
     .subscribe();
@@ -380,7 +376,7 @@ function makeSlot(type,index){
     input.style.textAlign = 'center';
     input.onchange = () => {
       draftState.playerCards[index] = input.value;
-      saveDraftState(); // already updating public.draft
+      saveDraftState();
     };
     c.appendChild(input);
   }
@@ -411,7 +407,7 @@ function makeSlot(type,index){
 function updateTeamName(teamIndex) {
   const input = document.getElementById(teamIndex === 0 ? 'teamNameLeft' : 'teamNameRight');
   draftState.teamNames[teamIndex] = input.value;
-  saveDraftState(); // updates public.draft
+  saveDraftState();
 }
 
 function openModal(title) {
@@ -445,7 +441,7 @@ function openModal(title) {
         draftState.weapons[currentSlot.pickIndex][currentSlot.weaponIndex] = null;
         closeModal();
         drawDraft();
-        saveDraftState(); // public.draft
+        saveDraftState();
       };
       grid.appendChild(clearCard);
 
@@ -460,7 +456,7 @@ function openModal(title) {
           draftState.weapons[currentSlot.pickIndex][currentSlot.weaponIndex] = item;
           closeModal();
           drawDraft();
-          saveDraftState(); // public.draft
+          saveDraftState();
         };
         grid.appendChild(card);
       });
@@ -480,7 +476,7 @@ function openModal(title) {
       if (currentSlot.type === 'ban') draftState.bans[currentSlot.index] = null;
       if (currentSlot.type === 'pick') draftState.picks[currentSlot.index] = null;
       if (currentSlot.type === 'passive') draftState.passives[currentSlot.pickIndex][currentSlot.passiveIndex] = null;
-      closeModal(); drawDraft(); saveDraftState(); // public.draft
+      closeModal(); drawDraft(); saveDraftState();
     };
     grid.appendChild(clearCard);
 
@@ -501,7 +497,7 @@ function openModal(title) {
           if (currentSlot.type === 'ban') draftState.bans[currentSlot.index] = item;
           if (currentSlot.type === 'pick') draftState.picks[currentSlot.index] = item;
           if (currentSlot.type === 'passive') draftState.passives[currentSlot.pickIndex][currentSlot.passiveIndex] = item;
-          closeModal(); drawDraft(); saveDraftState(); // public.draft
+          closeModal(); drawDraft(); saveDraftState();
         };
       }
 
@@ -625,18 +621,18 @@ function resetDraft() {
     weapons: Array(8).fill(0).map(() => [null, null, null]),
     teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
     playerCards: Array(8).fill(''),
-    matchDate: document.getElementById('matchDate').value || '', // keep current date
+    matchDate: document.getElementById('matchDate').value || '',
     gameNumber: parseInt(document.getElementById('gameNumberSelect').value || '1', 10),
     teamLeftScore: 0,
     teamRightScore: 0,
     map: document.getElementById('mapSelect').value || 'Bermuda',
-    tournamentName: '' // clear tournament on reset
+    tournamentName: ''
   };
   document.getElementById('teamLeftScore').value = 0;
   document.getElementById('teamRightScore').value = 0;
   document.getElementById('tournamentInput').value = '';
   drawDraft();
-  saveDraftState(); // public.draft
+  saveDraftState();
 }
 
 function getWeaponArmory(weaponName) {
@@ -644,7 +640,6 @@ function getWeaponArmory(weaponName) {
   return weapon && weapon.armory ? weapon.armory : "";
 }
 
-// NEW: keep controls in sync with draftState
 function applyStateToControls() {
   if (draftState.matchDate) {
     document.getElementById('matchDate').value = draftState.matchDate;
@@ -657,7 +652,6 @@ function applyStateToControls() {
 }
 
 async function saveDraftState() {
-  // Keep draftState in sync with header controls before writing to DB
   draftState.matchDate = document.getElementById('matchDate')?.value || '';
   draftState.gameNumber = parseInt(document.getElementById('gameNumberSelect')?.value || '1', 10);
   draftState.teamLeftScore = parseInt(document.getElementById('teamLeftScore')?.value || '0', 10);
@@ -670,13 +664,6 @@ async function saveDraftState() {
     return;
   }
 
-  // 🔴 OLD (no-op if id=1 row doesn't exist):
-  // const { error } = await client
-  //   .from('draft')
-  //   .update({ state: draftState, updated_at: new Date().toISOString() })
-  //   .eq('id', 1);
-
-  // ✅ NEW: always create/update row id=1
   const { error } = await client
     .from('draft')
     .upsert({
@@ -692,13 +679,12 @@ async function saveDraftState() {
   }
 }
 
-
 async function loadDraftState() {
   const { data, error } = await client
     .from('draft')
     .select('state')
     .eq('id', 1)
-    .maybeSingle(); // or .single(), your choice
+    .maybeSingle();
 
   if (error && error.code !== 'PGRST116') {
     console.error('❌ Failed to load draft state:', error);
@@ -706,14 +692,12 @@ async function loadDraftState() {
   }
 
   if (!data || !data.state) {
-    // No row yet → write defaults
     applyStateToControls();
     await saveDraftState();
     return;
   }
 
   draftState = {
-    // defaults
     bans: [null, null],
     picks: Array(8).fill(null),
     passives: Array(8).fill(0).map(() => [null, null, null]),
@@ -726,7 +710,6 @@ async function loadDraftState() {
     teamRightScore: 0,
     map: 'Bermuda',
     tournamentName: '',
-    // loaded state
     ...data.state
   };
 
@@ -760,20 +743,18 @@ async function loadDraftRecord() {
     alert(`No saved draft for Game ${gameNumber} on ${matchDate}`);
   } else {
     draftState = {
-      ...{
-        bans: [null, null],
-        picks: Array(8).fill(null),
-        passives: Array(8).fill(0).map(() => [null, null, null]),
-        weapons: Array(8).fill(0).map(() => [null, null, null]),
-        teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
-        playerCards: Array(8).fill(''),
-        teamLeftScore: 0,
-        teamRightScore: 0,
-        map: 'Bermuda',
-        matchDate: '',
-        gameNumber: 1,
-        tournamentName: ''
-      },
+      bans: [null, null],
+      picks: Array(8).fill(null),
+      passives: Array(8).fill(0).map(() => [null, null, null]),
+      weapons: Array(8).fill(0).map(() => [null, null, null]),
+      teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
+      playerCards: Array(8).fill(''),
+      teamLeftScore: 0,
+      teamRightScore: 0,
+      map: 'Bermuda',
+      matchDate: '',
+      gameNumber: 1,
+      tournamentName: '',
       ...data.state
     };
 
@@ -784,17 +765,16 @@ async function loadDraftRecord() {
     draftState.gameNumber = data.game_number || draftState.gameNumber;
     draftState.tournamentName = data.tournament_name ?? (draftState.tournamentName || '');
 
-    applyStateToControls(); // sync controls with state
+    applyStateToControls();
     drawDraft();
-    await saveDraftState(); // NEW: push loaded record into public.draft
+    await saveDraftState();
 
     console.log("✅ Draft record loaded from draft_records and synced to draft.");
   }
 }
 
 async function saveOrUpdateDraft() {
-  // Make sure state is up to date before writing to draft_records
-  await saveDraftState(); // keeps public.draft in sync too
+  await saveDraftState();
 
   const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
   const teamLeft = draftState.teamNames[0];
@@ -1010,20 +990,18 @@ async function loadSpecificDraft(id) {
   }
 
   draftState = {
-    ...{
-      bans: [null, null],
-      picks: Array(8).fill(null),
-      passives: Array(8).fill(0).map(() => [null, null, null]),
-      weapons: Array(8).fill(0).map(() => [null, null, null]),
-      teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
-      playerCards: Array(8).fill(''),
-      teamLeftScore: 0,
-      teamRightScore: 0,
-      map: 'Bermuda',
-      matchDate: '',
-      gameNumber: 1,
-      tournamentName: ''
-    },
+    bans: [null, null],
+    picks: Array(8).fill(null),
+    passives: Array(8).fill(0).map(() => [null, null, null]),
+    weapons: Array(8).fill(0).map(() => [null, null, null]),
+    teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
+    playerCards: Array(8).fill(''),
+    teamLeftScore: 0,
+    teamRightScore: 0,
+    map: 'Bermuda',
+    matchDate: '',
+    gameNumber: 1,
+    tournamentName: '',
     ...data.state
   };
 
@@ -1036,7 +1014,7 @@ async function loadSpecificDraft(id) {
 
   applyStateToControls();
   drawDraft();
-  await saveDraftState(); // NEW: sync into public.draft as well
+  await saveDraftState();
 
   console.log("✅ Specific draft loaded and synced to draft.");
 }
@@ -1239,7 +1217,7 @@ async function computeTeamPickBanCounts() {
       const banHero = bans[isLeft ? 0 : 1];
       const banName = banHero?.name || null;
       if (banName) {
-        banCounts.set(banName, (banCounts.get(bName) || 0) + 1);
+        banCounts.set(banName, (banCounts.get(banName) || 0) + 1);
         totalBans += 1;
       }
     }
