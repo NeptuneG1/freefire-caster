@@ -676,6 +676,7 @@ document.getElementById("reset-all-btn").onclick = () => {
   document.querySelectorAll(".note").forEach(n => n.remove());
   activeTeam = selectedIcon = null;
   drawPaths();
+  console.log('🧹 Reset all local state; saving to DB...');
   saveMapState();
 };
 
@@ -886,7 +887,7 @@ async function saveMapState() {
       state: mapState,
       updated_at: new Date().toISOString()
     })
-    .select(); // so we can see the row in the console
+    .select();
 
   console.log('💾 saveMapState result:', { data, error });
 
@@ -958,6 +959,25 @@ function applyMapState(state) {
   }
 }
 
+// Realtime handler
+function handleMapChange(payload) {
+  console.log('📡 map change:', payload);
+
+  if (!realtimeEnabled) {
+    console.log('⏹️ Realtime is OFF on this client, ignoring.');
+    return;
+  }
+
+  const row = payload.new;
+  if (!row || row.id !== 1) {
+    console.log('⏹️ Change is not for id=1, ignoring.');
+    return;
+  }
+
+  console.log('🔄 Real-time update applied from DB');
+  applyMapState(row.state || {});
+}
+
 // Call load on page load + realtime toggle
 window.addEventListener("DOMContentLoaded", () => {
   loadMapState();
@@ -989,15 +1009,13 @@ async function enableRealtime() {
     .channel('public:map')
     .on(
       'postgres_changes',
-      { event: '*', schema: 'public', table: 'map' },
-      payload => {
-        if (realtimeEnabled && payload.new && payload.new.id === 1) {
-          console.log("🔄 Real-time update applied");
-          applyMapState(payload.new.state);
-        } else {
-          console.log("⏹️ Update received but realtime is OFF or not id=1");
-        }
-      }
+      { event: 'INSERT', schema: 'public', table: 'map' },
+      handleMapChange
+    )
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'map' },
+      handleMapChange
     );
 
   const { error } = await realtimeChannel.subscribe();
@@ -1065,7 +1083,6 @@ window.testMapRead = async () => {
     .select('*');
   console.log('🧪 testMapRead result:', { data, error });
 };
-
 </script>
 
 </body>
