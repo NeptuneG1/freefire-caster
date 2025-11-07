@@ -5,28 +5,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Clash Squad Draft</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script>
     const client = supabase.createClient(
       'https://gkugecflfddkpitlrmws.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
     );
 
-    client.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        window.location.href = "index.html";
-      } else {
-        const userInfo = document.getElementById("user-info");
-        if (userInfo && session.user?.email) {
-          userInfo.textContent = "Logged in as: " + session.user.email;
-        }
-      }
-    });
-
     function logout() {
       client.auth.signOut().then(() => {
         window.location.href = "index.html";
       });
     }
+
+    // IMPORTANT: wait for session BEFORE running any DB logic
+    document.addEventListener('DOMContentLoaded', async () => {
+      const { data: { session }, error } = await client.auth.getSession();
+
+      if (!session) {
+        window.location.href = "index.html";
+        return;
+      }
+
+      const userInfo = document.getElementById("user-info");
+      if (userInfo && session.user?.email) {
+        userInfo.textContent = "Logged in as: " + session.user.email;
+      }
+
+      // Now it’s safe to hit DB with authenticated user
+      await initDraftPage();
+    });
   </script>
 
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto&display=swap" rel="stylesheet">
@@ -88,10 +96,8 @@
     .top-controls a, .top-controls button, .top-controls select, .top-controls label { background: #ffbd59; color: #1c1c1c; padding: 6px 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; text-decoration: none; }
     .top-controls select { padding: 4px 8px; font-weight: bold; background: #2a2a2a; color: #ffbd59; border: 1px solid #555; }
     .top-controls button:hover, .top-controls a:hover { background: #e0a84f; }
-    /* NEW: style the tournament text input to match */
     .top-controls input[type="text"] { padding: 6px 8px; background: #2a2a2a; color: #ffbd59; border: 1px solid #555; border-radius: 5px; font-weight: bold; }
 
-    /* Team pick/ban counts section */
     #teamPBCounts { width: 90%; max-width: 1200px; margin: 40px auto; }
     #teamPBCounts h2 { text-align: center; color: #ffbd59; }
     .counts-controls { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
@@ -105,6 +111,7 @@
     table.counts-table { width: 100%; border-collapse: collapse; }
     table.counts-table th, table.counts-table td { border-bottom: 1px solid #333; padding: 6px; text-align: left; font-size: 13px; }
     table.counts-table th { background: #181818; }
+
   </style>
 </head>
 <body>
@@ -113,7 +120,6 @@
       <span id="user-info">Checking login...</span>
       <button class="logout-btn" onclick="logout()">Logout</button>
     </div>
-
     <h1>Clash Squad Draft</h1>
   </header>
   
@@ -126,17 +132,13 @@
         Enable multiple selection
       </label>
 
-      <!-- Tournament filter for history -->
       <div style="margin-top:10px;">
         <label style="display:block;margin-bottom:4px;">Tournament</label>
-        <select id="tournamentFilter" style="width:200px;" onchange="loadAllDraftRecords()">
-          <!-- options populated by JS -->
-        </select>
+        <select id="tournamentFilter" style="width:200px;" onchange="loadAllDraftRecords()"></select>
       </div>
 
       <br />
-      <select id="teamFilter" size="5" style="width: 200px; margin-top: 6px;" onchange="loadAllDraftRecords()">
-      </select>
+      <select id="teamFilter" size="5" style="width: 200px; margin-top: 6px;" onchange="loadAllDraftRecords()"></select>
     </div>
 
     <div style="display: flex; flex-direction: column; align-items: center; margin-top: 10px;">
@@ -185,7 +187,6 @@
       <option value="Solara">Solara</option>
     </select>
 
-    <!-- NEW: Tournament entry field (with suggestions) -->
     <label for="tournamentInput">Tournament:</label>
     <input type="text" id="tournamentInput" placeholder="Enter tournament name" list="tournamentList" />
     <datalist id="tournamentList"></datalist>
@@ -217,12 +218,8 @@
   </div>
 
   <div class="summary-wrapper">
-    <div>
-      <div class="summary-team" id="summaryLeft"></div>
-    </div>
-    <div>
-      <div class="summary-team" id="summaryRight"></div>
-    </div>
+    <div><div class="summary-team" id="summaryLeft"></div></div>
+    <div><div class="summary-team" id="summaryRight"></div></div>
   </div>
 
   <div class="modal" id="heroModal">
@@ -238,7 +235,6 @@
     <div id="teamDraftCards" style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;"></div>
   </div>
 
-  <!-- Team pick/ban counts -->
   <div id="teamPBCounts">
     <h2>Team Pick/Ban Counts (by Date Range)</h2>
     <div class="counts-controls">
@@ -278,6 +274,7 @@
 <script>
 let characters = [], weapons = [], currentSlot = null;
 
+// state now includes tournamentName
 let draftState = {
   bans: [null, null],
   picks: Array(8).fill(null),
@@ -289,39 +286,60 @@ let draftState = {
   gameNumber: 1,
   teamLeftScore: 0,
   teamRightScore: 0,
-  map: 'Bermuda'
+  map: 'Bermuda',
+  tournamentName: ''
 };
 
-document.addEventListener('DOMContentLoaded', async () => {
+// called from top-level DOMContentLoaded AFTER session is ready
+async function initDraftPage() {
   characters = await (await fetch('https://neptuneg1.github.io/freefire-caster/character.json')).json();
   weapons = await (await fetch('https://neptuneg1.github.io/freefire-caster/weapon.json')).json();
 
   const today = new Date();
   document.getElementById('matchDate').valueAsDate = today;
-  // Defaults for team PB counts
   document.getElementById('countTo').valueAsDate = today;
-  const from = new Date(2025, 7, 28); // months are 0-indexed: 7 = August
+  const from = new Date(2025, 7, 28);
   document.getElementById('countFrom').valueAsDate = from;
-  
-  await loadDraftState();
 
+  // auto-save header changes into public.draft
+  document.getElementById('matchDate').addEventListener('change', saveDraftState);
+  document.getElementById('gameNumberSelect').addEventListener('change', saveDraftState);
+  document.getElementById('mapSelect').addEventListener('change', saveDraftState);
+  document.getElementById('teamLeftScore').addEventListener('change', saveDraftState);
+  document.getElementById('teamRightScore').addEventListener('change', saveDraftState);
+  document.getElementById('tournamentInput').addEventListener('change', saveDraftState);
+
+  await loadDraftState(); // from public.draft
+
+  // realtime sync for public.draft
   client
-  .channel('public:draft')
-  .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'draft' }, payload => {
-    if (payload.new.id === 1) {
-      draftState = payload.new.state;
-      drawDraft();
-      console.log('🔄 Draft state synced');
-    }
-  })
-  .subscribe();
+    .channel('public:draft')
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'draft' }, payload => {
+      if (payload.new.id === 1 && payload.new.state) {
+        draftState = { ...draftState, ...payload.new.state };
+        applyStateToControls();
+        drawDraft();
+        console.log('🔄 Draft state synced from realtime');
+      }
+    })
+    .subscribe();
+
+  // realtime refresh for history
+  client
+    .channel('public:draft_records')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'draft_records' }, payload => {
+      console.log('📡 draft_records changed', payload);
+      loadAllDraftRecords();
+    })
+    .subscribe();
 
   loadAllDraftRecords();
-});
+}
 
 function drawDraft(){
   const l=document.getElementById('teamLeft'),r=document.getElementById('teamRight');
   l.innerHTML=''; r.innerHTML='';
+
   l.appendChild(makeSlot('ban',0));
   for(let i=0;i<4;i++)l.appendChild(makeSlot('pick',i));
   for(let i=7;i>=4;i--)r.appendChild(makeSlot('pick',i));
@@ -340,10 +358,16 @@ function makeSlot(type,index){
   img.style.width='100%'; img.style.height='100%'; img.style.borderRadius='8px';
   m.appendChild(img);
   const nameDiv=document.createElement('div'); nameDiv.className='slot-name';
-  if(type==='ban'){const h=draftState.bans[index];if(h){img.src=h.image_url;nameDiv.innerText=h.name;}
-  m.onclick=()=>{currentSlot={type,index};openModal('Select Hero to Ban');};}
-  else{const h=draftState.picks[index];if(h){img.src=h.image_url;nameDiv.innerText=h.name;}
-  m.onclick=()=>{currentSlot={type,index};openModal('Select Active Skill');};}
+
+  if(type==='ban'){
+    const h=draftState.bans[index];
+    if(h){img.src=h.image_url;nameDiv.innerText=h.name;}
+    m.onclick=()=>{currentSlot={type,index};openModal('Select Hero to Ban');};
+  } else {
+    const h=draftState.picks[index];
+    if(h){img.src=h.image_url;nameDiv.innerText=h.name;}
+    m.onclick=()=>{currentSlot={type,index};openModal('Select Active Skill');};
+  }
   c.appendChild(m); c.appendChild(nameDiv);
   
   if (type === 'pick') {
@@ -358,7 +382,10 @@ function makeSlot(type,index){
     input.style.border = '1px solid #555';
     input.style.color = '#ccc';
     input.style.textAlign = 'center';
-    input.onchange = () => { draftState.playerCards[index] = input.value; saveDraftState(); };
+    input.onchange = () => {
+      draftState.playerCards[index] = input.value;
+      saveDraftState();
+    };
     c.appendChild(input);
   }
 
@@ -387,7 +414,8 @@ function makeSlot(type,index){
 
 function updateTeamName(teamIndex) {
   const input = document.getElementById(teamIndex === 0 ? 'teamNameLeft' : 'teamNameRight');
-  draftState.teamNames[teamIndex] = input.value; saveDraftState();
+  draftState.teamNames[teamIndex] = input.value;
+  saveDraftState();
 }
 
 function openModal(title) {
@@ -417,7 +445,12 @@ function openModal(title) {
       clearImg.style.width = '60px'; clearImg.style.height = '60px'; clearImg.style.opacity = '0.3'; clearImg.style.objectFit = 'contain'; clearImg.style.marginBottom = '6px';
       const clearLabel = document.createElement('div'); clearLabel.textContent = 'Clear'; clearLabel.style.fontSize = '10px'; clearLabel.style.color = '#bbb'; clearLabel.style.textAlign = 'center';
       clearCard.appendChild(clearImg); clearCard.appendChild(clearLabel);
-      clearCard.onclick = () => { draftState.weapons[currentSlot.pickIndex][currentSlot.weaponIndex] = null; closeModal(); drawDraft(); saveDraftState(); };
+      clearCard.onclick = () => {
+        draftState.weapons[currentSlot.pickIndex][currentSlot.weaponIndex] = null;
+        closeModal();
+        drawDraft();
+        saveDraftState();
+      };
       grid.appendChild(clearCard);
 
       weapons.forEach(item => {
@@ -427,7 +460,12 @@ function openModal(title) {
         const img = document.createElement('img'); img.src = item.image_url; img.alt = item.name; img.style.width = '80px'; img.style.height = '80px'; img.style.objectFit = 'contain'; img.style.marginBottom = '6px';
         const name = document.createElement('div'); name.textContent = item.name; name.style.fontSize = '10px'; name.style.color = '#ddd'; name.style.textAlign = 'center'; name.style.maxWidth = '60px'; name.style.overflowWrap = 'break-word';
         card.appendChild(img); card.appendChild(name);
-        card.onclick = () => { draftState.weapons[currentSlot.pickIndex][currentSlot.weaponIndex] = item; closeModal(); drawDraft(); saveDraftState(); };
+        card.onclick = () => {
+          draftState.weapons[currentSlot.pickIndex][currentSlot.weaponIndex] = item;
+          closeModal();
+          drawDraft();
+          saveDraftState();
+        };
         grid.appendChild(card);
       });
     }
@@ -480,6 +518,7 @@ function openModal(title) {
 }
 
 function closeModal(){document.getElementById('heroModal').style.display='none';}
+
 function updateSummary() {
   const left = document.getElementById('summaryLeft');
   const right = document.getElementById('summaryRight');
@@ -590,15 +629,16 @@ function resetDraft() {
     weapons: Array(8).fill(0).map(() => [null, null, null]),
     teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
     playerCards: Array(8).fill(''),
-    matchDate: '',
-    gameNumber: 1,
+    matchDate: document.getElementById('matchDate').value || '',
+    gameNumber: parseInt(document.getElementById('gameNumberSelect').value || '1', 10),
     teamLeftScore: 0,
     teamRightScore: 0,
-    map: 'Bermuda'
+    map: document.getElementById('mapSelect').value || 'Bermuda',
+    tournamentName: ''
   };
   document.getElementById('teamLeftScore').value = 0;
   document.getElementById('teamRightScore').value = 0;
-  document.getElementById('mapSelect').value = 'Bermuda';
+  document.getElementById('tournamentInput').value = '';
   drawDraft();
   saveDraftState();
 }
@@ -608,12 +648,25 @@ function getWeaponArmory(weaponName) {
   return weapon && weapon.armory ? weapon.armory : "";
 }
 
+// sync form controls from draftState
+function applyStateToControls() {
+  if (draftState.matchDate) {
+    document.getElementById('matchDate').value = draftState.matchDate;
+  }
+  document.getElementById('gameNumberSelect').value = draftState.gameNumber || 1;
+  document.getElementById('teamLeftScore').value = draftState.teamLeftScore ?? 0;
+  document.getElementById('teamRightScore').value = draftState.teamRightScore ?? 0;
+  document.getElementById('mapSelect').value = draftState.map || 'Bermuda';
+  document.getElementById('tournamentInput').value = draftState.tournamentName || '';
+}
+
 async function saveDraftState() {
   draftState.matchDate = document.getElementById('matchDate')?.value || '';
   draftState.gameNumber = parseInt(document.getElementById('gameNumberSelect')?.value || '1', 10);
   draftState.teamLeftScore = parseInt(document.getElementById('teamLeftScore')?.value || '0', 10);
   draftState.teamRightScore = parseInt(document.getElementById('teamRightScore')?.value || '0', 10);
   draftState.map = document.getElementById('mapSelect')?.value || 'Bermuda';
+  draftState.tournamentName = document.getElementById('tournamentInput')?.value || '';
 
   if (!draftState || Object.keys(draftState).length === 0) {
     console.warn('⚠️ Draft state is empty. Skipping save.');
@@ -622,35 +675,56 @@ async function saveDraftState() {
 
   const { error } = await client
     .from('draft')
-    .update({ state: draftState, updated_at: new Date().toISOString() })
-    .eq('id', 1);
+    .upsert({
+      id: 1,
+      state: draftState,
+      updated_at: new Date().toISOString()
+    });
 
   if (error) {
     console.error('❌ Failed to save draft state:', error);
   } else {
-    console.log('✅ Draft state saved');
+    console.log('✅ Draft state saved → public.draft');
   }
 }
 
 async function loadDraftState() {
-  const { data, error } = await client.from('draft').select('state').eq('id', 1).single();
-  if (error) {
+  const { data, error } = await client
+    .from('draft')
+    .select('state')
+    .eq('id', 1)
+    .maybeSingle();
+
+  if (error && error.code !== 'PGRST116') {
     console.error('❌ Failed to load draft state:', error);
-  } else if (data?.state) {
-    draftState = {
-      ...{
-        bans: [null, null],
-        picks: Array(8).fill(null),
-        passives: Array(8).fill(0).map(() => [null, null, null]),
-        weapons: Array(8).fill(0).map(() => [null, null, null]),
-        teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
-        playerCards: Array(8).fill('')
-      },
-      ...data.state
-    };
-    drawDraft();
-    console.log('✅ Draft state loaded');
+    return;
   }
+
+  if (!data || !data.state) {
+    applyStateToControls();
+    await saveDraftState();
+    return;
+  }
+
+  draftState = {
+    bans: [null, null],
+    picks: Array(8).fill(null),
+    passives: Array(8).fill(0).map(() => [null, null, null]),
+    weapons: Array(8).fill(0).map(() => [null, null, null]),
+    teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
+    playerCards: Array(8).fill(''),
+    matchDate: '',
+    gameNumber: 1,
+    teamLeftScore: 0,
+    teamRightScore: 0,
+    map: 'Bermuda',
+    tournamentName: '',
+    ...data.state
+  };
+
+  applyStateToControls();
+  drawDraft();
+  console.log('✅ Draft state loaded from public.draft');
 }
 
 async function loadDraftRecord() {
@@ -666,7 +740,7 @@ async function loadDraftRecord() {
 
   const { data, error } = await client
     .from('draft_records')
-    .select('state, team_left_score, team_right_score, map, tournament_name')
+    .select('state, team_left_score, team_right_score, map, tournament_name, match_date, game_number')
     .eq('game_number', gameNumber)
     .eq('match_date', matchDate)
     .eq('team_left', teamLeft)
@@ -678,106 +752,81 @@ async function loadDraftRecord() {
     alert(`No saved draft for Game ${gameNumber} on ${matchDate}`);
   } else {
     draftState = {
-      ...{
-        bans: [null, null],
-        picks: Array(8).fill(null),
-        passives: Array(8).fill(0).map(() => [null, null, null]),
-        weapons: Array(8).fill(0).map(() => [null, null, null]),
-        teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
-        playerCards: Array(8).fill(''),
-        teamLeftScore: 0,
-        teamRightScore: 0,
-        map: 'Bermuda'
-      },
+      bans: [null, null],
+      picks: Array(8).fill(null),
+      passives: Array(8).fill(0).map(() => [null, null, null]),
+      weapons: Array(8).fill(0).map(() => [null, null, null]),
+      teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
+      playerCards: Array(8).fill(''),
+      teamLeftScore: 0,
+      teamRightScore: 0,
+      map: 'Bermuda',
+      matchDate: '',
+      gameNumber: 1,
+      tournamentName: '',
       ...data.state
     };
 
-    draftState.teamLeftScore = data.team_left_score ?? 0;
-    draftState.teamRightScore = data.team_right_score ?? 0;
-    draftState.map = data.map ?? 'Bermuda';
+    draftState.teamLeftScore = data.team_left_score ?? draftState.teamLeftScore;
+    draftState.teamRightScore = data.team_right_score ?? draftState.teamRightScore;
+    draftState.map = data.map ?? draftState.map;
+    draftState.matchDate = data.match_date || draftState.matchDate;
+    draftState.gameNumber = data.game_number || draftState.gameNumber;
+    draftState.tournamentName = data.tournament_name ?? (draftState.tournamentName || '');
 
-    document.getElementById('teamLeftScore').value = draftState.teamLeftScore;
-    document.getElementById('teamRightScore').value = draftState.teamRightScore;
-    document.getElementById('mapSelect').value = draftState.map;
-
-    // NEW: set tournament field from record
-    document.getElementById('tournamentInput').value = data.tournament_name ?? '';
-
+    applyStateToControls();
     drawDraft();
-    console.log("✅ Draft record loaded.");
+    await saveDraftState();
+
+    console.log("✅ Draft record loaded from draft_records and synced to draft.");
   }
-};
+}
 
 async function saveOrUpdateDraft() {
-  const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
-  const teamLeft = draftState.teamNames[0];
-  const teamRight = draftState.teamNames[1];
-  const matchDate = document.getElementById('matchDate').value;
+  const gameNumber    = parseInt(document.getElementById('gameNumberSelect').value, 10);
+  const teamLeft      = draftState.teamNames[0];
+  const teamRight     = draftState.teamNames[1];
+  const matchDate     = document.getElementById('matchDate').value;
   const teamLeftScore = parseInt(document.getElementById('teamLeftScore').value || '0', 10);
-  const teamRightScore = parseInt(document.getElementById('teamRightScore').value || '0', 10);
-  const map = document.getElementById('mapSelect').value;
-  const tournamentName = (document.getElementById('tournamentInput').value || '').trim(); // NEW
+  const teamRightScore= parseInt(document.getElementById('teamRightScore').value || '0', 10);
+  const map           = document.getElementById('mapSelect').value;
+  const tournamentName= (document.getElementById('tournamentInput').value || '').trim();
 
   if (!matchDate) {
     alert("⚠️ Please select a match date.");
     return;
   }
 
-  console.log("🔍 Checking for existing draft...");
-  const { data, error: fetchError } = await client
-    .from('draft_records')
-    .select('id')
-    .eq('game_number', gameNumber)
-    .eq('team_left', teamLeft)
-    .eq('team_right', teamRight)
-    .eq('match_date', matchDate)
-    .single();
-
-  if (fetchError && fetchError.code !== 'PGRST116') {
-    alert("❌ Error checking existing draft: " + (fetchError.message || 'Unknown error'));
-    console.error(fetchError);
-    return;
-  }
-
   const payload = {
-    game_number: gameNumber,
-    team_left: teamLeft,
-    team_right: teamRight,
-    match_date: matchDate,
-    team_left_score: teamLeftScore,
+    game_number:      gameNumber,
+    team_left:        teamLeft,
+    team_right:       teamRight,
+    match_date:       matchDate,
+    team_left_score:  teamLeftScore,
     team_right_score: teamRightScore,
-    map: map,
-    state: draftState,
-    tournament_name: tournamentName || null, // NEW
-    updated_at: new Date().toISOString()
+    map,
+    state:            draftState,
+    tournament_name:  tournamentName || null,
+    updated_at:       new Date().toISOString()
   };
 
-  console.log("📦 Payload:", payload);
+  console.log("📦 Upserting payload:", payload);
 
-  if (!data) {
-    console.log("📝 Inserting new draft record...");
-    const { error: insertError } = await client.from('draft_records').insert(payload);
-    if (insertError) {
-      alert("❌ Failed to save draft:\n" + insertError.message);
-      console.error("Insert Error:", insertError);
-    } else {
-      alert("✅ Draft saved.");
-      loadAllDraftRecords(); // refresh lists & tournament suggestions
-    }
+  const { error } = await client
+    .from('draft_records')
+    .upsert(payload, {
+      onConflict: 'match_date,game_number,team_left,team_right'
+    });
+
+  if (error) {
+    alert("❌ Failed to save draft:\n" + error.message);
+    console.error("Upsert Error:", error);
   } else {
-    console.log("🔁 Updating existing draft record (id =", data.id, ")...");
-    const { error: updateError } = await client.from('draft_records')
-      .update(payload)
-      .eq('id', data.id);
-    if (updateError) {
-      alert("❌ Failed to update draft:\n" + updateError.message);
-      console.error("Update Error:", updateError);
-    } else {
-      alert("✅ Draft updated.");
-      loadAllDraftRecords(); // refresh lists & tournament suggestions
-    }
+    alert("✅ Draft saved/updated.");
+    loadAllDraftRecords();
   }
-};
+}
+
 
 function toggleTeamFilterMode() {
   const filter = document.getElementById('teamFilter');
@@ -805,7 +854,6 @@ async function loadAllDraftRecords() {
   const countTournamentSelect = document.getElementById('countTournamentSelect');
   const tournamentInputList = document.getElementById('tournamentList');
 
-  // preserve selections
   const selectedTeams = Array.from(filterSelect.selectedOptions).map(opt => opt.value.toLowerCase());
   const prevTournamentHistory = tournamentFilter.value || '__ALL__';
   const prevTournamentCounts  = countTournamentSelect.value || '__ALL__';
@@ -817,14 +865,12 @@ async function loadAllDraftRecords() {
   const allTournaments = new Set();
   const matchedRecords = [];
 
-  // Build sets
   data.forEach(record => {
     allTeams.add(record.team_left);
     allTeams.add(record.team_right);
     if (record.tournament_name) allTournaments.add(record.tournament_name);
   });
 
-  // Populate team filters (history + counts)
   const prevSelectedTeams = new Set(selectedTeams);
   const prevTeamCount = teamCountSelect.value || '__ALL__';
 
@@ -850,7 +896,6 @@ async function loadAllDraftRecords() {
   });
   teamCountSelect.value = prevTeamCount || '__ALL__';
 
-  // Populate tournament selects (history + counts)
   const tournamentsSorted = ['__ALL__', ...Array.from(allTournaments).sort()];
 
   tournamentFilter.innerHTML = '';
@@ -871,7 +916,6 @@ async function loadAllDraftRecords() {
   });
   countTournamentSelect.value = prevTournamentCounts || '__ALL__';
 
-  // Also populate the datalist for the input field (autocomplete)
   if (tournamentInputList) {
     tournamentInputList.innerHTML = '';
     Array.from(allTournaments).sort().forEach(tn => {
@@ -881,7 +925,6 @@ async function loadAllDraftRecords() {
     });
   }
 
-  // Apply filters
   const selectedTournament = tournamentFilter.value || '__ALL__';
 
   data.forEach(record => {
@@ -934,39 +977,33 @@ async function loadSpecificDraft(id) {
   }
 
   draftState = {
-    ...{
-      bans: [null, null],
-      picks: Array(8).fill(null),
-      passives: Array(8).fill(0).map(() => [null, null, null]),
-      weapons: Array(8).fill(0).map(() => [null, null, null]),
-      teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
-      playerCards: Array(8).fill(''),
-      teamLeftScore: 0,
-      teamRightScore: 0,
-      map: 'Bermuda',
-      matchDate: '',
-      gameNumber: 1
-    },
+    bans: [null, null],
+    picks: Array(8).fill(null),
+    passives: Array(8).fill(0).map(() => [null, null, null]),
+    weapons: Array(8).fill(0).map(() => [null, null, null]),
+    teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
+    playerCards: Array(8).fill(''),
+    teamLeftScore: 0,
+    teamRightScore: 0,
+    map: 'Bermuda',
+    matchDate: '',
+    gameNumber: 1,
+    tournamentName: '',
     ...data.state
   };
 
-  draftState.teamLeftScore = data.team_left_score ?? 0;
-  draftState.teamRightScore = data.team_right_score ?? 0;
-  draftState.map = data.map ?? 'Bermuda';
-  draftState.matchDate = data.match_date;
-  draftState.gameNumber = data.game_number;
+  draftState.teamLeftScore = data.team_left_score ?? draftState.teamLeftScore;
+  draftState.teamRightScore = data.team_right_score ?? draftState.teamRightScore;
+  draftState.map = data.map ?? draftState.map;
+  draftState.matchDate = data.match_date || draftState.matchDate;
+  draftState.gameNumber = data.game_number || draftState.gameNumber;
+  draftState.tournamentName = data.tournament_name ?? (draftState.tournamentName || '');
 
-  document.getElementById('matchDate').value = draftState.matchDate;
-  document.getElementById('gameNumberSelect').value = draftState.gameNumber;
-  document.getElementById('teamLeftScore').value = draftState.teamLeftScore;
-  document.getElementById('teamRightScore').value = draftState.teamRightScore;
-  document.getElementById('mapSelect').value = draftState.map;
-
-  // NEW: set tournament field from record
-  document.getElementById('tournamentInput').value = data.tournament_name ?? '';
-
+  applyStateToControls();
   drawDraft();
-  console.log("✅ Specific draft loaded.");
+  await saveDraftState();
+
+  console.log("✅ Specific draft loaded and synced to draft.");
 }
 
 function renderDraftCardSummaries(data) {
@@ -1086,7 +1123,6 @@ function renderDraftCardSummaries(data) {
   });
 }
 
-/* ===== Team pick/ban counts logic ===== */
 async function computeTeamPickBanCounts() {
   const team = document.getElementById('teamCountSelect').value;
   const tourn = (document.getElementById('countTournamentSelect')?.value) || '__ALL__';
