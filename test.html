@@ -5,28 +5,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Clash Squad Draft</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script>
     const client = supabase.createClient(
       'https://gkugecflfddkpitlrmws.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
     );
 
-    client.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        window.location.href = "index.html";
-      } else {
-        const userInfo = document.getElementById("user-info");
-        if (userInfo && session.user?.email) {
-          userInfo.textContent = "Logged in as: " + session.user.email;
-        }
-      }
-    });
-
     function logout() {
       client.auth.signOut().then(() => {
         window.location.href = "index.html";
       });
     }
+
+    // IMPORTANT: wait for session BEFORE running any DB logic
+    document.addEventListener('DOMContentLoaded', async () => {
+      const { data: { session }, error } = await client.auth.getSession();
+
+      if (!session) {
+        window.location.href = "index.html";
+        return;
+      }
+
+      const userInfo = document.getElementById("user-info");
+      if (userInfo && session.user?.email) {
+        userInfo.textContent = "Logged in as: " + session.user.email;
+      }
+
+      // Now it’s safe to hit DB with authenticated user
+      await initDraftPage();
+    });
   </script>
 
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto&display=swap" rel="stylesheet">
@@ -103,6 +111,7 @@
     table.counts-table { width: 100%; border-collapse: collapse; }
     table.counts-table th, table.counts-table td { border-bottom: 1px solid #333; padding: 6px; text-align: left; font-size: 13px; }
     table.counts-table th { background: #181818; }
+
   </style>
 </head>
 <body>
@@ -265,7 +274,7 @@
 <script>
 let characters = [], weapons = [], currentSlot = null;
 
-// state that lives in public.draft.state
+// state now includes tournamentName
 let draftState = {
   bans: [null, null],
   picks: Array(8).fill(null),
@@ -281,7 +290,8 @@ let draftState = {
   tournamentName: ''
 };
 
-document.addEventListener('DOMContentLoaded', async () => {
+// called from top-level DOMContentLoaded AFTER session is ready
+async function initDraftPage() {
   characters = await (await fetch('https://neptuneg1.github.io/freefire-caster/character.json')).json();
   weapons = await (await fetch('https://neptuneg1.github.io/freefire-caster/weapon.json')).json();
 
@@ -291,7 +301,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const from = new Date(2025, 7, 28);
   document.getElementById('countFrom').valueAsDate = from;
 
-  // keep draft synced when header controls change
+  // auto-save header changes into public.draft
   document.getElementById('matchDate').addEventListener('change', saveDraftState);
   document.getElementById('gameNumberSelect').addEventListener('change', saveDraftState);
   document.getElementById('mapSelect').addEventListener('change', saveDraftState);
@@ -299,17 +309,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('teamRightScore').addEventListener('change', saveDraftState);
   document.getElementById('tournamentInput').addEventListener('change', saveDraftState);
 
-  await loadDraftState(); // load state from public.draft
+  await loadDraftState(); // from public.draft
 
-  // realtime: draft
+  // realtime sync for public.draft
   client
     .channel('public:draft')
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'draft' }, payload => {
       if (payload.new.id === 1 && payload.new.state) {
-        draftState = {
-          ...draftState,
-          ...payload.new.state
-        };
+        draftState = { ...draftState, ...payload.new.state };
         applyStateToControls();
         drawDraft();
         console.log('🔄 Draft state synced from realtime');
@@ -317,21 +324,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     })
     .subscribe();
 
-  // realtime: draft_records
+  // realtime refresh for history
   client
     .channel('public:draft_records')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'draft_records' },
-      payload => {
-        console.log('📡 draft_records changed', payload);
-        loadAllDraftRecords();
-      }
-    )
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'draft_records' }, payload => {
+      console.log('📡 draft_records changed', payload);
+      loadAllDraftRecords();
+    })
     .subscribe();
-  
+
   loadAllDraftRecords();
-});
+}
 
 function drawDraft(){
   const l=document.getElementById('teamLeft'),r=document.getElementById('teamRight');
@@ -645,6 +648,7 @@ function getWeaponArmory(weaponName) {
   return weapon && weapon.armory ? weapon.armory : "";
 }
 
+// sync form controls from draftState
 function applyStateToControls() {
   if (draftState.matchDate) {
     document.getElementById('matchDate').value = draftState.matchDate;
@@ -772,14 +776,14 @@ async function loadDraftRecord() {
 
     applyStateToControls();
     drawDraft();
-    await saveDraftState(); // sync loaded record to public.draft
+    await saveDraftState();
 
     console.log("✅ Draft record loaded from draft_records and synced to draft.");
   }
 }
 
 async function saveOrUpdateDraft() {
-  await saveDraftState(); // keep draft in sync first
+  await saveDraftState(); // sync state → public.draft
 
   const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
   const teamLeft = draftState.teamNames[0];
@@ -1019,7 +1023,7 @@ async function loadSpecificDraft(id) {
 
   applyStateToControls();
   drawDraft();
-  await saveDraftState(); // sync to public.draft
+  await saveDraftState();
 
   console.log("✅ Specific draft loaded and synced to draft.");
 }
@@ -1222,7 +1226,7 @@ async function computeTeamPickBanCounts() {
       const banHero = bans[isLeft ? 0 : 1];
       const banName = banHero?.name || null;
       if (banName) {
-        banCounts.set(banName, (banCounts.get(banName) || 0) + 1); // fixed variable name
+        banCounts.set(banName, (banCounts.get(banName) || 0) + 1);
         totalBans += 1;
       }
     }
