@@ -4,8 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Clash Squad Draft</title>
-
-  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const client = supabase.createClient(
@@ -267,6 +265,7 @@
 <script>
 let characters = [], weapons = [], currentSlot = null;
 
+// state that lives in public.draft.state
 let draftState = {
   bans: [null, null],
   picks: Array(8).fill(null),
@@ -292,6 +291,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const from = new Date(2025, 7, 28);
   document.getElementById('countFrom').valueAsDate = from;
 
+  // keep draft synced when header controls change
   document.getElementById('matchDate').addEventListener('change', saveDraftState);
   document.getElementById('gameNumberSelect').addEventListener('change', saveDraftState);
   document.getElementById('mapSelect').addEventListener('change', saveDraftState);
@@ -299,13 +299,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('teamRightScore').addEventListener('change', saveDraftState);
   document.getElementById('tournamentInput').addEventListener('change', saveDraftState);
 
-  await loadDraftState();
+  await loadDraftState(); // load state from public.draft
 
+  // realtime: draft
   client
     .channel('public:draft')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'draft' }, payload => {
-      if (payload.new?.id === 1 && payload.new.state) {
-        draftState = { ...draftState, ...payload.new.state };
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'draft' }, payload => {
+      if (payload.new.id === 1 && payload.new.state) {
+        draftState = {
+          ...draftState,
+          ...payload.new.state
+        };
         applyStateToControls();
         drawDraft();
         console.log('🔄 Draft state synced from realtime');
@@ -313,6 +317,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     })
     .subscribe();
 
+  // realtime: draft_records
   client
     .channel('public:draft_records')
     .on(
@@ -767,14 +772,14 @@ async function loadDraftRecord() {
 
     applyStateToControls();
     drawDraft();
-    await saveDraftState();
+    await saveDraftState(); // sync loaded record to public.draft
 
     console.log("✅ Draft record loaded from draft_records and synced to draft.");
   }
 }
 
 async function saveOrUpdateDraft() {
-  await saveDraftState();
+  await saveDraftState(); // keep draft in sync first
 
   const gameNumber = parseInt(document.getElementById('gameNumberSelect').value, 10);
   const teamLeft = draftState.teamNames[0];
@@ -1014,7 +1019,7 @@ async function loadSpecificDraft(id) {
 
   applyStateToControls();
   drawDraft();
-  await saveDraftState();
+  await saveDraftState(); // sync to public.draft
 
   console.log("✅ Specific draft loaded and synced to draft.");
 }
@@ -1217,7 +1222,7 @@ async function computeTeamPickBanCounts() {
       const banHero = bans[isLeft ? 0 : 1];
       const banName = banHero?.name || null;
       if (banName) {
-        banCounts.set(banName, (banCounts.get(banName) || 0) + 1);
+        banCounts.set(banName, (banCounts.get(banName) || 0) + 1); // fixed variable name
         totalBans += 1;
       }
     }
