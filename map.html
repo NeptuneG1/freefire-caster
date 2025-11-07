@@ -877,13 +877,18 @@ async function saveMapState() {
     notes
   };
 
-  const { error } = await client
+  console.log('💾 saveMapState sending:', mapState);
+
+  const { data, error } = await client
     .from('map')
     .upsert({
       id: 1,
       state: mapState,
       updated_at: new Date().toISOString()
-    });
+    })
+    .select(); // so we can see the row in the console
+
+  console.log('💾 saveMapState result:', { data, error });
 
   if (error) {
     console.error('❌ Failed to save map state:', error);
@@ -1040,6 +1045,27 @@ function drawOverlayMask(circlesToReveal) {
 
   ctx2.globalCompositeOperation = "source-over";
 }
+
+// Quick manual tests from the browser console
+window.testMapWrite = async () => {
+  const { data, error } = await client
+    .from('map')
+    .upsert({
+      id: 1,
+      state: { test: 'hello', at: new Date().toISOString() },
+      updated_at: new Date().toISOString()
+    })
+    .select();
+  console.log('🧪 testMapWrite result:', { data, error });
+};
+
+window.testMapRead = async () => {
+  const { data, error } = await client
+    .from('map')
+    .select('*');
+  console.log('🧪 testMapRead result:', { data, error });
+};
+
 </script>
 
 </body>
