@@ -103,6 +103,7 @@
     table.counts-table { width: 100%; border-collapse: collapse; }
     table.counts-table th, table.counts-table td { border-bottom: 1px solid #333; padding: 6px; text-align: left; font-size: 13px; }
     table.counts-table th { background: #181818; }
+
   </style>
 </head>
 <body>
@@ -316,6 +317,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     })
     .subscribe();
 
+  client
+    .channel('public:draft_records')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'draft_records' },
+      payload => {
+        console.log('📡 draft_records changed', payload);
+        loadAllDraftRecords();  // refresh history + filters
+      }
+    )
+    .subscribe();
+  
   loadAllDraftRecords();
 });
 
@@ -650,17 +663,27 @@ async function saveDraftState() {
   draftState.teamLeftScore = parseInt(document.getElementById('teamLeftScore')?.value || '0', 10);
   draftState.teamRightScore = parseInt(document.getElementById('teamRightScore')?.value || '0', 10);
   draftState.map = document.getElementById('mapSelect')?.value || 'Bermuda';
-  draftState.tournamentName = document.getElementById('tournamentInput')?.value || ''; // NEW
+  draftState.tournamentName = document.getElementById('tournamentInput')?.value || '';
 
   if (!draftState || Object.keys(draftState).length === 0) {
     console.warn('⚠️ Draft state is empty. Skipping save.');
     return;
   }
 
+  // 🔴 OLD (no-op if id=1 row doesn't exist):
+  // const { error } = await client
+  //   .from('draft')
+  //   .update({ state: draftState, updated_at: new Date().toISOString() })
+  //   .eq('id', 1);
+
+  // ✅ NEW: always create/update row id=1
   const { error } = await client
     .from('draft')
-    .update({ state: draftState, updated_at: new Date().toISOString() })
-    .eq('id', 1);
+    .upsert({
+      id: 1,
+      state: draftState,
+      updated_at: new Date().toISOString()
+    });
 
   if (error) {
     console.error('❌ Failed to save draft state:', error);
@@ -669,36 +692,47 @@ async function saveDraftState() {
   }
 }
 
+
 async function loadDraftState() {
-  const { data, error } = await client.from('draft').select('state').eq('id', 1).single();
-  if (error) {
+  const { data, error } = await client
+    .from('draft')
+    .select('state')
+    .eq('id', 1)
+    .maybeSingle(); // or .single(), your choice
+
+  if (error && error.code !== 'PGRST116') {
     console.error('❌ Failed to load draft state:', error);
-  } else if (data?.state) {
-    draftState = {
-      ...{
-        bans: [null, null],
-        picks: Array(8).fill(null),
-        passives: Array(8).fill(0).map(() => [null, null, null]),
-        weapons: Array(8).fill(0).map(() => [null, null, null]),
-        teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
-        playerCards: Array(8).fill(''),
-        matchDate: '',
-        gameNumber: 1,
-        teamLeftScore: 0,
-        teamRightScore: 0,
-        map: 'Bermuda',
-        tournamentName: ''
-      },
-      ...data.state
-    };
-    applyStateToControls(); // NEW
-    drawDraft();
-    console.log('✅ Draft state loaded from public.draft');
-  } else {
-    // No row? keep defaults and push initial state
+    return;
+  }
+
+  if (!data || !data.state) {
+    // No row yet → write defaults
     applyStateToControls();
     await saveDraftState();
+    return;
   }
+
+  draftState = {
+    // defaults
+    bans: [null, null],
+    picks: Array(8).fill(null),
+    passives: Array(8).fill(0).map(() => [null, null, null]),
+    weapons: Array(8).fill(0).map(() => [null, null, null]),
+    teamNames: ['TEAM LEFT', 'TEAM RIGHT'],
+    playerCards: Array(8).fill(''),
+    matchDate: '',
+    gameNumber: 1,
+    teamLeftScore: 0,
+    teamRightScore: 0,
+    map: 'Bermuda',
+    tournamentName: '',
+    // loaded state
+    ...data.state
+  };
+
+  applyStateToControls();
+  drawDraft();
+  console.log('✅ Draft state loaded from public.draft');
 }
 
 async function loadDraftRecord() {
