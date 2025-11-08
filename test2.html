@@ -214,24 +214,22 @@
       </div>
     </details>
 
-    <!-- NEW: Elimination Network -->
-    <details class="accordion" id="elimNetworkSection">
-      <summary>Elimination Network (Teams vs Teams)</summary>
+       <!-- TEAM-vs-TEAM ELIMS (OVERALL) -->
+    <details class="accordion" id="elimOverallSection">
+      <summary>Team vs Team Eliminations (Overall)</summary>
       <div class="accordion-body">
         <div class="grid2">
           <div class="card">
             <h3>Who Eliminated Each Team?</h3>
-            <div id="tblWhoEliminatedEachTeam">Loading…</div>
+            <div id="tblElimSufferedAll">Loading…</div>
           </div>
           <div class="card">
             <h3>Who Did Each Team Eliminate?</h3>
-            <div id="tblWhoEachTeamEliminated">Loading…</div>
+            <div id="tblElimGivenAll">Loading…</div>
           </div>
         </div>
-        <div class="muted" id="elimHint">—</div>
       </div>
     </details>
-  </div>
 
   <!-- PAGE 2 -->
   <div class="page" id="page2" data-page="2">
@@ -323,28 +321,28 @@
       </div>
     </details>
 
-    <!-- NEW: Team Elimination Relations -->
-    <details class="accordion" id="teamElimSections">
-      <summary>Eliminations Involving Selected Team</summary>
+    <!-- TEAM-FOCUS ELIMS -->
+    <details class="accordion" id="teamElimSection">
+      <summary>Elimination Relationships</summary>
       <div class="accordion-body">
         <div class="grid2">
           <div class="card">
-            <h3>Top Eliminators of <span id="selTeamA1">Selected</span></h3>
-            <div id="tblTopEliminators">—</div>
+            <h3>Top Eliminators of <span id="labelTeamElimA">—</span></h3>
+            <div id="tblTeamTopEliminators">—</div>
           </div>
           <div class="card">
-            <h3>Top Victims of <span id="selTeamA2">Selected</span></h3>
-            <div id="tblTopVictims">—</div>
+            <h3>Top Victims of <span id="labelTeamElimB">—</span></h3>
+            <div id="tblTeamTopVictims">—</div>
           </div>
         </div>
         <div class="grid2" style="margin-top:12px">
           <div class="card">
             <h3>Eliminated By — By Day</h3>
-            <div id="tblEliminatedByDay">—</div>
+            <div id="tblTeamElimByDay">—</div>
           </div>
           <div class="card">
             <h3>Eliminated By — By Map</h3>
-            <div id="tblEliminatedByMap">—</div>
+            <div id="tblTeamElimByMap">—</div>
           </div>
         </div>
       </div>
@@ -879,6 +877,17 @@ async function fetchAllLopsRows(){
     out.push(...rows); from+=rows.length;
   }
   return out.map(normLopsRow).filter(r=>r._player && r._team);
+
+  LOPS_ALL = await fetchAllLopsRows();
+await fetchMatchApiMap(); // existing
+
+// NEW: eliminations dataset
+ELIM_ROWS = await fetchAllElimRows();
+
+// Initial renders for eliminations
+renderElimOverall();
+renderTeamElimBreakdowns();
+
 }
 function lopsRowsForTeam(all, teamObj){ if(!teamObj) return []; const code=(teamObj.name||'').trim().toUpperCase(); return all.filter(r=> (r._team||'').toUpperCase()===code); }
 function countByName(rows,key){
@@ -1409,6 +1418,9 @@ async function selectTeam(teamObj){
   renderCharUsage();
   renderTeamInfo(info);
   renderRoster(roster);
+  // ...existing renders...
+renderTeamElimBreakdowns();
+
 }
 
 /* Init */
@@ -1467,6 +1479,27 @@ function wireControls(){
   el('lopsTopKillersTop').addEventListener('change', renderLopsTopKillers);
   el('charUsageTop').addEventListener('change', renderCharUsage);
   el('charUsageMapFilter').addEventListener('change', renderCharUsage);
+
+  el('gTournament').addEventListener('change', ()=>{
+  updateFilterHint();
+  populateMapFilter();
+  renderOverall();
+  renderPerMapAllTeams();
+
+  if(CURRENT_TEAM){
+    TEAM_ROWS = baseRowsByTournament(ALL).filter(r => (norm(r._tag).toUpperCase()||'') === CURRENT_TEAM.name.toUpperCase());
+    kpiAndByMap(); renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDay();
+    fetchPlayersBy(CURRENT_TEAM.name).then(r=>{ setRoleMap(r); renderRoster(r); renderCharUsage(); }).catch(()=>{ renderCharUsage(); });
+    fetchTeamInfoBy(CURRENT_TEAM.name).then(renderTeamInfo).catch(()=>{});
+    populateCharUsageMapFilter();
+  }
+  renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
+
+  // NEW: refresh eliminations views to respect tournament slice
+  renderElimOverall();
+  renderTeamElimBreakdowns();
+});
+
 }
 
 async function initial(){
@@ -1518,6 +1551,188 @@ async function initial(){
   }
 }
 
+/* ============ Eliminations (reuse logic from Eliminations page) ============ */
+let ELIM_ROWS = []; // normalized rows: {team, killer, day, map, tournament}
+
+function normalizeElimRow(r){
+  const norm = v => (v==null?'':String(v)).trim();
+  const up   = v => norm(v).toUpperCase();
+  const num  = v => Number(v ?? 0) || 0;
+  return {
+    team:   up(r['TeamName'] ?? r['Team'] ?? r['TEAM'] ?? r['tag'] ?? r['TAG']),
+    killer: up(r['Eliminated Team Name'] ?? r['Eliminated By'] ?? r['Eliminator'] ?? r['Killer Team'] ?? ''),
+    day:    num(r['Day'] ?? r['day'] ?? r['DAY']),
+    map:    norm(r['MAP'] ?? r['Map'] ?? r['map']),
+    tournament: norm(r['Tournament'] ?? r['tournament'] ?? '')
+  };
+}
+async function fetchAllElimRows(){
+  const CHUNK=1000; let from=0; const out=[];
+  for(;;){
+    const { data, error } = await client.from('ffbr_lopsdata').select('*').range(from, from+CHUNK-1);
+    if(error){ gerr('ffbr_lopsdata (elim) fetch failed:\n'+(error.message||error)); break; }
+    const rows=data||[]; if(!rows.length) break; out.push(...rows); from+=rows.length;
+  }
+  return out.map(normalizeElimRow).filter(r=>r.team && r.killer);
+}
+function elimRowsByTournament(rows){
+  const t = selectedTournament();
+  if(t==='__all__') return rows;
+  const lf=t.toLowerCase();
+  return rows.filter(r => (r.tournament||'').toLowerCase()===lf);
+}
+function summarizeElims(rows){
+  const matrix = Object.create(null); // victim -> killer -> count
+  const suffered = Object.create(null); // victim totals
+  const given    = Object.create(null); // killer totals
+  for(const r of rows){
+    if(!r.team || !r.killer) continue;
+    (matrix[r.team] ||= Object.create(null));
+    matrix[r.team][r.killer] = (matrix[r.team][r.killer]||0)+1;
+    suffered[r.team] = (suffered[r.team]||0)+1;
+    given[r.killer]  = (given[r.killer]||0)+1;
+  }
+  return {matrix, suffered, given};
+}
+
+/* ---------- Page 1 (Overall) ---------- */
+function renderElimOverall(){
+  if(!ELIM_ROWS.length){
+    const a=document.getElementById('tblElimSufferedAll');
+    const b=document.getElementById('tblElimGivenAll');
+    if(a) a.innerHTML='<div class="muted">No rows.</div>';
+    if(b) b.innerHTML='<div class="muted">No rows.</div>';
+    return;
+  }
+  const rows = elimRowsByTournament(ELIM_ROWS);
+  const {matrix, suffered, given} = summarizeElims(rows);
+
+  // Build team list from your TEAMS/meta to keep ordering consistent
+  const teamCodes = TEAMS?.map(t=>t.name?.toUpperCase())?.filter(Boolean) || [];
+  const inSet = new Set(teamCodes);
+
+  // Eliminated By (who killed each team?)
+  const rowsA = teamCodes.map(code=>{
+    const row = matrix[code] || {};
+    const total = suffered[code] || 0;
+    const top = Object.entries(row).sort((a,b)=>b[1]-a[1]).slice(0,3)
+      .map(([k,v])=>`${k} ${v} (${total?((v/total*100)|0):0}%)`).join(' · ');
+    return { team:code, times:total, top };
+  }).sort((a,b)=> b.times-a.times || a.team.localeCompare(b.team));
+  document.getElementById('tblElimSufferedAll').innerHTML = renderSimpleTable(rowsA, [
+    {label:'Team',key:'team'},
+    {label:'Times Eliminated',key:'times',right:true},
+    {label:'Top Eliminators',key:'top'}
+  ]);
+  applyColumnHeatmap('tblElimSufferedAll', ['times']);
+
+  // Who did each team eliminate? (given)
+  // invert once
+  const inv = Object.create(null);
+  for(const v of Object.keys(matrix)){
+    for(const [k,cnt] of Object.entries(matrix[v])){
+      (inv[k] ||= Object.create(null));
+      inv[k][v] = (inv[k][v]||0)+cnt;
+    }
+  }
+  const rowsB = teamCodes.map(code=>{
+    const ents = Object.entries(inv[code]||{}).sort((a,b)=>b[1]-a[1]);
+    const total = ents.reduce((a,b)=>a+b[1],0);
+    const top = ents.slice(0,3).map(([k,v])=>`${k} ${v}`).join(' · ');
+    return { eliminator:code, total, top };
+  }).sort((a,b)=> b.total-a.total || a.eliminator.localeCompare(b.eliminator));
+  document.getElementById('tblElimGivenAll').innerHTML = renderSimpleTable(rowsB, [
+    {label:'Eliminator',key:'eliminator'},
+    {label:'Eliminations Given',key:'total',right:true},
+    {label:'Top Victims',key:'top'}
+  ]);
+  applyColumnHeatmap('tblElimGivenAll', ['total']);
+}
+
+/* ---------- Page 2 (Team Focus) ---------- */
+function renderTeamElimBreakdowns(){
+  const A = document.getElementById('tblTeamTopEliminators');
+  const B = document.getElementById('tblTeamTopVictims');
+  const C = document.getElementById('tblTeamElimByDay');
+  const D = document.getElementById('tblTeamElimByMap');
+  const LA = document.getElementById('labelTeamElimA');
+  const LB = document.getElementById('labelTeamElimB');
+
+  if(!A || !B || !C || !D) return;
+  if(!CURRENT_TEAM || !ELIM_ROWS.length){
+    A.innerHTML=B.innerHTML=C.innerHTML=D.innerHTML='—';
+    if(LA) LA.textContent='—'; if(LB) LB.textContent='—';
+    return;
+  }
+
+  const code = (CURRENT_TEAM.name||'').toUpperCase();
+  if(LA) LA.textContent = code; if(LB) LB.textContent = code;
+
+  const rows = elimRowsByTournament(ELIM_ROWS);
+
+  // Top Victims (CURRENT_TEAM as killer)
+  const given = Object.create(null);
+  for(const r of rows){ if(r.killer===code && r.team){ given[r.team]=(given[r.team]||0)+1; } }
+  const givenTop = Object.entries(given).sort((a,b)=>b[1]-a[1]).slice(0,5)
+    .map(([k,v])=>({victim:k,count:v}));
+  B.innerHTML = renderSimpleTable(givenTop, [
+    {label:'Victim',key:'victim'},
+    {label:'Count',key:'count',right:true},
+  ]);
+  applyColumnHeatmap('tblTeamTopVictims', ['count']);
+
+  // Top Eliminators (who killed CURRENT_TEAM)
+  const suffered = Object.create(null);
+  for(const r of rows){ if(r.team===code && r.killer){ suffered[r.killer]=(suffered[r.killer]||0)+1; } }
+  const sufferedTop = Object.entries(suffered).sort((a,b)=>b[1]-a[1]).slice(0,5)
+    .map(([k,v])=>({eliminator:k,count:v}));
+  A.innerHTML = renderSimpleTable(sufferedTop, [
+    {label:'Eliminator',key:'eliminator'},
+    {label:'Count',key:'count',right:true},
+  ]);
+  applyColumnHeatmap('tblTeamTopEliminators', ['count']);
+
+  // Eliminated By — By Day
+  const byDay = Object.create(null);
+  for(const r of rows){
+    if(r.team!==code || !r.killer || !r.day) continue;
+    (byDay[r.day] ||= Object.create(null));
+    byDay[r.day][r.killer] = (byDay[r.day][r.killer]||0)+1;
+  }
+  const dayRows = Object.entries(byDay).map(([d,obj])=>{
+    const total = Object.values(obj).reduce((a,b)=>a+b,0);
+    const top = Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>`${k} × ${v}`).join(' · ');
+    return { day:Number(d), total, top };
+  }).sort((a,b)=>a.day-b.day);
+  C.innerHTML = renderSimpleTable(dayRows, [
+    {label:'Day',key:'day'},
+    {label:'Times Eliminated',key:'total',right:true},
+    {label:'Top Eliminators',key:'top'}
+  ]);
+  applyColumnHeatmap('tblTeamElimByDay', ['total']);
+
+  // Eliminated By — By Map
+  const byMap = Object.create(null);
+  for(const r of rows){
+    if(r.team!==code || !r.killer) continue;
+    const m = r.map || '—';
+    (byMap[m] ||= Object.create(null));
+    byMap[m][r.killer] = (byMap[m][r.killer]||0)+1;
+  }
+  const mapRows = Object.entries(byMap).map(([m,obj])=>{
+    const total = Object.values(obj).reduce((a,b)=>a+b,0);
+    const top = Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>`${k} × ${v}`).join(' · ');
+    return { map:m, total, top };
+  }).sort((a,b)=> b.total-a.total || a.map.localeCompare(b.map));
+  D.innerHTML = renderSimpleTable(mapRows, [
+    {label:'Map',key:'map'},
+    {label:'Times Eliminated',key:'total',right:true},
+    {label:'Top Eliminators',key:'top'}
+  ]);
+  applyColumnHeatmap('tblTeamElimByMap', ['total']);
+}
+
+  
 /* LOPS global renders */
 function renderLopsActive(){ const limit=Number(el('lopsActiveTop').value)||10; const list=countByName(LOPS_ALL,'active').sort((a,b)=> b.picks-a.picks || a.name.localeCompare(b.name)).slice(0,limit); el('tblLopsActive').innerHTML = renderSimpleTable(list.map((r,i)=>({...r,rank:i+1})), [{label:'#',key:'rank',right:true,html:(_,i)=>i+1},{label:'Active Skill',key:'name'},{label:'Picks',key:'picks',right:true}]); applyColumnHeatmap('tblLopsActive', ['picks']); }
 function renderLopsPet(){ const limit=Number(el('lopsPetTop').value)||10; const list=countByName(LOPS_ALL,'pet').sort((a,b)=> b.picks-a.picks || a.name.localeCompare(b.name)).slice(0,limit); el('tblLopsPet').innerHTML = renderSimpleTable(list.map((r,i)=>({...r,rank:i+1})), [{label:'#',key:'rank',right:true,html:(_,i)=>i+1},{label:'Pet',key:'name'},{label:'Picks',key:'picks',right:true}]); applyColumnHeatmap('tblLopsPet', ['picks']); }
