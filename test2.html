@@ -1304,6 +1304,92 @@ function wireControls(){
   el('charUsageMapFilter').addEventListener('change', renderCharUsage);
 }
 
+/* ---- RENDER: Per-Player Character Usage (Active + Passive) ---- */
+function renderCharUsage(){
+  const box = el('tblCharUsage');
+  if (!box) return;
+
+  if (!CURRENT_TEAM){
+    box.innerHTML = '<div class="muted">Select a team.</div>';
+    return;
+  }
+
+  const topN = Number(el('charUsageTop')?.value) || 10;
+  const mapSel = el('charUsageMapFilter')?.value || '__all__';
+
+  // Team rows from LOPS (ignores tournament filter by design)
+  let rows = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
+  if (mapSel !== '__all__'){
+    const lf = mapSel.toLowerCase();
+    rows = rows.filter(r => (r._map || '').toLowerCase() === lf);
+  }
+
+  if (!rows.length){
+    box.innerHTML = '<div class="muted">No rows for this filter.</div>';
+    return;
+  }
+
+  // Count (player, character) picks using char1..char4 (passives) + mapped names
+  const counts = new Map(); // key = player||character
+  for (const r of rows){
+    const player = r._player || '—';
+    const role = ROLE_BY_IGN.get(nameKey(player)) || '—';
+
+    const chars = [r.char1, r.char2, r.char3, r.char4]
+      .map(c => mapCharName(c, c))
+      .filter(Boolean);
+
+    for (const ch of chars){
+      const key = player + '||' + ch;
+      if (!counts.has(key)) counts.set(key, { player, role, character: ch, picks: 0 });
+      counts.get(key).picks += 1;
+    }
+  }
+
+  const list = [...counts.values()]
+    .sort((a,b)=> b.picks - a.picks || a.player.localeCompare(b.player) || a.character.localeCompare(b.character))
+    .slice(0, topN);
+
+  box.innerHTML = renderSimpleTable(list, [
+    { label:'Player',    key:'player' },
+    { label:'Role',      key:'role' },
+    { label:'Character', key:'character' },
+    { label:'Picks',     key:'picks', right:true },
+  ]);
+
+  applyColumnHeatmap('tblCharUsage', ['picks']);
+}
+
+/* ---- RENDER: Team Info (safe, schema-agnostic) ---- */
+function renderTeamInfo(info){
+  const box = el('teamInfoBody');
+  if (!box) return;
+
+  if (!info || !Object.keys(info).length){
+    box.innerHTML = '<div class="muted">No team info found.</div>';
+    return;
+  }
+
+  const pref = [
+    'Team Initials','Team','Full Name','Region','Country','Coach','Manager','Org','Organization',
+    'Owner','Founded','Sponsors','Twitter','Instagram','Facebook','YouTube','Twitch','Website'
+  ];
+  const keys = [...new Set([...pref, ...Object.keys(info)])]
+    .filter(k => info[k] != null && String(info[k]).trim() !== '');
+
+  const rows = keys.map(k => {
+    const val = String(info[k]);
+    const vHtml = /^https?:\/\//i.test(val) ? `<a href="${val}" target="_blank" rel="noopener">${val}</a>` : val;
+    return `<tr>
+      <th style="text-align:left;padding:4px 6px;color:#b9b9b9">${k}</th>
+      <td style="padding:4px 6px">${vHtml}</td>
+    </tr>`;
+  }).join('');
+
+  box.innerHTML = `<table style="width:100%;border-collapse:collapse">${rows}</table>`;
+}
+
+  
 async function initial(){
   try{
     el('scopeChip').textContent='Scope: —';
