@@ -172,7 +172,6 @@
       </div>
     </div>
 
-    <!-- Global sections -->
     <details class="accordion" id="lopsTopKillersSection">
       <summary>Top Players by Kills</summary>
       <div class="accordion-body">
@@ -213,7 +212,24 @@
         </div>
       </div>
     </details>
-  </div>
+
+    <!-- NEW: Eliminations — Summary (filters ignored) as accordion -->
+    <details class="accordion" id="elimSummarySection">
+      <summary>Eliminations — Summary (All Teams)</summary>
+      <div class="accordion-body">
+        <div class="grid2">
+          <div class="card">
+            <h3>Who Eliminated Each Team?</h3>
+            <div id="tblEliminatedBy">Loading…</div>
+          </div>
+          <div class="card">
+            <h3>Who Did Each Team Eliminate?</h3>
+            <div id="tblGiven">Loading…</div>
+          </div>
+        </div>
+      </div>
+    </details>
+  </div><!-- ✅ CLOSE PAGE 1 -->
 
   <!-- PAGE 2 -->
   <div class="page" id="page2" data-page="2">
@@ -246,7 +262,6 @@
       </div>
     </div>
 
-    <!-- Players -->
     <details class="accordion" id="playersSection">
       <summary>Player Stats</summary>
       <div class="accordion-body">
@@ -254,7 +269,6 @@
       </div>
     </details>
 
-    <!-- By Map + By Day -->
     <details class="accordion" id="mapsDaysSection">
       <summary>By Map & By Day Stats</summary>
       <div class="accordion-body">
@@ -269,7 +283,6 @@
       </div>
     </details>
 
-    <!-- Actives/Pets + Per-Player Character Usage -->
     <details class="accordion" id="teamCharsUsageSection">
       <summary>Character and Pet Usage</summary>
       <div class="accordion-body">
@@ -294,7 +307,6 @@
           <div class="bar">
             <label>Top players</label>
             <select id="charUsageTop" class="input"><option>10</option><option>20</option><option>50</option><option>100</option></select>
-            <!-- NEW: Map filter -->
             <label>Map</label>
             <select id="charUsageMapFilter" class="input" style="min-width:180px">
               <option value="__all__" selected>All maps</option>
@@ -315,8 +327,40 @@
       <summary>Roster & Accolades</summary>
       <div class="accordion-body"><div class="card" style="margin:0"><div id="teamRosterBody" class="muted">—</div></div></div>
     </details>
-  </div>
-</div>
+
+    <!-- NEW: Eliminations — Team Focus + Breakdowns as one accordion -->
+    <details class="accordion" id="elimTeamAccordion">
+      <summary>Eliminations — Team Focus & Breakdowns</summary>
+      <div class="accordion-body">
+        <div class="grid3">
+          <div class="card">
+            <h3>Top Eliminators of <span id="elimTeamCodeA">—</span></h3>
+            <div id="elimTopPredators" class="kpis">—</div>
+          </div>
+          <div class="card">
+            <h3>Top Victims of <span id="elimTeamCodeB">—</span></h3>
+            <div id="elimTopVictims" class="kpis">—</div>
+          </div>
+          <div class="card">
+            <h3>Signals</h3>
+            <div id="elimSignals" class="kpis">—</div>
+          </div>
+        </div>
+
+        <div class="grid2" style="margin-top:12px">
+          <div class="card">
+            <h3>Eliminated By — By Day</h3>
+            <div id="elimByDay">—</div>
+          </div>
+          <div class="card">
+            <h3>Eliminated By — By Map</h3>
+            <div id="elimByMap">—</div>
+          </div>
+        </div>
+      </div>
+    </details>
+  </div><!-- ✅ CLOSE PAGE 2 -->
+</div><!-- ✅ CLOSE SHELL -->
 
 <script>
 /* ============ Supabase init ============ */
@@ -373,8 +417,8 @@ el('logoutBtn').onclick = async () => { await client.auth.signOut(); location.re
 /* ============ State ============ */
 let TEAMS=[]; let TEAM_BY_CODE={}; let TEAM_BY_NAME={}; let ALLOWED_TAGS=new Set();
 let ALL=[]; let TEAM_ROWS=[]; let CURRENT_TEAM=null;
-let LOPS_ALL=[];
-let MATCH_API_MAP = new Map(); // id(string) -> name
+let LOPS_ALL=[]; // normalized lops rows (with added elimination pair fields)
+let MATCH_API_MAP = new Map(); // id -> name for characters (type=2)
 let ROLE_BY_IGN = new Map();   // normalized IGN -> role text
 
 /* ============ Helpers ============ */
@@ -522,7 +566,7 @@ function aggregateTeamsForMap(rows,mapValue){
 }
 function uniqueMaps(rows){ const s=new Set(); for(const r of rows){ const m=norm(r.map); if(m) s.add(m); } return [...s].sort((a,b)=>a.localeCompare(b)); }
 
-/* Team + roster info helpers */
+/* Team + roster info helpers (unchanged) */
 function asListHTML(val){
   const items = splitToLines(val); if(!items.length) return '—';
   return `<ul style="margin:0;padding-left:16px">${items.map(it=>`<li>${it}</li>`).join('')}</ul>`;
@@ -553,8 +597,6 @@ async function fetchPlayersBy(codeRaw){
     return res.data||[];
   }catch(e){ console.warn('br_player_info fetch error:', e.message||e); return []; }
 }
-
-/* Build a Role map from roster (IGN -> Role) */
 function pickKey(keys, patterns){
   for(const rx of patterns){
     const k = keys.find(k => rx.test(k));
@@ -567,14 +609,11 @@ function setRoleMap(players){
   if(!players?.length) return;
   const keySet=new Set(); players.forEach(p=>Object.keys(p).forEach(k=>keySet.add(k)));
   const keys=[...keySet];
-
   const ignKey = pickKey(keys, [/^ign$/i,/\bplayer\s*ign\b/i,/\bin-?\s*game\s*name\b/i,/\bnick\s*name\b/i,/\bnickname\b/i,/\bhandle\b/i,/\balias\b/i,/\bplayer\s*name\b/i,/^name$/i]) || null;
   const roleKey= pickKey(keys, [/^role$/i, /\bposition\b/i]) || 'Role';
-
   for(const p of players){
     const ign = String(
-      (ignKey && p[ignKey]) ??
-      p['IGN'] ?? p['In-game Name'] ?? p['Player IGN'] ?? p['Player Name'] ??
+      (ignKey && p[ignKey]) ?? p['IGN'] ?? p['In-game Name'] ?? p['Player IGN'] ?? p['Player Name'] ??
       p['Nickname'] ?? p['Name'] ?? p['name'] ?? ''
     ).trim();
     const role = String(p[roleKey] ?? p['Role'] ?? p['Position'] ?? p['position'] ?? '').trim();
@@ -582,27 +621,7 @@ function setRoleMap(players){
   }
 }
 
-function renderTeamInfo(info){
-  const box=el('teamInfoBody');
-  if(!info){ box.innerHTML='<div class="muted">No team info found.</div>'; return; }
-  const keys=Object.keys(info);
-  const rewardsKey = keys.find(k=>k.toLowerCase()==='rewards') || keys.find(k=>/reward/i.test(k));
-  const hide=new Set(['id','created_at','updated_at','code','team_code','team','team_name','logo','logo_url','photo','image','image_url']);
-  const preferred=['Team Initials','country','region','coach','manager','owner','org','sponsor','website','twitter','facebook','youtube','instagram','tiktok','discord'];
-  if (rewardsKey) preferred.push(rewardsKey);
-  const picked=[...preferred.filter(k=>keys.includes(k)), ...keys.filter(k=>!preferred.includes(k) && !hide.has(k))];
-  const rows=picked.map(k=>{
-    let v=info[k]; if(v==null||v==='') return '';
-    if(k===rewardsKey) v=asListHTML(v);
-    else{ if(typeof v==='object'){try{v=JSON.stringify(v)}catch{} } if(looksLikeURL(v)) v=`<a href="${v}" target="_blank" rel="noopener">${v}</a>`; }
-    return `<tr><th style="width:160px;color:var(--muted);font-weight:600">${String(k).replace(/_/g,' ')}</th><td>${v}</td></tr>`;
-  }).filter(Boolean).join('');
-  const logoUrl=info.logo_url||info.logo||'';
-  const maybeLogo=logoUrl?`<div style="margin-bottom:8px"><img src="${logoUrl}" alt="team logo" style="width:84px;height:84px;object-fit:contain;border:1px solid #2a2a2a;border-radius:8px;background:#111"></div>`:'';
-  box.innerHTML = `${maybeLogo}<table>${rows || '<tr><td class="muted">No visible fields.</td></tr>'}</table>`;
-}
-
-/* ROSTER TABLE (Age parser retained) */
+/* Roster render (unchanged) */
 function parseAgeValue(record, ageKey, dobKey){
   if(ageKey){
     const raw = record[ageKey];
@@ -671,7 +690,7 @@ function renderRoster(players){
   ]);
 }
 
-/* Team-specific + LAST PLAYED (Signals-only) */
+/* Team KPIs / map performance (unchanged) */
 function kpiDataset(rows){
   const matches=rows.length, booyahs=sum(rows,'booyah'), total=sum(rows,'total'), elims=sum(rows,'elimination'), place=sum(rows,'placement'), damage=sum(rows,'damage'), top3=sum(rows,'top3');
   return {
@@ -712,39 +731,47 @@ function teamMapPerf(rows){
   return out.sort((a,b)=> b.total_pm - a.total_pm || b.matches - a.matches || a.map.localeCompare(b.map));
 }
 
-/* LOPS normalize */
+/* LOPS normalize (EXTENDED with elimination pair fields + day) */
 function normLopsRow(r){
   const get=(k,alt=[])=> r[k]!=null ? r[k] : alt.find(a=>r[a]!=null)!=null ? r[alt.find(a=>r[a]!=null)] : null;
   const toI = v => Number(v ?? 0) || 0;
-  const team = norm(get('TeamName')) || norm(get('Team')) || '';
+  const up = s => String(s==null?'':s).trim().toUpperCase();
+
+  const teamName = norm(get('TeamName') ?? get('Team') ?? '');
   const player = norm(get('PLAYER NAME',['Player name','Player Name','Player','IGN']));
   const map = norm(get('MAP',['Map','map']));
-  const shots = toI(get('SHOOTS')), hits  = toI(get('HITS'));
+  const day = toI(get('Day',['day','DAY']));
+
   const headA = toI(get('HEADSHOTRS')), headB = toI(get('Headshot Kill Times'));
   const glooDestroyed = toI(get('IcewallDestroyedTimes')) + toI(get('SkylerIceWallDestroy'));
   const revivesGiven  = toI(get('ReviveTeammateTimes')) + toI(get('Revive Teammate Nums'));
   const nadeKills = toI(get('Grenade kill')) + toI(get('Ice Grenade kill')) + toI(get('Dragon Grenade Kill'));
-  const c1 = String(get('Character 1') ?? '').trim();
-  const c2 = String(get('Character 2') ?? '').trim();
-  const c3 = String(get('Character 3') ?? '').trim();
-  const c4 = String(get('Character 4') ?? '').trim();
+
+  // elimination pair fields
+  const killerRaw = norm(get('Eliminated Team Name', ['Eliminated By','Eliminator','Killer Team'])) || '';
+
   const act1 = norm(get('SkillActive_1',['SkillActive','Active'])) || '';
   const act2 = norm(get('SkillActive_2')) || '';
   const act3 = norm(get('SkillActive_3')) || '';
   const act4 = norm(get('SkillActive_4')) || '';
+
   return {
-    _team: (team||'').toUpperCase(), _player: player, _map: map,
-    kills: toI(get('KILLS')), assists: toI(get('ASSISTS')), shots, hits,
+    _team: up(teamName), _player: player, _map: map, day,
+    kills: toI(get('KILLS')), assists: toI(get('ASSISTS')),
+    shots: toI(get('SHOOTS')), hits: toI(get('HITS')),
     headshots: headA || headB || 0, damage: toI(get('DAMAGE')),
     knockdowns: toI(get('Knock Down')), vehicle: toI(get('Vehicle Kill')), grenade: nadeKills,
-    gloo_used: toI(get('IcewallUse')), gloo_break: glooDestroyed, medkits: toI(get('MedkitUse')),
+    gloo_used: toI(get('IcewallUse')), gloo_break: toI(get('IcewallDestroyedTimes')) + toI(get('SkylerIceWallDestroy')),
+    medkits: toI(get('MedkitUse')),
     moving_distance: toI(get('MovingDistance')), vehicle_move_distance: toI(get('Vehicle Move Distance')),
-    revives: toI(get('ReviveTeammateTimes')) + toI(get('Revive Teammate Nums')),
-    revived: toI(get('RevivedTimes')), survival_time: toI(get('Survival Time')),
+    revives: revivesGiven, revived: toI(get('RevivedTimes')), survival_time: toI(get('Survival Time')),
     active: act1 || '', pet: norm(get('Pet Skill Name',['Pet','Pet Name'])) || '',
     mvp: toI(get('MVP')) ? 1 : 0,
-    char1: c1, char2: c2, char3: c3, char4: c4,
-    charActives: [act1,act2,act3,act4]
+    char1: norm(get('Character 1') ?? ''), char2: norm(get('Character 2') ?? ''), char3: norm(get('Character 3') ?? ''), char4: norm(get('Character 4') ?? ''),
+    charActives: [act1,act2,act3,act4],
+    // NEW: elimination pairs
+    pair_victim: up(teamName),
+    pair_killer: up(killerRaw)
   };
 }
 async function fetchAllLopsRows(){
@@ -757,7 +784,7 @@ async function fetchAllLopsRows(){
   }
   return out.map(normLopsRow).filter(r=>r._player && r._team);
 }
-function lopsRowsForTeam(all, teamObj){ if(!teamObj) return []; const code=(teamObj.name||'').trim().toUpperCase(); return all.filter(r=> (r._team||'').toUpperCase()===code); }
+function lopsRowsForTeam(all, teamObj){ if(!teamObj) return []; const code=(teamObj.name||'').toUpperCase(); return all.filter(r=> (r._team||'')===code); }
 function countByName(rows,key){
   const m=new Map();
   for(const r of rows){ const raw=norm(r[key]); if(!raw) continue; const k=raw.toLowerCase().replace(/\s+/g,' ').trim(); if(!m.has(k)) m.set(k,{name:raw,picks:0}); m.get(k).picks += 1; }
@@ -823,7 +850,7 @@ function populateCharUsageMapFilter(){
   sel.value = '__all__';
 }
 
-/* Renders */
+/* ---------- Renders: Page 1 (Teams) ---------- */
 function renderOverall(){
   const rows = aggregateOverall(baseRowsByTournament(ALL));
   const sortKey = el('overallSortKey').value;
@@ -858,6 +885,8 @@ function renderPerMapAllTeams(){
   ]);
   applyColumnHeatmap('tblPerMapAllTeams', ['total_pm','elims_pm','placement_pm','booyah_rate','matches','booyahs','elims','placement','total']);
 }
+
+/* ---------- Renders: Page 2 (Team core) ---------- */
 function kpiAndByMap(){
   if(!CURRENT_TEAM){
     el('teamTitle').textContent='Selected Team — Overview';
@@ -935,7 +964,7 @@ function renderTeamCombinedMetrics(){
     <div class="kpi">AVG ASSISTS <strong>${(totals.assists/games).toFixed(1)}</strong></div>
     <div class="kpi">AVG HEADSHOTS <strong>${(totals.hs/games).toFixed(1)}</strong></div>` : '<div class="muted">No games found for averages.</div>';
 
-  // Signals — ONLY place where Last Played is shown
+  // Signals — includes Last Played (from ffbr_data)
   const lastPlayed = fmtYwdm(latestYwdm(TEAM_ROWS));
   sigEl.innerHTML = `
     <div class="kpi">LAST PLAYED <strong>${lastPlayed}</strong></div>
@@ -990,7 +1019,7 @@ function renderPlayers(){
   applyColumnHeatmap('tblPlayers', ['kills','assists','dmg','hs','nade','veh','downs','rows']);
 }
 
-/* Team Performance by Day by Map — Pivot */
+/* Team Performance by Day by Map — Pivot (from ffbr_data) */
 function renderByDay(){
   if(!TEAM_ROWS.length){
     el('tblByDay').innerHTML = '<div class="muted">No rows.</div>';
@@ -1029,63 +1058,145 @@ function renderByDay(){
   applyColumnHeatmap('tblByDay', days);
 }
 
-/* Character Usage — Per Player (now with Role + Map filter) */
-function renderCharUsage(){
-  const topN = Number(el('charUsageTop').value)||10;
-  const mapSel = (el('charUsageMapFilter')?.value) || '__all__';
-  let base = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
-  if(mapSel && mapSel !== '__all__'){
-    base = base.filter(r => (norm(r._map)||'').toLowerCase() === mapSel.toLowerCase());
+/* ---------- Eliminations (NEW) ---------- */
+/* Build team list for eliminations from all LOPS rows */
+function elimTeams(){ const s=new Set(); for(const r of LOPS_ALL){ if(r.pair_victim) s.add(r.pair_victim); if(r.pair_killer) s.add(r.pair_killer); } return [...s].sort((a,b)=>a.localeCompare(b)); }
+function summarizeElims(rows){
+  const matrix={}, suffered={}, given={};
+  for(const r of rows){
+    const v=r.pair_victim, k=r.pair_killer;
+    if(!v || !k) continue;
+    matrix[v] ||= {};
+    matrix[v][k] = (matrix[v][k]||0)+1;
+    suffered[v] = (suffered[v]||0)+1;
+    given[k]    = (given[k]||0)+1;
   }
-  if(!base.length){ el('tblCharUsage').innerHTML='<div class="muted">No lops rows for team.</div>'; return; }
+  return {matrix, suffered, given};
+}
+/* Page 1: global elimination tables (ignore filters) */
+function renderElimLeaderboardsUsingAll(){
+  if(!LOPS_ALL.length){ el('tblEliminatedBy').innerHTML='<div class="muted">No LOPS rows.</div>'; el('tblGiven').innerHTML='<div class="muted">No LOPS rows.</div>'; return; }
+  const teams = elimTeams();
+  const sumE = summarizeElims(LOPS_ALL);
 
-  const per = new Map();
-  function ensure(player){
-    if(!per.has(player)) per.set(player,{player, rows:0, active:new Map(), passive:new Map()});
-    return per.get(player);
-  }
-  function bump(map, name){ const c = map.get(name)||0; map.set(name, c+1); }
-
-  for(const r of base){
-    const P = ensure(r._player||'—'); P.rows++;
-    const aName = mapCharName(r.char1, r.charActives?.[0] || r.active || '');
-    if(aName && aName!=='—') bump(P.active, aName);
-    const p2 = mapCharName(r.char2, r.charActives?.[1] || '');
-    const p3 = mapCharName(r.char3, r.charActives?.[2] || '');
-    const p4 = mapCharName(r.char4, r.charActives?.[3] || '');
-    if(p2 && p2!=='—') bump(P.passive, p2);
-    if(p3 && p3!=='—') bump(P.passive, p3);
-    if(p4 && p4!=='—') bump(P.passive, p4);
-  }
-
-  function listToText(m){
-    const arr=[...m.entries()].map(([name,c])=>({name, c}));
-    arr.sort((a,b)=> b.c-a.c || a.name.localeCompare(b.name));
-    return arr.map(x=>`${x.name} × ${x.c}`).join(', ') || '—';
-  }
-  function totalMap(m){ let t=0; for(const v of m.values()) t+=v; return t; }
-
-  let rows = [...per.values()].map((o)=>({
-    player:o.player,
-    role: ROLE_BY_IGN.get(nameKey(o.player)) || '—',
-    activeCount: totalMap(o.active),
-    passiveCount: totalMap(o.passive),
-    activeList: listToText(o.active),
-    passiveList: listToText(o.passive),
-  }));
-
-  rows.sort((a,b)=> (b.activeCount+b.passiveCount) - (a.activeCount+a.passiveCount) || a.player.localeCompare(b.player));
-  rows = rows.slice(0, topN);
-
-  el('tblCharUsage').innerHTML = renderSimpleTable(rows, [
-    {label:'Player', key:'player'},
-    {label:'Role',   key:'role'},
-    {label:'Active', key:'activeList'},
-    {label:'Passive',key:'passiveList'},
+  // Eliminated By (suffered)
+  const rowsA = teams.map(t=>{
+    const row = sumE.matrix[t]||{};
+    const total = sumE.suffered[t]||0;
+    const top = Object.entries(row).sort((a,b)=>b[1]-a[1]).slice(0,3)
+      .map(([k,v])=>`${k} ${v} (${((v/Math.max(total,1))*100).toFixed(0)}%)`).join(' · ');
+    return { team:t, times: total, top };
+  }).sort((a,b)=>b.times-a.times || a.team.localeCompare(b.team));
+  el('tblEliminatedBy').innerHTML = renderSimpleTable(rowsA, [
+    {label:'Team',key:'team'},
+    {label:'Times Eliminated',key:'times',right:true},
+    {label:'Top Eliminators',key:'top'}
   ]);
+  applyColumnHeatmap('tblEliminatedBy',['times']);
+
+  // Given (killer totals)
+  const inv={}; teams.forEach(v=>{
+    const row=sumE.matrix[v]||{};
+    Object.entries(row).forEach(([killer,cnt])=>{
+      inv[killer] ||= {};
+      inv[killer][v] = (inv[killer][v]||0)+cnt;
+    });
+  });
+  const rowsB = teams.map(t=>{
+    const ents = Object.entries(inv[t]||{}).sort((a,b)=>b[1]-a[1]);
+    const total = ents.reduce((a,b)=>a+b[1],0);
+    const top = ents.slice(0,3).map(([k,v])=>`${k} ${v}`).join(' · ');
+    return { eliminator:t, total, top };
+  }).sort((a,b)=>b.total-a.total || a.eliminator.localeCompare(b.eliminator));
+  el('tblGiven').innerHTML = renderSimpleTable(rowsB, [
+    {label:'Eliminator',key:'eliminator'},
+    {label:'Eliminations Given',key:'total',right:true},
+    {label:'Top Victims',key:'top'}
+  ]);
+  applyColumnHeatmap('tblGiven',['total']);
 }
 
-/* Team grid */
+/* Page 2: team-focused elimination section (ignore filters, follow selected team) */
+function renderElimTeamFocus(){
+  const boxA=el('elimTopPredators'), boxB=el('elimTopVictims'), boxS=el('elimSignals'), boxD=el('elimByDay'), boxM=el('elimByMap');
+  el('elimTeamCodeA').textContent = CURRENT_TEAM ? CURRENT_TEAM.name : '—';
+  el('elimTeamCodeB').textContent = CURRENT_TEAM ? CURRENT_TEAM.name : '—';
+
+  if(!CURRENT_TEAM || !LOPS_ALL.length){
+    boxA.innerHTML=boxB.innerHTML=boxS.innerHTML='—';
+    boxD.innerHTML=boxM.innerHTML='—';
+    return;
+  }
+  const code = CURRENT_TEAM.name.toUpperCase();
+  const rows = LOPS_ALL; // ignore tournament filters
+
+  // victims of CUR_TEAM (they eliminated others)
+  const given = {};
+  rows.forEach(r=>{ if(r.pair_killer===code && r.pair_victim){ given[r.pair_victim]=(given[r.pair_victim]||0)+1; } });
+  const givenTop = Object.entries(given).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  boxB.innerHTML = givenTop.length
+    ? givenTop.map(([k,v])=>`<div class="kpi">${k}: <strong>${v}</strong></div>`).join('')
+    : '<div class="muted">No eliminations as killer in dataset.</div>';
+
+  // predators of CUR_TEAM (who eliminated them)
+  const suffered = {};
+  rows.forEach(r=>{ if(r.pair_victim===code && r.pair_killer){ suffered[r.pair_killer]=(suffered[r.pair_killer]||0)+1; } });
+  const sufferedTop = Object.entries(suffered).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  boxA.innerHTML = sufferedTop.length
+    ? sufferedTop.map(([k,v])=>`<div class="kpi">${k}: <strong>${v}</strong></div>`).join('')
+    : '<div class="muted">No times eliminated in dataset.</div>';
+
+  // signals
+  const totalGiven = Object.values(given).reduce((a,b)=>a+b,0);
+  const totalSuffer = Object.values(suffered).reduce((a,b)=>a+b,0);
+  boxS.innerHTML = `
+    <div class="kpi">NET Δ <strong>${(totalGiven - totalSuffer)}</strong></div>
+    <div class="kpi">GIVEN <strong>${totalGiven}</strong></div>
+    <div class="kpi">SUFFERED <strong>${totalSuffer}</strong></div>
+  `;
+
+  // By Day (predators)
+  const byDay = {};
+  rows.forEach(r=>{
+    if(r.pair_victim!==code || !r.pair_killer || !r.day) return;
+    const d = r.day;
+    byDay[d] ||= {};
+    byDay[d][r.pair_killer] = (byDay[d][r.pair_killer]||0)+1;
+  });
+  const dayRows = Object.entries(byDay).map(([d,obj])=>{
+    const top = Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>`${k} × ${v}`).join(' · ');
+    const total = Object.values(obj).reduce((a,b)=>a+b,0);
+    return { day:Number(d), total, top };
+  }).sort((a,b)=>a.day-b.day);
+  boxD.innerHTML = renderSimpleTable(dayRows, [
+    {label:'Day',key:'day'},
+    {label:'Times Eliminated',key:'total',right:true},
+    {label:'Top Eliminators',key:'top'}
+  ]);
+  applyColumnHeatmap('elimByDay',['total']);
+
+  // By Map (predators)
+  const byMap = {};
+  rows.forEach(r=>{
+    if(r.pair_victim!==code || !r.pair_killer) return;
+    const m = r._map || '—';
+    byMap[m] ||= {};
+    byMap[m][r.pair_killer] = (byMap[m][r.pair_killer]||0)+1;
+  });
+  const mapRows = Object.entries(byMap).map(([m,obj])=>{
+    const top = Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>`${k} × ${v}`).join(' · ');
+    const total = Object.values(obj).reduce((a,b)=>a+b,0);
+    return { map:m, total, top };
+  }).sort((a,b)=> b.total-a.total || a.map.localeCompare(b.map));
+  boxM.innerHTML = renderSimpleTable(mapRows, [
+    {label:'Map',key:'map'},
+    {label:'Times Eliminated',key:'total',right:true},
+    {label:'Top Eliminators',key:'top'}
+  ]);
+  applyColumnHeatmap('elimByMap',['total']);
+}
+
+/* ---------- Team grid & selection ---------- */
 function renderTeamGrid(filter=''){
   const grid=el('teamGrid'); const q=(filter||'').trim().toLowerCase();
   const items=TEAMS.filter(t=>[t.name,t.fullname,t.region,t.ew,t.alt].join(' ').toLowerCase().includes(q));
@@ -1106,14 +1217,12 @@ function highlightActiveTile(){
     const code=div.getAttribute('data-code'); div.classList.toggle('active', !!CURRENT_TEAM && CURRENT_TEAM.name===code);
   });
 }
-
-/* Selection flow */
 async function selectTeam(teamObj){
   CURRENT_TEAM = teamObj;
   const url=new URL(window.location.href); url.searchParams.set('team', CURRENT_TEAM.name); history.replaceState(null,'',url.toString());
   TEAM_ROWS = baseRowsByTournament(ALL).filter(r => (norm(r._tag).toUpperCase()||'') === teamObj.name.toUpperCase());
 
-  // Renders not needing roster
+  // Core team renders
   kpiAndByMap();
   renderTeamCombinedMetrics();
   renderTeamActiveUsage();
@@ -1122,19 +1231,104 @@ async function selectTeam(teamObj){
   renderByDay();
   highlightActiveTile();
 
-  // Fetch roster + team info in parallel, then set role map and render char-usage
-  const [info, roster] = await Promise.all([
-    fetchTeamInfoBy(teamObj.name),
-    fetchPlayersBy(teamObj.name)
-  ]);
+  // Roster + info, then char usage
+  const [info, roster] = await Promise.all([ fetchTeamInfoBy(teamObj.name), fetchPlayersBy(teamObj.name) ]);
   setRoleMap(roster);
-  populateCharUsageMapFilter();   // NEW: fill maps for current team
-  renderCharUsage();              // now includes Role + Map filter
+  populateCharUsageMapFilter();
+  renderCharUsage();
   renderTeamInfo(info);
   renderRoster(roster);
+
+  // NEW: eliminations team focus
+  renderElimTeamFocus();
 }
 
-/* Init */
+/* ---- RENDER: Per-Player Character Usage (Active + Passive) ---- */
+function renderCharUsage(){
+  const box = el('tblCharUsage');
+  if (!box) return;
+
+  if (!CURRENT_TEAM){
+    box.innerHTML = '<div class="muted">Select a team.</div>';
+    return;
+  }
+
+  const topN = Number(el('charUsageTop')?.value) || 10;
+  const mapSel = el('charUsageMapFilter')?.value || '__all__';
+
+  // Team rows from LOPS (ignores tournament filter by design)
+  let rows = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
+  if (mapSel !== '__all__'){
+    const lf = mapSel.toLowerCase();
+    rows = rows.filter(r => (r._map || '').toLowerCase() === lf);
+  }
+
+  if (!rows.length){
+    box.innerHTML = '<div class="muted">No rows for this filter.</div>';
+    return;
+  }
+
+  // Count (player, character) picks using char1..char4 (passives) + mapped names
+  const counts = new Map(); // key = player||character
+  for (const r of rows){
+    const player = r._player || '—';
+    const role = ROLE_BY_IGN.get(nameKey(player)) || '—';
+
+    const chars = [r.char1, r.char2, r.char3, r.char4]
+      .map(c => mapCharName(c, c))
+      .filter(Boolean);
+
+    for (const ch of chars){
+      const key = player + '||' + ch;
+      if (!counts.has(key)) counts.set(key, { player, role, character: ch, picks: 0 });
+      counts.get(key).picks += 1;
+    }
+  }
+
+  const list = [...counts.values()]
+    .sort((a,b)=> b.picks - a.picks || a.player.localeCompare(b.player) || a.character.localeCompare(b.character))
+    .slice(0, topN);
+
+  box.innerHTML = renderSimpleTable(list, [
+    { label:'Player',    key:'player' },
+    { label:'Role',      key:'role' },
+    { label:'Character', key:'character' },
+    { label:'Picks',     key:'picks', right:true },
+  ]);
+
+  applyColumnHeatmap('tblCharUsage', ['picks']);
+}
+
+/* ---- RENDER: Team Info (safe, schema-agnostic) ---- */
+function renderTeamInfo(info){
+  const box = el('teamInfoBody');
+  if (!box) return;
+
+  if (!info || !Object.keys(info).length){
+    box.innerHTML = '<div class="muted">No team info found.</div>';
+    return;
+  }
+
+  const pref = [
+    'Team Initials','Team','Full Name','Region','Country','Coach','Manager','Org','Organization',
+    'Owner','Founded','Sponsors','Twitter','Instagram','Facebook','YouTube','Twitch','Website'
+  ];
+  const keys = [...new Set([...pref, ...Object.keys(info)])]
+    .filter(k => info[k] != null && String(info[k]).trim() !== '');
+
+  const rows = keys.map(k => {
+    const val = String(info[k]);
+    const vHtml = /^https?:\/\//i.test(val) ? `<a href="${val}" target="_blank" rel="noopener">${val}</a>` : val;
+    return `<tr>
+      <th style="text-align:left;padding:4px 6px;color:#b9b9b9">${k}</th>
+      <td style="padding:4px 6px">${vHtml}</td>
+    </tr>`;
+  }).join('');
+
+  box.innerHTML = `<table style="width:100%;border-collapse:collapse">${rows}</table>`;
+}
+
+/* ---------- Init & wiring ---------- */
 function populateMapFilter(){ el('mapFilter').innerHTML = `<option value="__all__">All maps</option>` + uniqueMaps(baseRowsByTournament(ALL)).map(m=>`<option>${m}</option>`).join(''); }
 function wireControls(){
   el('gTournament').addEventListener('change', ()=>{
@@ -1145,13 +1339,14 @@ function wireControls(){
     if(CURRENT_TEAM){
       TEAM_ROWS = baseRowsByTournament(ALL).filter(r => (norm(r._tag).toUpperCase()||'') === CURRENT_TEAM.name.toUpperCase());
       kpiAndByMap(); renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDay();
-      // Refresh roster-dependent bits
       fetchPlayersBy(CURRENT_TEAM.name).then(r=>{ setRoleMap(r); renderRoster(r); renderCharUsage(); }).catch(()=>{ renderCharUsage(); });
       fetchTeamInfoBy(CURRENT_TEAM.name).then(renderTeamInfo).catch(()=>{});
-      populateCharUsageMapFilter(); // NEW: keep map list fresh
+      populateCharUsageMapFilter();
     }
     renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
+    // Eliminations ignore tournament filters
   });
+
   el('gTournReset').addEventListener('click', ()=>{
     const items=tournamentsWithMaxId(ALL);
     el('gTournament').value = items.length ? items[0].name : '__all__';
@@ -1188,7 +1383,6 @@ function wireControls(){
   el('lopsPetTop').addEventListener('change', renderLopsPet);
   el('lopsTopKillersTop').addEventListener('change', renderLopsTopKillers);
   el('charUsageTop').addEventListener('change', renderCharUsage);
-  // NEW: Map filter listener for Per-Player Character Usage
   el('charUsageMapFilter').addEventListener('change', renderCharUsage);
 }
 
@@ -1219,20 +1413,20 @@ async function initial(){
     LOPS_ALL = await fetchAllLopsRows();
     await fetchMatchApiMap(); // only type=2
 
-    // After LOPS + mapping, re-render sections that depend on them.
+    // Renders that depend on LOPS
     renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDay();
     renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
 
-    // NEW: map dropdown + char usage refresh after LOPS are available
-    populateCharUsageMapFilter();
-    renderCharUsage();
+    // Eliminations (global + team)
+    renderElimLeaderboardsUsingAll();
+    renderElimTeamFocus();
 
     wireControls();
 
     // Collapse all accordions by default
     document.querySelectorAll('details.accordion').forEach(d=> d.open=false);
 
-    showPage(2);
+    showPage(1);
     el('veil').classList.add('hide');
   }catch(e){
     gerr('Fatal error initializing page:\n\n'+(e.stack||e.message||e));
@@ -1240,7 +1434,7 @@ async function initial(){
   }
 }
 
-/* LOPS global renders */
+/* LOPS global renders (unchanged) */
 function renderLopsActive(){ const limit=Number(el('lopsActiveTop').value)||10; const list=countByName(LOPS_ALL,'active').sort((a,b)=> b.picks-a.picks || a.name.localeCompare(b.name)).slice(0,limit); el('tblLopsActive').innerHTML = renderSimpleTable(list.map((r,i)=>({...r,rank:i+1})), [{label:'#',key:'rank',right:true,html:(_,i)=>i+1},{label:'Active Skill',key:'name'},{label:'Picks',key:'picks',right:true}]); applyColumnHeatmap('tblLopsActive', ['picks']); }
 function renderLopsPet(){ const limit=Number(el('lopsPetTop').value)||10; const list=countByName(LOPS_ALL,'pet').sort((a,b)=> b.picks-a.picks || a.name.localeCompare(b.name)).slice(0,limit); el('tblLopsPet').innerHTML = renderSimpleTable(list.map((r,i)=>({...r,rank:i+1})), [{label:'#',key:'rank',right:true,html:(_,i)=>i+1},{label:'Pet',key:'name'},{label:'Picks',key:'picks',right:true}]); applyColumnHeatmap('tblLopsPet', ['picks']); }
 function renderLopsTopKillers(){ const limit=Number(el('lopsTopKillersTop').value)||10; const list=lopsTopPlayersByKills(LOPS_ALL).sort((a,b)=> b.kills-a.kills || a.player.localeCompare(b.player)).slice(0,limit); el('tblLopsTopKillers').innerHTML = renderSimpleTable(list.map((r,i)=>({...r,rank:i+1})), [{label:'#',key:'rank',right:true,html:(_,i)=>i+1},{label:'Player',key:'player'},{label:'Team',key:'team'},{label:'Rows',key:'rows',right:true},{label:'Kills',key:'kills',right:true},{label:'Assists',key:'assists',right:true},{label:'HS',key:'headshots',right:true},{label:'Grenade',key:'grenade',right:true},{label:'Damage',key:'damage',right:true}]); applyColumnHeatmap('tblLopsTopKillers', ['rows','kills','assists','headshots','grenade','damage']); }
