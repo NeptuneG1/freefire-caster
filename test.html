@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Clash Squad — Team Compare</title>
+  <title>Clash Squad — Team Compare (Stacked Players)</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root{
@@ -24,99 +24,60 @@
     .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
     .controls{display:flex;flex-wrap:wrap;gap:8px}
     .controls label{display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);padding:6px 8px;border-radius:8px}
-    .controls select,.controls input[type="date"],.controls input[type="number"]{background:#212121;color:var(--brand);border:1px solid #3a3a3a;border-radius:6px;padding:6px 8px}
+    .controls select,.controls input[type="date"]{background:#212121;color:var(--brand);border:1px solid #3a3a3a;border-radius:6px;padding:6px 8px}
     .muted{color:var(--muted);font-size:.9rem}
 
-    .section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
-    .section h2{margin:0 0 10px;color:var(--brand)}
-    .grid2{display:grid;grid-template-columns:repeat(2,minmax(320px,1fr));gap:12px}
-    .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px}
-    .card h3{margin:0 0 6px;color:var(--brand2);font-size:1.0rem}
-    .kpis{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
-    .kpi{background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:5px 8px;font-size:.9rem}
-
-    table{width:100%;border-collapse:collapse;font-size:.92rem}
-    th,td{border-bottom:1px solid #2a2a2a;padding:6px 6px;vertical-align:top}
-    thead th{background:#191919;text-align:left;position:sticky;top:0}
-    .right{text-align:right}
-    .mono{font-variant-numeric:tabular-nums}
-    .icons{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-    .icons img{width:22px;height:22px;border-radius:5px;border:1px solid #333;background:#111;object-fit:cover}
-    .wl{font-weight:700;padding:2px 8px;border-radius:999px;display:inline-block}
-    .wl.W{background:#193e2b;color:var(--good);border:1px solid #245b3e}
-    .wl.L{background:#401e1e;color:var(--bad);border:1px solid #6b2c2c}
-    .caption{margin:4px 0 8px}
-    .tight{line-height:1.25}
-
-    .delta-pos{color:var(--good);font-weight:700}
-    .delta-neg{color:var(--bad);font-weight:700}
-    .opp-logos{display:inline-flex;gap:4px;align-items:center;margin-left:6px;vertical-align:middle}
-    .opp-logos img{width:18px;height:18px;border-radius:4px;border:1px solid #333;background:#111;object-fit:cover}
-    .opp-logos .logo-wrap{position:relative;display:inline-block}
-    .opp-logos .cnt{position:absolute;right:-6px;bottom:-6px;background:#171717;border:1px solid #333;border-radius:6px;padding:0 3px;font-size:10px;line-height:1.2;color:#ccc;}
-
     details.accordion{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:14px;overflow:hidden;}
-    details.accordion > summary{list-style:none;cursor:pointer;padding:12px 14px;color:var(--brand);font-weight:800;background:linear-gradient(180deg,#1b1b1b 0%, #171717 100%);user-select:none;outline:none;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);}
+    details.accordion > summary{list-style:none;cursor:pointer;padding:12px 14px;color:var(--brand);font-weight:800;background:linear-gradient(180deg,#1b1b1b 0%, #171717 100%);user-select:none;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);}
     details.accordion > summary::-webkit-details-marker{display:none}
     details.accordion > summary::after{content:'▾';margin-left:auto;transition:transform .18s ease;opacity:.9;}
     details.accordion[open] > summary::after{ transform:rotate(-180deg); }
     details.accordion .accordion-body{ padding:12px; }
 
-    /* ========= Matches table: force Players to own the space ========= */
-    .mTable{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0}
-    .mTable th,.mTable td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .mTable td.last, .mTable th.last{white-space:normal;overflow:visible;text-overflow:unset}
-
-    /* ========= Player tiles: tighter + adaptive ========= */
-    .playersWrap{
-      display:grid;
-      grid-template-columns:repeat(2, minmax(0, 1fr)); /* default 2-up */
-      gap:6px;
-      width:100%;
-      min-width:0;
-    }
-    @media (min-width:1400px){
-      .playersWrap{ grid-template-columns:repeat(3, minmax(0, 1fr)); } /* allow 3-up on very wide screens */
-    }
-    @media (max-width:860px){
-      .playersWrap{ grid-template-columns:1fr; } /* phone: 1-up */
-    }
-
-    .pTile{
-      position:relative;
-      aspect-ratio:5/4;               /* flatter than 1:1 to save height */
-      border-radius:12px;
-      background:#141414;
-      border:1px solid #2a2a2a;
-      overflow:hidden;
-      box-shadow:0 0 0 1px #000 inset;
-    }
-    .pActFill{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:saturate(.95) brightness(.95)}
-    .pNameTag{
-      position:absolute;left:6px;right:6px;top:6px;
-      padding:2px 6px;font-weight:700;font-size:11px;line-height:1.1;
-      color:#f2f2f2;background:rgba(0,0,0,.55);border:1px solid #333;border-radius:7px;
-      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-    }
-    .pHeroTag{
-      position:absolute;left:6px;right:6px;top:24px;
-      padding:2px 6px;font-size:10px;line-height:1.1;color:#d8d8d8;
-      background:rgba(0,0,0,.42);border:1px solid #2e2e2e;border-radius:6px;
-      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-    }
-    .pPassiveBar{
-      position:absolute;left:6px;right:6px;bottom:6px;
-      display:flex;justify-content:center;gap:6px;
-      padding:2px 4px;background:rgba(0,0,0,.55);border:1px solid #333;border-radius:8px;
-    }
-    .pPassiveBar img{ width:14px;height:14px;object-fit:cover;border-radius:3px;border:1px solid #333;background:#0f0f0f }
-
-    /* Auto-compact when narrow: hide labels; shrink passives more in "micro" */
-    .playersWrap.mini .pNameTag,.playersWrap.mini .pHeroTag{display:none}
-    .playersWrap.mini .pPassiveBar img{ width:13px;height:13px }
-    .playersWrap.micro .pPassiveBar img{ width:12px;height:12px }
-    .playersWrap.micro .pTile{ border-radius:10px }
+    .grid2{display:grid;grid-template-columns:repeat(2,minmax(320px,1fr));gap:12px}
     @media (max-width: 860px){ .grid2{grid-template-columns:1fr} }
+    .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px}
+    .card h3{margin:0 0 6px;color:var(--brand2);font-size:1.0rem}
+
+    /* ===== Matches table layout ===== */
+    .mTable{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0}
+    .mTable th,.mTable td{border-bottom:1px solid #2a2a2a;padding:6px 6px;vertical-align:top;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .mTable thead th{background:#191919;text-align:left}
+    .mTable td.last, .mTable th.last{white-space:normal;overflow:visible;text-overflow:unset}
+    .mono{font-variant-numeric:tabular-nums}
+    .right{text-align:right}
+    .wl{font-weight:700;padding:2px 8px;border-radius:999px;display:inline-block}
+    .wl.W{background:#193e2b;color:var(--good);border:1px solid #245b3e}
+    .wl.L{background:#401e1e;color:var(--bad);border:1px solid #6b2c2c}
+    .icons{display:flex;gap:6px;align-items:center}
+    .icons img{width:22px;height:22px;border-radius:5px;border:1px solid #333;background:#111;object-fit:cover}
+
+    /* ===== Stacked player lines (Active + 3 Passive) ===== */
+    .pLines{display:grid;grid-auto-rows:minmax(28px,auto);gap:4px}
+    .pLine{
+      display:grid;
+      grid-template-columns: 34px 1fr auto;
+      align-items:center;
+      gap:8px;
+      background:#111;
+      border:1px solid #272727;
+      border-radius:8px;
+      padding:4px 6px;
+    }
+    .pl-hero{width:34px;height:34px;object-fit:cover;border-radius:6px;border:1px solid #333;background:#0f0f0f}
+    .pl-meta{min-width:0}
+    .pl-name{font-size:12px;font-weight:700;line-height:1.05}
+    .pl-skill{font-size:11px;color:#cfcfcf;line-height:1.05}
+    .pl-name,.pl-skill{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pl-pass{display:flex;gap:6px;align-items:center}
+    .pl-pass img{width:16px;height:16px;object-fit:cover;border-radius:3px;border:1px solid #333;background:#0f0f0f}
+
+    /* Compact when narrow: hide hero label; ultra-narrow: hide player name too & shrink icons */
+    .pLines.compact .pl-skill{display:none}
+    .pLines.ultra .pl-skill{display:none}
+    .pLines.ultra .pl-name{display:none}
+    .pLines.ultra .pl-hero{width:28px;height:28px}
+    .pLines.ultra .pl-pass img{width:14px;height:14px}
   </style>
 </head>
 <body>
@@ -131,8 +92,7 @@
 <div class="shell">
 
   <div class="bar">
-    <a class="btn" href="dashboard.html">← Back to Dashboard</a>
-    <div class="controls" style="margin-left:auto">
+    <div class="controls">
       <label>From <input type="date" id="fFrom"></label>
       <label>To <input type="date" id="fTo"></label>
       <label>Map
@@ -151,40 +111,25 @@
           <option value="L">Losses only</option>
         </select>
       </label>
+      <label>Team A <select id="cmpTeamA"></select></label>
+      <label>Team B <select id="cmpTeamB"></select></label>
+      <button class="btn" id="cmpSwap" title="Swap A/B">Swap</button>
       <button class="btn" id="applyBtn">Apply</button>
     </div>
+    <div class="muted" id="meta" style="margin-left:auto">—</div>
   </div>
 
   <details class="accordion" open>
-    <summary>Pick two teams</summary>
-    <div class="accordion-body">
-      <div class="controls">
-        <label>Team A <select id="cmpTeamA"></select></label>
-        <label>Team B <select id="cmpTeamB"></select></label>
-        <button class="btn" id="cmpSwap" title="Swap A/B">Swap</button>
-      </div>
-      <div class="caption muted" id="meta">—</div>
-    </div>
-  </details>
-
-  <div class="section">
-    <h2>Overview KPIs</h2>
-    <div class="grid2">
-      <div class="card" id="kpiA"><h3>A</h3>Loading…</div>
-      <div class="card" id="kpiB"><h3>B</h3>Loading…</div>
-    </div>
-  </div>
-
-  <!-- … other accordions unchanged … -->
-
-  <details class="accordion">
     <summary>Matches (Active + 3×Passive per player)</summary>
     <div class="accordion-body">
       <div class="grid2">
         <div class="card"><h3 id="labelMatchesA">Team A</h3><div id="matchesA">Loading…</div></div>
         <div class="card"><h3 id="labelMatchesB">Team B</h3><div id="matchesB">Loading…</div></div>
       </div>
-      <div class="caption muted tight">If space gets tight, labels auto-hide and icons shrink; the grid stacks 2×2 → 1×4 on phones (and 3-wide on very large screens).</div>
+      <div class="caption muted tight">
+        Each row shows 4 player lines. Left: active character portrait. Right: three passive icons.
+        Names auto-hide on smaller widths, but images always stay.
+      </div>
     </div>
   </details>
 
@@ -208,14 +153,12 @@ document.getElementById('logoutBtn').onclick = async () => {
   window.location.href = "index.html";
 };
 
-/* ========= Utilities ========= */
+/* ========= Utils ========= */
 const PLACEHOLDER = 'https://imgur.com/AdvPwAO.png';
 const el = (id) => document.getElementById(id);
-const fmtPct = (x) => isFinite(x) ? (x*100).toFixed(1)+'%' : '—';
-const pct = (num, den) => den ? fmtPct(num/den) : '—';
-function ymd(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
-function parseState(val){ if (!val) return {}; if (typeof val==='object') return val; try { return JSON.parse(val); } catch(e){ return {}; } }
-function safe(s){ return String(s??'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+const ymd = (d)=>{const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),da=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${da}`;}
+const parseState = (v)=>{ if(!v) return {}; if(typeof v==='object') return v; try{return JSON.parse(v)}catch{return {}} };
+const safe = s => String(s??'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
 /* ========= Filters init ========= */
 (function initFilters(){
@@ -265,6 +208,16 @@ async function populateTournamentDropdown(records){
   });
   dd.innerHTML = `<option value="__ALL__">All tournaments</option>` + [...tourns].sort().map(t=>`<option value="${t}">${t}</option>`).join('');
   if (FIRST_LOAD_TOURN && latest && (prior==='__ALL__' || !prior)){ dd.value = latest.name; FIRST_LOAD_TOURN=false; } else { dd.value = prior; }
+}
+
+function populateTeamDropdowns(records){
+  const teams = [...new Set(records.flatMap(r=>[r.team_left, r.team_right]).filter(Boolean))].sort();
+  const A = el('cmpTeamA'), B = el('cmpTeamB');
+  const prevA = A.value, prevB = B.value;
+  const opts = teams.map(t=>`<option value="${t}">${t}</option>`).join('');
+  A.innerHTML = opts; B.innerHTML = opts;
+  A.value = teams.includes(prevA) ? prevA : (teams[0] || '');
+  B.value = teams.includes(prevB) ? prevB : (teams[1] || teams[0] || '');
 }
 
 /* ========= Transform ========= */
@@ -322,33 +275,33 @@ function applyWL(rows){
   if (wl==='__ALL__') return rows;
   return rows.filter(r => r.result === wl);
 }
-
 function rowsForTeam(team){
   const rows = RAW_RECORDS.flatMap(explodeRecordToRows).filter(r=>r.team===team);
   return applyWL(rows);
 }
 
-/* ========= Matches UI ========= */
-function renderPlayerCard(active, trio){
-  const t = (trio||[]).slice(0,3);
-  const pName = safe(active.player||'');
-  const hName = safe(active.hero||'');
-  const actSrc = active.heroImg || PLACEHOLDER;
-  const icon = (ps)=>`<img src="${ps?.img||PLACEHOLDER}" title="${safe(ps?.name||'')}" alt="">`;
-  return `
-    <div class="pTile" title="${pName}${hName?(' — '+hName):''}">
-      <img class="pActFill" src="${actSrc}" alt="${hName}">
-      <div class="pNameTag">${pName}</div>
-      <div class="pHeroTag">${hName}</div>
-      <div class="pPassiveBar">
-        ${icon(t[0]||{})}${icon(t[1]||{})}${icon(t[2]||{})}
-      </div>
-    </div>`;
+/* ========= Stacked players renderer ========= */
+function renderPlayersLines(row){
+  const lines = row.actives.map((a,i)=>{
+    const t = (row.passives[i]||{}).trio || [];
+    const p0 = t[0] || {}, p1 = t[1] || {}, p2 = t[2] || {};
+    const pname = safe(a.player||'');
+    const hname = safe(a.hero||'');
+    const act   = a.heroImg || PLACEHOLDER;
+    const ico = (ps)=>`<img src="${ps.img||PLACEHOLDER}" alt="${safe(ps.name||'')}" title="${safe(ps.name||'')}">`;
+    return `
+      <div class="pLine" title="${pname}${hname?(' — '+hname):''}">
+        <img class="pl-hero" src="${act}" alt="${hname}">
+        <div class="pl-meta">
+          <div class="pl-name">${pname}</div>
+          <div class="pl-skill">${hname}</div>
+        </div>
+        <div class="pl-pass">${ico(p0)}${ico(p1)}${ico(p2)}</div>
+      </div>`;
+  }).join('');
+  return `<div class="pLines">${lines}</div>`;
 }
-function renderPlayersGrid(row){
-  const cards = row.actives.map((a, i)=> renderPlayerCard(a, (row.passives[i]||{}).trio||[])).join('');
-  return `<div class="playersWrap">${cards}</div>`;
-}
+
 function matchesTable(rows){
   if(!rows.length) return `<div class="muted">No matches for selection.</div>`;
   const sorted = [...rows].sort((a,b)=>{
@@ -358,20 +311,20 @@ function matchesTable(rows){
   return `
     <table class="mTable">
       <colgroup>
-        <col style="width:76px"><!-- Date -->
-        <col style="width:64px"><!-- Game -->
-        <col style="width:88px"><!-- Map -->
-        <col style="width:136px"><!-- Team -->
-        <col style="width:136px"><!-- Opponent -->
-        <col style="width:68px"><!-- Score -->
+        <col style="width:84px"><!-- Date -->
+        <col style="width:74px"><!-- Game -->
+        <col style="width:96px"><!-- Map -->
+        <col style="width:138px"><!-- Team -->
+        <col style="width:138px"><!-- Opponent -->
+        <col style="width:72px"><!-- Score -->
         <col style="width:70px"><!-- Result -->
-        <col style="width:132px"><!-- Ban -->
-        <col><!-- Players (fills remaining) -->
+        <col style="width:142px"><!-- Ban -->
+        <col><!-- Players -->
       </colgroup>
       <thead>
         <tr>
-          <th>Dat</th><th>Gam</th><th>Map</th><th>Team</th><th>Opp</th>
-          <th class="right">Sco</th><th class="right">Res</th><th>Ban</th><th class="last">Players</th>
+          <th>Date</th><th>Game</th><th>Map</th><th>Team</th><th>Opponent</th>
+          <th class="right">Score</th><th class="right">Result</th><th>Ban</th><th class="last">Players</th>
         </tr>
       </thead>
       <tbody>
@@ -383,133 +336,39 @@ function matchesTable(rows){
               <td class="mono">${String(r.match_date||'').slice(0,10)}</td>
               <td>${g}</td>
               <td>${r.map||'—'}</td>
-              <td>${r.team||'—'}<div class="muted tight">vs ${r.opponent||'—'}</div></td>
+              <td>${r.team||'—'}<div class="muted" style="line-height:1.1">vs ${r.opponent||'—'}</div></td>
               <td>${r.opponent||'—'}</td>
               <td class="right mono">${score}</td>
               <td class="right"><span class="wl ${r.result}">${r.result}</span></td>
               <td>
                 <div class="icons">
                   <img src="${r.banImg||PLACEHOLDER}" alt="${r.banName||''}" title="${r.banName||''}">
-                  <span class="muted tight">${r.banName||'—'}</span>
+                  <span class="muted" style="line-height:1.1">${r.banName||'—'}</span>
                 </div>
               </td>
-              <td class="last">${renderPlayersGrid(r)}</td>
+              <td class="last">${renderPlayersLines(r)}</td>
             </tr>`;
         }).join('')}
       </tbody>
     </table>`;
 }
 
-/* Adapt players grid density based on available width */
-function adaptPlayersWrap(){
-  document.querySelectorAll('.playersWrap').forEach(w=>{
-    const width = w.clientWidth || 0;
-    const colCount = getComputedStyle(w).gridTemplateColumns.split(' ').filter(Boolean).length || 1;
-    const approx = width / colCount;
-    w.classList.toggle('mini', approx < 130);   // hide labels
-    w.classList.toggle('micro', approx < 105);  // shrink icons further
+/* Adapt labels based on available width of the Players cell */
+function adaptPlayerLines(){
+  document.querySelectorAll('.pLines').forEach(c=>{
+    const w = c.clientWidth || 0;
+    c.classList.toggle('compact', w < 520);
+    c.classList.toggle('ultra',   w < 420);
   });
-}
-
-/* ========= KPIs card (kept) ========= */
-function buildTeamBucket(rows, teamName, kind){
-  const B = { name: teamName, matches:0, wins:0, skills:new Map() };
-  rows.forEach(r=>{
-    B.matches += 1; if (r.result==='W') B.wins += 1;
-    if (kind==='active'){
-      r.actives.forEach(a=>{
-        const nm = a.hero; if (!nm) return;
-        const S = B.skills.get(nm) || { occ:0, appear:0, appearWins:0 };
-        S.occ += 1; S.appear += 1; if (r.result==='W') S.appearWins += 1;
-        B.skills.set(nm, S);
-      });
-    } else if (kind==='passive'){
-      r.passives.forEach(p=>{
-        (p.trio||[]).forEach(x=>{
-          const nm = x?.name || ''; if (!nm) return;
-          const S = B.skills.get(nm) || { occ:0, appear:0, appearWins:0 };
-          S.occ += 1; S.appear += 1; if (r.result==='W') S.appearWins += 1;
-          B.skills.set(nm, S);
-        });
-      });
-    } else { // bans
-      const nm = r.banName; if (!nm) return;
-      const S = B.skills.get(nm) || { occ:0, appear:0, appearWins:0 };
-      S.occ += 1; S.appear += 1; if (r.result==='W') S.appearWins += 1;
-      B.skills.set(nm, S);
-    }
-  });
-  return B;
-}
-function topSkillsData(bucket, limit=10){
-  if (!bucket || !bucket.matches) return [];
-  return [...bucket.skills.entries()].map(([name, s])=>{
-    return {
-      skill: name,
-      count: s.occ,
-      appear: s.appear,
-      pick_rate: bucket.matches ? s.appear/bucket.matches : 0,
-      win_rate: s.appear ? s.appearWins/s.appear : 0
-    };
-  }).sort((a,b)=> b.pick_rate - a.pick_rate || a.skill.localeCompare(b.skill)).slice(0,limit);
-}
-function topSkillsTable(bucket, kind, limit=10){
-  const skills = topSkillsData(bucket, limit);
-  const rateLabel = (kind==='ban') ? 'Ban Rate' : 'Pick Rate';
-  if (!skills.length) return `<div class="muted">No ${kind} data.</div>`;
-  return `
-    <table>
-      <thead><tr><th>Skill</th><th class="right">Count</th><th class="right">${rateLabel}</th><th class="right">Win Rate</th></tr></thead>
-      <tbody>
-        ${skills.map(s=>`
-          <tr><td>${s.skill}</td><td class="right">${s.count}</td><td class="right">${fmtPct(s.pick_rate)}</td><td class="right">${fmtPct(s.win_rate)}</td></tr>
-        `).join('')}
-      </tbody>
-    </table>`;
-}
-function teamMapStatsData(rows){
-  const agg = new Map();
-  rows.forEach(r=>{
-    const m = r.map || '—';
-    if (!agg.has(m)) agg.set(m, { map:m, matches:0, wins:0 });
-    const A = agg.get(m); A.matches += 1; if (r.result==='W') A.wins += 1;
-  });
-  return [...agg.values()].map(x=>({ ...x, winpct: x.matches? x.wins/x.matches : 0 }))
-               .sort((a,b)=> b.matches - a.matches || b.winpct - a.winpct || a.map.localeCompare(b.map));
-}
-function teamMapStats(rows){
-  const list = teamMapStatsData(rows);
-  if (!list.length) return `<div class="muted">No team×map rows.</div>`;
-  return `
-    <table>
-      <thead><tr><th>Map</th><th class="right">Matches</th><th class="right">Wins</th><th class="right">Win %</th></tr></thead>
-      <tbody>
-        ${list.map(r=>`<tr><td>${r.map}</td><td class="right">${r.matches}</td><td class="right">${r.wins}</td><td class="right">${fmtPct(r.winpct)}</td></tr>`).join('')}
-      </tbody>
-    </table>`;
 }
 
 /* ========= Render ========= */
-function kpiCard(bucket, kindActive, kindPassive, kindBan){
-  if (!bucket || !bucket.matches) return `<div class="muted">No data for selection.</div>`;
-  const subjA = [...kindActive.skills.values()].reduce((a,s)=>(a.appear+=s.appear,a),{appear:0});
-  const subjP = [...kindPassive.skills.values()].reduce((a,s)=>(a.appear+=s.appear,a),{appear:0});
-  const subjB = [...kindBan.skills.values()].reduce((a,s)=>(a.appear+=s.appear,a),{appear:0});
-  return `
-    <div class="kpis">
-      <div class="kpi">Matches <strong>${bucket.matches}</strong></div>
-      <div class="kpi">Wins <strong>${bucket.wins}</strong> <span class="muted">(${pct(bucket.wins,bucket.matches)})</span></div>
-      <div class="kpi">Active picks <strong>${subjA.appear}</strong> <span class="muted">(${pct(subjA.appear,bucket.matches)})</span></div>
-      <div class="kpi">Passive picks <strong>${subjP.appear}</strong> <span class="muted">(${pct(subjP.appear,bucket.matches)})</span></div>
-      <div class="kpi">Bans <strong>${subjB.appear}</strong> <span class="muted">(${pct(subjB.appear,bucket.matches)})</span></div>
-    </div>`;
-}
-
 function renderAll(){
   const a = el('cmpTeamA').value, b = el('cmpTeamB').value;
   if (!a || !b || a===b){
     el('meta').textContent = 'Pick two different teams.';
-    ['kpiA','kpiB','matchesA','matchesB'].forEach(id=>{ const t=el(id); if(t) t.innerHTML='<div class="muted">—</div>'; });
+    el('matchesA').innerHTML = '<div class="muted">—</div>';
+    el('matchesB').innerHTML = '<div class="muted">—</div>';
     return;
   }
 
@@ -520,36 +379,15 @@ function renderAll(){
 
   const rowsA = rowsForTeam(a), rowsB = rowsForTeam(b);
 
-  const bA = buildTeamBucket(rowsA, a, 'active');
-  const bP_A = buildTeamBucket(rowsA, a, 'passive');
-  const bBan_A = buildTeamBucket(rowsA, a, 'ban');
-  const bB = buildTeamBucket(rowsB, b, 'active');
-  const bP_B = buildTeamBucket(rowsB, b, 'passive');
-  const bBan_B = buildTeamBucket(rowsB, b, 'ban');
-
-  el('kpiA').innerHTML = `<h3>${a}</h3>${kpiCard(bA, bA, bP_A, bBan_A)}`;
-  el('kpiB').innerHTML = `<h3>${b}</h3>${kpiCard(bB, bB, bP_B, bBan_B)}`;
-
   el('labelMatchesA').textContent = a;
   el('labelMatchesB').textContent = b;
   el('matchesA').innerHTML = matchesTable(rowsA);
   el('matchesB').innerHTML = matchesTable(rowsB);
 
-  // After the DOM is built, adapt density based on actual cell width
-  requestAnimationFrame(adaptPlayersWrap);
+  requestAnimationFrame(adaptPlayerLines);
 }
 
-/* ========= Populate + refresh ========= */
-function populateTeamDropdowns(records){
-  const teams = [...new Set(records.flatMap(r=>[r.team_left, r.team_right]).filter(Boolean))].sort();
-  const A = el('cmpTeamA'), B = el('cmpTeamB');
-  const prevA = A.value, prevB = B.value;
-  const opts = teams.map(t=>`<option value="${t}">${t}</option>`).join('');
-  A.innerHTML = opts; B.innerHTML = opts;
-  A.value = teams.includes(prevA) ? prevA : (teams[0] || '');
-  B.value = teams.includes(prevB) ? prevB : (teams[1] || teams[0] || '');
-}
-
+/* ========= Refresh ========= */
 async function refresh(){
   RAW_RECORDS = await fetchRecords();
   await populateTournamentDropdown(RAW_RECORDS);
@@ -560,10 +398,8 @@ async function refresh(){
 /* ========= Events ========= */
 el('applyBtn').onclick = refresh;
 ['cmpTeamA','cmpTeamB'].forEach(id=> el(id).addEventListener('change', renderAll));
-el('cmpSwap').addEventListener('click', ()=>{
-  const A = el('cmpTeamA'), B = el('cmpTeamB'); const t = A.value; A.value = B.value; B.value = t; renderAll();
-});
-window.addEventListener('resize', adaptPlayersWrap);
+el('cmpSwap').addEventListener('click', ()=>{ const A=el('cmpTeamA'),B=el('cmpTeamB'); const t=A.value; A.value=B.value; B.value=t; renderAll(); });
+window.addEventListener('resize', adaptPlayerLines);
 
 /* ========= First load ========= */
 refresh();
