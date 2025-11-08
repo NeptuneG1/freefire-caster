@@ -214,22 +214,22 @@
     </details>
 
     <!-- NEW: Eliminations — Summary (filters ignored) as accordion -->
-<details class="accordion" id="elimSummarySection">
-  <summary>Eliminations — Summary (All Teams)</summary>
-  <div class="accordion-body">
-    <div class="grid2">
-      <div class="card">
-        <h3>Who Eliminated Each Team?</h3>
-        <div id="tblEliminatedBy">Loading…</div>
+    <details class="accordion" id="elimSummarySection">
+      <summary>Eliminations — Summary (All Teams)</summary>
+      <div class="accordion-body">
+        <div class="grid2">
+          <div class="card">
+            <h3>Who Eliminated Each Team?</h3>
+            <div id="tblEliminatedBy">Loading…</div>
+          </div>
+          <div class="card">
+            <h3>Who Did Each Team Eliminate?</h3>
+            <div id="tblGiven">Loading…</div>
+          </div>
+        </div>
       </div>
-      <div class="card">
-        <h3>Who Did Each Team Eliminate?</h3>
-        <div id="tblGiven">Loading…</div>
-      </div>
-    </div>
-  </div>
-</details>
-
+    </details>
+  </div><!-- ✅ CLOSE PAGE 1 -->
 
   <!-- PAGE 2 -->
   <div class="page" id="page2" data-page="2">
@@ -328,40 +328,39 @@
       <div class="accordion-body"><div class="card" style="margin:0"><div id="teamRosterBody" class="muted">—</div></div></div>
     </details>
 
-   <!-- NEW: Eliminations — Team Focus + Breakdowns as one accordion -->
-<details class="accordion" id="elimTeamAccordion">
-  <summary>Eliminations — Team Focus & Breakdowns</summary>
-  <div class="accordion-body">
-    <div class="grid3">
-      <div class="card">
-        <h3>Top Eliminators of <span id="elimTeamCodeA">—</span></h3>
-        <div id="elimTopPredators" class="kpis">—</div>
-      </div>
-      <div class="card">
-        <h3>Top Victims of <span id="elimTeamCodeB">—</span></h3>
-        <div id="elimTopVictims" class="kpis">—</div>
-      </div>
-      <div class="card">
-        <h3>Signals</h3>
-        <div id="elimSignals" class="kpis">—</div>
-      </div>
-    </div>
+    <!-- NEW: Eliminations — Team Focus + Breakdowns as one accordion -->
+    <details class="accordion" id="elimTeamAccordion">
+      <summary>Eliminations — Team Focus & Breakdowns</summary>
+      <div class="accordion-body">
+        <div class="grid3">
+          <div class="card">
+            <h3>Top Eliminators of <span id="elimTeamCodeA">—</span></h3>
+            <div id="elimTopPredators" class="kpis">—</div>
+          </div>
+          <div class="card">
+            <h3>Top Victims of <span id="elimTeamCodeB">—</span></h3>
+            <div id="elimTopVictims" class="kpis">—</div>
+          </div>
+          <div class="card">
+            <h3>Signals</h3>
+            <div id="elimSignals" class="kpis">—</div>
+          </div>
+        </div>
 
-    <div class="grid2" style="margin-top:12px">
-      <div class="card">
-        <h3>Eliminated By — By Day</h3>
-        <div id="elimByDay">—</div>
+        <div class="grid2" style="margin-top:12px">
+          <div class="card">
+            <h3>Eliminated By — By Day</h3>
+            <div id="elimByDay">—</div>
+          </div>
+          <div class="card">
+            <h3>Eliminated By — By Map</h3>
+            <div id="elimByMap">—</div>
+          </div>
+        </div>
       </div>
-      <div class="card">
-        <h3>Eliminated By — By Map</h3>
-        <div id="elimByMap">—</div>
-      </div>
-    </div>
-  </div>
-</details>
-</div>
-  </div>
-</div>
+    </details>
+  </div><!-- ✅ CLOSE PAGE 2 -->
+</div><!-- ✅ CLOSE SHELL -->
 
 <script>
 /* ============ Supabase init ============ */
@@ -762,7 +761,8 @@ function normLopsRow(r){
     shots: toI(get('SHOOTS')), hits: toI(get('HITS')),
     headshots: headA || headB || 0, damage: toI(get('DAMAGE')),
     knockdowns: toI(get('Knock Down')), vehicle: toI(get('Vehicle Kill')), grenade: nadeKills,
-    gloo_used: toI(get('IcewallUse')), gloo_break: glooDestroyed, medkits: toI(get('MedkitUse')),
+    gloo_used: toI(get('IcewallUse')), gloo_break: toI(get('IcewallDestroyedTimes')) + toI(get('SkylerIceWallDestroy')),
+    medkits: toI(get('MedkitUse')),
     moving_distance: toI(get('MovingDistance')), vehicle_move_distance: toI(get('Vehicle Move Distance')),
     revives: revivesGiven, revived: toI(get('RevivedTimes')), survival_time: toI(get('Survival Time')),
     active: act1 || '', pet: norm(get('Pet Skill Name',['Pet','Pet Name'])) || '',
@@ -1243,64 +1243,6 @@ async function selectTeam(teamObj){
   renderElimTeamFocus();
 }
 
-/* ---------- Init & wiring ---------- */
-function populateMapFilter(){ el('mapFilter').innerHTML = `<option value="__all__">All maps</option>` + uniqueMaps(baseRowsByTournament(ALL)).map(m=>`<option>${m}</option>`).join(''); }
-function wireControls(){
-  el('gTournament').addEventListener('change', ()=>{
-    updateFilterHint();
-    populateMapFilter();
-    renderOverall();
-    renderPerMapAllTeams();
-    if(CURRENT_TEAM){
-      TEAM_ROWS = baseRowsByTournament(ALL).filter(r => (norm(r._tag).toUpperCase()||'') === CURRENT_TEAM.name.toUpperCase());
-      kpiAndByMap(); renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDay();
-      fetchPlayersBy(CURRENT_TEAM.name).then(r=>{ setRoleMap(r); renderRoster(r); renderCharUsage(); }).catch(()=>{ renderCharUsage(); });
-      fetchTeamInfoBy(CURRENT_TEAM.name).then(renderTeamInfo).catch(()=>{});
-      populateCharUsageMapFilter();
-    }
-    renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
-    // Eliminations ignore tournament filters, so nothing to re-render here for global tables
-  });
-
-  el('gTournReset').addEventListener('click', ()=>{
-    const items=tournamentsWithMaxId(ALL);
-    el('gTournament').value = items.length ? items[0].name : '__all__';
-    el('gTournament').dispatchEvent(new Event('change'));
-  });
-
-  el('overallSortKey').addEventListener('change', renderOverall);
-  el('overallSortDir').addEventListener('click', ()=>{
-    const b=el('overallSortDir'); const cur=b.dataset.dir==='desc'?'asc':'desc';
-    b.dataset.dir=cur; b.textContent=cur==='desc'?'Desc':'Asc'; renderOverall();
-  });
-  el('overallReset').addEventListener('click', ()=>{
-    el('overallSortKey').value='total';
-    el('overallSortDir').dataset.dir='desc'; el('overallSortDir').textContent='Desc';
-    renderOverall();
-  });
-
-  el('mapFilter').addEventListener('change', renderPerMapAllTeams);
-  el('perMapSortKey').addEventListener('change', renderPerMapAllTeams);
-  el('perMapSortDir').addEventListener('click', ()=>{
-    const b=el('perMapSortDir'); const cur=b.dataset.dir==='desc'?'asc':'desc';
-    b.dataset.dir=cur; b.textContent=cur==='desc'?'Desc':'Asc'; renderPerMapAllTeams();
-  });
-  el('perMapReset').addEventListener('click', ()=>{
-    el('mapFilter').value='__all__'; el('perMapSortKey').value='total';
-    el('perMapSortDir').dataset.dir='desc'; el('perMapSortDir').textContent='Desc';
-    renderPerMapAllTeams();
-  });
-
-  el('teamSearch').addEventListener('input', e=> renderTeamGrid(e.target.value||''));
-  el('teamActiveTop').addEventListener('change', renderTeamActiveUsage);
-  el('teamPetTop').addEventListener('change', renderTeamPetUsage);
-  el('lopsActiveTop').addEventListener('change', renderLopsActive);
-  el('lopsPetTop').addEventListener('change', renderLopsPet);
-  el('lopsTopKillersTop').addEventListener('change', renderLopsTopKillers);
-  el('charUsageTop').addEventListener('change', renderCharUsage);
-  el('charUsageMapFilter').addEventListener('change', renderCharUsage);
-}
-
 /* ---- RENDER: Per-Player Character Usage (Active + Passive) ---- */
 function renderCharUsage(){
   const box = el('tblCharUsage');
@@ -1386,7 +1328,64 @@ function renderTeamInfo(info){
   box.innerHTML = `<table style="width:100%;border-collapse:collapse">${rows}</table>`;
 }
 
-  
+/* ---------- Init & wiring ---------- */
+function populateMapFilter(){ el('mapFilter').innerHTML = `<option value="__all__">All maps</option>` + uniqueMaps(baseRowsByTournament(ALL)).map(m=>`<option>${m}</option>`).join(''); }
+function wireControls(){
+  el('gTournament').addEventListener('change', ()=>{
+    updateFilterHint();
+    populateMapFilter();
+    renderOverall();
+    renderPerMapAllTeams();
+    if(CURRENT_TEAM){
+      TEAM_ROWS = baseRowsByTournament(ALL).filter(r => (norm(r._tag).toUpperCase()||'') === CURRENT_TEAM.name.toUpperCase());
+      kpiAndByMap(); renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDay();
+      fetchPlayersBy(CURRENT_TEAM.name).then(r=>{ setRoleMap(r); renderRoster(r); renderCharUsage(); }).catch(()=>{ renderCharUsage(); });
+      fetchTeamInfoBy(CURRENT_TEAM.name).then(renderTeamInfo).catch(()=>{});
+      populateCharUsageMapFilter();
+    }
+    renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
+    // Eliminations ignore tournament filters
+  });
+
+  el('gTournReset').addEventListener('click', ()=>{
+    const items=tournamentsWithMaxId(ALL);
+    el('gTournament').value = items.length ? items[0].name : '__all__';
+    el('gTournament').dispatchEvent(new Event('change'));
+  });
+
+  el('overallSortKey').addEventListener('change', renderOverall);
+  el('overallSortDir').addEventListener('click', ()=>{
+    const b=el('overallSortDir'); const cur=b.dataset.dir==='desc'?'asc':'desc';
+    b.dataset.dir=cur; b.textContent=cur==='desc'?'Desc':'Asc'; renderOverall();
+  });
+  el('overallReset').addEventListener('click', ()=>{
+    el('overallSortKey').value='total';
+    el('overallSortDir').dataset.dir='desc'; el('overallSortDir').textContent='Desc';
+    renderOverall();
+  });
+
+  el('mapFilter').addEventListener('change', renderPerMapAllTeams);
+  el('perMapSortKey').addEventListener('change', renderPerMapAllTeams);
+  el('perMapSortDir').addEventListener('click', ()=>{
+    const b=el('perMapSortDir'); const cur=b.dataset.dir==='desc'?'asc':'desc';
+    b.dataset.dir=cur; b.textContent=cur==='desc'?'Desc':'Asc'; renderPerMapAllTeams();
+  });
+  el('perMapReset').addEventListener('click', ()=>{
+    el('mapFilter').value='__all__'; el('perMapSortKey').value='total';
+    el('perMapSortDir').dataset.dir='desc'; el('perMapSortDir').textContent='Desc';
+    renderPerMapAllTeams();
+  });
+
+  el('teamSearch').addEventListener('input', e=> renderTeamGrid(e.target.value||''));
+  el('teamActiveTop').addEventListener('change', renderTeamActiveUsage);
+  el('teamPetTop').addEventListener('change', renderTeamPetUsage);
+  el('lopsActiveTop').addEventListener('change', renderLopsActive);
+  el('lopsPetTop').addEventListener('change', renderLopsPet);
+  el('lopsTopKillersTop').addEventListener('change', renderLopsTopKillers);
+  el('charUsageTop').addEventListener('change', renderCharUsage);
+  el('charUsageMapFilter').addEventListener('change', renderCharUsage);
+}
+
 async function initial(){
   try{
     el('scopeChip').textContent='Scope: —';
