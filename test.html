@@ -27,7 +27,7 @@
     .controls select,.controls input[type="date"],.controls input[type="number"]{background:#212121;color:var(--brand);border:1px solid #3a3a3a;border-radius:6px;padding:6px 8px}
     .muted{color:var(--muted);font-size:.9rem}
 
-    /* Regular section (for Overview KPIs only) */
+    /* Regular section (kept for Overview KPIs only) */
     .section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
     .section h2{margin:0 0 10px;color:var(--brand)}
 
@@ -63,10 +63,6 @@
       border-radius:6px;padding:0 3px;font-size:10px;line-height:1.2;color:#ccc;
     }
 
-    /* AI Prompt box */
-    .ai-actions{display:flex;gap:8px;align-items:center;margin-bottom:8px}
-    .ai-text{width:100%;min-height:220px;background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:10px;font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;font-size:.85rem;white-space:pre-wrap}
-
     /* Accordions */
     details.accordion{
       background:var(--panel);
@@ -97,27 +93,66 @@
     details.accordion[open] > summary::after{ transform:rotate(-180deg); }
     details.accordion .accordion-body{ padding:12px; }
 
-    /* MATCH BLOCKS (Players list inside table cell) */
+    /* ========= NEW: Matches table layout + compact square player tiles ========= */
+    .mTable{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;font-size:.92rem}
+    .mTable thead th{background:#191919}
+    .mTable td,.mTable th{border-bottom:1px solid #2a2a2a;padding:8px 6px;vertical-align:top}
+    .mTable .playersCol{width:320px} /* room for 4 squares (64px each) */
+    .banCell .icons img{width:22px;height:22px;border-radius:5px}
+
+    /* Compact SQUARE tiles */
     .playersWrap{
       display:grid;
-      grid-template-columns: repeat(2, minmax(220px, 1fr));
-      grid-auto-rows: auto;
-      gap:10px;
-      min-width:420px;
+      grid-template-columns:repeat(4, minmax(64px, 1fr)); /* 4 per row */
+      gap:8px;
+      width:100%;
+      min-width:0;
     }
-    .pCard{display:flex; align-items:center; gap:10px;background:#141414; border:1px solid #2a2a2a; border-radius:10px; padding:6px 8px}
-    .pAct{width:44px; height:44px; object-fit:cover; border-radius:8px; border:1px solid #333; background:#0f0f0f; flex:0 0 44px}
-    .pInfo{display:flex; flex-direction:column; gap:2px; min-width:0; line-height:1.2}
-    .pName{font-weight:700; font-size:.92rem}
-    .pHero{font-size:.86rem; color:#d8d8d8}
-    .pPassCol{display:flex; flex-direction:column; gap:3px; margin-top:4px}
-    .pPassRow{display:flex; align-items:center; gap:6px}
-    .pPassRow img{width:14px; height:14px; object-fit:cover; border-radius:3px; border:1px solid #333; background:#0f0f0f}
-    .pPassRow span{font-size:.76rem; color:#bbb; max-width:160px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-
+    .pTile{
+      position:relative;
+      aspect-ratio:1/1;
+      border-radius:10px;
+      background:#141414;
+      border:1px solid #2a2a2a;
+      overflow:hidden;
+    }
+    .pActFill{
+      position:absolute; inset:0;
+      width:100%; height:100%;
+      object-fit:cover; background:#0f0f0f;
+    }
+    .pNameTag{
+      position:absolute; left:6px; right:6px; top:6px;
+      padding:3px 6px;
+      font-weight:700; font-size:12px; line-height:1.1;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      color:#f2f2f2;
+      background:rgba(0,0,0,.55);
+      border:1px solid #333; border-radius:7px;
+    }
+    .pHeroTag{
+      position:absolute; left:6px; right:6px; top:26px;
+      padding:2px 6px;
+      font-size:11px; line-height:1.1; color:#d8d8d8;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      background:rgba(0,0,0,.45);
+      border:1px solid #2e2e2e; border-radius:6px;
+    }
+    .pPassiveBar{
+      position:absolute; left:6px; right:6px; bottom:6px;
+      display:flex; justify-content:center; gap:6px;
+      padding:3px 5px;
+      background:rgba(0,0,0,.55);
+      border:1px solid #333; border-radius:8px;
+    }
+    .pPassiveBar img{
+      width:16px; height:16px; object-fit:cover;
+      border-radius:3px; border:1px solid #333; background:#0f0f0f;
+    }
     @media (max-width: 860px){
       .grid2{grid-template-columns:1fr}
-      .playersWrap{ grid-template-columns:1fr; min-width: auto; }
+      .mTable .playersCol{width:100%}
+      .playersWrap{grid-template-columns:repeat(2, minmax(64px, 1fr))}
     }
   </style>
 </head>
@@ -157,7 +192,7 @@
     </div>
   </div>
 
-  <!-- PICK TEAMS -->
+  <!-- PICK TEAMS (accordion) -->
   <details class="accordion" open>
     <summary>Pick two teams</summary>
     <div class="accordion-body">
@@ -170,7 +205,7 @@
     </div>
   </details>
 
-  <!-- OVERVIEW -->
+  <!-- OVERVIEW (kept as section) -->
   <div class="section">
     <h2>Overview KPIs</h2>
     <div class="grid2">
@@ -179,7 +214,7 @@
     </div>
   </div>
 
-  <!-- SKILLS -->
+  <!-- SKILLS (accordion) -->
   <details class="accordion">
     <summary>Skills (Top 10 by Rate)</summary>
     <div class="accordion-body">
@@ -194,7 +229,7 @@
     </div>
   </details>
 
-  <!-- TEAM × MAP -->
+  <!-- TEAM × MAP (accordion) -->
   <details class="accordion">
     <summary>Team × Map Win Rate</summary>
     <div class="accordion-body">
@@ -205,7 +240,7 @@
     </div>
   </details>
 
-  <!-- PER-SKILL — ACTIVE -->
+  <!-- PER-SKILL — ACTIVE (accordion) -->
   <details class="accordion">
     <summary>Per-Skill — Active</summary>
     <div class="accordion-body">
@@ -216,7 +251,7 @@
     </div>
   </details>
 
-  <!-- ACTIVE SKILL IMPACT -->
+  <!-- ACTIVE SKILL IMPACT (accordion) -->
   <details class="accordion">
     <summary>Active Skill Impact (Win/Loss)</summary>
     <div class="accordion-body">
@@ -230,7 +265,7 @@
     </div>
   </details>
 
-  <!-- PER-SKILL — PASSIVE -->
+  <!-- PER-SKILL — PASSIVE (accordion) -->
   <details class="accordion">
     <summary>Per-Skill — Passive</summary>
     <div class="accordion-body">
@@ -241,7 +276,7 @@
     </div>
   </details>
 
-  <!-- COMBOS & PAIRS -->
+  <!-- COMBOS & PAIRS (accordion) -->
   <details class="accordion">
     <summary>Combos & Pairs (Top 5)</summary>
     <div class="accordion-body">
@@ -254,7 +289,7 @@
     </div>
   </details>
 
-  <!-- PASSIVE TRIOS -->
+  <!-- PASSIVE TRIOS (accordion) -->
   <details class="accordion">
     <summary>Passive Trios (Top 5 overall)</summary>
     <div class="accordion-body">
@@ -265,7 +300,7 @@
     </div>
   </details>
 
-  <!-- BAN IMPACT -->
+  <!-- BAN IMPACT (accordion) -->
   <details class="accordion">
     <summary>Ban Impact (Top 10 by Δ Win %)</summary>
     <div class="accordion-body">
@@ -277,18 +312,7 @@
     </div>
   </details>
 
-  <!-- MATCHES BLOCKS (NEW) -->
-  <details class="accordion" open>
-    <summary>Matches (Active + 3×Passive per player)</summary>
-    <div class="accordion-body">
-      <div class="grid2">
-        <div class="card"><h3 id="labelMatchesA">Team A</h3><div id="matchesA">Loading…</div></div>
-        <div class="card"><h3 id="labelMatchesB">Team B</h3><div id="matchesB">Loading…</div></div>
-      </div>
-    </div>
-  </details>
-
-  <!-- OPPONENT SERIES -->
+  <!-- OPPONENT SERIES (accordion) -->
   <details class="accordion">
     <summary>Performance by Opponent</summary>
     <div class="accordion-body">
@@ -299,7 +323,19 @@
     </div>
   </details>
 
-  <!-- AI ANALYSIS PROMPT -->
+  <!-- ========= NEW: MATCHES with compact square tiles ========= -->
+  <details class="accordion">
+    <summary>Matches (Active + 3×Passive per player)</summary>
+    <div class="accordion-body">
+      <div class="grid2">
+        <div class="card"><h3 id="labelMatchesA">Team A</h3><div id="matchesA">Loading…</div></div>
+        <div class="card"><h3 id="labelMatchesB">Team B</h3><div id="matchesB">Loading…</div></div>
+      </div>
+      <div class="caption muted tight">Players column uses compact square tiles (name, active hero, and 3 passive icons).</div>
+    </div>
+  </details>
+
+  <!-- AI ANALYSIS PROMPT (accordion) -->
   <details class="accordion">
     <summary>AI Analysis Prompt</summary>
     <div class="accordion-body">
@@ -339,8 +375,7 @@ const pct = (num, den) => den ? fmtPct(num/den) : '—';
 const uniq = (arr) => [...new Set(arr)];
 function ymd(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
 function parseState(val){ if (!val) return {}; if (typeof val==='object') return val; try { return JSON.parse(val); } catch(e){ return {}; } }
-function safe(str){ return (str??'').toString().trim() }
-function dateShort(s){ try{ const d=new Date(s); return d.toISOString().slice(0,10); }catch{ return s||'—'; } }
+function safe(s){ return String(s??'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
 
 /* ========= Filters init ========= */
 function initFilters(){
@@ -355,6 +390,7 @@ initFilters();
 let RAW_RECORDS = [];
 let FIRST_LOAD_TOURN = true;
 let TEAM_LOGO = {}; // name -> url
+let LATEST_EXPORT = null;
 
 /* ========= Fetch ========= */
 async function fetchRecords(){
@@ -474,16 +510,10 @@ function applyWL(rows){
 
 function rowsForTeam(team){
   const rows = RAW_RECORDS.flatMap(explodeRecordToRows).filter(r=>r.team===team);
-  // Sort newest first (date desc, game desc, record desc)
-  return applyWL(rows).sort((a,b)=>{
-    const ad = new Date(a.match_date), bd = new Date(b.match_date);
-    if (bd - ad) return bd - ad;
-    if ((b.game_number||0) - (a.game_number||0)) return (b.game_number||0) - (a.game_number||0);
-    return (b.rec_id||0) - (a.rec_id||0);
-  });
+  return applyWL(rows);
 }
 
-/* ========= Aggregations / helpers (existing) ========= */
+/* ========= Aggregations / Data helpers ========= */
 function buildTeamBucket(rows, teamName, kind){
   const B = { name: teamName, matches:0, wins:0, skills:new Map() };
   rows.forEach(r=>{
@@ -632,7 +662,7 @@ function perSkillPassiveCompressed(rows, limit=12){
   </table>`;
 }
 
-/* Active Skill Impact (Win/Loss vs baseline) */
+/* Active Skill Impact (Win/Loss vs baseline) + loss logos */
 function activeSkillImpactData(rows, limit=12){
   if (!rows.length) return [];
   const matches = rows.length;
@@ -711,7 +741,7 @@ function activeSkillImpactTable(rows, limit=12){
   `;
 }
 
-/* Combos, Pairs, Trios (existing) */
+/* Combos, Pairs, Trios */
 function buildCombos(rows){
   const combos = new Map();
   rows.forEach(r=>{
@@ -740,6 +770,7 @@ function buildPairs(rows){
   });
   return [...pairs.values()].map(p=>({ ...p, winpct: p.picks ? p.wins / p.picks : 0 }));
 }
+
 function tableCombos(list, title, limit=5){
   const rows = [...list].sort((a,b)=> b.picks - a.picks || b.winpct - a.winpct || a.heroes.join(',').localeCompare(b.heroes.join(','))).slice(0,limit);
   if (!rows.length) return `<div class="muted">No ${title}.</div>`;
@@ -751,6 +782,7 @@ function tableCombos(list, title, limit=5){
       </tbody>
     </table>`;
 }
+
 function buildTrios(rows){
   const tri = new Map();
   rows.forEach(r=>{
@@ -776,7 +808,7 @@ function tableTrios(list, limit=5){
     </table>`;
 }
 
-/* Ban Impact helpers (existing) */
+/* Ban Impact (ignore WL for baseline) */
 function rowsForTeamIgnoringWL(team){
   const mapSel = el('fMap').value;
   const tournSel = el('fTourn').value || '__ALL__';
@@ -838,7 +870,7 @@ function banImpactTable(rows, limit=10){
     </table>`;
 }
 
-/* ========= Opponent Series ========= */
+/* ========= Opponent Series (per map) ========= */
 function buildOpponentSeriesRows(rows){
   if(!rows.length) return [];
   const keyOf = (r)=>{
@@ -935,73 +967,6 @@ function kpiCard(bucket, kindActive, kindPassive, kindBan){
     </div>`;
 }
 
-/* ========= MATCHES BLOCKS (new) ========= */
-function renderPlayerCard(active, trio){
-  const t = trio || [];
-  const row = (ps)=> `<div class="pPassRow"><img src="${ps?.img||PLACEHOLDER}" alt="${ps?.name||''}" loading="lazy"><span>${safe(ps?.name||'')}</span></div>`;
-  return `
-    <div class="pCard">
-      <img class="pAct" src="${active.heroImg||PLACEHOLDER}" alt="${active.hero||''}" loading="lazy">
-      <div class="pInfo">
-        <div class="pName">${safe(active.player||'')}</div>
-        <div class="pHero">${safe(active.hero||'')}</div>
-        <div class="pPassCol">
-          ${row(t[0]||{})}
-          ${row(t[1]||{})}
-          ${row(t[2]||{})}
-        </div>
-      </div>
-    </div>`;
-}
-function renderPlayersGrid(row){
-  const cards = row.actives.map((a, i)=> renderPlayerCard(a, (row.passives[i]||{}).trio||[])).join('');
-  return `<div class="playersWrap">${cards}</div>`;
-}
-function scoreText(row){ return `${row.team_score ?? 0} - ${row.opp_score ?? 0}`; }
-function matchesTable(rows, limit=30){
-  const list = (rows||[]).slice(0, limit);
-  if (!list.length) return `<div class="muted">No matches for selection.</div>`;
-  return `
-    <table>
-      <thead>
-        <tr>
-          <th style="min-width:92px;">Date</th>
-          <th>Game</th>
-          <th>Map</th>
-          <th>Team</th>
-          <th>Opponent</th>
-          <th class="right">Score</th>
-          <th class="right">Result</th>
-          <th>Ban</th>
-          <th>Players (Active + 3×Passive)</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${list.map(r=>`
-          <tr>
-            <td class="mono">${dateShort(r.match_date)}</td>
-            <td>Game ${r.game_number ?? 0}</td>
-            <td>${safe(r.map||'—')}</td>
-            <td>
-              ${safe(r.team||'')}
-              <div class="muted tight" style="font-size:.8rem">vs ${safe(r.opponent||'')}</div>
-            </td>
-            <td>${safe(r.opponent||'')}</td>
-            <td class="right mono">${scoreText(r)}</td>
-            <td class="right"><span class="wl ${r.result}">${r.result}</span></td>
-            <td>
-              <div class="icons">
-                <img src="${r.banImg||PLACEHOLDER}" alt="${r.banName||''}" title="${r.banName||''}">
-                <span class="muted tight">${r.banName||'—'}</span>
-              </div>
-            </td>
-            <td>${renderPlayersGrid(r)}</td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>`;
-}
-
 /* ========= AI Prompt Build + Copy ========= */
 function stripLinksDeep(x){
   if (Array.isArray(x)) return x.map(stripLinksDeep);
@@ -1057,6 +1022,72 @@ async function copyTextToClipboard(text){
   try{ ok = document.execCommand('copy'); }catch{}
   ta.remove();
   return ok;
+}
+
+/* ========= MATCHES — compact tiles ========= */
+function renderPlayerCard(active, trio){
+  const t = (trio||[]).slice(0,3);
+  const pName = safe(active.player||'');
+  const hName = safe(active.hero||'');
+  const actSrc = active.heroImg || PLACEHOLDER;
+
+  const icon = (ps)=>`<img src="${ps?.img||PLACEHOLDER}" title="${safe(ps?.name||'')}" alt="">`;
+  return `
+    <div class="pTile" title="${pName}${hName?(' — '+hName):''}">
+      <img class="pActFill" src="${actSrc}" alt="${hName}">
+      <div class="pNameTag">${pName}</div>
+      <div class="pHeroTag">${hName}</div>
+      <div class="pPassiveBar">
+        ${icon(t[0]||{})}${icon(t[1]||{})}${icon(t[2]||{})}
+      </div>
+    </div>`;
+}
+function renderPlayersGrid(row){
+  const cards = row.actives.map((a, i)=> renderPlayerCard(a, (row.passives[i]||{}).trio||[])).join('');
+  return `<div class="playersWrap">${cards}</div>`;
+}
+function matchesTable(rows){
+  if(!rows.length) return `<div class="muted">No matches for selection.</div>`;
+  const sorted = [...rows].sort((a,b)=>{
+    const da = new Date(a.match_date), db = new Date(b.match_date);
+    return db - da || (a.game_number||0) - (b.game_number||0) || a.rec_id - b.rec_id;
+  });
+  return `
+    <table class="mTable">
+      <colgroup>
+        <col><col><col><col><col><col><col><col>
+        <col class="playersCol">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Date</th><th>Game</th><th>Map</th><th>Team</th><th>Opponent</th>
+          <th class="right">Score</th><th class="right">Result</th><th>Ban</th><th>Players</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${sorted.map(r=>{
+          const score = `${r.team_score} - ${r.opp_score}`;
+          const g = r.game_number ? `Game ${r.game_number}` : '—';
+          return `
+            <tr>
+              <td class="mono">${String(r.match_date||'').slice(0,10)}</td>
+              <td>${g}</td>
+              <td>${r.map||'—'}</td>
+              <td>${r.team||'—'}<div class="muted tight">vs ${r.opponent||'—'}</div></td>
+              <td>${r.opponent||'—'}</td>
+              <td class="right mono">${score}</td>
+              <td class="right"><span class="wl ${r.result}">${r.result}</span></td>
+              <td class="banCell">
+                <div class="icons">
+                  <img src="${r.banImg||PLACEHOLDER}" alt="${r.banName||''}" title="${r.banName||''}">
+                  <span class="muted tight">${r.banName||'—'}</span>
+                </div>
+              </td>
+              <td>${renderPlayersGrid(r)}</td>
+            </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
 }
 
 /* ========= Render ========= */
@@ -1145,15 +1176,16 @@ function renderAll(){
   el('biA').innerHTML = banImpactTable(biA_rows, 10);
   el('biB').innerHTML = banImpactTable(biB_rows, 10);
 
-  // Matches Blocks (new)
-  el('labelMatchesA').textContent = a; el('labelMatchesB').textContent = b;
-  el('matchesA').innerHTML = matchesTable(rowsA, 50);
-  el('matchesB').innerHTML = matchesTable(rowsB, 50);
-
-  // Opponent Series
+  // Opponent Series (per map)
   el('labelOppSeriesA').textContent = a; el('labelOppSeriesB').textContent = b;
   el('oppSeriesA').innerHTML = opponentSeriesTable(rowsA, 30);
   el('oppSeriesB').innerHTML = opponentSeriesTable(rowsB, 30);
+
+  // ===== NEW: Matches tables with compact tiles =====
+  el('labelMatchesA').textContent = a;
+  el('labelMatchesB').textContent = b;
+  el('matchesA').innerHTML = matchesTable(rowsA);
+  el('matchesB').innerHTML = matchesTable(rowsB);
 
   // ===== Build data snapshot for AI prompt (links removed only here) =====
   const meta = {
