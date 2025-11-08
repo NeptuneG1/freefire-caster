@@ -3,611 +3,1227 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FFBR — Eliminations (Team vs Eliminator)</title>
+  <title>Clash Squad — Team Compare</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root{
-      --bg:#0e0e0e; --panel:#1b1b1b; --panel2:#141414; --ink:#f5f5f5; --muted:#b9b9b9;
-      --brand:#ffbd59; --brand2:#ff7733; --line:#313131;
-      --tile-w:96px; --tile-h:104px; --logo:44px; --code-fs:.74rem;
-      --heat-rgb:255,189,89; --heat-min:.06; --heat-max:.22; --heat-top-outline:.42; --heat-radius:8px;
-      --good:#62e887; --bad:#ff6b6b; --step-h:48px;
+      --bg:#0e0e0e; --panel:#1b1b1b; --panel2:#141414;
+      --ink:#f5f5f5; --muted:#b9b9b9; --brand:#ffbd59; --brand2:#ff7733;
+      --line:#313131; --good:#71d083; --bad:#ff6b6b;
     }
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif}
-    header{position:sticky;top:0;z-index:20;background:#1f1f1f;border-bottom:3px solid var(--brand);padding:14px 16px}
+    header{position:sticky;top:0;z-index:5;background:#1f1f1f;border-bottom:3px solid var(--brand);padding:14px 16px}
     h1{margin:0;font-size:1.1rem;letter-spacing:.3px;color:var(--brand)}
     .user-controls{position:absolute;right:16px;top:12px;display:flex;gap:10px;align-items:center}
-    .chip{font-size:.85rem;color:#ddd;background:#272727;border:1px solid #3a3a3a;border-radius:999px;padding:4px 10px}
+    .chip{font-size:.85rem;color:#ddd}
     .btn{background:var(--brand);color:var(--panel);border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
-    .btn.secondary{background:#2a2a2a;color:#ddd;border:1px solid #3a3a3a}
-    .btn.ghost{background:transparent;color:#ddd;border:1px solid #3a3a3a}
-    .shell{max-width:1180px;margin:22px auto;padding:0 12px}
+    .btn:hover{background:#e6a74f}
+    .shell{max-width:1200px;margin:22px auto;padding:0 12px}
 
-    .gerr{display:none;margin:0 0 12px;background:#2a1111;border:1px solid #553;color:#ffb4b4;border-radius:10px;padding:10px 12px;white-space:pre-wrap}
-    .gerr.show{display:block}
+    .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+    .controls{display:flex;flex-wrap:wrap;gap:8px}
+    .controls label{display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);padding:6px 8px;border-radius:8px}
+    .controls select,.controls input[type="date"],.controls input[type="number"]{background:#212121;color:var(--brand);border:1px solid #3a3a3a;border-radius:6px;padding:6px 8px}
+    .muted{color:var(--muted);font-size:.9rem}
 
-    .steps{position:sticky;top:61px;z-index:15;background:#151515;border:1px solid var(--line);border-radius:12px;height:var(--step-h);display:flex;align-items:center;gap:8px;padding:6px 8px;margin-bottom:12px}
-    .step{flex:1;display:flex;align-items:center;gap:8px;justify-content:center;height:100%;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f0f;color:#cacaca;font-weight:700;cursor:pointer}
-    .step .num{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:999px;border:1px solid #3a3a3a;background:#1a1a1a;font-size:.9rem}
-    .step.active{outline:2px solid var(--brand);color:#fff}
-    .pager-nav{display:flex;gap:8px;justify-content:space-between;margin:8px 0 16px}
-    .steps-hint{color:var(--muted);font-size:.9rem}
-
-    .page{display:none}
-    .page.active{display:block}
+    /* Regular section (for Overview KPIs only) */
     .section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
     .section h2{margin:0 0 10px;color:var(--brand)}
-    .grid2{display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:12px}
-    .grid3{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:12px}
+
+    .grid2{display:grid;grid-template-columns:repeat(2,minmax(320px,1fr));gap:12px}
     .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px}
     .card h3{margin:0 0 6px;color:var(--brand2);font-size:1.0rem}
     .kpis{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
-    .kpi{background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:6px 10px;font-size:.9rem}
-    .kpi strong{font-weight:800}
-    .bar{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
-    .bar label{color:var(--muted);font-size:.9rem}
-    .input{background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:7px 10px}
-    .muted{color:var(--muted)}
+    .kpi{background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:5px 8px;font-size:.9rem}
 
-    /* tables */
-    table{width:100%;border-collapse:separate;border-spacing:0 6px;font-size:.92rem}
-    thead th{background:#191919;position:sticky;top:0;text-align:left;border-radius:8px;padding:8px 6px;z-index:1}
-    th,td{padding:6px 6px;vertical-align:top}
+    table{width:100%;border-collapse:collapse;font-size:.92rem}
+    th,td{border-bottom:1px solid #2a2a2a;padding:6px 6px;vertical-align:top}
+    thead th{background:#191919;text-align:left;position:sticky;top:0}
     .right{text-align:right}
-    td[data-key]{transition:background-color .18s ease, box-shadow .18s ease;border-radius:var(--heat-radius);background-clip:padding-box}
-    td.heat-top{box-shadow:inset 0 0 0 1px rgba(var(--heat-rgb), var(--heat-top-outline))}
+    .mono{font-variant-numeric:tabular-nums}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#111;border:1px solid #2a2a2a;margin:2px;font-size:.85rem;color:#ddd}
+    .pill small{opacity:.8;font-size:.8em;margin-left:4px}
+    .icons{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+    .icons img{width:24px;height:24px;border-radius:6px;border:1px solid #333;background:#111;object-fit:cover}
+    .wl{font-weight:700;padding:2px 8px;border-radius:999px;display:inline-block}
+    .wl.W{background:#193e2b;color:var(--good);border:1px solid #245b3e}
+    .wl.L{background:#401e1e;color:var(--bad);border:1px solid #6b2c2c}
+    .caption{margin:4px 0 8px}
+    .tight{line-height:1.25}
 
-    /* matrix */
-    .matrix-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;background:#111}
-    .matrix table{min-width:max(100%, 860px)}
-    .sticky{position:sticky;left:0;background:#1a1a1a;z-index:2}
-    .sticky.head{top:0;z-index:3}
+    /* Active Skill Impact deltas + loss logos */
+    .delta-pos{color:var(--good);font-weight:700}
+    .delta-neg{color:var(--bad);font-weight:700}
+    .opp-logos{display:inline-flex;gap:4px;align-items:center;margin-left:6px;vertical-align:middle}
+    .opp-logos img{width:18px;height:18px;border-radius:4px;border:1px solid #333;background:#111;object-fit:cover}
+    .opp-logos .logo-wrap{position:relative;display:inline-block}
+    .opp-logos .cnt{
+      position:absolute;right:-6px;bottom:-6px;background:#171717;border:1px solid #333;
+      border-radius:6px;padding:0 3px;font-size:10px;line-height:1.2;color:#ccc;
+    }
 
-    /* team grid */
-    .team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--tile-w),1fr));gap:8px}
-    .team-tile{height:var(--tile-h);background:#131313;border:1px solid #2a2a2a;border-radius:10px;padding:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:transform .1s ease,border-color .1s ease;overflow:hidden}
-    .team-tile:hover{transform:translateY(-2px);border-color:#444}
-    .team-tile.active{outline:2px solid var(--brand2)}
-    .team-code{font-weight:800;font-size:var(--code-fs);line-height:1.1;letter-spacing:.2px}
+    /* AI Prompt box */
+    .ai-actions{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+    .ai-text{width:100%;min-height:220px;background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:10px;font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;font-size:.85rem;white-space:pre-wrap}
 
-    #veil{position:fixed;inset:0;display:grid;place-items:center;background:rgba(10,10,10,.95);z-index:9999}
-    #veil .box{background:#121212;border:1px solid #2a2a2a;border-radius:12px;padding:14px 16px;color:#ddd}
-    #veil.hide{display:none}
+    /* Accordions */
+    details.accordion{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:12px;
+      margin-bottom:14px;
+      overflow:hidden;
+    }
+    details.accordion > summary{
+      list-style:none;
+      cursor:pointer;
+      padding:12px 14px;
+      color:var(--brand);
+      font-weight:800;
+      background:linear-gradient(180deg,#1b1b1b 0%, #171717 100%);
+      user-select:none;
+      outline:none;
+      display:flex; align-items:center; gap:8px;
+      border-bottom:1px solid var(--line);
+    }
+    details.accordion > summary::-webkit-details-marker{display:none}
+    details.accordion > summary::after{
+      content:'▾';
+      margin-left:auto;
+      transition:transform .18s ease;
+      opacity:.9;
+    }
+    details.accordion[open] > summary::after{ transform:rotate(-180deg); }
+    details.accordion .accordion-body{ padding:12px; }
 
-    @media (max-width:980px){.grid3{grid-template-columns:1fr}}
-    @media (max-width:860px){.grid2{grid-template-columns:1fr}}
+    /* MATCH BLOCKS (Players list inside table cell) */
+    .playersWrap{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(220px, 1fr));
+      grid-auto-rows: auto;
+      gap:10px;
+      min-width:420px;
+    }
+    .pCard{display:flex; align-items:center; gap:10px;background:#141414; border:1px solid #2a2a2a; border-radius:10px; padding:6px 8px}
+    .pAct{width:44px; height:44px; object-fit:cover; border-radius:8px; border:1px solid #333; background:#0f0f0f; flex:0 0 44px}
+    .pInfo{display:flex; flex-direction:column; gap:2px; min-width:0; line-height:1.2}
+    .pName{font-weight:700; font-size:.92rem}
+    .pHero{font-size:.86rem; color:#d8d8d8}
+    .pPassCol{display:flex; flex-direction:column; gap:3px; margin-top:4px}
+    .pPassRow{display:flex; align-items:center; gap:6px}
+    .pPassRow img{width:14px; height:14px; object-fit:cover; border-radius:3px; border:1px solid #333; background:#0f0f0f}
+    .pPassRow span{font-size:.76rem; color:#bbb; max-width:160px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+
+    @media (max-width: 860px){
+      .grid2{grid-template-columns:1fr}
+      .playersWrap{ grid-template-columns:1fr; min-width: auto; }
+    }
   </style>
 </head>
 <body>
 <header>
-  <h1>FFBR — Eliminations (TeamName vs Eliminated Team Name)</h1>
+  <h1>Clash Squad — Team Compare</h1>
   <div class="user-controls">
-    <span class="chip" id="scopeChip">Scope: All Days • All Maps</span>
     <span class="chip" id="user-info">Checking login…</span>
     <button class="btn" id="logoutBtn">Logout</button>
   </div>
 </header>
 
-<div id="veil"><div class="box">Loading data…</div></div>
-
 <div class="shell">
-  <div id="globalErr" class="gerr"></div>
 
-  <div class="steps" id="steps">
-    <div class="step" data-page="1"><span class="num">1</span><span class="label">Overall</span></div>
-    <div class="step" data-page="2"><span class="num">2</span><span class="label">Team Focus</span></div>
-  </div>
-  <div class="pager-nav">
-    <button class="btn secondary" id="prevBtn">← Prev</button>
-    <div class="steps-hint">Use ←/→ keys to navigate</div>
-    <button class="btn secondary" id="nextBtn">Next →</button>
+  <div class="bar">
+    <a class="btn" href="dashboard.html">← Back to Dashboard</a>
+    <div class="controls" style="margin-left:auto">
+      <label>From <input type="date" id="fFrom"></label>
+      <label>To <input type="date" id="fTo"></label>
+      <label>Map
+        <select id="fMap">
+          <option value="__ALL__">All maps</option>
+          <option value="Bermuda">Bermuda</option><option value="Kalahari">Kalahari</option>
+          <option value="Purgatory">Purgatory</option><option value="Alpine">Alpine</option>
+          <option value="Nexterra">Nexterra</option><option value="Solara">Solara</option>
+        </select>
+      </label>
+      <label>Tournament <select id="fTourn"></select></label>
+      <label>Outcome
+        <select id="fWL">
+          <option value="__ALL__">All</option>
+          <option value="W">Wins only</option>
+          <option value="L">Losses only</option>
+        </select>
+      </label>
+      <button class="btn" id="applyBtn">Apply</button>
+    </div>
   </div>
 
-  <!-- PAGE 1: OVERALL -->
-  <div class="page" id="page1" data-page="1">
-    <div class="section">
-      <h2>Filters</h2>
-      <div class="bar">
-        <label>Day
-          <select id="daySel" class="input" style="min-width:160px"><option>Loading…</option></select>
-        </label>
-        <label>Map
-          <select id="mapSel" class="input" style="min-width:220px"><option>Loading…</option></select>
-        </label>
-        <label>Value
-          <select id="valueSel" class="input">
-            <option value="count" selected>Counts</option>
-            <option value="rowpct">% of a team’s eliminations suffered (row %)</option>
-          </select>
-        </label>
-        <button class="btn secondary" id="resetGlobal">Reset</button>
+  <!-- PICK TEAMS -->
+  <details class="accordion" open>
+    <summary>Pick two teams</summary>
+    <div class="accordion-body">
+      <div class="controls">
+        <label>Team A <select id="cmpTeamA"></select></label>
+        <label>Team B <select id="cmpTeamB"></select></label>
+        <button class="btn" id="cmpSwap" title="Swap A/B">Swap</button>
       </div>
-      <div class="muted" id="filterHint">—</div>
+      <div class="caption muted" id="meta">—</div>
     </div>
+  </details>
 
-    <div class="section">
-      <h2>Head-to-Head Elimination Matrix <span class="muted">rows = eliminated (TeamName) • cols = eliminator (Eliminated Team Name)</span></h2>
-      <div class="matrix-wrap" id="matrixWrap">Loading…</div>
-      <div class="muted" style="margin-top:6px">Tip: Use the % view to find teams repeatedly eliminated by the same opponent (exposure risk). Scroll horizontally for more teams.</div>
-    </div>
-
+  <!-- OVERVIEW -->
+  <div class="section">
+    <h2>Overview KPIs</h2>
     <div class="grid2">
-      <div class="section">
-        <h2>Who Eliminated Each Team?</h2>
-        <div class="card" style="margin:0"><div id="tblEliminatedBy">Loading…</div></div>
-      </div>
-      <div class="section">
-        <h2>Who Did Each Team Eliminate?</h2>
-        <div class="card" style="margin:0"><div id="tblGiven">Loading…</div></div>
-      </div>
-    </div>
-
-    <div class="section">
-      <h2>Per Day × Map Pivot (Elimination Count)</h2>
-      <div class="card" style="margin:0"><div id="tblPivot">Loading…</div></div>
-    </div>
-
-    <div class="section">
-      <h2>Quick Insights</h2>
-      <ul id="insights" style="margin:8px 0 0 18px; line-height:1.6"></ul>
+      <div class="card" id="kpiA"><h3>A</h3>Loading…</div>
+      <div class="card" id="kpiB"><h3>B</h3>Loading…</div>
     </div>
   </div>
 
-  <!-- PAGE 2: TEAM FOCUS -->
-  <div class="page" id="page2" data-page="2">
-    <div class="section">
-      <h2>Team Selection</h2>
-      <div class="bar">
-        <input type="search" id="teamSearch" class="input" placeholder="Search team…" style="flex:1;max-width:420px">
-        <span class="chip">Slice: <span id="scopeChipTeam">All Days • All Maps</span></span>
-      </div>
-      <div id="teamGrid" class="team-grid">Loading teams…</div>
-    </div>
-
-    <div class="section" id="teamHeader">
-      <h2 id="teamTitle">Overview</h2>
-      <div class="grid3">
-        <div class="card">
-          <h3>Top Eliminators of <span id="teamCodeA">—</span></h3>
-          <div id="teamTopPredators" class="kpis">—</div>
-        </div>
-        <div class="card">
-          <h3>Top Victims of <span id="teamCodeB">—</span></h3>
-          <div id="teamTopVictims" class="kpis">—</div>
-        </div>
-        <div class="card">
-          <h3>Signals</h3>
-          <div id="teamSignals" class="kpis">—</div>
-        </div>
+  <!-- SKILLS -->
+  <details class="accordion">
+    <summary>Skills (Top 10 by Rate)</summary>
+    <div class="accordion-body">
+      <div class="grid2">
+        <div class="card"><h3 id="labelBansA">Team A — Bans</h3><div id="bansA">Loading…</div></div>
+        <div class="card"><h3 id="labelBansB">Team B — Bans</h3><div id="bansB">Loading…</div></div>
+        <div class="card"><h3 id="labelActiveA">Team A — Active</h3><div id="activeA">Loading…</div></div>
+        <div class="card"><h3 id="labelActiveB">Team B — Active</h3><div id="activeB">Loading…</div></div>
+        <div class="card"><h3 id="labelPassiveA">Team A — Passive</h3><div id="passiveA">Loading…</div></div>
+        <div class="card"><h3 id="labelPassiveB">Team B — Passive</h3><div id="passiveB">Loading…</div></div>
       </div>
     </div>
+  </details>
 
-    <details class="accordion">
-      <summary>Breakdowns — By Day & By Map</summary>
-      <div class="accordion-body">
-        <div class="grid2">
-          <div class="card">
-            <h3>Eliminated By — By Day</h3>
-            <div id="tblTeamByDay">—</div>
-          </div>
-          <div class="card">
-            <h3>Eliminated By — By Map</h3>
-            <div id="tblTeamByMap">—</div>
-          </div>
-        </div>
-        <div class="card" style="margin-top:12px">
-          <h3>Victims — By Day × Map</h3>
-          <div id="tblTeamVictimPivot">—</div>
-        </div>
+  <!-- TEAM × MAP -->
+  <details class="accordion">
+    <summary>Team × Map Win Rate</summary>
+    <div class="accordion-body">
+      <div class="grid2">
+        <div class="card"><h3 id="labelTMA">Team A</h3><div id="tmA">Loading…</div></div>
+        <div class="card"><h3 id="labelTMB">Team B</h3><div id="tmB">Loading…</div></div>
       </div>
-    </details>
-  </div>
+    </div>
+  </details>
+
+  <!-- PER-SKILL — ACTIVE -->
+  <details class="accordion">
+    <summary>Per-Skill — Active</summary>
+    <div class="accordion-body">
+      <div class="grid2">
+        <div class="card"><h3 id="labelPSA_Act">Team A</h3><div id="psAAct">Loading…</div></div>
+        <div class="card"><h3 id="labelPSB_Act">Team B</h3><div id="psBAct">Loading…</div></div>
+      </div>
+    </div>
+  </details>
+
+  <!-- ACTIVE SKILL IMPACT -->
+  <details class="accordion">
+    <summary>Active Skill Impact (Win/Loss)</summary>
+    <div class="accordion-body">
+      <div class="grid2">
+        <div class="card"><h3 id="labelImpactA">Team A</h3><div id="impactA">Loading…</div></div>
+        <div class="card"><h3 id="labelImpactB">Team B</h3><div id="impactB">Loading…</div></div>
+      </div>
+      <div class="caption muted tight">
+        Δ vs team baseline win% shows how much the skill raises (green) or lowers (red) win chance when picked.
+      </div>
+    </div>
+  </details>
+
+  <!-- PER-SKILL — PASSIVE -->
+  <details class="accordion">
+    <summary>Per-Skill — Passive</summary>
+    <div class="accordion-body">
+      <div class="grid2">
+        <div class="card"><h3 id="labelPSA_Pas">Team A</h3><div id="psAPas">Loading…</div></div>
+        <div class="card"><h3 id="labelPSB_Pas">Team B</h3><div id="psBPas">Loading…</div></div>
+      </div>
+    </div>
+  </details>
+
+  <!-- COMBOS & PAIRS -->
+  <details class="accordion">
+    <summary>Combos & Pairs (Top 5)</summary>
+    <div class="accordion-body">
+      <div class="grid2">
+        <div class="card"><h3 id="labelCombosA">Team A — 4× Active</h3><div id="combosA">Loading…</div></div>
+        <div class="card"><h3 id="labelCombosB">Team B — 4× Active</h3><div id="combosB">Loading…</div></div>
+        <div class="card"><h3 id="labelPairsA">Team A — 2× Active</h3><div id="pairsA">Loading…</div></div>
+        <div class="card"><h3 id="labelPairsB">Team B — 2× Active</h3><div id="pairsB">Loading…</div></div>
+      </div>
+    </div>
+  </details>
+
+  <!-- PASSIVE TRIOS -->
+  <details class="accordion">
+    <summary>Passive Trios (Top 5 overall)</summary>
+    <div class="accordion-body">
+      <div class="grid2">
+        <div class="card"><h3 id="labelTriosA">Team A</h3><div id="triosA">Loading…</div></div>
+        <div class="card"><h3 id="labelTriosB">Team B</h3><div id="triosB">Loading…</div></div>
+      </div>
+    </div>
+  </details>
+
+  <!-- BAN IMPACT -->
+  <details class="accordion">
+    <summary>Ban Impact (Top 10 by Δ Win %)</summary>
+    <div class="accordion-body">
+      <div class="grid2">
+        <div class="card"><h3 id="labelBIA">Team A</h3><div id="biA">Loading…</div></div>
+        <div class="card"><h3 id="labelBIB">Team B</h3><div id="biB">Loading…</div></div>
+      </div>
+      <div class="caption muted">Outcome is forced to All for Ban Impact to avoid bias.</div>
+    </div>
+  </details>
+
+  <!-- MATCHES BLOCKS (NEW) -->
+  <details class="accordion" open>
+    <summary>Matches (Active + 3×Passive per player)</summary>
+    <div class="accordion-body">
+      <div class="grid2">
+        <div class="card"><h3 id="labelMatchesA">Team A</h3><div id="matchesA">Loading…</div></div>
+        <div class="card"><h3 id="labelMatchesB">Team B</h3><div id="matchesB">Loading…</div></div>
+      </div>
+    </div>
+  </details>
+
+  <!-- OPPONENT SERIES -->
+  <details class="accordion">
+    <summary>Performance by Opponent</summary>
+    <div class="accordion-body">
+      <div class="grid2">
+        <div class="card"><h3 id="labelOppSeriesA">Team A</h3><div id="oppSeriesA">Loading…</div></div>
+        <div class="card"><h3 id="labelOppSeriesB">Team B</h3><div id="oppSeriesB">Loading…</div></div>
+      </div>
+    </div>
+  </details>
+
+  <!-- AI ANALYSIS PROMPT -->
+  <details class="accordion">
+    <summary>AI Analysis Prompt</summary>
+    <div class="accordion-body">
+      <div class="ai-actions">
+        <button class="btn" id="copyPromptBtn">Copy prompt</button>
+        <span class="muted">Copies a structured prompt + current data snapshot for ChatGPT.</span>
+      </div>
+      <textarea id="aiPrompt" class="ai-text" readonly>Loading…</textarea>
+    </div>
+  </details>
+
 </div>
 
 <script>
-/* ============ Supabase init ============ */
+/* ========= Supabase init + auth ========= */
 const client = supabase.createClient(
   'https://gkugecflfddkpitlrmws.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
 );
 
-/* ============ Small utils ============ */
-const $ = id => document.getElementById(id);
-const norm = v => (v==null?'':String(v)).trim();
-const up = v => norm(v).toUpperCase();
-const num = v => Number(v ?? 0) || 0;
-function sum(arr,k){ let t=0; for(const r of arr) t += Number(r?.[k] ?? 0) || 0; return t; }
-function groupBy(arr,fn){ const m=new Map(); for(const r of arr){ const k=fn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r);} return m; }
-const fmt = (n,d=0)=> isFinite(n) ? Number(n).toLocaleString(undefined,{maximumFractionDigits:d,minimumFractionDigits:d}) : '—';
-const pct = (a,b)=> b>0 ? (a/b)*100 : 0;
+(async () => {
+  const { data: { session } } = await client.auth.getSession();
+  if (!session) { window.location.href = "index.html"; return; }
+  const ui = document.getElementById('user-info');
+  if (ui && session.user?.email) ui.textContent = `Logged in as: ${session.user.email}`;
+})();
+document.getElementById('logoutBtn').onclick = async () => {
+  await client.auth.signOut();
+  window.location.href = "index.html";
+};
 
-/* ============ Error + session ============ */
-function gerr(msg){ const box=$('globalErr'); box.textContent=msg; box.classList.add('show'); console.error(msg); }
-(async ()=>{ const { data: { session } } = await client.auth.getSession(); $('user-info').textContent = session?.user?.email ? `Logged in: ${session.user.email}` : 'Anon access'; })();
-$('logoutBtn').onclick = async ()=>{ await client.auth.signOut(); location.reload(); };
+/* ========= Utilities ========= */
+const PLACEHOLDER = 'https://imgur.com/AdvPwAO.png';
+const el = (id) => document.getElementById(id);
+const fmtPct = (x) => isFinite(x) ? (x*100).toFixed(1)+'%' : '—';
+const pct = (num, den) => den ? fmtPct(num/den) : '—';
+const uniq = (arr) => [...new Set(arr)];
+function ymd(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
+function parseState(val){ if (!val) return {}; if (typeof val==='object') return val; try { return JSON.parse(val); } catch(e){ return {}; } }
+function safe(str){ return (str??'').toString().trim() }
+function dateShort(s){ try{ const d=new Date(s); return d.toISOString().slice(0,10); }catch{ return s||'—'; } }
 
-/* ============ Pager ============ */
-const PAGES=[1,2];
-function showPage(p){ document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active')); document.querySelector(`.page[data-page="${p}"]`).classList.add('active'); document.querySelectorAll('.step').forEach(s=>s.classList.toggle('active', String(s.dataset.page)===String(p))); localStorage.setItem('elim_page', String(p)); const u=new URL(location.href); u.searchParams.set('p', String(p)); history.replaceState(null,'',u.toString()); }
-function currentPage(){ const u=new URL(location.href); const qp=Number(u.searchParams.get('p')); const ls=Number(localStorage.getItem('elim_page')); return PAGES.includes(qp)?qp:PAGES.includes(ls)?ls:1; }
-function nextPage(){ const p=currentPage(); showPage(Math.min(2,p+1)); }
-function prevPage(){ const p=currentPage(); showPage(Math.max(1,p-1)); }
-document.querySelectorAll('.step').forEach(s=> s.addEventListener('click', ()=> showPage(Number(s.dataset.page))));
-$('prevBtn').addEventListener('click', prevPage); $('nextBtn').addEventListener('click', nextPage);
-window.addEventListener('keydown', e=>{ if(e.key==='ArrowLeft') prevPage(); if(e.key==='ArrowRight') nextPage(); });
-
-/* ============ Data (ffbr_lopsdata) ============ */
-let RAW=[];                 // normalized elimination rows
-let TEAMS=[];               // list of unique team codes/names
-let CUR_TEAM=null;          // selected team (string)
-let FILTER_DAY='__all__';
-let FILTER_MAP='__all__';
-
-function normalizeRow(r){
-  // Robust mapping for common alt column names
-  const team = up(r['TeamName'] ?? r['Team'] ?? r['TEAM'] ?? r['tag'] ?? r['TAG']);
-  const killer = up(r['Eliminated Team Name'] ?? r['Eliminated By'] ?? r['Eliminator'] ?? r['Killer Team'] ?? '');
-  const day = num(r['Day'] ?? r['day'] ?? r['DAY']);
-  const map = norm(r['MAP'] ?? r['Map'] ?? r['map']);
-  const match = num(r['Match'] ?? r['match']);
-  const totalKill = num(r['Total Kill'] ?? r['KILLS'] ?? r['Eliminations'] ?? r['elimination']);
-  const place = num(r['Ranking Placement'] ?? r['placement'] ?? r['Place']);
-  const booyah = num(r['Booyah By Team'] ?? r['booyah'] ?? r['Booyah']);
-  return { team, killer, day, map, match, totalKill, place, booyah };
+/* ========= Filters init ========= */
+function initFilters(){
+  const today = new Date(); const from = new Date(today); from.setDate(from.getDate()-30);
+  el('fFrom').value = ymd(from); el('fTo').value = ymd(today);
+  el('fMap').value='__ALL__'; el('fWL').value='__ALL__';
+  el('fTourn').innerHTML = `<option value="__ALL__">All tournaments</option>`;
 }
-async function fetchAllLops(){
-  const CHUNK=1000; let from=0; const out=[];
-  for(;;){
-    const { data, error } = await client.from('ffbr_lopsdata').select('*').range(from, from+CHUNK-1);
-    if(error){ gerr('ffbr_lopsdata fetch failed:\n'+(error.message||error)); break; }
-    const rows=data||[]; if(!rows.length) break; out.push(...rows); from+=rows.length;
+initFilters();
+
+/* ========= State ========= */
+let RAW_RECORDS = [];
+let FIRST_LOAD_TOURN = true;
+let TEAM_LOGO = {}; // name -> url
+
+/* ========= Fetch ========= */
+async function fetchRecords(){
+  const from  = el('fFrom').value;
+  const toRaw = el('fTo').value;
+  const map   = el('fMap').value;
+  const tourn = el('fTourn').value || '__ALL__';
+
+  let q = client
+    .from('draft_records')
+    .select('id, match_date, game_number, team_left, team_right, team_left_score, team_right_score, map, tournament_name, state')
+    .gte('match_date', from);
+
+  if (toRaw){
+    const d = new Date(toRaw); d.setDate(d.getDate()+1);
+    q = q.lt('match_date', ymd(d));
   }
-  return out.map(normalizeRow).filter(r=>r.team || r.killer);
+  if (map!=='__ALL__') q = q.eq('map', map);
+  if (tourn!=='__ALL__') q = q.eq('tournament_name', tourn);
+
+  q = q.order('match_date', { ascending:false }).order('id', { ascending:false });
+
+  const { data, error } = await q;
+  if (error){ console.error(error); alert('Failed to load records: '+error.message); return []; }
+  return data || [];
 }
 
-/* ============ Filters ============ */
-function uniqueDays(){ const s=new Set(); RAW.forEach(r=>{ if(r.day) s.add(r.day); }); return [...s].sort((a,b)=>a-b); }
-function uniqueMaps(){ const s=new Set(); RAW.forEach(r=>{ if(r.map) s.add(r.map); }); return [...s].sort((a,b)=>a.localeCompare(b)); }
-function filteredRows(){
-  return RAW.filter(r =>
-    (FILTER_DAY==='__all__' || r.day===Number(FILTER_DAY)) &&
-    (FILTER_MAP==='__all__' || r.map===FILTER_MAP)
-  );
-}
-function updateScopeChips(){
-  const d = FILTER_DAY==='__all__' ? 'All Days' : `Day ${FILTER_DAY}`;
-  const m = FILTER_MAP==='__all__' ? 'All Maps' : FILTER_MAP;
-  $('scopeChip').textContent = `Scope: ${d} • ${m}`;
-  $('scopeChipTeam').textContent = `${d} • ${m}`;
-  $('filterHint').textContent = `Teams: ${fmt(TEAMS.length)} • Rows in slice: ${fmt(filteredRows().length)}`;
+async function fetchTeamLogos(){
+  const { data, error } = await client.from('team_logos').select('*');
+  if (error){ console.warn('team_logos fetch error:', error.message); TEAM_LOGO={}; return; }
+  const map = {};
+  (data||[]).forEach(r=>{
+    const name = r.team || r.team_name || r.TEAM || r.name || '';
+    const url  = r.image_url || r.image_link || r['Image Link'] || r.link || '';
+    if (name && url) map[String(name).trim()] = url;
+  });
+  TEAM_LOGO = map;
 }
 
-/* ============ Matrix + summaries ============ */
-function buildTeams(){
-  const s = new Set();
-  RAW.forEach(r=>{ if(r.team) s.add(r.team); if(r.killer) s.add(r.killer); });
-  TEAMS = [...s].sort((a,b)=>a.localeCompare(b));
+function populateTeamDropdowns(records){
+  const teams = [...new Set(records.flatMap(r=>[r.team_left, r.team_right]).filter(Boolean))].sort();
+  const A = el('cmpTeamA'), B = el('cmpTeamB');
+  const prevA = A.value, prevB = B.value;
+  const opts = teams.map(t=>`<option value="${t}">${t}</option>`).join('');
+  A.innerHTML = opts; B.innerHTML = opts;
+  A.value = teams.includes(prevA) ? prevA : (teams[0] || '');
+  B.value = teams.includes(prevB) ? prevB : (teams[1] || teams[0] || '');
 }
-function summarize(rows){
-  const matrix = {}; // victim -> killer -> count
-  const suffered = {}; // victim total
-  const given = {};    // killer total
+
+async function populateTournamentDropdown(records){
+  const dd = el('fTourn'); const prior = dd.value || '__ALL__';
+  const tourns = new Set(); let latest=null;
+  records.forEach(r => {
+    const tn = r.tournament_name; if (!tn) return;
+    tourns.add(tn);
+    if (!latest || (String(r.match_date) > String(latest?.date))) latest = { name: tn, date: r.match_date };
+  });
+  dd.innerHTML = `<option value="__ALL__">All tournaments</option>` + [...tourns].sort().map(t=>`<option value="${t}">${t}</option>`).join('');
+  if (FIRST_LOAD_TOURN && latest && (prior==='__ALL__' || !prior)){ dd.value = latest.name; FIRST_LOAD_TOURN=false; } else { dd.value = prior; }
+}
+
+/* ========= Transform ========= */
+function explodeRecordToRows(rec){
+  const s = parseState(rec.state);
+  const picks    = Array.isArray(s.picks)       ? s.picks       : [];
+  const passives = Array.isArray(s.passives)    ? s.passives    : [];
+  const bans     = Array.isArray(s.bans)        ? s.bans        : [];
+  const names    = Array.isArray(s.playerCards) ? s.playerCards : [];
+
+  const leftWin  = (rec.team_left_score ?? 0) > (rec.team_right_score ?? 0);
+  const rightWin = (rec.team_right_score ?? 0) > (rec.team_left_score ?? 0);
+
+  function sideRow(side){
+    const isL = side==='L';
+    const team = isL ? rec.team_left : rec.team_right;
+    const opp  = isL ? rec.team_right : rec.team_left;
+    const ts   = isL ? (rec.team_left_score ?? 0) : (rec.team_right_score ?? 0);
+    const os   = isL ? (rec.team_right_score ?? 0) : (rec.team_left_score ?? 0);
+    const res  = (isL ? leftWin : rightWin) ? 'W' : 'L';
+    const banObj = bans[ isL ? 0 : 1 ] || {};
+    const ban    = banObj?.name || '';
+    const banImg = banObj?.image_url || PLACEHOLDER;
+
+    const idx = isL ? [0,1,2,3] : [7,6,5,4];
+    const actives = idx.map((i,k)=>{
+      const player = (names[i] && String(names[i]).trim()) ? names[i].trim() : `P${k+1}`;
+      const heroObj = (picks[i] && typeof picks[i]==='object') ? picks[i] : null;
+      return { player, hero: heroObj?.name || '', heroImg: heroObj?.image_url || PLACEHOLDER };
+    });
+    const passiveLines = idx.map((i,k)=>{
+      const player = (names[i] && String(names[i]).trim()) ? names[i].trim() : `P${k+1}`;
+      const trioRaw = Array.isArray(passives[i]) ? passives[i] : [];
+      const trioObjs = trioRaw.filter(Boolean).map(ps=>({name: ps?.name || '', img: ps?.image_url || PLACEHOLDER}));
+      while (trioObjs.length<3) trioObjs.push({name:'', img: PLACEHOLDER});
+      return { player, trio: trioObjs.slice(0,3) };
+    });
+
+    return {
+      rec_id:rec.id,
+      tournament: rec.tournament_name || '—',
+      match_date:rec.match_date,
+      game_number:rec.game_number ?? 0,
+      map:rec.map,
+      team, opponent:opp, team_score:ts, opp_score:os, result:res,
+      banName:ban, banImg,
+      actives, passives:passiveLines
+    };
+  }
+  return [sideRow('L'), sideRow('R')];
+}
+
+function applyWL(rows){
+  const wl = el('fWL').value;
+  if (wl==='__ALL__') return rows;
+  return rows.filter(r => r.result === wl);
+}
+
+function rowsForTeam(team){
+  const rows = RAW_RECORDS.flatMap(explodeRecordToRows).filter(r=>r.team===team);
+  // Sort newest first (date desc, game desc, record desc)
+  return applyWL(rows).sort((a,b)=>{
+    const ad = new Date(a.match_date), bd = new Date(b.match_date);
+    if (bd - ad) return bd - ad;
+    if ((b.game_number||0) - (a.game_number||0)) return (b.game_number||0) - (a.game_number||0);
+    return (b.rec_id||0) - (a.rec_id||0);
+  });
+}
+
+/* ========= Aggregations / helpers (existing) ========= */
+function buildTeamBucket(rows, teamName, kind){
+  const B = { name: teamName, matches:0, wins:0, skills:new Map() };
   rows.forEach(r=>{
-    if(!r.team || !r.killer) return;
-    matrix[r.team] ||= {};
-    matrix[r.team][r.killer] = (matrix[r.team][r.killer]||0)+1;
-    suffered[r.team] = (suffered[r.team]||0)+1;
-    given[r.killer] = (given[r.killer]||0)+1;
+    B.matches += 1; if (r.result==='W') B.wins += 1;
+    if (kind==='active'){
+      r.actives.forEach(a=>{
+        const nm = a.hero; if (!nm) return;
+        const S = B.skills.get(nm) || { occ:0, appear:0, appearWins:0 };
+        S.occ += 1; S.appear += 1; if (r.result==='W') S.appearWins += 1;
+        B.skills.set(nm, S);
+      });
+    } else if (kind==='passive'){
+      r.passives.forEach(p=>{
+        (p.trio||[]).forEach(x=>{
+          const nm = x?.name || ''; if (!nm) return;
+          const S = B.skills.get(nm) || { occ:0, appear:0, appearWins:0 };
+          S.occ += 1; S.appear += 1; if (r.result==='W') S.appearWins += 1;
+          B.skills.set(nm, S);
+        });
+      });
+    } else { // bans
+      const nm = r.banName; if (!nm) return;
+      const S = B.skills.get(nm) || { occ:0, appear:0, appearWins:0 };
+      S.occ += 1; S.appear += 1; if (r.result==='W') S.appearWins += 1;
+      B.skills.set(nm, S);
+    }
   });
-  return {matrix, suffered, given};
+  return B;
+}
+function topSkillsData(bucket, limit=10){
+  if (!bucket || !bucket.matches) return [];
+  return [...bucket.skills.entries()].map(([name, s])=>{
+    return {
+      skill: name,
+      count: s.occ,
+      appear: s.appear,
+      pick_rate: bucket.matches ? s.appear/bucket.matches : 0,
+      win_rate: s.appear ? s.appearWins/s.appear : 0
+    };
+  }).sort((a,b)=> b.pick_rate - a.pick_rate || a.skill.localeCompare(b.skill)).slice(0,limit);
+}
+function topSkillsTable(bucket, kind, limit=10){
+  const skills = topSkillsData(bucket, limit);
+  const rateLabel = (kind==='ban') ? 'Ban Rate' : 'Pick Rate';
+  if (!skills.length) return `<div class="muted">No ${kind} data.</div>`;
+  return `
+    <table>
+      <thead><tr><th>Skill</th><th class="right">Count</th><th class="right">${rateLabel}</th><th class="right">Win Rate</th></tr></thead>
+      <tbody>
+        ${skills.map(s=>`
+          <tr><td>${s.skill}</td><td class="right">${s.count}</td><td class="right">${fmtPct(s.pick_rate)}</td><td class="right">${fmtPct(s.win_rate)}</td></tr>
+        `).join('')}
+      </tbody>
+    </table>`;
 }
 
-/* ============ Render helpers ============ */
-function renderSimpleTable(list, cols){
-  if(!list.length) return '<div class="muted">No rows.</div>';
-  const thead = `<thead><tr>${cols.map(c=>`<th class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
-  const tbody = '<tbody>' + list.map(r=>(
-    '<tr>' + cols.map(c=>{
-      const v = typeof c.html==='function' ? c.html(r) : r[c.key];
-      return `<td data-key="${c.key}" class="${c.right?'right':''}">${(v==null||v==='')?'—':v}</td>`;
-    }).join('') + '</tr>'
-  )).join('') + '</tbody>';
-  return `<table>${thead}${tbody}</table>`;
-}
-function applyHeat(containerId, keys){
-  const wrap=$(containerId); const table=wrap?.querySelector('table'); if(!table) return;
-  table.querySelectorAll('td[data-key]').forEach(td=>{ td.style.backgroundColor=''; td.classList.remove('heat-top'); });
-  const styles=getComputedStyle(document.documentElement);
-  const rgb=styles.getPropertyValue('--heat-rgb')||'255,189,89';
-  const minA=parseFloat(styles.getPropertyValue('--heat-min'))||.06;
-  const maxA=parseFloat(styles.getPropertyValue('--heat-max'))||.22;
-  const BANDS=5;
-  for(const key of keys){
-    const cells=[...table.querySelectorAll(`td[data-key="${key}"]`)];
-    if(!cells.length) continue;
-    const vals=cells.map((td,i)=>({i, v:parseFloat(td.textContent.replace('%',''))})).filter(x=>isFinite(x.v));
-    if(!vals.length) continue;
-    vals.sort((a,b)=>a.v-b.v);
-    const top=vals[vals.length-1].v;
-    const bandByI=new Map();
-    vals.forEach((e,rank)=>{ const p=(vals.length<=1)?1:(rank/(vals.length-1)); const band=Math.min(BANDS-1,Math.floor(p*BANDS)); bandByI.set(e.i,band); });
-    cells.forEach((td,i)=>{
-      const band=bandByI.get(i); if(band==null) return;
-      const alpha = minA + (band/(BANDS-1))*(maxA-minA);
-      td.style.backgroundColor = `rgba(${rgb}, ${alpha.toFixed(3)})`;
-      const val = parseFloat(td.textContent.replace('%',''));
-      if(isFinite(val) && val===top) td.classList.add('heat-top');
-    });
-  }
-}
-
-/* ============ Renders: Page 1 ============ */
-function renderMatrix(matrix, viewMode){
-  const rows=TEAMS, cols=TEAMS;
-  // max for heat buckets
-  let max=0; rows.forEach(v=> cols.forEach(k=>{ const c=(matrix[v]?.[k])||0; if(c>max) max=c; }));
-  // row totals
-  const totals={}; rows.forEach(v=> totals[v]=Object.values(matrix[v]||{}).reduce((a,b)=>a+b,0));
-  // table
-  let html='<table><thead><tr><th class="sticky head">Eliminated ↓ / Eliminator →</th>';
-  cols.forEach(c=> html += `<th class="head">${c}</th>`);
-  html+='</tr></thead><tbody>';
+function teamMapStatsData(rows){
+  const agg = new Map();
   rows.forEach(r=>{
-    html+=`<tr><td class="sticky">${r}</td>`;
-    cols.forEach(c=>{
-      const cnt = (matrix[r]?.[c])||0;
-      const show = (viewMode==='rowpct' && totals[r]>0) ? `${Math.round(pct(cnt, totals[r]))}%` : (cnt||'');
-      const alpha = max>0 ? (cnt/max) : 0;
-      const band = Math.min(1, alpha);
-      const bg = `rgba(${getComputedStyle(document.documentElement).getPropertyValue('--heat-rgb')||'255,189,89'}, ${(0.06 + band*(0.22-0.06)).toFixed(3)})`;
-      html+=`<td title="${c} → ${r}: ${cnt}" style="background:${cnt?bg:'transparent'}">${show}</td>`;
-    });
-    html+='</tr>';
+    const m = r.map || '—';
+    if (!agg.has(m)) agg.set(m, { map:m, matches:0, wins:0 });
+    const A = agg.get(m); A.matches += 1; if (r.result==='W') A.wins += 1;
   });
-  html+='</tbody></table>';
-  $('matrixWrap').innerHTML = `<div class="matrix">${html}</div>`;
+  return [...agg.values()].map(x=>({ ...x, winpct: x.matches? x.wins/x.matches : 0 }))
+               .sort((a,b)=> b.matches - a.matches || b.winpct - a.winpct || a.map.localeCompare(b.map));
 }
-function renderLeaderboards(sum){
-  // Eliminated By (suffered)
-  const rowsA = TEAMS.map(t=>{
-    const row = sum.matrix[t]||{};
-    const total = sum.suffered[t]||0;
-    const top = Object.entries(row).sort((a,b)=>b[1]-a[1]).slice(0,3)
-      .map(([k,v])=>`${k} ${fmt(v)} (${fmt(pct(v,total),0)}%)`).join(' · ');
-    return { team:t, times: total, top };
-  }).sort((a,b)=>b.times-a.times || a.team.localeCompare(b.team));
-  $('tblEliminatedBy').innerHTML = renderSimpleTable(rowsA, [
-    {label:'Team',key:'team'},
-    {label:'Times Eliminated',key:'times',right:true},
-    {label:'Top Eliminators',key:'top'}
-  ]);
-  applyHeat('tblEliminatedBy',['times']);
+function teamMapStats(rows){
+  const list = teamMapStatsData(rows);
+  if (!list.length) return `<div class="muted">No team×map rows.</div>`;
+  return `
+    <table>
+      <thead><tr><th>Map</th><th class="right">Matches</th><th class="right">Wins</th><th class="right">Win %</th></tr></thead>
+      <tbody>
+        ${list.map(r=>`<tr><td>${r.map}</td><td class="right">${r.matches}</td><td class="right">${r.wins}</td><td class="right">${fmtPct(r.winpct)}</td></tr>`).join('')}
+      </tbody>
+    </table>`;
+}
 
-  // Given (killer totals)
-  // invert matrix once
-  const inv={}; TEAMS.forEach(v=>{
-    const row=sum.matrix[v]||{};
-    Object.entries(row).forEach(([killer,cnt])=>{
-      inv[killer] ||= {};
-      inv[killer][v] = (inv[killer][v]||0)+cnt;
+function perSkillActiveCompressedData(rows, limit=12){
+  if (!rows.length) return [];
+  const map = new Map();
+  rows.forEach(r=>{
+    r.actives.forEach(a=>{
+      if (!a.hero) return;
+      const obj = map.get(a.hero) || {p:0,w:0};
+      obj.p += 1; if (r.result==='W') obj.w += 1;
+      map.set(a.hero, obj);
     });
   });
-  const rowsB = TEAMS.map(t=>{
-    const ents = Object.entries(inv[t]||{}).sort((a,b)=>b[1]-a[1]);
-    const total = ents.reduce((a,b)=>a+b[1],0);
-    const top = ents.slice(0,3).map(([k,v])=>`${k} ${fmt(v)}`).join(' · ');
-    return { eliminator:t, total, top };
-  }).sort((a,b)=>b.total-a.total || a.eliminator.localeCompare(b.eliminator));
-  $('tblGiven').innerHTML = renderSimpleTable(rowsB, [
-    {label:'Eliminator',key:'eliminator'},
-    {label:'Eliminations Given',key:'total',right:true},
-    {label:'Top Victims',key:'top'}
-  ]);
-  applyHeat('tblGiven',['total']);
+  const den = rows.length * 4;
+  return [...map.entries()].map(([name,v])=>{
+    return { skill:name, picks:v.p, wins:v.w, win_rate: v.p? v.w/v.p : null, pick_rate: den? v.p/den : 0 };
+  }).sort((a,b)=> b.pick_rate - a.pick_rate || (b.win_rate||0)-(a.win_rate||0) || a.skill.localeCompare(b.skill))
+    .slice(0, limit);
 }
-function renderPivot(rows){
-  // Pivot: Day × Map (counts of eliminations)
-  const base = rows.filter(r=>r.team && r.killer);
-  const days=[...new Set(base.map(r=>r.day).filter(Boolean))].sort((a,b)=>a-b);
-  const maps=[...new Set(base.map(r=>r.map).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-  let thead = `<thead><tr><th>Map</th>${days.map(d=>`<th class="right">${'D'+d}</th>`).join('')}</tr></thead>`;
-  let tbody = '<tbody>';
-  for(const m of maps){
-    const rowCounts={}; days.forEach(d=> rowCounts[d]=0);
-    base.filter(r=>r.map===m).forEach(r=>{ if(r.day) rowCounts[r.day]++; });
-    tbody += `<tr><td>${m}</td>${
-      days.map(d=>`<td data-key="${'D'+d}" class="right">${rowCounts[d]||0}</td>`).join('')
-    }</tr>`;
-  }
-  tbody += '</tbody>';
-  $('tblPivot').innerHTML = `<table>${thead}${tbody}</table>`;
-  applyHeat('tblPivot', days.map(d=>'D'+d));
+function perSkillActiveCompressed(rows, limit=12){
+  const list = perSkillActiveCompressedData(rows, limit);
+  if (!list.length) return `<div class="muted">No active skills.</div>`;
+  return `<table>
+    <thead><tr><th>Skill</th><th class="right">Picks</th><th class="right">Wins</th><th class="right">Win %</th><th class="right">Pick %</th></tr></thead>
+    <tbody>
+      ${list.map(r=>`<tr>
+        <td>${r.skill}</td>
+        <td class="right">${r.picks}</td>
+        <td class="right">${r.wins}</td>
+        <td class="right">${r.win_rate===null?'—':fmtPct(r.win_rate)}</td>
+        <td class="right">${fmtPct(r.pick_rate)}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
 }
-function renderInsights(rows, sum){
-  if(!rows.length){ $('insights').innerHTML = '<li class="muted">No data in this slice.</li>'; return; }
-  // strongest pair
-  let best=null;
-  TEAMS.forEach(v=>{
-    const row=sum.matrix[v]||{};
-    Object.entries(row).forEach(([k,c])=>{
-      if(c>0 && (!best || c>best.c)) best={killer:k,victim:v,c};
-    });
-  });
-  // map bias
-  const mCount=new Map(); rows.forEach(r=>{ if(r.map) mCount.set(r.map,(mCount.get(r.map)||0)+ (r.team&&r.killer?1:0)); });
-  const topMap=[...mCount.entries()].sort((a,b)=>b[1]-a[1])[0];
-  // day bias
-  const dCount=new Map(); rows.forEach(r=>{ if(r.day) dCount.set(r.day,(dCount.get(r.day)||0)+ (r.team&&r.killer?1:0)); });
-  const topDay=[...dCount.entries()].sort((a,b)=>b[1]-a[1])[0];
 
-  $('insights').innerHTML = `
-    <li><b>Strongest predator→prey:</b> ${best? `<b>${best.killer}</b> → <b>${best.victim}</b> (${fmt(best.c)})`:'—'}</li>
-    <li><b>Eliminations concentrated on:</b> ${topMap? `<b>${topMap[0]}</b> (${fmt(topMap[1])})`:'—'}</li>
-    <li><b>Heaviest day:</b> ${topDay? `<b>Day ${topDay[0]}</b> (${fmt(topDay[1])})`:'—'}</li>
-    <li><b>Analyst tip:</b> Sort “Eliminated By” to surface teams repeatedly picked off by a single opponent; compare with map pivot to plan drop/rotation counters.</li>
+function perSkillPassiveCompressedData(rows, limit=12){
+  if (!rows.length) return [];
+  const map = new Map();
+  rows.forEach(r=>{
+    r.passives.forEach(p=>{
+      (p.trio||[]).forEach(ps=>{
+        if (!ps?.name) return;
+        const obj = map.get(ps.name) || {p:0,w:0};
+        obj.p += 1; if (r.result==='W') obj.w += 1;
+        map.set(ps.name, obj);
+      });
+    });
+  });
+  const den = rows.length * 12;
+  return [...map.entries()].map(([name,v])=>{
+    return { skill:name, picks:v.p, wins:v.w, win_rate: v.p? v.w/v.p : null, pick_rate: den? v.p/den : 0 };
+  }).sort((a,b)=> b.pick_rate - a.pick_rate || (b.win_rate||0)-(a.win_rate||0) || a.skill.localeCompare(b.skill))
+    .slice(0, limit);
+}
+function perSkillPassiveCompressed(rows, limit=12){
+  const list = perSkillPassiveCompressedData(rows, limit);
+  if (!list.length) return `<div class="muted">No passive skills.</div>`;
+  return `<table>
+    <thead><tr><th>Skill</th><th class="right">Picks</th><th class="right">Wins</th><th class="right">Win %</th><th class="right">Pick %</th></tr></thead>
+    <tbody>
+      ${list.map(r=>`<tr>
+        <td>${r.skill}</td>
+        <td class="right">${r.picks}</td>
+        <td class="right">${r.wins}</td>
+        <td class="right">${r.win_rate===null?'—':fmtPct(r.win_rate)}</td>
+        <td class="right">${fmtPct(r.pick_rate)}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+/* Active Skill Impact (Win/Loss vs baseline) */
+function activeSkillImpactData(rows, limit=12){
+  if (!rows.length) return [];
+  const matches = rows.length;
+  const winsOverall = rows.filter(r=>r.result==='W').length;
+  const baseline = matches ? winsOverall / matches : 0;
+
+  const map = new Map(); // skill -> {p,w,lossOpp Map}
+  rows.forEach(r=>{
+    r.actives.forEach(a=>{
+      if(!a.hero) return;
+      const o = map.get(a.hero) || {p:0,w:0,lossOpp:new Map()};
+      o.p += 1; if (r.result==='W') o.w += 1;
+      if (r.result==='L'){
+        const c = o.lossOpp.get(r.opponent)||0;
+        o.lossOpp.set(r.opponent, c+1);
+      }
+      map.set(a.hero, o);
+    });
+  });
+
+  return [...map.entries()].map(([name, v])=>{
+    const winRate = v.p ? v.w / v.p : 0;
+    const lossRate = v.p ? 1 - winRate : 0;
+    const delta = winRate - baseline;
+    const losses_by_opponent = [...v.lossOpp.entries()]
+      .sort((a,b)=>b[1]-a[1])
+      .map(([opp,count])=>({ opponent:opp, count, logo: TEAM_LOGO[opp] || null }))
+      .slice(0,3);
+    return { skill:name, picks:v.p, win_rate:winRate, loss_rate:lossRate, delta_vs_team:delta, losses_by_opponent };
+  }).sort((a,b)=> b.delta_vs_team - a.delta_vs_team || b.picks - a.picks || a.skill.localeCompare(b.skill))
+    .slice(0, limit);
+}
+function activeSkillImpactTable(rows, limit=12){
+  const list = activeSkillImpactData(rows, limit);
+  if(!list.length) return `<div class="muted">No active skills.</div>`;
+
+  const logoSpan = (lossOppList)=>{
+    const entries = (lossOppList||[]).slice(0,3);
+    if (!entries.length) return '';
+    const imgs = entries.map(({opponent, count, logo})=>{
+      const src = logo || PLACEHOLDER;
+      const badge = count > 1 ? `<span class="cnt">×${count}</span>` : '';
+      return `<span class="logo-wrap" title="${opponent} ×${count}">
+                <img src="${src}" alt="${opponent}" loading="lazy">
+                ${badge}
+              </span>`;
+    }).join('');
+    return `<span class="opp-logos">${imgs}</span>`;
+  };
+
+  return `
+    <table>
+      <thead>
+        <tr>
+          <th>Skill</th>
+          <th class="right">Picks</th>
+          <th class="right">Win %</th>
+          <th class="right">Loss %</th>
+          <th class="right">Δ vs team</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${list.map(r=>{
+          const dClass = r.delta_vs_team>0 ? 'delta-pos' : (r.delta_vs_team<0 ? 'delta-neg' : '');
+          const dText = (r.delta_vs_team>=0?'+':'') + fmtPct(r.delta_vs_team);
+          return `<tr>
+            <td>${r.skill}</td>
+            <td class="right mono">${r.picks}</td>
+            <td class="right mono">${fmtPct(r.win_rate)}</td>
+            <td class="right mono">${fmtPct(r.loss_rate)} ${logoSpan(r.losses_by_opponent)}</td>
+            <td class="right mono ${dClass}">${dText}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
   `;
 }
 
-/* ============ Renders: Page 2 (Team Focus) ============ */
-function renderTeamGrid(q=''){
-  const grid=$('teamGrid');
-  const ql = q.trim().toUpperCase();
-  const list = TEAMS.filter(t=>t.includes(ql));
-  if(!list.length){ grid.innerHTML='<div class="muted">No matches.</div>'; return; }
-  grid.innerHTML = list.map(code=>`<div class="team-tile" data-code="${code}"><div class="team-code">${code}</div></div>`).join('');
-  grid.querySelectorAll('.team-tile').forEach(div=>{
-    div.onclick=()=>{ CUR_TEAM=div.dataset.code; highlightActiveTile(); renderTeamFocus(); };
+/* Combos, Pairs, Trios (existing) */
+function buildCombos(rows){
+  const combos = new Map();
+  rows.forEach(r=>{
+    const heroes = r.actives.map(a=>a.hero).filter(Boolean);
+    if (heroes.length!==4) return;
+    const key = [...heroes].sort((x,y)=>x.localeCompare(y)).join('|');
+    if (!combos.has(key)) combos.set(key, { heroes:[...new Set(heroes)].sort((x,y)=>x.localeCompare(y)), picks:0, wins:0 });
+    const C = combos.get(key); C.picks += 1; if (r.result==='W') C.wins += 1;
   });
-  highlightActiveTile();
+  return [...combos.values()].map(c=>({ ...c, winpct: c.picks? c.wins/c.picks : 0 }));
 }
-function highlightActiveTile(){
-  const grid=$('teamGrid'); if(!grid) return;
-  [...grid.querySelectorAll('.team-tile')].forEach(div=> div.classList.toggle('active', div.dataset.code===CUR_TEAM));
+function buildPairs(rows){
+  const pairs = new Map();
+  rows.forEach(r=>{
+    const names = r.actives.map(a=>a.hero).filter(Boolean);
+    for (let i=0;i<names.length;i++){
+      for (let j=i+1;j<names.length;j++){
+        const [A,B] = [names[i],names[j]].sort((x,y)=>x.localeCompare(y));
+        const key = A+'|'+B;
+        if (!pairs.has(key)) pairs.set(key, { heroes:[A,B], picks:0, wins:0 });
+        const P = pairs.get(key);
+        P.picks += 1;
+        if (r.result === 'W') P.wins += 1;
+      }
+    }
+  });
+  return [...pairs.values()].map(p=>({ ...p, winpct: p.picks ? p.wins / p.picks : 0 }));
+}
+function tableCombos(list, title, limit=5){
+  const rows = [...list].sort((a,b)=> b.picks - a.picks || b.winpct - a.winpct || a.heroes.join(',').localeCompare(b.heroes.join(','))).slice(0,limit);
+  if (!rows.length) return `<div class="muted">No ${title}.</div>`;
+  return `
+    <table>
+      <thead><tr><th>${title}</th><th class="right">Picks</th><th class="right">Wins</th><th class="right">Win %</th></tr></thead>
+      <tbody>
+        ${rows.map(r=>`<tr><td>${r.heroes.join(' · ')}</td><td class="right">${r.picks}</td><td class="right">${r.wins}</td><td class="right">${fmtPct(r.winpct)}</td></tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+function buildTrios(rows){
+  const tri = new Map();
+  rows.forEach(r=>{
+    r.passives.forEach(p=>{
+      const names = (p.trio||[]).map(x=>x?.name).filter(Boolean);
+      if (names.length!==3) return;
+      const key = [...names].sort((x,y)=>x.localeCompare(y)).join('|');
+      if (!tri.has(key)) tri.set(key, { names:[...names].sort((a,b)=>a.localeCompare(b)), picks:0, wins:0 });
+      const T = tri.get(key); T.picks += 1; if (r.result==='W') T.wins += 1;
+    });
+  });
+  return [...tri.values()].map(t=>({ ...t, winpct: t.picks? t.wins/t.picks : 0 }));
+}
+function tableTrios(list, limit=5){
+  const rows = [...list].sort((a,b)=> b.picks - a.picks || b.winpct - a.winpct || a.names.join(',').localeCompare(b.names.join(','))).slice(0,limit);
+  if (!rows.length) return `<div class="muted">No passive trios.</div>`;
+  return `
+    <table>
+      <thead><tr><th>Trio</th><th class="right">Picks</th><th class="right">Wins</th><th class="right">Win %</th></tr></thead>
+      <tbody>
+        ${rows.map(r=>`<tr><td>${r.names.join(' · ')}</td><td class="right">${r.picks}</td><td class="right">${r.wins}</td><td class="right">${fmtPct(r.winpct)}</td></tr>`).join('')}
+      </tbody>
+    </table>`;
 }
 
-function renderTeamFocus(){
-  if(!CUR_TEAM){
-    $('teamTitle').textContent='Overview';
-    $('teamTopPredators').innerHTML='—'; $('teamTopVictims').innerHTML='—'; $('teamSignals').innerHTML='—';
-    $('teamCodeA').textContent='—'; $('teamCodeB').textContent='—';
-    $('tblTeamByDay').innerHTML='—'; $('tblTeamByMap').innerHTML='—'; $('tblTeamVictimPivot').innerHTML='—';
+/* Ban Impact helpers (existing) */
+function rowsForTeamIgnoringWL(team){
+  const mapSel = el('fMap').value;
+  const tournSel = el('fTourn').value || '__ALL__';
+  const allRows = RAW_RECORDS.flatMap(explodeRecordToRows).filter(r=>r.team===team);
+  let rows = allRows;
+  if (mapSel !== '__ALL__') rows = rows.filter(r=>r.map===mapSel);
+  if (tournSel !== '__ALL__') rows = rows.filter(r=>{
+    const rec = RAW_RECORDS.find(x=>x.id===r.rec_id);
+    return rec?.tournament_name === tournSel;
+  });
+  return rows;
+}
+function banImpactData(rows, limit=10){
+  const skills = new Map();
+  rows.forEach(r=>{
+    const banned = r.banName || '';
+    if (banned){
+      if (!skills.has(banned)) skills.set(banned, { name:banned, ban:{n:0,w:0}, noban:{n:0,w:0} });
+      const S = skills.get(banned); S.ban.n += 1; if (r.result==='W') S.ban.w += 1;
+    }
+  });
+  const rowsBySkill = Object.fromEntries([...skills.keys()].map(k=>[k,{n:0,w:0}]));
+  rows.forEach(r=>{
+    const win = r.result==='W' ? 1 : 0;
+    for (const k in rowsBySkill){
+      if ((r.banName||'') !== k){ rowsBySkill[k].n += 1; rowsBySkill[k].w += win; }
+    }
+  });
+  for (const [name,S] of skills.entries()){ S.noban = rowsBySkill[name] || {n:0,w:0}; }
+
+  const list = [...skills.values()].map(S=>{
+    const bN=S.ban.n, bW=S.ban.w, nN=S.noban.n, nW=S.noban.w;
+    const winBan = bN? bW/bN : 0; const winNot = nN? nW/nN : 0;
+    return { skill:S.name, banned:bN, win_rate_banned:winBan, other:nN, win_rate_not_banned:winNot, delta:winBan-winNot };
+  }).filter(r=>r.banned>=1).sort((a,b)=> b.delta - a.delta || b.banned - a.banned).slice(0,limit);
+
+  return list;
+}
+function banImpactTable(rows, limit=10){
+  const list = banImpactData(rows, limit);
+  if (!list.length) return `<div class="muted">No ban data.</div>`;
+  return `
+    <table>
+      <thead><tr>
+        <th>Skill</th><th class="right">Banned</th><th class="right">Win % (banned)</th>
+        <th class="right">Other</th><th class="right">Win % (not banned)</th><th class="right">Δ Win %</th>
+      </tr></thead>
+      <tbody>
+        ${list.map(r=>`
+          <tr>
+            <td>${r.skill}</td>
+            <td class="right">${r.banned}</td>
+            <td class="right">${fmtPct(r.win_rate_banned)}</td>
+            <td class="right">${r.other}</td>
+            <td class="right">${fmtPct(r.win_rate_not_banned)}</td>
+            <td class="right" style="font-weight:700">${fmtPct(r.delta)}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+/* ========= Opponent Series ========= */
+function buildOpponentSeriesRows(rows){
+  if(!rows.length) return [];
+  const keyOf = (r)=>{
+    const d = new Date(r.match_date);
+    const day = d.toISOString().slice(0,10);
+    return `${r.tournament}|${r.opponent}|${day}`;
+  };
+  const series = new Map();
+
+  rows.forEach(r=>{
+    const k = keyOf(r);
+    if(!series.has(k)){
+      series.set(k, { opponent:r.opponent, tournament:r.tournament||'—', date:new Date(r.match_date), games:[] });
+    }
+    series.get(k).games.push({
+      game_number: r.game_number ?? 0,
+      map: r.map,
+      mapScore: `${r.team_score}-${r.opp_score}`,
+      result: r.result,
+      banName: r.banName || '',
+      banImg: r.banImg || PLACEHOLDER
+    });
+  });
+
+  const flat = [];
+  for(const s of series.values()){
+    s.games.sort((a,b)=>(a.game_number)-(b.game_number));
+    const w = s.games.filter(g=>g.result==='W').length;
+    const l = s.games.length - w;
+    const seriesScore = `${w}-${l}`;
+    s.games.forEach(g=>{
+      flat.push({
+        opponent: s.opponent,
+        seriesScore,
+        map: g.map,
+        mapScore: g.mapScore,
+        result: g.result,
+        banName: g.banName,
+        banImg: g.banImg,
+        date: s.date
+      });
+    });
+  }
+  return flat.sort((a,b)=> b.date - a.date);
+}
+function opponentSeriesTable(rows, limit=30){
+  const list = buildOpponentSeriesRows(rows).slice(0, limit);
+  if(!list.length) return `<div class="muted">No opponent series for selection.</div>`;
+  return `
+    <table>
+      <thead>
+        <tr>
+          <th>Opponent</th>
+          <th class="right">Series</th>
+          <th>Map</th>
+          <th class="right">Map score</th>
+          <th class="right">Res</th>
+          <th>Banned skills</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${list.map(r=>`
+          <tr>
+            <td>${r.opponent}</td>
+            <td class="right mono">${r.seriesScore}</td>
+            <td>${r.map||'—'}</td>
+            <td class="right mono">${r.mapScore||'—'}</td>
+            <td class="right"><span class="wl ${r.result}">${r.result}</span></td>
+            <td>
+              <div class="icons">
+                <img src="${r.banImg||PLACEHOLDER}" alt="${r.banName||''}" title="${r.banName||''}">
+                <span class="muted tight">${r.banName||'—'}</span>
+              </div>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+}
+
+/* ========= KPIs card ========= */
+function kpiCard(bucket, kindActive, kindPassive, kindBan){
+  if (!bucket || !bucket.matches) return `<div class="muted">No data for selection.</div>`;
+  const subjA = [...kindActive.skills.values()].reduce((a,s)=>(a.appear+=s.appear,a),{appear:0});
+  const subjP = [...kindPassive.skills.values()].reduce((a,s)=>(a.appear+=s.appear,a),{appear:0});
+  const subjB = [...kindBan.skills.values()].reduce((a,s)=>(a.appear+=s.appear,a),{appear:0});
+  return `
+    <div class="kpis">
+      <div class="kpi">Matches <strong>${bucket.matches}</strong></div>
+      <div class="kpi">Wins <strong>${bucket.wins}</strong> <span class="muted">(${pct(bucket.wins,bucket.matches)})</span></div>
+      <div class="kpi">Active picks <strong>${subjA.appear}</strong> <span class="muted">(${pct(subjA.appear,bucket.matches)})</span></div>
+      <div class="kpi">Passive picks <strong>${subjP.appear}</strong> <span class="muted">(${pct(subjP.appear,bucket.matches)})</span></div>
+      <div class="kpi">Bans <strong>${subjB.appear}</strong> <span class="muted">(${pct(subjB.appear,bucket.matches)})</span></div>
+    </div>`;
+}
+
+/* ========= MATCHES BLOCKS (new) ========= */
+function renderPlayerCard(active, trio){
+  const t = trio || [];
+  const row = (ps)=> `<div class="pPassRow"><img src="${ps?.img||PLACEHOLDER}" alt="${ps?.name||''}" loading="lazy"><span>${safe(ps?.name||'')}</span></div>`;
+  return `
+    <div class="pCard">
+      <img class="pAct" src="${active.heroImg||PLACEHOLDER}" alt="${active.hero||''}" loading="lazy">
+      <div class="pInfo">
+        <div class="pName">${safe(active.player||'')}</div>
+        <div class="pHero">${safe(active.hero||'')}</div>
+        <div class="pPassCol">
+          ${row(t[0]||{})}
+          ${row(t[1]||{})}
+          ${row(t[2]||{})}
+        </div>
+      </div>
+    </div>`;
+}
+function renderPlayersGrid(row){
+  const cards = row.actives.map((a, i)=> renderPlayerCard(a, (row.passives[i]||{}).trio||[])).join('');
+  return `<div class="playersWrap">${cards}</div>`;
+}
+function scoreText(row){ return `${row.team_score ?? 0} - ${row.opp_score ?? 0}`; }
+function matchesTable(rows, limit=30){
+  const list = (rows||[]).slice(0, limit);
+  if (!list.length) return `<div class="muted">No matches for selection.</div>`;
+  return `
+    <table>
+      <thead>
+        <tr>
+          <th style="min-width:92px;">Date</th>
+          <th>Game</th>
+          <th>Map</th>
+          <th>Team</th>
+          <th>Opponent</th>
+          <th class="right">Score</th>
+          <th class="right">Result</th>
+          <th>Ban</th>
+          <th>Players (Active + 3×Passive)</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${list.map(r=>`
+          <tr>
+            <td class="mono">${dateShort(r.match_date)}</td>
+            <td>Game ${r.game_number ?? 0}</td>
+            <td>${safe(r.map||'—')}</td>
+            <td>
+              ${safe(r.team||'')}
+              <div class="muted tight" style="font-size:.8rem">vs ${safe(r.opponent||'')}</div>
+            </td>
+            <td>${safe(r.opponent||'')}</td>
+            <td class="right mono">${scoreText(r)}</td>
+            <td class="right"><span class="wl ${r.result}">${r.result}</span></td>
+            <td>
+              <div class="icons">
+                <img src="${r.banImg||PLACEHOLDER}" alt="${r.banName||''}" title="${r.banName||''}">
+                <span class="muted tight">${r.banName||'—'}</span>
+              </div>
+            </td>
+            <td>${renderPlayersGrid(r)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+}
+
+/* ========= AI Prompt Build + Copy ========= */
+function stripLinksDeep(x){
+  if (Array.isArray(x)) return x.map(stripLinksDeep);
+  if (x && typeof x === 'object'){
+    const out = {};
+    for (const [k, v] of Object.entries(x)){
+      if (['logo','banImg','heroImg','img','image','image_url','imageUrl','imageLink','link','url'].includes(k)) continue;
+      if (typeof v === 'string' && /^https?:\/\//i.test(v)) continue;
+      out[k] = stripLinksDeep(v);
+    }
+    return out;
+  }
+  return x;
+}
+
+function buildAIPrompt(exportObj){
+  const meta = exportObj.meta;
+  const header = `You are an esports analyst. Analyze the following JSON snapshot comparing two Clash Squad teams.
+
+Context:
+- Teams: ${meta.teamA} vs ${meta.teamB}
+- Filters: ${meta.mapLabel}, ${meta.tournamentLabel}, ${meta.wlLabel}
+- Date range: ${meta.from} → ${meta.to}
+
+Instructions:
+1) Summarize overall performance for each team (matches, wins, win%).
+2) Highlight strongest/weakest maps (use win% and volume).
+3) Analyze Active Skill Impact (Win/Loss) — call out skills with the largest positive/negative Δ vs team baseline.
+4) Mention rivals driving losses for key skills (logos/opponents listed in the data).
+5) Note top combos/pairs and passive trios; comment on reliability (win% + picks).
+6) Identify impactful bans (largest Δ win% vs not banned).
+7) Surface opponent-series patterns (sweeps, close scores, repeat bans).
+8) Finish with top 3 actionable recommendations.
+
+Use only the provided data. Be concise but specific.`;
+
+  return header + "\n\nJSON:\n" + JSON.stringify(exportObj, null, 2);
+}
+
+async function copyTextToClipboard(text){
+  try{
+    if (navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  }catch{}
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position='fixed'; ta.style.left='-9999px';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  let ok=false;
+  try{ ok = document.execCommand('copy'); }catch{}
+  ta.remove();
+  return ok;
+}
+
+/* ========= Render ========= */
+function renderAll(){
+  const a = el('cmpTeamA').value, b = el('cmpTeamB').value;
+  if (!a || !b || a===b){
+    el('meta').textContent = 'Pick two different teams.';
+    ['kpiA','kpiB','activeA','activeB','passiveA','passiveB','bansA','bansB','tmA','tmB','psAAct','psBAct','impactA','impactB','psAPas','psBPas','combosA','combosB','pairsA','pairsB','triosA','triosB','biA','biB','oppSeriesA','oppSeriesB','matchesA','matchesB']
+      .forEach(id=>{ if(el(id)) el(id).innerHTML = '<div class="muted">—</div>'; });
+    const ta = el('aiPrompt'); if (ta) ta.value = 'Pick two different teams.';
     return;
   }
-  $('teamTitle').textContent = `Team Focus — ${CUR_TEAM}`;
-  $('teamCodeA').textContent = CUR_TEAM;
-  $('teamCodeB').textContent = CUR_TEAM;
 
-  const rows = filteredRows();
-  // victims of CUR_TEAM (they eliminated others)
-  const given = {};
-  rows.forEach(r=>{ if(r.killer===CUR_TEAM && r.team){ given[r.team]=(given[r.team]||0)+1; } });
-  const givenTop = Object.entries(given).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  $('teamTopVictims').innerHTML = givenTop.length
-    ? givenTop.map(([k,v])=>`<div class="kpi">${k}: <strong>${fmt(v)}</strong></div>`).join('')
-    : '<div class="muted">No eliminations as killer in slice.</div>';
+  const mapLabel   = (el('fMap').value==='__ALL__')?'All maps':el('fMap').value;
+  const tournLabel = (el('fTourn').value==='__ALL__')?'All tournaments':el('fTourn').value;
+  const wlLabel    = (el('fWL').value==='__ALL__')?'All outcomes':(el('fWL').value==='W'?'Wins only':'Losses only');
+  el('meta').textContent = `${a} vs ${b} • ${mapLabel} • ${tournLabel} • ${wlLabel}`;
 
-  // predators of CUR_TEAM (who eliminated them)
-  const suffered = {};
-  rows.forEach(r=>{ if(r.team===CUR_TEAM && r.killer){ suffered[r.killer]=(suffered[r.killer]||0)+1; } });
-  const sufferedTop = Object.entries(suffered).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  $('teamTopPredators').innerHTML = sufferedTop.length
-    ? sufferedTop.map(([k,v])=>`<div class="kpi">${k}: <strong>${fmt(v)}</strong></div>`).join('')
-    : '<div class="muted">No times eliminated in slice.</div>';
+  const rowsA = rowsForTeam(a), rowsB = rowsForTeam(b);
 
-  // signals
-  const totalGiven = Object.values(given).reduce((a,b)=>a+b,0);
-  const totalSuffer = Object.values(suffered).reduce((a,b)=>a+b,0);
-  $('teamSignals').innerHTML = `
-    <div class="kpi">NET Δ <strong>${fmt(totalGiven - totalSuffer)}</strong></div>
-    <div class="kpi">GIVEN <strong>${fmt(totalGiven)}</strong></div>
-    <div class="kpi">SUFFERED <strong>${fmt(totalSuffer)}</strong></div>
-  `;
+  // Buckets
+  const bA = buildTeamBucket(rowsA, a, 'active');
+  const bP_A = buildTeamBucket(rowsA, a, 'passive');
+  const bBan_A = buildTeamBucket(rowsA, a, 'ban');
+  const bB = buildTeamBucket(rowsB, b, 'active');
+  const bP_B = buildTeamBucket(rowsB, b, 'passive');
+  const bBan_B = buildTeamBucket(rowsB, b, 'ban');
 
-  // By Day (predators)
-  const byDay = {};
-  rows.forEach(r=>{
-    if(r.team!==CUR_TEAM || !r.killer || !r.day) return;
-    const d = r.day;
-    byDay[d] ||= {};
-    byDay[d][r.killer] = (byDay[d][r.killer]||0)+1;
-  });
-  const dayRows = Object.entries(byDay).map(([d,obj])=>{
-    const top = Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>`${k} × ${v}`).join(' · ');
-    const total = Object.values(obj).reduce((a,b)=>a+b,0);
-    return { day:Number(d), total, top };
-  }).sort((a,b)=>a.day-b.day);
-  $('tblTeamByDay').innerHTML = renderSimpleTable(dayRows, [
-    {label:'Day',key:'day'},
-    {label:'Times Eliminated',key:'total',right:true},
-    {label:'Top Eliminators',key:'top'}
-  ]);
-  applyHeat('tblTeamByDay',['total']);
+  // KPIs
+  el('kpiA').innerHTML = `<h3>${a}</h3>${kpiCard(bA, bA, bP_A, bBan_A)}`;
+  el('kpiB').innerHTML = `<h3>${b}</h3>${kpiCard(bB, bB, bP_B, bBan_B)}`;
 
-  // By Map (predators)
-  const byMap = {};
-  rows.forEach(r=>{
-    if(r.team!==CUR_TEAM || !r.killer) return;
-    const m = r.map || '—';
-    byMap[m] ||= {};
-    byMap[m][r.killer] = (byMap[m][r.killer]||0)+1;
-  });
-  const mapRows = Object.entries(byMap).map(([m,obj])=>{
-    const top = Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>`${k} × ${v}`).join(' · ');
-    const total = Object.values(obj).reduce((a,b)=>a+b,0);
-    return { map:m, total, top };
-  }).sort((a,b)=> b.total-a.total || a.map.localeCompare(b.map));
-  $('tblTeamByMap').innerHTML = renderSimpleTable(mapRows, [
-    {label:'Map',key:'map'},
-    {label:'Times Eliminated',key:'total',right:true},
-    {label:'Top Eliminators',key:'top'}
-  ]);
-  applyHeat('tblTeamByMap',['total']);
+  // Skills
+  el('labelActiveA').textContent = `${a} — Active`;
+  el('labelActiveB').textContent = `${b} — Active`;
+  el('activeA').innerHTML = topSkillsTable(bA,'active',10);
+  el('activeB').innerHTML = topSkillsTable(bB,'active',10);
 
-  // Victim pivot (Given) — Day × Map
-  const vRows = rows.filter(r=>r.killer===CUR_TEAM && r.team);
-  const days=[...new Set(vRows.map(r=>r.day).filter(Boolean))].sort((a,b)=>a-b);
-  const maps=[...new Set(vRows.map(r=>r.map).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-  let thead = `<thead><tr><th>Map</th>${days.map(d=>`<th class="right">${'D'+d}</th>`).join('')}</tr></thead>`;
-  let tbody = '<tbody>';
-  for(const m of maps){
-    const cnt={}; days.forEach(d=>cnt[d]=0);
-    vRows.filter(r=>r.map===m).forEach(r=>{ if(r.day) cnt[r.day]++; });
-    tbody += `<tr><td>${m}</td>${
-      days.map(d=>`<td data-key="${'D'+d}" class="right">${cnt[d]||0}</td>`).join('')
-    }</tr>`;
-  }
-  tbody += '</tbody>';
-  $('tblTeamVictimPivot').innerHTML = `<table>${thead}${tbody}</table>`;
-  applyHeat('tblTeamVictimPivot', days.map(d=>'D'+d));
+  el('labelPassiveA').textContent = `${a} — Passive`;
+  el('labelPassiveB').textContent = `${b} — Passive`;
+  el('passiveA').innerHTML = topSkillsTable(bP_A,'passive',10);
+  el('passiveB').innerHTML = topSkillsTable(bP_B,'passive',10);
+
+  el('labelBansA').textContent = `${a} — Bans`;
+  el('labelBansB').textContent = `${b} — Bans`;
+  el('bansA').innerHTML = topSkillsTable(bBan_A,'ban',10);
+  el('bansB').innerHTML = topSkillsTable(bBan_B,'ban',10);
+
+  // Team × Map
+  el('labelTMA').textContent = a; el('labelTMB').textContent = b;
+  el('tmA').innerHTML = teamMapStats(rowsA);
+  el('tmB').innerHTML = teamMapStats(rowsB);
+
+  // Per-skill compressed
+  el('labelPSA_Act').textContent = a; el('labelPSB_Act').textContent = b;
+  el('psAAct').innerHTML = perSkillActiveCompressed(rowsA, 12);
+  el('psBAct').innerHTML = perSkillActiveCompressed(rowsB, 12);
+
+  // Active Skill Impact
+  el('labelImpactA').textContent = a; el('labelImpactB').textContent = b;
+  el('impactA').innerHTML = activeSkillImpactTable(rowsA, 12);
+  el('impactB').innerHTML = activeSkillImpactTable(rowsB, 12);
+
+  // Passive compressed
+  el('labelPSA_Pas').textContent = a; el('labelPSB_Pas').textContent = b;
+  el('psAPas').innerHTML = perSkillPassiveCompressed(rowsA, 12);
+  el('psBPas').innerHTML = perSkillPassiveCompressed(rowsB, 12);
+
+  // Combos / Pairs
+  el('labelCombosA').textContent = `${a} — 4× Active`; el('labelCombosB').textContent = `${b} — 4× Active`;
+  el('combosA').innerHTML = tableCombos(buildCombos(rowsA), 'Combo', 5);
+  el('combosB').innerHTML = tableCombos(buildCombos(rowsB), 'Combo', 5);
+  el('labelPairsA').textContent = `${a} — 2× Active`; el('labelPairsB').textContent = `${b} — 2× Active`;
+  el('pairsA').innerHTML = tableCombos(buildPairs(rowsA), 'Pair', 5);
+  el('pairsB').innerHTML = tableCombos(buildPairs(rowsB), 'Pair', 5);
+
+  // Passive Trios
+  el('labelTriosA').textContent = a; el('labelTriosB').textContent = b;
+  const triA = buildTrios(rowsA), triB = buildTrios(rowsB);
+  el('triosA').innerHTML = tableTrios(triA, 5);
+  el('triosB').innerHTML = tableTrios(triB, 5);
+
+  // Ban Impact (ignore WL)
+  el('labelBIA').textContent = a; el('labelBIB').textContent = b;
+  const biA_rows = rowsForTeamIgnoringWL(a), biB_rows = rowsForTeamIgnoringWL(b);
+  el('biA').innerHTML = banImpactTable(biA_rows, 10);
+  el('biB').innerHTML = banImpactTable(biB_rows, 10);
+
+  // Matches Blocks (new)
+  el('labelMatchesA').textContent = a; el('labelMatchesB').textContent = b;
+  el('matchesA').innerHTML = matchesTable(rowsA, 50);
+  el('matchesB').innerHTML = matchesTable(rowsB, 50);
+
+  // Opponent Series
+  el('labelOppSeriesA').textContent = a; el('labelOppSeriesB').textContent = b;
+  el('oppSeriesA').innerHTML = opponentSeriesTable(rowsA, 30);
+  el('oppSeriesB').innerHTML = opponentSeriesTable(rowsB, 30);
+
+  // ===== Build data snapshot for AI prompt (links removed only here) =====
+  const meta = {
+    teamA: a, teamB: b,
+    mapLabel, tournamentLabel: tournLabel, wlLabel,
+    from: el('fFrom').value, to: el('fTo').value
+  };
+  const exportObj = {
+    meta,
+    teamA:{
+      kpis:{ matches:bA.matches, wins:bA.wins, win_rate: bA.matches? bA.wins/bA.matches : 0 },
+      team_map: teamMapStatsData(rowsA),
+      active_skill_impact: activeSkillImpactData(rowsA, 12),
+      per_skill_active: perSkillActiveCompressedData(rowsA, 12),
+      per_skill_passive: perSkillPassiveCompressedData(rowsA, 12),
+      top_active_by_rate: topSkillsData(bA, 10),
+      top_passive_by_rate: topSkillsData(bP_A, 10),
+      top_bans_by_rate: topSkillsData(bBan_A, 10),
+      combos: buildCombos(rowsA).sort((a,b)=> b.picks-a.picks || b.winpct-a.winpct).slice(0,5),
+      pairs: buildPairs(rowsA).sort((a,b)=> b.picks-a.picks || b.winpct-a.winpct).slice(0,5),
+      passive_trios: triA.sort((a,b)=> b.picks-a.picks || b.winpct-a.winpct).slice(0,5),
+      ban_impact: banImpactData(biA_rows, 10),
+      opponent_series: buildOpponentSeriesRows(rowsA).slice(0,30)
+    },
+    teamB:{
+      kpis:{ matches:bB.matches, wins:bB.wins, win_rate: bB.matches? bB.wins/bB.matches : 0 },
+      team_map: teamMapStatsData(rowsB),
+      active_skill_impact: activeSkillImpactData(rowsB, 12),
+      per_skill_active: perSkillActiveCompressedData(rowsB, 12),
+      per_skill_passive: perSkillPassiveCompressedData(rowsB, 12),
+      top_active_by_rate: topSkillsData(bB, 10),
+      top_passive_by_rate: topSkillsData(bP_B, 10),
+      top_bans_by_rate: topSkillsData(bBan_B, 10),
+      combos: buildCombos(rowsB).sort((a,b)=> b.picks-a.picks || b.winpct-a.winpct).slice(0,5),
+      pairs: buildPairs(rowsB).sort((a,b)=> b.picks-a.picks || b.winpct-a.winpct).slice(0,5),
+      passive_trios: triB.sort((a,b)=> b.picks-a.picks || b.winpct-a.winpct).slice(0,5),
+      ban_impact: banImpactData(biB_rows, 10),
+      opponent_series: buildOpponentSeriesRows(rowsB).slice(0,30)
+    }
+  };
+  const exportClean = stripLinksDeep(exportObj);
+  el('aiPrompt').value = buildAIPrompt(exportClean);
 }
 
-/* ============ Wiring + initial ============ */
-function populateFilters(){
-  const dSel=$('daySel'), mSel=$('mapSel');
-  const days = uniqueDays(); const maps=uniqueMaps();
-  dSel.innerHTML = `<option value="__all__">All Days</option>` + days.map(d=>`<option value="${d}">Day ${d}</option>`).join('');
-  mSel.innerHTML = `<option value="__all__">All Maps</option>` + maps.map(m=>`<option value="${m}">${m}</option>`).join('');
-  dSel.value='__all__'; mSel.value='__all__';
+/* ========= Refresh flow ========= */
+async function refresh(){
+  [RAW_RECORDS] = await Promise.all([fetchRecords()]);
+  await Promise.all([fetchTeamLogos()]);
+  await populateTournamentDropdown(RAW_RECORDS);
+  populateTeamDropdowns(RAW_RECORDS);
+  renderAll();
 }
-function wireControls(){
-  $('daySel').addEventListener('change', e=>{ FILTER_DAY=e.target.value; updateScopeChips(); renderAll(); renderTeamFocus(); });
-  $('mapSel').addEventListener('change', e=>{ FILTER_MAP=e.target.value; updateScopeChips(); renderAll(); renderTeamFocus(); });
-  $('valueSel').addEventListener('change', renderAll);
-  $('resetGlobal').addEventListener('click', ()=>{ FILTER_DAY='__all__'; FILTER_MAP='__all__'; $('daySel').value='__all__'; $('mapSel').value='__all__'; updateScopeChips(); renderAll(); renderTeamFocus(); });
-  $('teamSearch').addEventListener('input', e=> renderTeamGrid(e.target.value||''));
-}
-function renderAll(){
-  const rows = filteredRows();
-  const sum = summarize(rows);
-  renderMatrix(sum.matrix, $('valueSel').value);
-  renderLeaderboards(sum);
-  renderPivot(rows);
-  renderInsights(rows, sum);
-}
-async function init(){
-  try{
-    RAW = await fetchAllLops();
-    buildTeams();
-    populateFilters();
-    updateScopeChips();
-    renderAll();
 
-    // Team page
-    renderTeamGrid('');
-    CUR_TEAM = TEAMS[0] || null;
-    renderTeamFocus();
+/* ========= Events ========= */
+el('applyBtn').onclick = refresh;
+['cmpTeamA','cmpTeamB'].forEach(id=> el(id).addEventListener('change', renderAll));
+el('cmpSwap').addEventListener('click', ()=>{
+  const A = el('cmpTeamA'), B = el('cmpTeamB'); const t = A.value; A.value = B.value; B.value = t; renderAll();
+});
+el('copyPromptBtn').addEventListener('click', async ()=>{
+  const ta = el('aiPrompt');
+  const ok = await copyTextToClipboard(ta.value || '');
+  const btn = el('copyPromptBtn');
+  const orig = btn.textContent;
+  btn.textContent = ok ? 'Copied!' : 'Copy failed';
+  setTimeout(()=> btn.textContent = orig, 1200);
+});
 
-    // UI basics
-    document.querySelectorAll('.accordion').forEach(d=> d.open=false);
-    showPage(currentPage());
-    $('veil').classList.add('hide');
-  }catch(e){
-    gerr('Init failed:\n'+(e.stack||e.message||e));
-    $('veil').classList.add('hide');
-  }
-}
-init();
+/* ========= First load ========= */
+refresh();
 </script>
 </body>
 </html>
