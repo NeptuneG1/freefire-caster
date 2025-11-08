@@ -1,477 +1,613 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>FFBR — Elimination Relationships (Team vs Eliminator)</title>
-<link rel="preconnect" href="https://cdn.jsdelivr.net" />
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-<style>
-  :root{
-    --bg:#0d1014; --panel:#1b2130; --panel2:#121724;
-    --ink:#eef3fb; --muted:#b6c0ce; --line:#313849;
-    --brand:#ffe93b; --accent:#7fd2ff; --good:#62e887; --bad:#ff6b6b;
-    --chip:#243142;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:var(--ink);
-    font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
-  a{color:var(--accent);text-decoration:none}
-  a:hover{text-decoration:underline}
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FFBR — Eliminations (Team vs Eliminator)</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{
+      --bg:#0e0e0e; --panel:#1b1b1b; --panel2:#141414; --ink:#f5f5f5; --muted:#b9b9b9;
+      --brand:#ffbd59; --brand2:#ff7733; --line:#313131;
+      --tile-w:96px; --tile-h:104px; --logo:44px; --code-fs:.74rem;
+      --heat-rgb:255,189,89; --heat-min:.06; --heat-max:.22; --heat-top-outline:.42; --heat-radius:8px;
+      --good:#62e887; --bad:#ff6b6b; --step-h:48px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif}
+    header{position:sticky;top:0;z-index:20;background:#1f1f1f;border-bottom:3px solid var(--brand);padding:14px 16px}
+    h1{margin:0;font-size:1.1rem;letter-spacing:.3px;color:var(--brand)}
+    .user-controls{position:absolute;right:16px;top:12px;display:flex;gap:10px;align-items:center}
+    .chip{font-size:.85rem;color:#ddd;background:#272727;border:1px solid #3a3a3a;border-radius:999px;padding:4px 10px}
+    .btn{background:var(--brand);color:var(--panel);border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
+    .btn.secondary{background:#2a2a2a;color:#ddd;border:1px solid #3a3a3a}
+    .btn.ghost{background:transparent;color:#ddd;border:1px solid #3a3a3a}
+    .shell{max-width:1180px;margin:22px auto;padding:0 12px}
 
-  header{position:sticky;top:0;z-index:20;background:linear-gradient(180deg,#121724 0%,#0d1014 100%);border-bottom:2px solid var(--brand)}
-  .head{max-width:1200px;margin:0 auto;padding:14px 16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
-  .title{font-weight:800;font-size:18px;letter-spacing:.2px}
-  .filters{display:flex;flex-wrap:wrap;gap:10px; margin-left:auto}
-  .select, .input{
-    background:#0f1420;border:1px solid var(--line);color:var(--ink);
-    border-radius:10px;padding:8px 10px;min-width:120px
-  }
-  .chiprow{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
-  .chip{
-    background:var(--chip);border:1px solid var(--line);color:var(--ink);
-    border-radius:999px;padding:6px 10px;font-size:12px
-  }
+    .gerr{display:none;margin:0 0 12px;background:#2a1111;border:1px solid #553;color:#ffb4b4;border-radius:10px;padding:10px 12px;white-space:pre-wrap}
+    .gerr.show{display:block}
 
-  main{max-width:1200px;margin:18px auto;padding:0 16px 60px}
-  h2{margin:22px 0 10px;font-size:18px}
-  section{background:var(--panel);border:1px solid var(--line); border-radius:16px;padding:14px;margin:16px 0}
-  .grid{display:grid;gap:14px}
-  .grid-2{grid-template-columns:1fr 1fr}
-  .grid-3{grid-template-columns:1fr 1fr 1fr}
-  @media (max-width: 980px){
-    .grid-2,.grid-3{grid-template-columns:1fr}
-  }
+    .steps{position:sticky;top:61px;z-index:15;background:#151515;border:1px solid var(--line);border-radius:12px;height:var(--step-h);display:flex;align-items:center;gap:8px;padding:6px 8px;margin-bottom:12px}
+    .step{flex:1;display:flex;align-items:center;gap:8px;justify-content:center;height:100%;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f0f;color:#cacaca;font-weight:700;cursor:pointer}
+    .step .num{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:999px;border:1px solid #3a3a3a;background:#1a1a1a;font-size:.9rem}
+    .step.active{outline:2px solid var(--brand);color:#fff}
+    .pager-nav{display:flex;gap:8px;justify-content:space-between;margin:8px 0 16px}
+    .steps-hint{color:var(--muted);font-size:.9rem}
 
-  /* Matrix */
-  .matrix-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px; background:var(--panel2)}
-  table{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%}
-  th,td{padding:8px 10px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);text-align:center;font-size:12px;white-space:nowrap}
-  th{position:sticky;top:0;background:#141a29;font-weight:700;z-index:5}
-  th.sticky-left, td.sticky-left{position:sticky;left:0;background:#151a28;z-index:4;text-align:left}
-  td.sticky-left{font-weight:600}
-  tr:last-child td{border-bottom:none}
-  td:last-child, th:last-child{border-right:none}
-  .heat-0{background:#141a29}
-  .heat-1{background:#18223b}
-  .heat-2{background:#1b2745}
-  .heat-3{background:#203158}
-  .heat-4{background:#253a6a}
-  .heat-5{background:#2a447d}
-  .heat-6{background:#2f4d8f}
-  .heat-7{background:#3557a2}
-  .heat-8{background:#3b61b5}
-  .heat-9{background:#416bc8}
+    .page{display:none}
+    .page.active{display:block}
+    .section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
+    .section h2{margin:0 0 10px;color:var(--brand)}
+    .grid2{display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:12px}
+    .grid3{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:12px}
+    .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px}
+    .card h3{margin:0 0 6px;color:var(--brand2);font-size:1.0rem}
+    .kpis{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+    .kpi{background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:6px 10px;font-size:.9rem}
+    .kpi strong{font-weight:800}
+    .bar{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+    .bar label{color:var(--muted);font-size:.9rem}
+    .input{background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:7px 10px}
+    .muted{color:var(--muted)}
 
-  /* Tables */
-  .tbl{width:100%;overflow:auto;border:1px solid var(--line);border-radius:12px;background:var(--panel2)}
-  .tbl table{min-width:760px}
-  .tbl th{cursor:pointer}
-  .muted{color:var(--muted)}
-  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
-  .right{text-align:right}
-  .center{text-align:center}
+    /* tables */
+    table{width:100%;border-collapse:separate;border-spacing:0 6px;font-size:.92rem}
+    thead th{background:#191919;position:sticky;top:0;text-align:left;border-radius:8px;padding:8px 6px;z-index:1}
+    th,td{padding:6px 6px;vertical-align:top}
+    .right{text-align:right}
+    td[data-key]{transition:background-color .18s ease, box-shadow .18s ease;border-radius:var(--heat-radius);background-clip:padding-box}
+    td.heat-top{box-shadow:inset 0 0 0 1px rgba(var(--heat-rgb), var(--heat-top-outline))}
 
-  .note{font-size:12px;color:var(--muted);margin-top:8px}
-  .tag{display:inline-block;border:1px solid var(--line);padding:2px 6px;border-radius:6px;background:#101626;margin-left:6px;font-size:11px}
-  .highlight{outline:2px solid var(--accent)}
-</style>
+    /* matrix */
+    .matrix-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;background:#111}
+    .matrix table{min-width:max(100%, 860px)}
+    .sticky{position:sticky;left:0;background:#1a1a1a;z-index:2}
+    .sticky.head{top:0;z-index:3}
+
+    /* team grid */
+    .team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--tile-w),1fr));gap:8px}
+    .team-tile{height:var(--tile-h);background:#131313;border:1px solid #2a2a2a;border-radius:10px;padding:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:transform .1s ease,border-color .1s ease;overflow:hidden}
+    .team-tile:hover{transform:translateY(-2px);border-color:#444}
+    .team-tile.active{outline:2px solid var(--brand2)}
+    .team-code{font-weight:800;font-size:var(--code-fs);line-height:1.1;letter-spacing:.2px}
+
+    #veil{position:fixed;inset:0;display:grid;place-items:center;background:rgba(10,10,10,.95);z-index:9999}
+    #veil .box{background:#121212;border:1px solid #2a2a2a;border-radius:12px;padding:14px 16px;color:#ddd}
+    #veil.hide{display:none}
+
+    @media (max-width:980px){.grid3{grid-template-columns:1fr}}
+    @media (max-width:860px){.grid2{grid-template-columns:1fr}}
+  </style>
 </head>
 <body>
 <header>
-  <div class="head">
-    <div class="title">FFBR — Team Eliminations Viewer</div>
-    <div class="filters">
-      <select id="daySel" class="select"></select>
-      <select id="mapSel" class="select"></select>
-      <input id="teamSearch" class="input" placeholder="Focus team (e.g., FX)" />
-      <select id="viewSel" class="select">
-        <option value="count" selected>Show: Counts</option>
-        <option value="rowpct">Show: % of team’s eliminations suffered</option>
-      </select>
-    </div>
-    <div class="chiprow" id="chips"></div>
+  <h1>FFBR — Eliminations (TeamName vs Eliminated Team Name)</h1>
+  <div class="user-controls">
+    <span class="chip" id="scopeChip">Scope: All Days • All Maps</span>
+    <span class="chip" id="user-info">Checking login…</span>
+    <button class="btn" id="logoutBtn">Logout</button>
   </div>
 </header>
 
-<main>
-  <section>
-    <h2>Head-to-Head Elimination Matrix <span class="tag">rows = eliminated teams</span> <span class="tag">columns = eliminators</span></h2>
-    <div class="matrix-wrap" id="matrixWrap"></div>
-    <div class="note">Tip: Filter by <b>Day</b>, <b>Map</b>, or both. Hover cells for detail. Use “% of team’s eliminations suffered” to normalize each row.</div>
-  </section>
+<div id="veil"><div class="box">Loading data…</div></div>
 
-  <div class="grid grid-2">
-    <section>
-      <h2>Who Eliminated Each Team? (by filter)</h2>
-      <div class="tbl" id="eliminatedByTbl"></div>
-    </section>
-    <section>
-      <h2>Who Did Each Team Eliminate? (by filter)</h2>
-      <div class="tbl" id="eliminationsGivenTbl"></div>
-    </section>
+<div class="shell">
+  <div id="globalErr" class="gerr"></div>
+
+  <div class="steps" id="steps">
+    <div class="step" data-page="1"><span class="num">1</span><span class="label">Overall</span></div>
+    <div class="step" data-page="2"><span class="num">2</span><span class="label">Team Focus</span></div>
+  </div>
+  <div class="pager-nav">
+    <button class="btn secondary" id="prevBtn">← Prev</button>
+    <div class="steps-hint">Use ←/→ keys to navigate</div>
+    <button class="btn secondary" id="nextBtn">Next →</button>
   </div>
 
-  <section>
-    <h2>Team Summary — Placements, Booyahs, Kills</h2>
-    <div class="tbl" id="teamSummaryTbl"></div>
-    <div class="note">Derived from team-level rows only (1 row per team per match). “Matches” respects the current Day/Map filter.</div>
-  </section>
+  <!-- PAGE 1: OVERALL -->
+  <div class="page" id="page1" data-page="1">
+    <div class="section">
+      <h2>Filters</h2>
+      <div class="bar">
+        <label>Day
+          <select id="daySel" class="input" style="min-width:160px"><option>Loading…</option></select>
+        </label>
+        <label>Map
+          <select id="mapSel" class="input" style="min-width:220px"><option>Loading…</option></select>
+        </label>
+        <label>Value
+          <select id="valueSel" class="input">
+            <option value="count" selected>Counts</option>
+            <option value="rowpct">% of a team’s eliminations suffered (row %)</option>
+          </select>
+        </label>
+        <button class="btn secondary" id="resetGlobal">Reset</button>
+      </div>
+      <div class="muted" id="filterHint">—</div>
+    </div>
 
-  <section>
-    <h2>Quick Insights (for analysts)</h2>
-    <ul id="insights" style="margin:8px 0 0 18px; line-height:1.6">
-      <!-- filled by JS -->
-    </ul>
-  </section>
-</main>
+    <div class="section">
+      <h2>Head-to-Head Elimination Matrix <span class="muted">rows = eliminated (TeamName) • cols = eliminator (Eliminated Team Name)</span></h2>
+      <div class="matrix-wrap" id="matrixWrap">Loading…</div>
+      <div class="muted" style="margin-top:6px">Tip: Use the % view to find teams repeatedly eliminated by the same opponent (exposure risk). Scroll horizontally for more teams.</div>
+    </div>
+
+    <div class="grid2">
+      <div class="section">
+        <h2>Who Eliminated Each Team?</h2>
+        <div class="card" style="margin:0"><div id="tblEliminatedBy">Loading…</div></div>
+      </div>
+      <div class="section">
+        <h2>Who Did Each Team Eliminate?</h2>
+        <div class="card" style="margin:0"><div id="tblGiven">Loading…</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Per Day × Map Pivot (Elimination Count)</h2>
+      <div class="card" style="margin:0"><div id="tblPivot">Loading…</div></div>
+    </div>
+
+    <div class="section">
+      <h2>Quick Insights</h2>
+      <ul id="insights" style="margin:8px 0 0 18px; line-height:1.6"></ul>
+    </div>
+  </div>
+
+  <!-- PAGE 2: TEAM FOCUS -->
+  <div class="page" id="page2" data-page="2">
+    <div class="section">
+      <h2>Team Selection</h2>
+      <div class="bar">
+        <input type="search" id="teamSearch" class="input" placeholder="Search team…" style="flex:1;max-width:420px">
+        <span class="chip">Slice: <span id="scopeChipTeam">All Days • All Maps</span></span>
+      </div>
+      <div id="teamGrid" class="team-grid">Loading teams…</div>
+    </div>
+
+    <div class="section" id="teamHeader">
+      <h2 id="teamTitle">Overview</h2>
+      <div class="grid3">
+        <div class="card">
+          <h3>Top Eliminators of <span id="teamCodeA">—</span></h3>
+          <div id="teamTopPredators" class="kpis">—</div>
+        </div>
+        <div class="card">
+          <h3>Top Victims of <span id="teamCodeB">—</span></h3>
+          <div id="teamTopVictims" class="kpis">—</div>
+        </div>
+        <div class="card">
+          <h3>Signals</h3>
+          <div id="teamSignals" class="kpis">—</div>
+        </div>
+      </div>
+    </div>
+
+    <details class="accordion">
+      <summary>Breakdowns — By Day & By Map</summary>
+      <div class="accordion-body">
+        <div class="grid2">
+          <div class="card">
+            <h3>Eliminated By — By Day</h3>
+            <div id="tblTeamByDay">—</div>
+          </div>
+          <div class="card">
+            <h3>Eliminated By — By Map</h3>
+            <div id="tblTeamByMap">—</div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:12px">
+          <h3>Victims — By Day × Map</h3>
+          <div id="tblTeamVictimPivot">—</div>
+        </div>
+      </div>
+    </details>
+  </div>
+</div>
 
 <script>
-const CSV_PATH = 'ffbr_lopsdata_rows.csv'; // keep this file next to the CSV
+/* ============ Supabase init ============ */
+const client = supabase.createClient(
+  'https://gkugecflfddkpitlrmws.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
+);
 
-// Utility: number formatting
-const fmt = (n, d=0) => isFinite(n) ? Number(n).toLocaleString(undefined,{maximumFractionDigits:d,minimumFractionDigits:d}) : '—';
-const pct = (num, den) => den>0 ? ((num/den)*100) : 0;
+/* ============ Small utils ============ */
+const $ = id => document.getElementById(id);
+const norm = v => (v==null?'':String(v)).trim();
+const up = v => norm(v).toUpperCase();
+const num = v => Number(v ?? 0) || 0;
+function sum(arr,k){ let t=0; for(const r of arr) t += Number(r?.[k] ?? 0) || 0; return t; }
+function groupBy(arr,fn){ const m=new Map(); for(const r of arr){ const k=fn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r);} return m; }
+const fmt = (n,d=0)=> isFinite(n) ? Number(n).toLocaleString(undefined,{maximumFractionDigits:d,minimumFractionDigits:d}) : '—';
+const pct = (a,b)=> b>0 ? (a/b)*100 : 0;
 
-// Globals
-let raw = [];
-let teamRows = []; // 1 row per team per match (includes booyah rows even if not eliminated)
-let teams = [];
-let days = [];
-let maps = [];
+/* ============ Error + session ============ */
+function gerr(msg){ const box=$('globalErr'); box.textContent=msg; box.classList.add('show'); console.error(msg); }
+(async ()=>{ const { data: { session } } = await client.auth.getSession(); $('user-info').textContent = session?.user?.email ? `Logged in: ${session.user.email}` : 'Anon access'; })();
+$('logoutBtn').onclick = async ()=>{ await client.auth.signOut(); location.reload(); };
 
-// Filters
-const daySel = document.getElementById('daySel');
-const mapSel = document.getElementById('mapSel');
-const teamSearch = document.getElementById('teamSearch');
-const viewSel = document.getElementById('viewSel');
-const chips = document.getElementById('chips');
+/* ============ Pager ============ */
+const PAGES=[1,2];
+function showPage(p){ document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active')); document.querySelector(`.page[data-page="${p}"]`).classList.add('active'); document.querySelectorAll('.step').forEach(s=>s.classList.toggle('active', String(s.dataset.page)===String(p))); localStorage.setItem('elim_page', String(p)); const u=new URL(location.href); u.searchParams.set('p', String(p)); history.replaceState(null,'',u.toString()); }
+function currentPage(){ const u=new URL(location.href); const qp=Number(u.searchParams.get('p')); const ls=Number(localStorage.getItem('elim_page')); return PAGES.includes(qp)?qp:PAGES.includes(ls)?ls:1; }
+function nextPage(){ const p=currentPage(); showPage(Math.min(2,p+1)); }
+function prevPage(){ const p=currentPage(); showPage(Math.max(1,p-1)); }
+document.querySelectorAll('.step').forEach(s=> s.addEventListener('click', ()=> showPage(Number(s.dataset.page))));
+$('prevBtn').addEventListener('click', prevPage); $('nextBtn').addEventListener('click', nextPage);
+window.addEventListener('keydown', e=>{ if(e.key==='ArrowLeft') prevPage(); if(e.key==='ArrowRight') nextPage(); });
 
-// Targets
-const matrixWrap = document.getElementById('matrixWrap');
-const eliminatedByTbl = document.getElementById('eliminatedByTbl');
-const eliminationsGivenTbl = document.getElementById('eliminationsGivenTbl');
-const teamSummaryTbl = document.getElementById('teamSummaryTbl');
-const insightsEl = document.getElementById('insights');
+/* ============ Data (ffbr_lopsdata) ============ */
+let RAW=[];                 // normalized elimination rows
+let TEAMS=[];               // list of unique team codes/names
+let CUR_TEAM=null;          // selected team (string)
+let FILTER_DAY='__all__';
+let FILTER_MAP='__all__';
 
-// Parse & boot
-Papa.parse(CSV_PATH, {
-  download:true, header:true, dynamicTyping:true, skipEmptyLines:true,
-  complete: (res)=>{
-    raw = res.data;
-    // Detect team-level rows: have placement OR booyah-by-team OR eliminator filled
-    teamRows = raw.filter(r =>
-      (r['Ranking Placement'] !== null && r['Ranking Placement'] !== '' && !Number.isNaN(r['Ranking Placement'])) ||
-      (r['Booyah By Team'] !== null && r['Booyah By Team'] !== '' && !Number.isNaN(r['Booyah By Team'])) ||
-      (r['Eliminated Team Name'] && (r['Eliminated Team Name']+'').trim() !== '')
-    );
-
-    // Normalize types
-    teamRows.forEach(r=>{
-      r.Day = +r.Day; r.Match = +r.Match;
-      r.MAP = (r.MAP||'').toString().trim();
-      r.TeamName = (r.TeamName||'').toString().trim();
-      r['Eliminated Team Name'] = (r['Eliminated Team Name']||'').toString().trim();
-      r['Ranking Placement'] = +r['Ranking Placement'];
-      r['Booyah By Team'] = +r['Booyah By Team'];
-      r['Total Kill'] = +r['Total Kill'];
-    });
-
-    teams = Array.from(new Set(teamRows.map(r=>r.TeamName))).sort();
-    days  = ['All', ...Array.from(new Set(teamRows.map(r=>r.Day))).sort((a,b)=>a-b)];
-    maps  = ['All', ...Array.from(new Set(teamRows.map(r=>r.MAP))).sort()];
-
-    // Build filters
-    daySel.innerHTML = days.map(d=>`<option value="${d}">${d==='All'?'All Days':'Day '+d}</option>`).join('');
-    mapSel.innerHTML = maps.map(m=>`<option value="${m}">${m==='All'?'All Maps':m}</option>`).join('');
-    // Defaults: All
-    daySel.value='All'; mapSel.value='All';
-
-    [daySel, mapSel, viewSel].forEach(el=>el.addEventListener('change', renderAll));
-    teamSearch.addEventListener('input', renderAll);
-
-    renderAll();
+function normalizeRow(r){
+  // Robust mapping for common alt column names
+  const team = up(r['TeamName'] ?? r['Team'] ?? r['TEAM'] ?? r['tag'] ?? r['TAG']);
+  const killer = up(r['Eliminated Team Name'] ?? r['Eliminated By'] ?? r['Eliminator'] ?? r['Killer Team'] ?? '');
+  const day = num(r['Day'] ?? r['day'] ?? r['DAY']);
+  const map = norm(r['MAP'] ?? r['Map'] ?? r['map']);
+  const match = num(r['Match'] ?? r['match']);
+  const totalKill = num(r['Total Kill'] ?? r['KILLS'] ?? r['Eliminations'] ?? r['elimination']);
+  const place = num(r['Ranking Placement'] ?? r['placement'] ?? r['Place']);
+  const booyah = num(r['Booyah By Team'] ?? r['booyah'] ?? r['Booyah']);
+  return { team, killer, day, map, match, totalKill, place, booyah };
+}
+async function fetchAllLops(){
+  const CHUNK=1000; let from=0; const out=[];
+  for(;;){
+    const { data, error } = await client.from('ffbr_lopsdata').select('*').range(from, from+CHUNK-1);
+    if(error){ gerr('ffbr_lopsdata fetch failed:\n'+(error.message||error)); break; }
+    const rows=data||[]; if(!rows.length) break; out.push(...rows); from+=rows.length;
   }
-});
+  return out.map(normalizeRow).filter(r=>r.team || r.killer);
+}
 
-// Get filtered rows
-function getFiltered(){
-  const d = daySel.value;
-  const m = mapSel.value;
-  return teamRows.filter(r =>
-    (d==='All' || r.Day==+d) &&
-    (m==='All' || r.MAP===m)
+/* ============ Filters ============ */
+function uniqueDays(){ const s=new Set(); RAW.forEach(r=>{ if(r.day) s.add(r.day); }); return [...s].sort((a,b)=>a-b); }
+function uniqueMaps(){ const s=new Set(); RAW.forEach(r=>{ if(r.map) s.add(r.map); }); return [...s].sort((a,b)=>a.localeCompare(b)); }
+function filteredRows(){
+  return RAW.filter(r =>
+    (FILTER_DAY==='__all__' || r.day===Number(FILTER_DAY)) &&
+    (FILTER_MAP==='__all__' || r.map===FILTER_MAP)
   );
 }
-
-function summarize(filtered){
-  const byTeam = Object.fromEntries(teams.map(t=>[t,[]]));
-  filtered.forEach(r=> byTeam[r.TeamName]?.push(r));
-
-  const rowsWithEliminator = filtered.filter(r=>r['Eliminated Team Name']);
-  const matrix = {}; // matrix[eliminated][eliminator] = count
-  const elimSuffered = {}; // suffered per team (as eliminated)
-  const elimGiven = {}; // inflicted per team (as eliminator)
-
-  rowsWithEliminator.forEach(r=>{
-    const victim = r.TeamName;
-    const killer = r['Eliminated Team Name'];
-    matrix[victim] ||= {};
-    matrix[victim][killer] = (matrix[victim][killer]||0)+1;
-    elimSuffered[victim] = (elimSuffered[victim]||0)+1;
-    elimGiven[killer] = (elimGiven[killer]||0)+1;
-  });
-
-  // Team summaries
-  const teamSummary = teams.map(t=>{
-    const rows = byTeam[t];
-    const matches = rows.length;
-    const booyah = rows.reduce((a,b)=>a + (Number(b['Booyah By Team'])||0), 0);
-    const placeArr = rows.map(r=>Number(r['Ranking Placement'])).filter(v=>isFinite(v));
-    const avgPlace = placeArr.length ? (placeArr.reduce((a,b)=>a+b,0)/placeArr.length) : NaN;
-    const medPlace = placeArr.length ? percentile(placeArr.sort((a,b)=>a-b), 50) : NaN;
-    const bestPlace = placeArr.length ? Math.min(...placeArr) : NaN;
-    const totalKills = rows.reduce((a,b)=>a + (Number(b['Total Kill'])||0), 0);
-    const kpm = matches ? totalKills/matches : 0;
-    return {team:t, matches, booyah, avgPlace, medPlace, bestPlace, totalKills, kpm,
-            suffered: elimSuffered[t]||0, given: elimGiven[t]||0};
-  });
-
-  return {matrix, elimSuffered, elimGiven, teamSummary};
+function updateScopeChips(){
+  const d = FILTER_DAY==='__all__' ? 'All Days' : `Day ${FILTER_DAY}`;
+  const m = FILTER_MAP==='__all__' ? 'All Maps' : FILTER_MAP;
+  $('scopeChip').textContent = `Scope: ${d} • ${m}`;
+  $('scopeChipTeam').textContent = `${d} • ${m}`;
+  $('filterHint').textContent = `Teams: ${fmt(TEAMS.length)} • Rows in slice: ${fmt(filteredRows().length)}`;
 }
 
-function percentile(arr, p){
-  if(!arr.length) return NaN;
-  const idx = (p/100)*(arr.length-1);
-  const lo = Math.floor(idx), hi = Math.ceil(idx);
-  if(lo===hi) return arr[lo];
-  const w = idx - lo;
-  return arr[lo]*(1-w) + arr[hi]*w;
+/* ============ Matrix + summaries ============ */
+function buildTeams(){
+  const s = new Set();
+  RAW.forEach(r=>{ if(r.team) s.add(r.team); if(r.killer) s.add(r.killer); });
+  TEAMS = [...s].sort((a,b)=>a.localeCompare(b));
 }
-
-function heatClass(v, max){
-  if(!max || v<=0) return 'heat-0';
-  const bucket = Math.min(9, Math.floor((v/max)*9));
-  return `heat-${bucket}`;
-}
-
-function renderMatrix(matrix, view){
-  // Build column order as all teams
-  const cols = teams.slice();
-  const rows = teams.slice();
-  // find max count for heat scale
-  let max = 0;
-  rows.forEach(v=>{
-    cols.forEach(k=>{
-      const val = (matrix[v]&&matrix[v][k])||0;
-      max = Math.max(max, val);
-    });
-  });
-
-  // Row totals for percentage mode
-  const rowTotals = {};
-  rows.forEach(v=>{
-    rowTotals[v] = Object.values(matrix[v]||{}).reduce((a,b)=>a+b,0);
-  });
-
-  let html = '<table><thead><tr><th class="sticky-left">Eliminated ↓ / Eliminator →</th>';
-  cols.forEach(c=> html += `<th title="${c}">${c}</th>`);
-  html += '</tr></thead><tbody>';
-
+function summarize(rows){
+  const matrix = {}; // victim -> killer -> count
+  const suffered = {}; // victim total
+  const given = {};    // killer total
   rows.forEach(r=>{
-    html += `<tr><td class="sticky-left">${r}</td>`;
-    cols.forEach(c=>{
-      const count = (matrix[r]&&matrix[r][c])||0;
-      const value = (view==='rowpct' && rowTotals[r]>0) ? (pct(count,rowTotals[r]).toFixed(0)+'%') : count;
-      const cls = heatClass(count, max);
-      const tip = `${c} eliminated ${r} ${count} time${count===1?'':'s'}`;
-      html += `<td class="${cls}">${value||''}<div title="${tip}"></div></td>`;
-    });
-    html += '</tr>';
+    if(!r.team || !r.killer) return;
+    matrix[r.team] ||= {};
+    matrix[r.team][r.killer] = (matrix[r.team][r.killer]||0)+1;
+    suffered[r.team] = (suffered[r.team]||0)+1;
+    given[r.killer] = (given[r.killer]||0)+1;
   });
+  return {matrix, suffered, given};
+}
 
-  html += '</tbody></table>';
-  matrixWrap.innerHTML = html;
-
-  // Focus highlight
-  const focus = (teamSearch.value||'').trim().toUpperCase();
-  if(focus){
-    Array.from(matrixWrap.querySelectorAll('table tr')).forEach(tr=>{
-      if(tr.firstChild && tr.firstChild.textContent.toUpperCase()===focus){
-        tr.classList.add('highlight');
-      }
-    });
-    // highlight column header if matches
-    const ths = matrixWrap.querySelectorAll('thead th');
-    ths.forEach((th,idx)=>{
-      if(idx>0 && th.textContent.toUpperCase()===focus) th.classList.add('highlight');
+/* ============ Render helpers ============ */
+function renderSimpleTable(list, cols){
+  if(!list.length) return '<div class="muted">No rows.</div>';
+  const thead = `<thead><tr>${cols.map(c=>`<th class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
+  const tbody = '<tbody>' + list.map(r=>(
+    '<tr>' + cols.map(c=>{
+      const v = typeof c.html==='function' ? c.html(r) : r[c.key];
+      return `<td data-key="${c.key}" class="${c.right?'right':''}">${(v==null||v==='')?'—':v}</td>`;
+    }).join('') + '</tr>'
+  )).join('') + '</tbody>';
+  return `<table>${thead}${tbody}</table>`;
+}
+function applyHeat(containerId, keys){
+  const wrap=$(containerId); const table=wrap?.querySelector('table'); if(!table) return;
+  table.querySelectorAll('td[data-key]').forEach(td=>{ td.style.backgroundColor=''; td.classList.remove('heat-top'); });
+  const styles=getComputedStyle(document.documentElement);
+  const rgb=styles.getPropertyValue('--heat-rgb')||'255,189,89';
+  const minA=parseFloat(styles.getPropertyValue('--heat-min'))||.06;
+  const maxA=parseFloat(styles.getPropertyValue('--heat-max'))||.22;
+  const BANDS=5;
+  for(const key of keys){
+    const cells=[...table.querySelectorAll(`td[data-key="${key}"]`)];
+    if(!cells.length) continue;
+    const vals=cells.map((td,i)=>({i, v:parseFloat(td.textContent.replace('%',''))})).filter(x=>isFinite(x.v));
+    if(!vals.length) continue;
+    vals.sort((a,b)=>a.v-b.v);
+    const top=vals[vals.length-1].v;
+    const bandByI=new Map();
+    vals.forEach((e,rank)=>{ const p=(vals.length<=1)?1:(rank/(vals.length-1)); const band=Math.min(BANDS-1,Math.floor(p*BANDS)); bandByI.set(e.i,band); });
+    cells.forEach((td,i)=>{
+      const band=bandByI.get(i); if(band==null) return;
+      const alpha = minA + (band/(BANDS-1))*(maxA-minA);
+      td.style.backgroundColor = `rgba(${rgb}, ${alpha.toFixed(3)})`;
+      const val = parseFloat(td.textContent.replace('%',''));
+      if(isFinite(val) && val===top) td.classList.add('heat-top');
     });
   }
 }
 
-function renderEliminatedBy(matrix, elimSuffered){
-  // For each team (row), list top eliminators
-  const rows = teams.map(t=>{
-    const row = matrix[t]||{};
-    const entries = Object.entries(row).sort((a,b)=>b[1]-a[1]);
-    const total = elimSuffered[t]||0;
-    const top3 = entries.slice(0,3).map(([k,v])=>`${k} ${fmt(v)} (${fmt(pct(v,total),0)}%)`).join(' · ');
-    return {team:t, times: total, top3, raw:entries};
-  }).sort((a,b)=>b.times-a.times);
-
-  let html = `<table>
-    <thead><tr>
-      <th class="sticky-left">Team</th>
-      <th class="right">Times Eliminated</th>
-      <th>Top Eliminators</th>
-    </tr></thead><tbody>`;
+/* ============ Renders: Page 1 ============ */
+function renderMatrix(matrix, viewMode){
+  const rows=TEAMS, cols=TEAMS;
+  // max for heat buckets
+  let max=0; rows.forEach(v=> cols.forEach(k=>{ const c=(matrix[v]?.[k])||0; if(c>max) max=c; }));
+  // row totals
+  const totals={}; rows.forEach(v=> totals[v]=Object.values(matrix[v]||{}).reduce((a,b)=>a+b,0));
+  // table
+  let html='<table><thead><tr><th class="sticky head">Eliminated ↓ / Eliminator →</th>';
+  cols.forEach(c=> html += `<th class="head">${c}</th>`);
+  html+='</tr></thead><tbody>';
   rows.forEach(r=>{
-    html += `<tr>
-      <td class="sticky-left">${r.team}</td>
-      <td class="right mono">${fmt(r.times)}</td>
-      <td>${r.top3||'<span class="muted">—</span>'}</td>
-    </tr>`;
+    html+=`<tr><td class="sticky">${r}</td>`;
+    cols.forEach(c=>{
+      const cnt = (matrix[r]?.[c])||0;
+      const show = (viewMode==='rowpct' && totals[r]>0) ? `${Math.round(pct(cnt, totals[r]))}%` : (cnt||'');
+      const alpha = max>0 ? (cnt/max) : 0;
+      const band = Math.min(1, alpha);
+      const bg = `rgba(${getComputedStyle(document.documentElement).getPropertyValue('--heat-rgb')||'255,189,89'}, ${(0.06 + band*(0.22-0.06)).toFixed(3)})`;
+      html+=`<td title="${c} → ${r}: ${cnt}" style="background:${cnt?bg:'transparent'}">${show}</td>`;
+    });
+    html+='</tr>';
   });
-  html += '</tbody></table>';
-  eliminatedByTbl.innerHTML = html;
+  html+='</tbody></table>';
+  $('matrixWrap').innerHTML = `<div class="matrix">${html}</div>`;
+}
+function renderLeaderboards(sum){
+  // Eliminated By (suffered)
+  const rowsA = TEAMS.map(t=>{
+    const row = sum.matrix[t]||{};
+    const total = sum.suffered[t]||0;
+    const top = Object.entries(row).sort((a,b)=>b[1]-a[1]).slice(0,3)
+      .map(([k,v])=>`${k} ${fmt(v)} (${fmt(pct(v,total),0)}%)`).join(' · ');
+    return { team:t, times: total, top };
+  }).sort((a,b)=>b.times-a.times || a.team.localeCompare(b.team));
+  $('tblEliminatedBy').innerHTML = renderSimpleTable(rowsA, [
+    {label:'Team',key:'team'},
+    {label:'Times Eliminated',key:'times',right:true},
+    {label:'Top Eliminators',key:'top'}
+  ]);
+  applyHeat('tblEliminatedBy',['times']);
+
+  // Given (killer totals)
+  // invert matrix once
+  const inv={}; TEAMS.forEach(v=>{
+    const row=sum.matrix[v]||{};
+    Object.entries(row).forEach(([killer,cnt])=>{
+      inv[killer] ||= {};
+      inv[killer][v] = (inv[killer][v]||0)+cnt;
+    });
+  });
+  const rowsB = TEAMS.map(t=>{
+    const ents = Object.entries(inv[t]||{}).sort((a,b)=>b[1]-a[1]);
+    const total = ents.reduce((a,b)=>a+b[1],0);
+    const top = ents.slice(0,3).map(([k,v])=>`${k} ${fmt(v)}`).join(' · ');
+    return { eliminator:t, total, top };
+  }).sort((a,b)=>b.total-a.total || a.eliminator.localeCompare(b.eliminator));
+  $('tblGiven').innerHTML = renderSimpleTable(rowsB, [
+    {label:'Eliminator',key:'eliminator'},
+    {label:'Eliminations Given',key:'total',right:true},
+    {label:'Top Victims',key:'top'}
+  ]);
+  applyHeat('tblGiven',['total']);
+}
+function renderPivot(rows){
+  // Pivot: Day × Map (counts of eliminations)
+  const base = rows.filter(r=>r.team && r.killer);
+  const days=[...new Set(base.map(r=>r.day).filter(Boolean))].sort((a,b)=>a-b);
+  const maps=[...new Set(base.map(r=>r.map).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  let thead = `<thead><tr><th>Map</th>${days.map(d=>`<th class="right">${'D'+d}</th>`).join('')}</tr></thead>`;
+  let tbody = '<tbody>';
+  for(const m of maps){
+    const rowCounts={}; days.forEach(d=> rowCounts[d]=0);
+    base.filter(r=>r.map===m).forEach(r=>{ if(r.day) rowCounts[r.day]++; });
+    tbody += `<tr><td>${m}</td>${
+      days.map(d=>`<td data-key="${'D'+d}" class="right">${rowCounts[d]||0}</td>`).join('')
+    }</tr>`;
+  }
+  tbody += '</tbody>';
+  $('tblPivot').innerHTML = `<table>${thead}${tbody}</table>`;
+  applyHeat('tblPivot', days.map(d=>'D'+d));
+}
+function renderInsights(rows, sum){
+  if(!rows.length){ $('insights').innerHTML = '<li class="muted">No data in this slice.</li>'; return; }
+  // strongest pair
+  let best=null;
+  TEAMS.forEach(v=>{
+    const row=sum.matrix[v]||{};
+    Object.entries(row).forEach(([k,c])=>{
+      if(c>0 && (!best || c>best.c)) best={killer:k,victim:v,c};
+    });
+  });
+  // map bias
+  const mCount=new Map(); rows.forEach(r=>{ if(r.map) mCount.set(r.map,(mCount.get(r.map)||0)+ (r.team&&r.killer?1:0)); });
+  const topMap=[...mCount.entries()].sort((a,b)=>b[1]-a[1])[0];
+  // day bias
+  const dCount=new Map(); rows.forEach(r=>{ if(r.day) dCount.set(r.day,(dCount.get(r.day)||0)+ (r.team&&r.killer?1:0)); });
+  const topDay=[...dCount.entries()].sort((a,b)=>b[1]-a[1])[0];
+
+  $('insights').innerHTML = `
+    <li><b>Strongest predator→prey:</b> ${best? `<b>${best.killer}</b> → <b>${best.victim}</b> (${fmt(best.c)})`:'—'}</li>
+    <li><b>Eliminations concentrated on:</b> ${topMap? `<b>${topMap[0]}</b> (${fmt(topMap[1])})`:'—'}</li>
+    <li><b>Heaviest day:</b> ${topDay? `<b>Day ${topDay[0]}</b> (${fmt(topDay[1])})`:'—'}</li>
+    <li><b>Analyst tip:</b> Sort “Eliminated By” to surface teams repeatedly picked off by a single opponent; compare with map pivot to plan drop/rotation counters.</li>
+  `;
 }
 
-function renderEliminationsGiven(matrix){
-  // Invert matrix into eliminator -> victims
+/* ============ Renders: Page 2 (Team Focus) ============ */
+function renderTeamGrid(q=''){
+  const grid=$('teamGrid');
+  const ql = q.trim().toUpperCase();
+  const list = TEAMS.filter(t=>t.includes(ql));
+  if(!list.length){ grid.innerHTML='<div class="muted">No matches.</div>'; return; }
+  grid.innerHTML = list.map(code=>`<div class="team-tile" data-code="${code}"><div class="team-code">${code}</div></div>`).join('');
+  grid.querySelectorAll('.team-tile').forEach(div=>{
+    div.onclick=()=>{ CUR_TEAM=div.dataset.code; highlightActiveTile(); renderTeamFocus(); };
+  });
+  highlightActiveTile();
+}
+function highlightActiveTile(){
+  const grid=$('teamGrid'); if(!grid) return;
+  [...grid.querySelectorAll('.team-tile')].forEach(div=> div.classList.toggle('active', div.dataset.code===CUR_TEAM));
+}
+
+function renderTeamFocus(){
+  if(!CUR_TEAM){
+    $('teamTitle').textContent='Overview';
+    $('teamTopPredators').innerHTML='—'; $('teamTopVictims').innerHTML='—'; $('teamSignals').innerHTML='—';
+    $('teamCodeA').textContent='—'; $('teamCodeB').textContent='—';
+    $('tblTeamByDay').innerHTML='—'; $('tblTeamByMap').innerHTML='—'; $('tblTeamVictimPivot').innerHTML='—';
+    return;
+  }
+  $('teamTitle').textContent = `Team Focus — ${CUR_TEAM}`;
+  $('teamCodeA').textContent = CUR_TEAM;
+  $('teamCodeB').textContent = CUR_TEAM;
+
+  const rows = filteredRows();
+  // victims of CUR_TEAM (they eliminated others)
   const given = {};
-  teams.forEach(v=>{
-    const row = matrix[v]||{};
-    Object.entries(row).forEach(([killer,count])=>{
-      given[killer] ||= {};
-      given[killer][v] = (given[killer][v]||0)+count;
-    });
-  });
+  rows.forEach(r=>{ if(r.killer===CUR_TEAM && r.team){ given[r.team]=(given[r.team]||0)+1; } });
+  const givenTop = Object.entries(given).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  $('teamTopVictims').innerHTML = givenTop.length
+    ? givenTop.map(([k,v])=>`<div class="kpi">${k}: <strong>${fmt(v)}</strong></div>`).join('')
+    : '<div class="muted">No eliminations as killer in slice.</div>';
 
-  const rows = teams.map(t=>{
-    const entries = Object.entries(given[t]||{}).sort((a,b)=>b[1]-a[1]);
-    const total = entries.reduce((a,b)=>a+b[1],0);
-    const top3 = entries.slice(0,3).map(([k,v])=>`${k} ${fmt(v)}`).join(' · ');
-    return {team:t, total, top3};
-  }).sort((a,b)=>b.total-a.total);
+  // predators of CUR_TEAM (who eliminated them)
+  const suffered = {};
+  rows.forEach(r=>{ if(r.team===CUR_TEAM && r.killer){ suffered[r.killer]=(suffered[r.killer]||0)+1; } });
+  const sufferedTop = Object.entries(suffered).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  $('teamTopPredators').innerHTML = sufferedTop.length
+    ? sufferedTop.map(([k,v])=>`<div class="kpi">${k}: <strong>${fmt(v)}</strong></div>`).join('')
+    : '<div class="muted">No times eliminated in slice.</div>';
 
-  let html = `<table>
-    <thead><tr>
-      <th class="sticky-left">Eliminator</th>
-      <th class="right">Eliminations Given</th>
-      <th>Top Victims</th>
-    </tr></thead><tbody>`;
+  // signals
+  const totalGiven = Object.values(given).reduce((a,b)=>a+b,0);
+  const totalSuffer = Object.values(suffered).reduce((a,b)=>a+b,0);
+  $('teamSignals').innerHTML = `
+    <div class="kpi">NET Δ <strong>${fmt(totalGiven - totalSuffer)}</strong></div>
+    <div class="kpi">GIVEN <strong>${fmt(totalGiven)}</strong></div>
+    <div class="kpi">SUFFERED <strong>${fmt(totalSuffer)}</strong></div>
+  `;
+
+  // By Day (predators)
+  const byDay = {};
   rows.forEach(r=>{
-    html += `<tr>
-      <td class="sticky-left">${r.team}</td>
-      <td class="right mono">${fmt(r.total)}</td>
-      <td>${r.top3||'<span class="muted">—</span>'}</td>
-    </tr>`;
+    if(r.team!==CUR_TEAM || !r.killer || !r.day) return;
+    const d = r.day;
+    byDay[d] ||= {};
+    byDay[d][r.killer] = (byDay[d][r.killer]||0)+1;
   });
-  html += '</tbody></table>';
-  eliminationsGivenTbl.innerHTML = html;
+  const dayRows = Object.entries(byDay).map(([d,obj])=>{
+    const top = Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>`${k} × ${v}`).join(' · ');
+    const total = Object.values(obj).reduce((a,b)=>a+b,0);
+    return { day:Number(d), total, top };
+  }).sort((a,b)=>a.day-b.day);
+  $('tblTeamByDay').innerHTML = renderSimpleTable(dayRows, [
+    {label:'Day',key:'day'},
+    {label:'Times Eliminated',key:'total',right:true},
+    {label:'Top Eliminators',key:'top'}
+  ]);
+  applyHeat('tblTeamByDay',['total']);
+
+  // By Map (predators)
+  const byMap = {};
+  rows.forEach(r=>{
+    if(r.team!==CUR_TEAM || !r.killer) return;
+    const m = r.map || '—';
+    byMap[m] ||= {};
+    byMap[m][r.killer] = (byMap[m][r.killer]||0)+1;
+  });
+  const mapRows = Object.entries(byMap).map(([m,obj])=>{
+    const top = Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>`${k} × ${v}`).join(' · ');
+    const total = Object.values(obj).reduce((a,b)=>a+b,0);
+    return { map:m, total, top };
+  }).sort((a,b)=> b.total-a.total || a.map.localeCompare(b.map));
+  $('tblTeamByMap').innerHTML = renderSimpleTable(mapRows, [
+    {label:'Map',key:'map'},
+    {label:'Times Eliminated',key:'total',right:true},
+    {label:'Top Eliminators',key:'top'}
+  ]);
+  applyHeat('tblTeamByMap',['total']);
+
+  // Victim pivot (Given) — Day × Map
+  const vRows = rows.filter(r=>r.killer===CUR_TEAM && r.team);
+  const days=[...new Set(vRows.map(r=>r.day).filter(Boolean))].sort((a,b)=>a-b);
+  const maps=[...new Set(vRows.map(r=>r.map).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  let thead = `<thead><tr><th>Map</th>${days.map(d=>`<th class="right">${'D'+d}</th>`).join('')}</tr></thead>`;
+  let tbody = '<tbody>';
+  for(const m of maps){
+    const cnt={}; days.forEach(d=>cnt[d]=0);
+    vRows.filter(r=>r.map===m).forEach(r=>{ if(r.day) cnt[r.day]++; });
+    tbody += `<tr><td>${m}</td>${
+      days.map(d=>`<td data-key="${'D'+d}" class="right">${cnt[d]||0}</td>`).join('')
+    }</tr>`;
+  }
+  tbody += '</tbody>';
+  $('tblTeamVictimPivot').innerHTML = `<table>${thead}${tbody}</table>`;
+  applyHeat('tblTeamVictimPivot', days.map(d=>'D'+d));
 }
 
-function renderTeamSummary(rows, teamSummary){
-  // Sort by matches desc, then avg placement asc
-  const sorted = teamSummary.slice().sort((a,b)=>{
-    if(b.matches!==a.matches) return b.matches-a.matches;
-    // better avg (lower) first
-    return (a.avgPlace||99) - (b.avgPlace||99);
-  });
-
-  let html = `<table>
-    <thead><tr>
-      <th class="sticky-left">Team</th>
-      <th class="right">Matches</th>
-      <th class="right">Booyahs</th>
-      <th class="right">Avg Place</th>
-      <th class="right">Med Place</th>
-      <th class="right">Best</th>
-      <th class="right">Total Kills</th>
-      <th class="right">Kills / Match</th>
-      <th class="right">Times Eliminated</th>
-      <th class="right">Elims Given</th>
-    </tr></thead><tbody>`;
-  sorted.forEach(r=>{
-    html += `<tr>
-      <td class="sticky-left">${r.team}</td>
-      <td class="right mono">${fmt(r.matches)}</td>
-      <td class="right mono">${fmt(r.booyah)}</td>
-      <td class="right mono">${isFinite(r.avgPlace)? fmt(r.avgPlace,2):'—'}</td>
-      <td class="right mono">${isFinite(r.medPlace)? fmt(r.medPlace,1):'—'}</td>
-      <td class="right mono">${isFinite(r.bestPlace)? fmt(r.bestPlace):'—'}</td>
-      <td class="right mono">${fmt(r.totalKills)}</td>
-      <td class="right mono">${fmt(r.kpm,2)}</td>
-      <td class="right mono">${fmt(r.suffered)}</td>
-      <td class="right mono">${fmt(r.given)}</td>
-    </tr>`;
-  });
-  html += '</tbody></table>';
-  teamSummaryTbl.innerHTML = html;
+/* ============ Wiring + initial ============ */
+function populateFilters(){
+  const dSel=$('daySel'), mSel=$('mapSel');
+  const days = uniqueDays(); const maps=uniqueMaps();
+  dSel.innerHTML = `<option value="__all__">All Days</option>` + days.map(d=>`<option value="${d}">Day ${d}</option>`).join('');
+  mSel.innerHTML = `<option value="__all__">All Maps</option>` + maps.map(m=>`<option value="${m}">${m}</option>`).join('');
+  dSel.value='__all__'; mSel.value='__all__';
 }
-
-function renderChips(filtered, matrixSummary){
-  const matches = new Set(filtered.map(r=>`${r.Day}-${r.Match}`)).size;
-  const uniqTeams = new Set(filtered.map(r=>r.TeamName)).size;
-  const booyahRows = filtered.filter(r=>Number(r['Booyah By Team'])>0);
-  const booyahTeams = booyahRows.map(r=>r.TeamName);
-
-  // Find top predator and most hunted
-  const givenEntries = Object.entries(matrixSummary.elimGiven).sort((a,b)=>b[1]-a[1]);
-  const sufferedEntries = Object.entries(matrixSummary.elimSuffered).sort((a,b)=>b[1]-a[1]);
-
-  chips.innerHTML = `
-    <div class="chip">Matches: <b>${fmt(matches)}</b></div>
-    <div class="chip">Teams in view: <b>${fmt(uniqTeams)}</b></div>
-    <div class="chip">Booyah winners: <b>${booyahTeams.join(', ')||'—'}</b></div>
-    <div class="chip">Top predator: <b>${(givenEntries[0]||['—','0'])[0]}</b> (${fmt((givenEntries[0]||['','0'])[1])})</div>
-    <div class="chip">Most hunted: <b>${(sufferedEntries[0]||['—','0'])[0]}</b> (${fmt((sufferedEntries[0]||['','0'])[1])})</div>
-  `;
+function wireControls(){
+  $('daySel').addEventListener('change', e=>{ FILTER_DAY=e.target.value; updateScopeChips(); renderAll(); renderTeamFocus(); });
+  $('mapSel').addEventListener('change', e=>{ FILTER_MAP=e.target.value; updateScopeChips(); renderAll(); renderTeamFocus(); });
+  $('valueSel').addEventListener('change', renderAll);
+  $('resetGlobal').addEventListener('click', ()=>{ FILTER_DAY='__all__'; FILTER_MAP='__all__'; $('daySel').value='__all__'; $('mapSel').value='__all__'; updateScopeChips(); renderAll(); renderTeamFocus(); });
+  $('teamSearch').addEventListener('input', e=> renderTeamGrid(e.target.value||''));
 }
-
-function renderInsights(filtered, matrix){
-  const rows = filtered;
-  if(!rows.length){ insightsEl.innerHTML = '<li class="muted">No data in this slice.</li>'; return; }
-
-  // Strongest H2H pairs
-  const pairCounts = [];
-  teams.forEach(v=>{
-    const row = matrix[v]||{};
-    Object.entries(row).forEach(([killer,count])=>{
-      if(count>0) pairCounts.push({killer, victim:v, count});
-    });
-  });
-  pairCounts.sort((a,b)=>b.count-a.count);
-  const topPair = pairCounts[0];
-
-  // Map bias: which map has the most eliminations in this slice
-  const elimRows = rows.filter(r=>r['Eliminated Team Name']);
-  const mapBias = Object.entries(elimRows.reduce((m,r)=>(m[r.MAP]=(m[r.MAP]||0)+1,m),{}))
-                      .sort((a,b)=>b[1]-a[1])[0];
-
-  // Day bias
-  const dayBias = Object.entries(elimRows.reduce((m,r)=>(m[r.Day]=(m[r.Day]||0)+1,m),{}))
-                      .sort((a,b)=>b[1]-a[1])[0];
-
-  insightsEl.innerHTML = `
-    <li><b>Strongest predator→prey relationship:</b> ${topPair ? `<b>${topPair.killer}</b> → <b>${topPair.victim}</b> (${fmt(topPair.count)} eliminations)` : '—'}</li>
-    <li><b>Eliminations by map (top):</b> ${mapBias ? `<b>${mapBias[0]}</b> (${fmt(mapBias[1])})` : '—'}</li>
-    <li><b>Eliminations by day (top):</b> ${dayBias ? `<b>Day ${dayBias[0]}</b> (${fmt(dayBias[1])})` : '—'}</li>
-    <li><b>Analyst note:</b> Use the matrix <i>% view</i> to spot teams whose eliminations cluster against a single opponent (exposure risk). Cross-check with <i>Team Summary</i> for low avg placement + high “Times Eliminated”.</li>
-  `;
-}
-
 function renderAll(){
-  const filtered = getFiltered();
-  const summ = summarize(filtered);
-
-  renderChips(filtered, summ);
-  renderMatrix(summ.matrix, viewSel.value);
-  renderEliminatedBy(summ.matrix, summ.elimSuffered);
-  renderEliminationsGiven(summ.matrix);
-  renderTeamSummary(filtered, summ.teamSummary);
-  renderInsights(filtered, summ.matrix);
+  const rows = filteredRows();
+  const sum = summarize(rows);
+  renderMatrix(sum.matrix, $('valueSel').value);
+  renderLeaderboards(sum);
+  renderPivot(rows);
+  renderInsights(rows, sum);
 }
+async function init(){
+  try{
+    RAW = await fetchAllLops();
+    buildTeams();
+    populateFilters();
+    updateScopeChips();
+    renderAll();
+
+    // Team page
+    renderTeamGrid('');
+    CUR_TEAM = TEAMS[0] || null;
+    renderTeamFocus();
+
+    // UI basics
+    document.querySelectorAll('.accordion').forEach(d=> d.open=false);
+    showPage(currentPage());
+    $('veil').classList.add('hide');
+  }catch(e){
+    gerr('Init failed:\n'+(e.stack||e.message||e));
+    $('veil').classList.add('hide');
+  }
+}
+init();
 </script>
 </body>
 </html>
