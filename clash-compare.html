@@ -27,8 +27,10 @@
     .controls select,.controls input[type="date"],.controls input[type="number"]{background:#212121;color:var(--brand);border:1px solid #3a3a3a;border-radius:6px;padding:6px 8px}
     .muted{color:var(--muted);font-size:.9rem}
 
+    /* Regular section (kept for Overview KPIs only) */
     .section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
     .section h2{margin:0 0 10px;color:var(--brand)}
+
     .grid2{display:grid;grid-template-columns:repeat(2,minmax(320px,1fr));gap:12px}
     .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px}
     .card h3{margin:0 0 6px;color:var(--brand2);font-size:1.0rem}
@@ -64,6 +66,36 @@
     /* AI Prompt box */
     .ai-actions{display:flex;gap:8px;align-items:center;margin-bottom:8px}
     .ai-text{width:100%;min-height:220px;background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:10px;font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;font-size:.85rem;white-space:pre-wrap}
+
+    /* Accordions */
+    details.accordion{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:12px;
+      margin-bottom:14px;
+      overflow:hidden;
+    }
+    details.accordion > summary{
+      list-style:none;
+      cursor:pointer;
+      padding:12px 14px;
+      color:var(--brand);
+      font-weight:800;
+      background:linear-gradient(180deg,#1b1b1b 0%, #171717 100%);
+      user-select:none;
+      outline:none;
+      display:flex; align-items:center; gap:8px;
+      border-bottom:1px solid var(--line);
+    }
+    details.accordion > summary::-webkit-details-marker{display:none}
+    details.accordion > summary::after{
+      content:'▾';
+      margin-left:auto;
+      transition:transform .18s ease;
+      opacity:.9;
+    }
+    details.accordion[open] > summary::after{ transform:rotate(-180deg); }
+    details.accordion .accordion-body{ padding:12px; }
 
     @media (max-width: 860px){
       .grid2{grid-template-columns:1fr}
@@ -106,17 +138,20 @@
     </div>
   </div>
 
-  <div class="section">
-    <h2>Pick two teams</h2>
-    <div class="controls">
-      <label>Team A <select id="cmpTeamA"></select></label>
-      <label>Team B <select id="cmpTeamB"></select></label>
-      <button class="btn" id="cmpSwap" title="Swap A/B">Swap</button>
+  <!-- PICK TEAMS (accordion) -->
+  <details class="accordion" open>
+    <summary>Pick two teams</summary>
+    <div class="accordion-body">
+      <div class="controls">
+        <label>Team A <select id="cmpTeamA"></select></label>
+        <label>Team B <select id="cmpTeamB"></select></label>
+        <button class="btn" id="cmpSwap" title="Swap A/B">Swap</button>
+      </div>
+      <div class="caption muted" id="meta">—</div>
     </div>
-    <div class="caption muted" id="meta">—</div>
-  </div>
+  </details>
 
-  <!-- OVERVIEW -->
+  <!-- OVERVIEW (kept as section) -->
   <div class="section">
     <h2>Overview KPIs</h2>
     <div class="grid2">
@@ -125,107 +160,126 @@
     </div>
   </div>
 
-  <!-- SKILLS (ACTIVE / PASSIVE / BANS) -->
-  <div class="section">
-    <h2>Skills (Top 10 by Rate)</h2>
-    <div class="grid2">
-      <div class="card"><h3 id="labelBansA">Team A — Bans</h3><div id="bansA">Loading…</div></div>
-      <div class="card"><h3 id="labelBansB">Team B — Bans</h3><div id="bansB">Loading…</div></div>
-      <div class="card"><h3 id="labelActiveA">Team A — Active</h3><div id="activeA">Loading…</div></div>
-      <div class="card"><h3 id="labelActiveB">Team B — Active</h3><div id="activeB">Loading…</div></div>
-      <div class="card"><h3 id="labelPassiveA">Team A — Passive</h3><div id="passiveA">Loading…</div></div>
-      <div class="card"><h3 id="labelPassiveB">Team B — Passive</h3><div id="passiveB">Loading…</div></div>
-      
+  <!-- SKILLS (accordion) -->
+  <details class="accordion">
+    <summary>Skills (Top 10 by Rate)</summary>
+    <div class="accordion-body">
+      <div class="grid2">
+        <div class="card"><h3 id="labelBansA">Team A — Bans</h3><div id="bansA">Loading…</div></div>
+        <div class="card"><h3 id="labelBansB">Team B — Bans</h3><div id="bansB">Loading…</div></div>
+        <div class="card"><h3 id="labelActiveA">Team A — Active</h3><div id="activeA">Loading…</div></div>
+        <div class="card"><h3 id="labelActiveB">Team B — Active</h3><div id="activeB">Loading…</div></div>
+        <div class="card"><h3 id="labelPassiveA">Team A — Passive</h3><div id="passiveA">Loading…</div></div>
+        <div class="card"><h3 id="labelPassiveB">Team B — Passive</h3><div id="passiveB">Loading…</div></div>
+      </div>
     </div>
-  </div>
+  </details>
 
-  <!-- TEAM × MAP -->
-  <div class="section">
-    <h2>Team × Map Win Rate</h2>
-    <div class="grid2">
-      <div class="card"><h3 id="labelTMA">Team A</h3><div id="tmA">Loading…</div></div>
-      <div class="card"><h3 id="labelTMB">Team B</h3><div id="tmB">Loading…</div></div>
+  <!-- TEAM × MAP (accordion) -->
+  <details class="accordion">
+    <summary>Team × Map Win Rate</summary>
+    <div class="accordion-body">
+      <div class="grid2">
+        <div class="card"><h3 id="labelTMA">Team A</h3><div id="tmA">Loading…</div></div>
+        <div class="card"><h3 id="labelTMB">Team B</h3><div id="tmB">Loading…</div></div>
+      </div>
     </div>
-  </div>
+  </details>
 
-  <!-- PER-SKILL — ACTIVE (COMPRESSED) -->
-  <div class="section">
-    <h2>Per-Skill — Active</h2>
-    <div class="grid2">
-      <div class="card"><h3 id="labelPSA_Act">Team A</h3><div id="psAAct">Loading…</div></div>
-      <div class="card"><h3 id="labelPSB_Act">Team B</h3><div id="psBAct">Loading…</div></div>
+  <!-- PER-SKILL — ACTIVE (accordion) -->
+  <details class="accordion">
+    <summary>Per-Skill — Active</summary>
+    <div class="accordion-body">
+      <div class="grid2">
+        <div class="card"><h3 id="labelPSA_Act">Team A</h3><div id="psAAct">Loading…</div></div>
+        <div class="card"><h3 id="labelPSB_Act">Team B</h3><div id="psBAct">Loading…</div></div>
+      </div>
     </div>
-  </div>
+  </details>
 
-  <!-- ACTIVE SKILL IMPACT (WIN/LOSS) -->
-  <div class="section">
-    <h2>Active Skill Impact (Win/Loss)</h2>
-    <div class="grid2">
-      <div class="card"><h3 id="labelImpactA">Team A</h3><div id="impactA">Loading…</div></div>
-      <div class="card"><h3 id="labelImpactB">Team B</h3><div id="impactB">Loading…</div></div>
+  <!-- ACTIVE SKILL IMPACT (accordion) -->
+  <details class="accordion">
+    <summary>Active Skill Impact (Win/Loss)</summary>
+    <div class="accordion-body">
+      <div class="grid2">
+        <div class="card"><h3 id="labelImpactA">Team A</h3><div id="impactA">Loading…</div></div>
+        <div class="card"><h3 id="labelImpactB">Team B</h3><div id="impactB">Loading…</div></div>
+      </div>
+      <div class="caption muted tight">
+        Δ vs team baseline win% shows how much the skill raises (green) or lowers (red) win chance when picked.
+      </div>
     </div>
-    <div class="caption muted tight">
-      Δ vs team baseline win% shows how much the skill raises (green) or lowers (red) win chance when picked.
-    </div>
-  </div>
+  </details>
 
-  <!-- PER-SKILL — PASSIVE (COMPRESSED) -->
-  <div class="section">
-    <h2>Per-Skill — Passive</h2>
-    <div class="grid2">
-      <div class="card"><h3 id="labelPSA_Pas">Team A</h3><div id="psAPas">Loading…</div></div>
-      <div class="card"><h3 id="labelPSB_Pas">Team B</h3><div id="psBPas">Loading…</div></div>
+  <!-- PER-SKILL — PASSIVE (accordion) -->
+  <details class="accordion">
+    <summary>Per-Skill — Passive</summary>
+    <div class="accordion-body">
+      <div class="grid2">
+        <div class="card"><h3 id="labelPSA_Pas">Team A</h3><div id="psAPas">Loading…</div></div>
+        <div class="card"><h3 id="labelPSB_Pas">Team B</h3><div id="psBPas">Loading…</div></div>
+      </div>
     </div>
-  </div>
+  </details>
 
-  <!-- COMBOS & PAIRS -->
-  <div class="section">
-    <h2>Combos & Pairs (Top 5)</h2>
-    <div class="grid2">
-      <div class="card"><h3 id="labelCombosA">Team A — 4× Active</h3><div id="combosA">Loading…</div></div>
-      <div class="card"><h3 id="labelCombosB">Team B — 4× Active</h3><div id="combosB">Loading…</div></div>
-      <div class="card"><h3 id="labelPairsA">Team A — 2× Active</h3><div id="pairsA">Loading…</div></div>
-      <div class="card"><h3 id="labelPairsB">Team B — 2× Active</h3><div id="pairsB">Loading…</div></div>
+  <!-- COMBOS & PAIRS (accordion) -->
+  <details class="accordion">
+    <summary>Combos & Pairs (Top 5)</summary>
+    <div class="accordion-body">
+      <div class="grid2">
+        <div class="card"><h3 id="labelCombosA">Team A — 4× Active</h3><div id="combosA">Loading…</div></div>
+        <div class="card"><h3 id="labelCombosB">Team B — 4× Active</h3><div id="combosB">Loading…</div></div>
+        <div class="card"><h3 id="labelPairsA">Team A — 2× Active</h3><div id="pairsA">Loading…</div></div>
+        <div class="card"><h3 id="labelPairsB">Team B — 2× Active</h3><div id="pairsB">Loading…</div></div>
+      </div>
     </div>
-  </div>
+  </details>
 
-  <!-- PASSIVE TRIOS -->
-  <div class="section">
-    <h2>Passive Trios (Top 5 overall)</h2>
-    <div class="grid2">
-      <div class="card"><h3 id="labelTriosA">Team A</h3><div id="triosA">Loading…</div></div>
-      <div class="card"><h3 id="labelTriosB">Team B</h3><div id="triosB">Loading…</div></div>
+  <!-- PASSIVE TRIOS (accordion) -->
+  <details class="accordion">
+    <summary>Passive Trios (Top 5 overall)</summary>
+    <div class="accordion-body">
+      <div class="grid2">
+        <div class="card"><h3 id="labelTriosA">Team A</h3><div id="triosA">Loading…</div></div>
+        <div class="card"><h3 id="labelTriosB">Team B</h3><div id="triosB">Loading…</div></div>
+      </div>
     </div>
-  </div>
+  </details>
 
-  <!-- BAN IMPACT -->
-  <div class="section">
-    <h2>Ban Impact (Top 10 by Δ Win %)</h2>
-    <div class="grid2">
-      <div class="card"><h3 id="labelBIA">Team A</h3><div id="biA">Loading…</div></div>
-      <div class="card"><h3 id="labelBIB">Team B</h3><div id="biB">Loading…</div></div>
+  <!-- BAN IMPACT (accordion) -->
+  <details class="accordion">
+    <summary>Ban Impact (Top 10 by Δ Win %)</summary>
+    <div class="accordion-body">
+      <div class="grid2">
+        <div class="card"><h3 id="labelBIA">Team A</h3><div id="biA">Loading…</div></div>
+        <div class="card"><h3 id="labelBIB">Team B</h3><div id="biB">Loading…</div></div>
+      </div>
+      <div class="caption muted">Outcome is forced to All for Ban Impact to avoid bias.</div>
     </div>
-    <div class="caption muted">Outcome is forced to All for Ban Impact to avoid bias.</div>
-  </div>
+  </details>
 
-  <!-- OPPONENT SERIES (BY MAPS) -->
-  <div class="section">
-    <h2>Performance by Opponent</h2>
-    <div class="grid2">
-      <div class="card"><h3 id="labelOppSeriesA">Team A</h3><div id="oppSeriesA">Loading…</div></div>
-      <div class="card"><h3 id="labelOppSeriesB">Team B</h3><div id="oppSeriesB">Loading…</div></div>
+  <!-- OPPONENT SERIES (accordion) -->
+  <details class="accordion">
+    <summary>Performance by Opponent</summary>
+    <div class="accordion-body">
+      <div class="grid2">
+        <div class="card"><h3 id="labelOppSeriesA">Team A</h3><div id="oppSeriesA">Loading…</div></div>
+        <div class="card"><h3 id="labelOppSeriesB">Team B</h3><div id="oppSeriesB">Loading…</div></div>
+      </div>
     </div>
-  </div>
+  </details>
 
-  <!-- AI ANALYSIS PROMPT -->
-  <div class="section">
-    <h2>AI Analysis Prompt</h2>
-    <div class="ai-actions">
-      <button class="btn" id="copyPromptBtn">Copy prompt</button>
-      <span class="muted">Copies a structured prompt + current data snapshot for ChatGPT.</span>
+  <!-- AI ANALYSIS PROMPT (accordion) -->
+  <details class="accordion">
+    <summary>AI Analysis Prompt</summary>
+    <div class="accordion-body">
+      <div class="ai-actions">
+        <button class="btn" id="copyPromptBtn">Copy prompt</button>
+        <span class="muted">Copies a structured prompt + current data snapshot for ChatGPT.</span>
+      </div>
+      <textarea id="aiPrompt" class="ai-text" readonly>Loading…</textarea>
     </div>
-    <textarea id="aiPrompt" class="ai-text" readonly>Loading…</textarea>
-  </div>
+  </details>
 
 </div>
 
@@ -645,7 +699,7 @@ function buildPairs(rows){
       }
     }
   });
-  return [...pairs.values()].map(p=>({ ...p, winpct: p.picks? p.wins/p.picks : 0 }));
+  return [...pairs.values()].map(p=>({ ...p, winpct: p.picks? p.wins/picks : 0 }));
 }
 function tableCombos(list, title, limit=5){
   const rows = [...list].sort((a,b)=> b.picks - a.picks || b.winpct - a.winpct || a.heroes.join(',').localeCompare(b.heroes.join(','))).slice(0,limit);
@@ -844,15 +898,12 @@ function kpiCard(bucket, kindActive, kindPassive, kindBan){
 }
 
 /* ========= AI Prompt Build + Copy ========= */
-// Helper: strip *any* URLs from an export object (used ONLY for the AI prompt)
 function stripLinksDeep(x){
   if (Array.isArray(x)) return x.map(stripLinksDeep);
   if (x && typeof x === 'object'){
     const out = {};
     for (const [k, v] of Object.entries(x)){
-      // Drop common image/link keys entirely
       if (['logo','banImg','heroImg','img','image','image_url','imageUrl','imageLink','link','url'].includes(k)) continue;
-      // Also drop any string that looks like a URL
       if (typeof v === 'string' && /^https?:\/\//i.test(v)) continue;
       out[k] = stripLinksDeep(v);
     }
@@ -892,7 +943,6 @@ async function copyTextToClipboard(text){
       return true;
     }
   }catch{}
-  // Fallback
   const ta = document.createElement('textarea');
   ta.value = text;
   ta.style.position='fixed'; ta.style.left='-9999px';
@@ -992,8 +1042,6 @@ function renderAll(){
 
   // Opponent Series (per map)
   el('labelOppSeriesA').textContent = a; el('labelOppSeriesB').textContent = b;
-  const oppRowsA = buildOpponentSeriesRows(rowsA).slice(0,30);
-  const oppRowsB = buildOpponentSeriesRows(rowsB).slice(0,30);
   el('oppSeriesA').innerHTML = opponentSeriesTable(rowsA, 30);
   el('oppSeriesB').innerHTML = opponentSeriesTable(rowsB, 30);
 
@@ -1018,7 +1066,7 @@ function renderAll(){
       pairs: buildPairs(rowsA).sort((a,b)=> b.picks-a.picks || b.winpct-a.winpct).slice(0,5),
       passive_trios: triA.sort((a,b)=> b.picks-a.picks || b.winpct-a.winpct).slice(0,5),
       ban_impact: banImpactData(biA_rows, 10),
-      opponent_series: oppRowsA
+      opponent_series: buildOpponentSeriesRows(rowsA).slice(0,30)
     },
     teamB:{
       kpis:{ matches:bB.matches, wins:bB.wins, win_rate: bB.matches? bB.wins/bB.matches : 0 },
@@ -1033,10 +1081,10 @@ function renderAll(){
       pairs: buildPairs(rowsB).sort((a,b)=> b.picks-a.picks || b.winpct-a.winpct).slice(0,5),
       passive_trios: triB.sort((a,b)=> b.picks-a.picks || b.winpct-a.winpct).slice(0,5),
       ban_impact: banImpactData(biB_rows, 10),
-      opponent_series: oppRowsB
+      opponent_series: buildOpponentSeriesRows(rowsB).slice(0,30)
     }
   };
-  const exportClean = stripLinksDeep(exportObj); // strip URLs only for the prompt
+  const exportClean = stripLinksDeep(exportObj);
   el('aiPrompt').value = buildAIPrompt(exportClean);
 }
 
