@@ -100,6 +100,45 @@
     @media (max-width: 860px){
       .grid2{grid-template-columns:1fr}
     }
+
+    /* ===== New: Match card (vertical details + stacked player cards) ===== */
+    .matchCard{
+      display:grid;
+      grid-template-columns: 280px 1fr;
+      gap:12px;
+      background:#121212;
+      border:1px solid #272727;
+      border-radius:12px;
+      padding:10px;
+    }
+    @media (max-width:980px){ .matchCard{grid-template-columns:1fr} }
+
+    .mInfo{display:flex;flex-direction:column;gap:6px}
+    .mRow{display:flex;gap:10px;align-items:center}
+    .mKey{width:86px;color:var(--muted);font-size:.88rem}
+    .mVal{font-size:.95rem;line-height:1.1}
+    .banBox{display:flex;gap:8px;align-items:center}
+    .banBox img{width:22px;height:22px;border-radius:5px;border:1px solid #333;background:#111;object-fit:cover}
+
+    .mPlayers{display:flex;flex-direction:column;gap:8px;align-content:start}
+
+    .pBadge{
+      display:grid;
+      grid-template-columns:44px 1fr auto;
+      gap:10px;
+      align-items:center;
+      background:#0f0f0f;
+      border:1px solid #2a2a2a;
+      border-radius:10px;
+      padding:6px 8px;
+      min-height:52px;
+    }
+    .pAct{width:44px;height:44px;border-radius:8px;border:1px solid #333;object-fit:cover;background:#0b0b0b}
+    .pMeta{min-width:0}
+    .pName{font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pHero{font-size:11px;color:#cfcfcf;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pPass{display:flex;gap:6px;align-items:center}
+    .pPass img{width:16px;height:16px;border-radius:3px;border:1px solid #333;background:#0b0b0b;object-fit:cover}
   </style>
 </head>
 <body>
@@ -159,6 +198,17 @@
       <div class="card" id="kpiB"><h3>B</h3>Loading…</div>
     </div>
   </div>
+
+  <!-- NEW: MATCHES (stacked player cards) -->
+  <details class="accordion">
+    <summary>Matches (Active + 3×Passive per player)</summary>
+    <div class="accordion-body">
+      <div class="grid2">
+        <div class="card"><h3 id="labelMatchesA">Team A</h3><div id="matchesA">Loading…</div></div>
+        <div class="card"><h3 id="labelMatchesB">Team B</h3><div id="matchesB">Loading…</div></div>
+      </div>
+    </div>
+  </details>
 
   <!-- SKILLS (accordion) -->
   <details class="accordion">
@@ -309,6 +359,7 @@ const pct = (num, den) => den ? fmtPct(num/den) : '—';
 const uniq = (arr) => [...new Set(arr)];
 function ymd(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
 function parseState(val){ if (!val) return {}; if (typeof val==='object') return val; try { return JSON.parse(val); } catch(e){ return {}; } }
+function safe(s){ return String(s??'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
 
 /* ========= Filters init ========= */
 function initFilters(){
@@ -957,12 +1008,59 @@ async function copyTextToClipboard(text){
   return ok;
 }
 
+/* ===== New: Matches rendering helpers ===== */
+function playerBadge(active, trio){
+  const ico = (ps)=>`<img src="${ps.img||PLACEHOLDER}" alt="${safe(ps.name||'')}" title="${safe(ps.name||'')}">`;
+  const p0 = trio?.[0] || {}, p1 = trio?.[1] || {}, p2 = trio?.[2] || {};
+  const aName = safe(active.hero||'');
+  const pName = safe(active.player||'');
+  return `
+    <div class="pBadge" title="${pName}${aName?(' — '+aName):''}">
+      <img class="pAct" src="${active.heroImg||PLACEHOLDER}" alt="${aName}">
+      <div class="pMeta">
+        <div class="pName">${pName}</div>
+        <div class="pHero">${aName||'—'}</div>
+      </div>
+      <div class="pPass">${ico(p0)}${ico(p1)}${ico(p2)}</div>
+    </div>`;
+}
+
+function matchCard(r){
+  const score = `${r.team_score} - ${r.opp_score}`;
+  const g = r.game_number ? `Game ${r.game_number}` : '—';
+  const players = r.actives.map((a,i)=>playerBadge(a, (r.passives[i]||{}).trio)).join('');
+  return `
+    <div class="matchCard">
+      <div class="mInfo">
+        <div class="mRow"><div class="mKey">Date</div><div class="mVal mono">${String(r.match_date||'').slice(0,10)}</div></div>
+        <div class="mRow"><div class="mKey">Game</div><div class="mVal">${g}</div></div>
+        <div class="mRow"><div class="mKey">Map</div><div class="mVal">${r.map||'—'}</div></div>
+        <div class="mRow"><div class="mKey">Team</div><div class="mVal">${r.team||'—'}<div class="muted" style="line-height:1.1">vs ${r.opponent||'—'}</div></div></div>
+        <div class="mRow"><div class="mKey">Score</div><div class="mVal mono">${score}</div></div>
+        <div class="mRow"><div class="mKey">Result</div><div class="mVal"><span class="wl ${r.result}">${r.result}</span></div></div>
+        <div class="mRow"><div class="mKey">Ban</div><div class="mVal banBox"><img src="${r.banImg||PLACEHOLDER}" alt="${safe(r.banName||'')}" title="${safe(r.banName||'')}"><span class="muted">${safe(r.banName||'—')}</span></div></div>
+      </div>
+      <div class="mPlayers">
+        ${players}
+      </div>
+    </div>`;
+}
+
+function matchesCards(rows){
+  if(!rows.length) return `<div class="muted">No matches for selection.</div>`;
+  const sorted = [...rows].sort((a,b)=>{
+    const da = new Date(a.match_date), db = new Date(b.match_date);
+    return db - da || (a.game_number||0) - (b.game_number||0) || a.rec_id - b.rec_id;
+  });
+  return sorted.map(matchCard).join('');
+}
+
 /* ========= Render ========= */
 function renderAll(){
   const a = el('cmpTeamA').value, b = el('cmpTeamB').value;
   if (!a || !b || a===b){
     el('meta').textContent = 'Pick two different teams.';
-    ['kpiA','kpiB','activeA','activeB','passiveA','passiveB','bansA','bansB','tmA','tmB','psAAct','psBAct','impactA','impactB','psAPas','psBPas','combosA','combosB','pairsA','pairsB','triosA','triosB','biA','biB','oppSeriesA','oppSeriesB']
+    ['kpiA','kpiB','activeA','activeB','passiveA','passiveB','bansA','bansB','tmA','tmB','psAAct','psBAct','impactA','impactB','psAPas','psBPas','combosA','combosB','pairsA','pairsB','triosA','triosB','biA','biB','oppSeriesA','oppSeriesB','matchesA','matchesB']
       .forEach(id=>{ if(el(id)) el(id).innerHTML = '<div class="muted">—</div>'; });
     const ta = el('aiPrompt'); if (ta) ta.value = 'Pick two different teams.';
     return;
@@ -986,6 +1084,12 @@ function renderAll(){
   // KPIs
   el('kpiA').innerHTML = `<h3>${a}</h3>${kpiCard(bA, bA, bP_A, bBan_A)}`;
   el('kpiB').innerHTML = `<h3>${b}</h3>${kpiCard(bB, bB, bP_B, bBan_B)}`;
+
+  // NEW: Matches
+  el('labelMatchesA').textContent = a;
+  el('labelMatchesB').textContent = b;
+  el('matchesA').innerHTML = matchesCards(rowsA);
+  el('matchesB').innerHTML = matchesCards(rowsB);
 
   // Skills
   el('labelActiveA').textContent = `${a} — Active`;
@@ -1048,12 +1152,8 @@ function renderAll(){
   el('oppSeriesA').innerHTML = opponentSeriesTable(rowsA, 30);
   el('oppSeriesB').innerHTML = opponentSeriesTable(rowsB, 30);
 
-  // ===== Build data snapshot for AI prompt (links removed only here) =====
-  const meta = {
-    teamA: a, teamB: b,
-    mapLabel, tournamentLabel: tournLabel, wlLabel,
-    from: el('fFrom').value, to: el('fTo').value
-  };
+  // ===== Build data snapshot for AI prompt =====
+  const meta = { teamA:a, teamB:b, mapLabel, tournamentLabel: tournLabel, wlLabel, from: el('fFrom').value, to: el('fTo').value };
   const exportObj = {
     meta,
     teamA:{
