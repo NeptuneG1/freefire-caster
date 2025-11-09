@@ -308,8 +308,10 @@
             <div id="tblTeamPet">Loading…</div>
           </div>
         </div>
+
+        <!-- SPLIT: Per-Player Character Usage — Active & Passive -->
         <div class="card" style="margin-top:12px">
-          <h3>Per-Player Character Usage (Active + Passive)</h3>
+          <h3>Per-Player Character Usage — Active</h3>
           <div class="bar">
             <label>Top players</label>
             <select id="charUsageTop" class="input"><option>10</option><option>20</option><option>50</option><option>100</option></select>
@@ -318,7 +320,12 @@
               <option value="__all__" selected>All maps</option>
             </select>
           </div>
-          <div id="tblCharUsage">Loading…</div>
+          <div id="tblCharUsageAct">Loading…</div>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <h3>Per-Player Character Usage — Passive</h3>
+          <div id="tblCharUsagePas">Loading…</div>
           <div class="muted" style="margin-top:6px" id="charMapHint">—</div>
         </div>
       </div>
@@ -385,6 +392,14 @@ function safeDiv(a,b){ a=Number(a??0)||0; b=Number(b??0)||0; return b? (a/b) : 0
 function groupBy(arr,fn){ const m=new Map(); for(const r of arr){ const k=fn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r);} return m; }
 function looksLikeURL(v){ return /^https?:\/\//i.test(String(v||'')); }
 const nameKey = s => String(s||'').toLowerCase().replace(/\s+/g,' ').trim();
+/* helper for loose name compare (strip punctuation etc.) */
+function normCompareName(s){
+  return String(s||'')
+    .toLowerCase()
+    .replace(/\s+/g,' ')
+    .replace(/[\(\)\[\]\.\-_:]/g,'')
+    .trim();
+}
 
 /* ============ Global error surface ============ */
 function gerr(msg){
@@ -457,7 +472,7 @@ async function fetchAllRows(){
 async function fetchHelperTeams(){
   const { data, error } = await client.from('helper_team').select('*').order('TAG');
   if(error){ console.warn('helper_team error:', error.message||error); return []; }
-  const rows=data||[];
+  const rows=data||[]; 
   return rows.map(r=>{
     const code = norm(r.TAG).toUpperCase();
     return { name:code, fullname:norm(r.TEAM)||code, logo:norm(r.LOGO)||'', ew:norm(r['E/W'])||'', region:norm(r.REGION)||'', alt:norm(r['ALT NAME 1'])||'' };
@@ -522,7 +537,7 @@ function applyColumnHeatmap(containerId, keys){
   const maxA=parseFloat(styles.getPropertyValue('--heat-max'))||.22;
   const BANDS=5;
   for(const key of keys){
-    const cells=[...table.querySelectorAll(`td[data-key="${key}"]`)];
+    const cells=[...table.querySelectorAll(`td[data-key="${key}"]`)].filter(Boolean);
     if(!cells.length) continue;
     const entries=cells.map((td,i)=>{ const raw=(td.textContent||'').trim().replace('%','').replace(/,/g,''); const v=parseFloat(raw); return {td,i,v:isFinite(v)?v:null}; }).filter(e=>e.v!=null);
     if(!entries.length) continue;
@@ -1017,7 +1032,7 @@ function renderPlayers(){
   el('tblPlayers').innerHTML = renderSimpleTable(rows.map((r,i)=>({...r,rank:i+1})), [
     {label:'#',key:'rank',right:true,html:(_,i)=>i+1},{label:'Player',key:'player'},{label:'Rows',key:'rows',right:true},
     {label:'Kills',key:'kills',right:true},{label:'Assists',key:'assists',right:true},{label:'Damage',key:'dmg',right:true},
-    {label:'HS',key:'hs',right:true},{label:'Acc',key:'acc',right:true,html:r=>isFinite(r.acc)?fmtPct(r.acc):'—'},
+    {label:'HS',key:'hs',right:true,},{label:'Acc',key:'acc',right:true,html:r=>isFinite(r.acc)?fmtPct(r.acc):'—'},
     {label:'HS/K',key:'hsRate',right:true,html:r=>isFinite(r.hsRate)?r.hsRate.toFixed(2):'—'},
     {label:'Grenade',key:'nade',right:true},{label:'Vehicle',key:'veh',right:true},{label:'Knockdowns',key:'downs',right:true},
     {label:'Most Active',key:'active'},{label:'Most Pet',key:'pet'},
@@ -1241,7 +1256,8 @@ async function selectTeam(teamObj){
   const [info, roster] = await Promise.all([ fetchTeamInfoBy(teamObj.name), fetchPlayersBy(teamObj.name) ]);
   setRoleMap(roster);
   populateCharUsageMapFilter();
-  renderCharUsage();
+  renderCharUsageActive();
+  renderCharUsagePassive();
   renderTeamInfo(info);
   renderRoster(roster);
 
@@ -1249,9 +1265,9 @@ async function selectTeam(teamObj){
   renderElimTeamFocus();
 }
 
-/* ---- RENDER: Per-Player Character Usage (Active + Passive) ---- */
-function renderCharUsage(){
-  const box = el('tblCharUsage');
+/* ---- RENDER: Per-Player Character Usage — ACTIVE ---- */
+function renderCharUsageActive(){
+  const box = el('tblCharUsageAct');
   if (!box) return;
 
   if (!CURRENT_TEAM){
@@ -1259,10 +1275,9 @@ function renderCharUsage(){
     return;
   }
 
-  const topN = Number(el('charUsageTop')?.value) || 10;
+  const topN  = Number(el('charUsageTop')?.value) || 10;
   const mapSel = el('charUsageMapFilter')?.value || '__all__';
 
-  // Team rows from LOPS (ignores tournament filter by design)
   let rows = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
   if (mapSel !== '__all__'){
     const lf = mapSel.toLowerCase();
@@ -1274,15 +1289,71 @@ function renderCharUsage(){
     return;
   }
 
-  // Count (player, character) picks using char1..char4 (passives) + mapped names
+  // Count (player, active) using the row's 'active' field
+  const counts = new Map(); // key = player||active
+  for (const r of rows){
+    const player = r._player || '—';
+    const role   = ROLE_BY_IGN.get(nameKey(player)) || '—';
+    const active = norm(r.active);
+    if (!active) continue;
+
+    const key = player + '||' + active;
+    if (!counts.has(key)) counts.set(key, { player, role, active, picks: 0 });
+    counts.get(key).picks += 1;
+  }
+
+  const list = [...counts.values()]
+    .sort((a,b)=> b.picks - a.picks || a.player.localeCompare(b.player) || a.active.localeCompare(b.active))
+    .slice(0, topN);
+
+  box.innerHTML = renderSimpleTable(list, [
+    { label:'Player', key:'player' },
+    { label:'Role',   key:'role' },
+    { label:'Active', key:'active' },
+    { label:'Picks',  key:'picks', right:true },
+  ]);
+
+  applyColumnHeatmap('tblCharUsageAct', ['picks']);
+}
+
+/* ---- RENDER: Per-Player Character Usage — PASSIVE ---- */
+function renderCharUsagePassive(){
+  const box = el('tblCharUsagePas');
+  if (!box) return;
+
+  if (!CURRENT_TEAM){
+    box.innerHTML = '<div class="muted">Select a team.</div>';
+    return;
+  }
+
+  const topN  = Number(el('charUsageTop')?.value) || 10;
+  const mapSel = el('charUsageMapFilter')?.value || '__all__';
+
+  let rows = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
+  if (mapSel !== '__all__'){
+    const lf = mapSel.toLowerCase();
+    rows = rows.filter(r => (r._map || '').toLowerCase() === lf);
+  }
+
+  if (!rows.length){
+    box.innerHTML = '<div class="muted">No rows for this filter.</div>';
+    return;
+  }
+
+  // Count (player, passive-character). Try to exclude the active if names match.
   const counts = new Map(); // key = player||character
   for (const r of rows){
     const player = r._player || '—';
-    const role = ROLE_BY_IGN.get(nameKey(player)) || '—';
+    const role   = ROLE_BY_IGN.get(nameKey(player)) || '—';
+    const activeNm = norm(r.active);
+    const activeCmp = normCompareName(activeNm);
 
+    // Map the 4 character slots to human-friendly names
     const chars = [r.char1, r.char2, r.char3, r.char4]
       .map(c => mapCharName(c, c))
-      .filter(Boolean);
+      .filter(Boolean)
+      // exclude if identical to 'active' by loose name compare (best effort)
+      .filter(ch => !activeCmp || normCompareName(ch) !== activeCmp);
 
     for (const ch of chars){
       const key = player + '||' + ch;
@@ -1302,7 +1373,7 @@ function renderCharUsage(){
     { label:'Picks',     key:'picks', right:true },
   ]);
 
-  applyColumnHeatmap('tblCharUsage', ['picks']);
+  applyColumnHeatmap('tblCharUsagePas', ['picks']);
 }
 
 /* ---- RENDER: Team Info (safe, schema-agnostic) ---- */
@@ -1345,7 +1416,7 @@ function wireControls(){
     if(CURRENT_TEAM){
       TEAM_ROWS = baseRowsByTournament(ALL).filter(r => (norm(r._tag).toUpperCase()||'') === CURRENT_TEAM.name.toUpperCase());
       kpiAndByMap(); renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDay();
-      fetchPlayersBy(CURRENT_TEAM.name).then(r=>{ setRoleMap(r); renderRoster(r); renderCharUsage(); }).catch(()=>{ renderCharUsage(); });
+      fetchPlayersBy(CURRENT_TEAM.name).then(r=>{ setRoleMap(r); renderRoster(r); renderCharUsageActive(); renderCharUsagePassive(); }).catch(()=>{ renderCharUsageActive(); renderCharUsagePassive(); });
       fetchTeamInfoBy(CURRENT_TEAM.name).then(renderTeamInfo).catch(()=>{});
       populateCharUsageMapFilter();
     }
@@ -1388,8 +1459,8 @@ function wireControls(){
   el('lopsActiveTop').addEventListener('change', renderLopsActive);
   el('lopsPetTop').addEventListener('change', renderLopsPet);
   el('lopsTopKillersTop').addEventListener('change', renderLopsTopKillers);
-  el('charUsageTop').addEventListener('change', renderCharUsage);
-  el('charUsageMapFilter').addEventListener('change', renderCharUsage);
+  el('charUsageTop').addEventListener('change', ()=>{ renderCharUsageActive(); renderCharUsagePassive(); });
+  el('charUsageMapFilter').addEventListener('change', ()=>{ renderCharUsageActive(); renderCharUsagePassive(); });
 }
 
 async function initial(){
