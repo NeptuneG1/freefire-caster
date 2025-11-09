@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Clash Squad — Team Compare (Stacked Players)</title>
+  <title>Clash Squad — Team Compare (Vertical details + skills right)</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root{
@@ -14,10 +14,10 @@
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif}
     header{position:sticky;top:0;z-index:5;background:#1f1f1f;border-bottom:3px solid var(--brand);padding:14px 16px}
-    h1{margin:0;font-size:1.1rem;letter-spacing:.3px;color:var(--brand)}
+    h1{margin:0;font-size:1.08rem;letter-spacing:.3px;color:var(--brand)}
     .user-controls{position:absolute;right:16px;top:12px;display:flex;gap:10px;align-items:center}
     .chip{font-size:.85rem;color:#ddd}
-    .btn{background:var(--brand);color:var(--panel);border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
+    .btn{background:var(--brand);color:#111;border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
     .btn:hover{background:#e6a74f}
     .shell{max-width:1200px;margin:22px auto;padding:0 12px}
 
@@ -39,45 +39,56 @@
     .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px}
     .card h3{margin:0 0 6px;color:var(--brand2);font-size:1.0rem}
 
-    /* ===== Matches table layout ===== */
-    .mTable{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0}
-    .mTable th,.mTable td{border-bottom:1px solid #2a2a2a;padding:6px 6px;vertical-align:top;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .mTable thead th{background:#191919;text-align:left}
-    .mTable td.last, .mTable th.last{white-space:normal;overflow:visible;text-overflow:unset}
+    /* ===== Match card: left details, right skills ===== */
+    .matchCard{
+      display:grid;
+      grid-template-columns: 260px 1fr;
+      gap:12px;
+      background:#121212;
+      border:1px solid #272727;
+      border-radius:12px;
+      padding:10px;
+    }
+    @media (max-width:980px){ .matchCard{grid-template-columns:1fr} }
+
+    /* left details (vertical list) */
+    .mInfo{display:flex;flex-direction:column;gap:6px}
+    .mRow{display:flex;gap:10px;align-items:center}
+    .mKey{width:86px;color:var(--muted);font-size:.88rem}
+    .mVal{font-size:.95rem;line-height:1.1}
     .mono{font-variant-numeric:tabular-nums}
-    .right{text-align:right}
     .wl{font-weight:700;padding:2px 8px;border-radius:999px;display:inline-block}
     .wl.W{background:#193e2b;color:var(--good);border:1px solid #245b3e}
     .wl.L{background:#401e1e;color:var(--bad);border:1px solid #6b2c2c}
-    .icons{display:flex;gap:6px;align-items:center}
-    .icons img{width:22px;height:22px;border-radius:5px;border:1px solid #333;background:#111;object-fit:cover}
+    .banBox{display:flex;gap:8px;align-items:center}
+    .banBox img{width:22px;height:22px;border-radius:5px;border:1px solid #333;background:#111;object-fit:cover}
 
-    /* ===== Stacked player lines (Active + 3 Passive) ===== */
-    .pLines{display:grid;grid-auto-rows:minmax(28px,auto);gap:4px}
-    .pLine{
+    /* right: player skill blocks */
+    .mPlayers{
       display:grid;
-      grid-template-columns: 34px 1fr auto;
-      align-items:center;
-      gap:8px;
-      background:#111;
-      border:1px solid #272727;
-      border-radius:8px;
-      padding:4px 6px;
+      grid-template-columns: repeat(2, minmax(220px,1fr));
+      gap:10px;
+      align-content:start;
     }
-    .pl-hero{width:34px;height:34px;object-fit:cover;border-radius:6px;border:1px solid #333;background:#0f0f0f}
-    .pl-meta{min-width:0}
-    .pl-name{font-size:12px;font-weight:700;line-height:1.05}
-    .pl-skill{font-size:11px;color:#cfcfcf;line-height:1.05}
-    .pl-name,.pl-skill{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .pl-pass{display:flex;gap:6px;align-items:center}
-    .pl-pass img{width:16px;height:16px;object-fit:cover;border-radius:3px;border:1px solid #333;background:#0f0f0f}
+    @media (max-width:640px){ .mPlayers{grid-template-columns:1fr} }
 
-    /* Compact when narrow: hide hero label; ultra-narrow: hide player name too & shrink icons */
-    .pLines.compact .pl-skill{display:none}
-    .pLines.ultra .pl-skill{display:none}
-    .pLines.ultra .pl-name{display:none}
-    .pLines.ultra .pl-hero{width:28px;height:28px}
-    .pLines.ultra .pl-pass img{width:14px;height:14px}
+    .pBadge{
+      display:grid;
+      grid-template-columns:44px 1fr auto;
+      gap:10px;
+      align-items:center;
+      background:#0f0f0f;
+      border:1px solid #2a2a2a;
+      border-radius:10px;
+      padding:6px 8px;
+      min-height:52px;
+    }
+    .pAct{width:44px;height:44px;border-radius:8px;border:1px solid #333;object-fit:cover;background:#0b0b0b}
+    .pMeta{min-width:0}
+    .pName{font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pHero{font-size:11px;color:#cfcfcf;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pPass{display:flex;gap:6px;align-items:center}
+    .pPass img{width:16px;height:16px;border-radius:3px;border:1px solid #333;background:#0b0b0b;object-fit:cover}
   </style>
 </head>
 <body>
@@ -125,10 +136,6 @@
       <div class="grid2">
         <div class="card"><h3 id="labelMatchesA">Team A</h3><div id="matchesA">Loading…</div></div>
         <div class="card"><h3 id="labelMatchesB">Team B</h3><div id="matchesB">Loading…</div></div>
-      </div>
-      <div class="caption muted tight">
-        Each row shows 4 player lines. Left: active character portrait. Right: three passive icons.
-        Names auto-hide on smaller widths, but images always stay.
       </div>
     </div>
   </details>
@@ -280,86 +287,51 @@ function rowsForTeam(team){
   return applyWL(rows);
 }
 
-/* ========= Stacked players renderer ========= */
-function renderPlayersLines(row){
-  const lines = row.actives.map((a,i)=>{
-    const t = (row.passives[i]||{}).trio || [];
-    const p0 = t[0] || {}, p1 = t[1] || {}, p2 = t[2] || {};
-    const pname = safe(a.player||'');
-    const hname = safe(a.hero||'');
-    const act   = a.heroImg || PLACEHOLDER;
-    const ico = (ps)=>`<img src="${ps.img||PLACEHOLDER}" alt="${safe(ps.name||'')}" title="${safe(ps.name||'')}">`;
-    return `
-      <div class="pLine" title="${pname}${hname?(' — '+hname):''}">
-        <img class="pl-hero" src="${act}" alt="${hname}">
-        <div class="pl-meta">
-          <div class="pl-name">${pname}</div>
-          <div class="pl-skill">${hname}</div>
-        </div>
-        <div class="pl-pass">${ico(p0)}${ico(p1)}${ico(p2)}</div>
-      </div>`;
-  }).join('');
-  return `<div class="pLines">${lines}</div>`;
+/* ========= Render helpers ========= */
+function playerBadge(active, trio){
+  const ico = (ps)=>`<img src="${ps.img||PLACEHOLDER}" alt="${safe(ps.name||'')}" title="${safe(ps.name||'')}">`;
+  const p0 = trio?.[0] || {}, p1 = trio?.[1] || {}, p2 = trio?.[2] || {};
+  const aName = safe(active.hero||'');
+  const pName = safe(active.player||'');
+  return `
+    <div class="pBadge" title="${pName}${aName?(' — '+aName):''}">
+      <img class="pAct" src="${active.heroImg||PLACEHOLDER}" alt="${aName}">
+      <div class="pMeta">
+        <div class="pName">${pName}</div>
+        <div class="pHero">${aName||'—'}</div>
+      </div>
+      <div class="pPass">${ico(p0)}${ico(p1)}${ico(p2)}</div>
+    </div>`;
 }
 
-function matchesTable(rows){
+function matchCard(r){
+  const score = `${r.team_score} - ${r.opp_score}`;
+  const g = r.game_number ? `Game ${r.game_number}` : '—';
+  const players = r.actives.map((a,i)=>playerBadge(a, (r.passives[i]||{}).trio)).join('');
+  return `
+    <div class="matchCard">
+      <div class="mInfo">
+        <div class="mRow"><div class="mKey">Date</div><div class="mVal mono">${String(r.match_date||'').slice(0,10)}</div></div>
+        <div class="mRow"><div class="mKey">Game</div><div class="mVal">${g}</div></div>
+        <div class="mRow"><div class="mKey">Map</div><div class="mVal">${r.map||'—'}</div></div>
+        <div class="mRow"><div class="mKey">Team</div><div class="mVal">${r.team||'—'}<div class="muted" style="line-height:1.1">vs ${r.opponent||'—'}</div></div></div>
+        <div class="mRow"><div class="mKey">Score</div><div class="mVal mono">${score}</div></div>
+        <div class="mRow"><div class="mKey">Result</div><div class="mVal"><span class="wl ${r.result}">${r.result}</span></div></div>
+        <div class="mRow"><div class="mKey">Ban</div><div class="mVal banBox"><img src="${r.banImg||PLACEHOLDER}" alt="${safe(r.banName||'')}" title="${safe(r.banName||'')}"><span class="muted">${safe(r.banName||'—')}</span></div></div>
+      </div>
+      <div class="mPlayers">
+        ${players}
+      </div>
+    </div>`;
+}
+
+function matchesCards(rows){
   if(!rows.length) return `<div class="muted">No matches for selection.</div>`;
   const sorted = [...rows].sort((a,b)=>{
     const da = new Date(a.match_date), db = new Date(b.match_date);
     return db - da || (a.game_number||0) - (b.game_number||0) || a.rec_id - b.rec_id;
   });
-  return `
-    <table class="mTable">
-      <colgroup>
-        <col style="width:84px"><!-- Date -->
-        <col style="width:74px"><!-- Game -->
-        <col style="width:96px"><!-- Map -->
-        <col style="width:138px"><!-- Team -->
-        <col style="width:138px"><!-- Opponent -->
-        <col style="width:72px"><!-- Score -->
-        <col style="width:70px"><!-- Result -->
-        <col style="width:142px"><!-- Ban -->
-        <col><!-- Players -->
-      </colgroup>
-      <thead>
-        <tr>
-          <th>Date</th><th>Game</th><th>Map</th><th>Team</th><th>Opponent</th>
-          <th class="right">Score</th><th class="right">Result</th><th>Ban</th><th class="last">Players</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${sorted.map(r=>{
-          const score = `${r.team_score} - ${r.opp_score}`;
-          const g = r.game_number ? `Game ${r.game_number}` : '—';
-          return `
-            <tr>
-              <td class="mono">${String(r.match_date||'').slice(0,10)}</td>
-              <td>${g}</td>
-              <td>${r.map||'—'}</td>
-              <td>${r.team||'—'}<div class="muted" style="line-height:1.1">vs ${r.opponent||'—'}</div></td>
-              <td>${r.opponent||'—'}</td>
-              <td class="right mono">${score}</td>
-              <td class="right"><span class="wl ${r.result}">${r.result}</span></td>
-              <td>
-                <div class="icons">
-                  <img src="${r.banImg||PLACEHOLDER}" alt="${r.banName||''}" title="${r.banName||''}">
-                  <span class="muted" style="line-height:1.1">${r.banName||'—'}</span>
-                </div>
-              </td>
-              <td class="last">${renderPlayersLines(r)}</td>
-            </tr>`;
-        }).join('')}
-      </tbody>
-    </table>`;
-}
-
-/* Adapt labels based on available width of the Players cell */
-function adaptPlayerLines(){
-  document.querySelectorAll('.pLines').forEach(c=>{
-    const w = c.clientWidth || 0;
-    c.classList.toggle('compact', w < 520);
-    c.classList.toggle('ultra',   w < 420);
-  });
+  return sorted.map(matchCard).join('');
 }
 
 /* ========= Render ========= */
@@ -378,13 +350,11 @@ function renderAll(){
   el('meta').textContent = `${a} vs ${b} • ${mapLabel} • ${tournLabel} • ${wlLabel}`;
 
   const rowsA = rowsForTeam(a), rowsB = rowsForTeam(b);
-
   el('labelMatchesA').textContent = a;
   el('labelMatchesB').textContent = b;
-  el('matchesA').innerHTML = matchesTable(rowsA);
-  el('matchesB').innerHTML = matchesTable(rowsB);
 
-  requestAnimationFrame(adaptPlayerLines);
+  el('matchesA').innerHTML = matchesCards(rowsA);
+  el('matchesB').innerHTML = matchesCards(rowsB);
 }
 
 /* ========= Refresh ========= */
@@ -399,7 +369,6 @@ async function refresh(){
 el('applyBtn').onclick = refresh;
 ['cmpTeamA','cmpTeamB'].forEach(id=> el(id).addEventListener('change', renderAll));
 el('cmpSwap').addEventListener('click', ()=>{ const A=el('cmpTeamA'),B=el('cmpTeamB'); const t=A.value; A.value=B.value; B.value=t; renderAll(); });
-window.addEventListener('resize', adaptPlayerLines);
 
 /* ========= First load ========= */
 refresh();
