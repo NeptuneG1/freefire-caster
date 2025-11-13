@@ -27,6 +27,7 @@
     .controls select,.controls input[type="date"],.controls input[type="number"]{background:#212121;color:var(--brand);border:1px solid #3a3a3a;border-radius:6px;padding:6px 8px}
     .muted{color:var(--muted);font-size:.9rem}
 
+    /* Regular section (kept for Overview KPIs only) */
     .section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
     .section h2{margin:0 0 10px;color:var(--brand)}
 
@@ -51,6 +52,7 @@
     .caption{margin:4px 0 8px}
     .tight{line-height:1.25}
 
+    /* Active Skill Impact deltas + loss logos */
     .delta-pos{color:var(--good);font-weight:700}
     .delta-neg{color:var(--bad);font-weight:700}
     .opp-logos{display:inline-flex;gap:4px;align-items:center;margin-left:6px;vertical-align:middle}
@@ -61,9 +63,11 @@
       border-radius:6px;padding:0 3px;font-size:10px;line-height:1.2;color:#ccc;
     }
 
+    /* AI Prompt box */
     .ai-actions{display:flex;gap:8px;align-items:center;margin-bottom:8px}
     .ai-text{width:100%;min-height:220px;background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:10px;font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;font-size:.85rem;white-space:pre-wrap}
 
+    /* Accordions */
     details.accordion{
       background:var(--panel);
       border:1px solid var(--line);
@@ -97,7 +101,7 @@
       .grid2{grid-template-columns:1fr}
     }
 
-    /* Match card (vertical details + stacked player cards) */
+    /* ===== New: Match card (vertical details + stacked player cards) ===== */
     .matchCard{
       display:grid;
       grid-template-columns: 280px 1fr;
@@ -135,6 +139,16 @@
     .pHero{font-size:11px;color:#cfcfcf;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .pPass{display:flex;gap:6px;align-items:center}
     .pPass img{width:16px;height:16px;border-radius:3px;border:1px solid #333;background:#0b0b0b;object-fit:cover}
+
+    /* ===== New: Quick pick & pair buttons ===== */
+    .quickbar, .pairbar{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+    .chipbtn, .pairbtn{
+      background:#111;border:1px solid #2a2a2a;color:#ddd;
+      border-radius:999px;padding:6px 10px;cursor:pointer;font-weight:700
+    }
+    .chipbtn:hover, .pairbtn:hover{border-color:#555}
+    .pairbtn{background:#171717}
+    .pairbtn strong{color:var(--brand2)}
   </style>
 </head>
 <body>
@@ -182,6 +196,30 @@
         <label>Team B <select id="cmpTeamB"></select></label>
         <button class="btn" id="cmpSwap" title="Swap A/B">Swap</button>
       </div>
+
+      <!-- ===== New: Quick-pick chips + target ===== -->
+      <div class="quickbar">
+        <span class="muted">Quick pick:</span>
+        <button class="chipbtn" data-team="AG">AG</button>
+        <button class="chipbtn" data-team="Heaver">Heaver</button>
+        <button class="chipbtn" data-team="E1">E1</button>
+        <button class="chipbtn" data-team="Fluxo">Fluxo</button>
+        <label style="margin-left:8px;display:flex;align-items:center;gap:6px">
+          Target
+          <select id="quickTarget">
+            <option value="A">Team A</option>
+            <option value="B">Team B</option>
+          </select>
+        </label>
+      </div>
+
+      <!-- ===== New: Pair buttons (set A & B together) ===== -->
+      <div class="pairbar">
+        <span class="muted">Quick pairs:</span>
+        <button class="pairbtn" data-pair="AG|Heaver"><strong>AG</strong> vs <strong>Heaver</strong></button>
+        <button class="pairbtn" data-pair="E1|Fluxo"><strong>E1</strong> vs <strong>Fluxo</strong></button>
+      </div>
+
       <div class="caption muted" id="meta">—</div>
     </div>
   </details>
@@ -195,7 +233,7 @@
     </div>
   </div>
 
-  <!-- MATCHES (stacked player cards) -->
+  <!-- NEW: MATCHES (stacked player cards) -->
   <details class="accordion">
     <summary>Matches (Active + 3×Passive per player)</summary>
     <div class="accordion-body">
@@ -206,7 +244,7 @@
     </div>
   </details>
 
-  <!-- SKILLS -->
+  <!-- SKILLS (accordion) -->
   <details class="accordion">
     <summary>Skills (Top 10 by Rate)</summary>
     <div class="accordion-body">
@@ -221,7 +259,7 @@
     </div>
   </details>
 
-  <!-- TEAM × MAP -->
+  <!-- TEAM × MAP (accordion) -->
   <details class="accordion">
     <summary>Team × Map Win Rate</summary>
     <div class="accordion-body">
@@ -232,7 +270,7 @@
     </div>
   </details>
 
-  <!-- PER-SKILL — ACTIVE -->
+  <!-- PER-SKILL — ACTIVE (accordion) -->
   <details class="accordion">
     <summary>Per-Skill — Active</summary>
     <div class="accordion-body">
@@ -243,7 +281,7 @@
     </div>
   </details>
 
-  <!-- ACTIVE SKILL IMPACT -->
+  <!-- ACTIVE SKILL IMPACT (accordion) -->
   <details class="accordion">
     <summary>Active Skill Impact (Win/Loss)</summary>
     <div class="accordion-body">
@@ -257,7 +295,7 @@
     </div>
   </details>
 
-  <!-- PER-SKILL — PASSIVE -->
+  <!-- PER-SKILL — PASSIVE (accordion) -->
   <details class="accordion">
     <summary>Per-Skill — Passive</summary>
     <div class="accordion-body">
@@ -268,7 +306,7 @@
     </div>
   </details>
 
-  <!-- COMBOS & PAIRS -->
+  <!-- COMBOS & PAIRS (accordion) -->
   <details class="accordion">
     <summary>Combos & Pairs (Top 5)</summary>
     <div class="accordion-body">
@@ -281,7 +319,7 @@
     </div>
   </details>
 
-  <!-- PASSIVE TRIOS -->
+  <!-- PASSIVE TRIOS (accordion) -->
   <details class="accordion">
     <summary>Passive Trios (Top 5 overall)</summary>
     <div class="accordion-body">
@@ -292,7 +330,7 @@
     </div>
   </details>
 
-  <!-- BAN IMPACT -->
+  <!-- BAN IMPACT (accordion) -->
   <details class="accordion">
     <summary>Ban Impact (Top 10 by Δ Win %)</summary>
     <div class="accordion-body">
@@ -304,7 +342,7 @@
     </div>
   </details>
 
-  <!-- OPPONENT SERIES -->
+  <!-- OPPONENT SERIES (accordion) -->
   <details class="accordion">
     <summary>Performance by Opponent</summary>
     <div class="accordion-body">
@@ -315,7 +353,7 @@
     </div>
   </details>
 
-  <!-- AI ANALYSIS PROMPT -->
+  <!-- AI ANALYSIS PROMPT (accordion) -->
   <details class="accordion">
     <summary>AI Analysis Prompt</summary>
     <div class="accordion-body">
@@ -352,6 +390,7 @@ const PLACEHOLDER = 'https://imgur.com/AdvPwAO.png';
 const el = (id) => document.getElementById(id);
 const fmtPct = (x) => isFinite(x) ? (x*100).toFixed(1)+'%' : '—';
 const pct = (num, den) => den ? fmtPct(num/den) : '—';
+const uniq = (arr) => [...new Set(arr)];
 function ymd(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
 function parseState(val){ if (!val) return {}; if (typeof val==='object') return val; try { return JSON.parse(val); } catch(e){ return {}; } }
 function safe(s){ return String(s??'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
@@ -369,6 +408,7 @@ initFilters();
 let RAW_RECORDS = [];
 let FIRST_LOAD_TOURN = true;
 let TEAM_LOGO = {}; // name -> url
+let LATEST_EXPORT = null;
 
 /* ========= Fetch ========= */
 async function fetchRecords(){
@@ -684,7 +724,7 @@ function activeSkillImpactTable(rows, limit=12){
       const src = logo || PLACEHOLDER;
       const badge = count > 1 ? `<span class="cnt">×${count}</span>` : '';
       return `<span class="logo-wrap" title="${opponent} ×${count}">
-                <img src="${src}" alt="${opponent}" loading="lazy">
+                <img src="${src}" alt="${opponent}">
                 ${badge}
               </span>`;
     }).join('');
@@ -868,7 +908,7 @@ function buildOpponentSeriesRows(rows){
       map: r.map,
       mapScore: `${r.team_score}-${r.opp_score}`,
       result: r.result,
-      banName: r.banName || '',
+      banName: r.banName,
       banImg: r.banImg || PLACEHOLDER
     });
   });
@@ -919,8 +959,8 @@ function opponentSeriesTable(rows, limit=30){
             <td class="right"><span class="wl ${r.result}">${r.result}</span></td>
             <td>
               <div class="icons">
-                <img src="${r.banImg||PLACEHOLDER}" alt="${r.banName||''}" title="${r.banName||''}">
-                <span class="muted tight">${r.banName||'—'}</span>
+                <img src="${r.banImg||PLACEHOLDER}" alt="${safe(r.banName||'')}" title="${safe(r.banName||'')}">
+                <span class="muted tight">${safe(r.banName||'—')}</span>
               </div>
             </td>
           </tr>
@@ -1002,7 +1042,7 @@ async function copyTextToClipboard(text){
   return ok;
 }
 
-/* ===== Match cards helpers ===== */
+/* ===== New: Matches rendering helpers ===== */
 function playerBadge(active, trio){
   const ico = (ps)=>`<img src="${ps.img||PLACEHOLDER}" alt="${safe(ps.name||'')}" title="${safe(ps.name||'')}">`;
   const p0 = trio?.[0] || {}, p1 = trio?.[1] || {}, p2 = trio?.[2] || {};
@@ -1079,7 +1119,7 @@ function renderAll(){
   el('kpiA').innerHTML = `<h3>${a}</h3>${kpiCard(bA, bA, bP_A, bBan_A)}`;
   el('kpiB').innerHTML = `<h3>${b}</h3>${kpiCard(bB, bB, bP_B, bBan_B)}`;
 
-  // Matches
+  // NEW: Matches
   el('labelMatchesA').textContent = a;
   el('labelMatchesB').textContent = b;
   el('matchesA').innerHTML = matchesCards(rowsA);
@@ -1146,7 +1186,7 @@ function renderAll(){
   el('oppSeriesA').innerHTML = opponentSeriesTable(rowsA, 30);
   el('oppSeriesB').innerHTML = opponentSeriesTable(rowsB, 30);
 
-  // Build data snapshot for AI prompt
+  // ===== Build data snapshot for AI prompt =====
   const meta = { teamA:a, teamB:b, mapLabel, tournamentLabel: tournLabel, wlLabel, from: el('fFrom').value, to: el('fTo').value };
   const exportObj = {
     meta,
@@ -1194,6 +1234,56 @@ async function refresh(){
   renderAll();
 }
 
+/* ========= New: Quick-pick helpers ========= */
+// Try to set a team select to a team name (case-insensitive). Returns true if found.
+function setSelectToTeam(selectEl, name){
+  if(!selectEl) return false;
+  const opts = [...selectEl.options];
+  const target = String(name||'').trim().toLowerCase();
+  const match = opts.find(o => o.value === name)
+    || opts.find(o => (o.text||'').trim().toLowerCase() === target);
+  if (match){ selectEl.value = match.value; return true; }
+  return false;
+}
+
+async function widenFiltersAndReload(){
+  el('fTourn').value = '__ALL__';
+  el('fMap').value = '__ALL__';
+  el('fWL').value = '__ALL__';
+  const from = new Date(); from.setFullYear(from.getFullYear()-1);
+  el('fFrom').value = ymd(from);
+  el('fTo').value = ymd(new Date());
+  await refresh();
+}
+
+async function quickPick(team){
+  const target = el('quickTarget')?.value || 'A';
+  const selectEl = target === 'A' ? el('cmpTeamA') : el('cmpTeamB');
+
+  if (setSelectToTeam(selectEl, team)){ renderAll(); return; }
+  await widenFiltersAndReload();
+  if (setSelectToTeam(selectEl, team)){ renderAll(); return; }
+  alert(`No matches found for "${team}" in the current database.`);
+}
+
+async function quickPair(aTeam, bTeam){
+  const A = el('cmpTeamA'), B = el('cmpTeamB');
+  let okA = setSelectToTeam(A, aTeam);
+  let okB = setSelectToTeam(B, bTeam);
+
+  if (!okA || !okB){
+    await widenFiltersAndReload();
+    okA = setSelectToTeam(A, aTeam);
+    okB = setSelectToTeam(B, bTeam);
+  }
+  if (okA && okB){ renderAll(); return; }
+
+  const miss = [];
+  if (!okA) miss.push(aTeam);
+  if (!okB) miss.push(bTeam);
+  alert(`Could not find: ${miss.join(', ')}`);
+}
+
 /* ========= Events ========= */
 el('applyBtn').onclick = refresh;
 ['cmpTeamA','cmpTeamB'].forEach(id=> el(id).addEventListener('change', renderAll));
@@ -1207,6 +1297,18 @@ el('copyPromptBtn').addEventListener('click', async ()=>{
   const orig = btn.textContent;
   btn.textContent = ok ? 'Copied!' : 'Copy failed';
   setTimeout(()=> btn.textContent = orig, 1200);
+});
+
+// Wire up quick chips and pair buttons
+document.addEventListener('click', (e)=>{
+  const chip = e.target.closest('.chipbtn[data-team]');
+  if (chip){ quickPick(chip.dataset.team); return; }
+
+  const pair = e.target.closest('.pairbtn[data-pair]');
+  if (pair){
+    const [a,b] = pair.dataset.pair.split('|');
+    quickPair(a, b);
+  }
 });
 
 /* ========= First load ========= */
