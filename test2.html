@@ -108,6 +108,11 @@
     <div class="section">
       <h2>Filters</h2>
       <div class="bar">
+        <label>Year
+          <select id="gYear" class="input" style="min-width:120px">
+            <option value="__all__">All years</option>
+          </select>
+        </label>
         <label>Season
           <select id="gSeason" class="input" style="min-width:180px">
             <option value="__all__">All seasons</option>
@@ -478,7 +483,31 @@ async function fetchHelperTeams(){
   });
 }
 
-/* Seasons */
+/* Years */
+function yearsWithMaxId(rows){
+  const m=new Map();
+  for(const r of rows){
+    const y=n(r.year); if(!y) continue;
+    const id=n(r.id);
+    if(!m.has(y)) m.set(y,{year:y,maxId:id});
+    else m.get(y).maxId=Math.max(m.get(y).maxId,id);
+  }
+  return [...m.values()].sort((a,b)=> b.year - a.year);
+}
+function populateGlobalYear(){
+  const sel = el('gYear'); if(!sel) return;
+  const items = yearsWithMaxId(ALL);
+  sel.innerHTML = `<option value="__all__">All years</option>` +
+    items.map(o=>`<option value="${o.year}">${o.year}</option>`).join('');
+  // Prefer 2025 if present, else latest
+  const preferred='2025';
+  if(items.some(x=> String(x.year)===preferred)) sel.value=preferred;
+  else if(items.length) sel.value=String(items[0].year);
+  else sel.value='__all__';
+}
+function selectedYear(){ return (el('gYear')?.value || '__all__').trim(); }
+
+/* Seasons (dependent on year) */
 function seasonsWithMaxId(rows){
   const m=new Map();
   for(const r of rows){
@@ -491,17 +520,22 @@ function seasonsWithMaxId(rows){
   }
   return [...m.values()].sort((a,b)=> b.maxId - a.maxId || a.name.localeCompare(b.name));
 }
-function populateGlobalSeason(defaultToLatest=true){
+function populateGlobalSeason(){
   const sel = el('gSeason'); if(!sel) return;
-  const items = seasonsWithMaxId(ALL);
+  const year = selectedYear();
+  const sourceRows = (year==='__all__') ? ALL : ALL.filter(r => n(r.year)===Number(year));
+  const items = seasonsWithMaxId(sourceRows);
   sel.innerHTML = `<option value="__all__">All seasons</option>` +
     items.map(o=>`<option value="${o.name.replaceAll('"','&quot;')}">${o.name}</option>`).join('');
-  if(defaultToLatest && items.length) sel.value = items[0].name;
+  // Prefer "Global Finals" if present, else first/latest, else All
+  const preferredSeason = 'Global Finals';
+  if(items.some(o=>o.name.toLowerCase()===preferredSeason.toLowerCase())) sel.value = preferredSeason;
+  else if(items.length) sel.value = items[0].name;
   else sel.value = '__all__';
 }
 function selectedSeason(){ return (el('gSeason')?.value || '__all__').trim(); }
 
-/* Tournaments */
+/* Tournaments (dependent on year & season) */
 function tournamentsWithMaxId(rows){
   const m=new Map();
   for(const r of rows){
@@ -513,22 +547,24 @@ function tournamentsWithMaxId(rows){
   }
   return [...m.values()].sort((a,b)=> b.maxId - a.maxId || a.name.localeCompare(b.name));
 }
-function populateGlobalTournament(defaultToLatest=true){
+function populateGlobalTournament(preservePrev=false){
   const sel=el('gTournament'); if(!sel) return;
   const prev = sel.value || '__all__';
 
+  const year = selectedYear();
   const season = selectedSeason();
-  const sourceRows = (season === '__all__')
-    ? ALL
-    : ALL.filter(r => norm(r.season).toLowerCase() === season.toLowerCase());
+  let sourceRows = (year==='__all__') ? ALL : ALL.filter(r => n(r.year)===Number(year));
+  if(season !== '__all__'){
+    const ls = season.toLowerCase();
+    sourceRows = sourceRows.filter(r => norm(r.season).toLowerCase() === ls);
+  }
 
   const items=tournamentsWithMaxId(sourceRows);
   sel.innerHTML=`<option value="__all__">All tournaments</option>` +
     items.map(o=>`<option value="${o.name.replaceAll('"','&quot;')}">${o.name}</option>`).join('');
 
-  if(defaultToLatest && items.length){
-    sel.value = items[0].name;
-  }else if(prev && (prev==='__all__' || items.some(it=>it.name===prev))){
+  // Default to All tournaments; if preservePrev and valid, keep it
+  if(preservePrev && (prev==='__all__' || items.some(it=>it.name===prev))){
     sel.value = prev;
   }else{
     sel.value = '__all__';
@@ -536,37 +572,48 @@ function populateGlobalTournament(defaultToLatest=true){
   updateFilterHint();
 }
 function selectedTournament(){ return (el('gTournament')?.value || '__all__').trim(); }
+
+/* Filter base rows by Year/Season/Tournament */
 function baseRowsByTournament(rows){
-  const t = selectedTournament();
+  const y = selectedYear();
   const s = selectedSeason();
+  const t = selectedTournament();
   let filtered = rows;
 
+  if(y !== '__all__'){
+    filtered = filtered.filter(r => n(r.year)===Number(y));
+  }
   if(s !== '__all__'){
     const ls = s.toLowerCase();
     filtered = filtered.filter(r => norm(r.season).toLowerCase() === ls);
   }
-  if(t === '__all__') return filtered;
-  const lf = t.toLowerCase();
-  return filtered.filter(r => norm(r.tournament).toLowerCase() === lf);
+  if(t !== '__all__'){
+    const lt = t.toLowerCase();
+    filtered = filtered.filter(r => norm(r.tournament).toLowerCase() === lt);
+  }
+  return filtered;
 }
 function updateFilterHint(){
-  const t = selectedTournament();
+  const y = selectedYear();
   const s = selectedSeason();
+  const t = selectedTournament();
   const total = baseRowsByTournament(ALL).length;
 
   let scopeText = 'Scope: ';
-  if(s==='__all__' && t==='__all__') scopeText += 'All seasons • All tournaments';
-  else if(s!=='__all__' && t==='__all__') scopeText += `${s} • All tournaments`;
-  else if(s==='__all__' && t!=='__all__') scopeText += `All seasons • ${t}`;
-  else scopeText += `${s} • ${t}`;
+  scopeText += (y==='__all__') ? 'All years' : `Year ${y}`;
+  scopeText += ' • ';
+  scopeText += (s==='__all__') ? 'All seasons' : s;
+  scopeText += ' • ';
+  scopeText += (t==='__all__') ? 'All tournaments' : t;
   scopeText += ` • Rows: ${total}`;
   el('filterHint').textContent = scopeText;
 
-  let chip;
-  if(s==='__all__' && t==='__all__') chip = 'All seasons, all tournaments';
-  else if(s!=='__all__' && t==='__all__') chip = `Season: ${s}`;
-  else if(s==='__all__' && t!=='__all__') chip = `Tourn: ${t}`;
-  else chip = `${s} • ${t}`;
+  let chip = '';
+  chip += (y==='__all__') ? 'All years' : `Y:${y}`;
+  chip += ' • ';
+  chip += (s==='__all__') ? 'All seasons' : s;
+  chip += ' • ';
+  chip += (t==='__all__') ? 'All tourns' : t;
 
   el('scopeChip').textContent = 'Scope: ' + chip;
   el('scopeChipTeam').textContent = chip;
@@ -1299,7 +1346,7 @@ function renderElimTeamFocus(){
     return;
   }
   const code = CURRENT_TEAM.name.toUpperCase();
-  const rows = LOPS_ALL; // ignore tournament filters
+  const rows = LOPS_ALL; // ignore tournament/season/year filters
 
   // victims of CUR_TEAM (they eliminated others)
   const given = {};
@@ -1452,8 +1499,31 @@ function renderTeamInfo(info){
 /* ---------- Controls ---------- */
 function populateMapFilter(){ el('mapFilter').innerHTML = `<option value="__all__">All maps</option>` + uniqueMaps(baseRowsByTournament(ALL)).map(m=>`<option>${m}</option>`).join(''); }
 function wireControls(){
+  el('gYear').addEventListener('change', ()=>{
+    // Year changed → re-populate seasons and tournaments for that year
+    const prevSeason = selectedSeason();
+    populateGlobalSeason();
+    // If previous season exists in new list, keep it; else prefer GF handled in populateGlobalSeason
+    if([...el('gSeason').options].some(o=>o.value===prevSeason)) el('gSeason').value = prevSeason;
+
+    populateGlobalTournament(false); // default to All tournaments after year change
+    el('gTournament').value='__all__';
+    updateFilterHint();
+    populateMapFilter();
+    renderOverall();
+    renderPerMapAllTeams();
+    if(CURRENT_TEAM){
+      TEAM_ROWS = baseRowsByTournament(ALL).filter(r => (norm(r._tag).toUpperCase()||'') === CURRENT_TEAM.name.toUpperCase());
+      kpiAndByMap(); renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDay();
+      fetchPlayersBy(CURRENT_TEAM.name).then(r=>{ setRoleMap(r); renderRoster(r); if(LOPS_READY){ renderCharUsageActive(); renderCharUsagePassive(); } }).catch(()=>{});
+      fetchTeamInfoBy(CURRENT_TEAM.name).then(renderTeamInfo).catch(()=>{});
+      populateCharUsageMapFilter();
+    }
+    renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
+  });
+
   el('gSeason').addEventListener('change', ()=>{
-    populateGlobalTournament(false);
+    populateGlobalTournament(true); // try preserve prev if possible
     populateMapFilter();
     renderOverall();
     renderPerMapAllTeams();
@@ -1483,9 +1553,11 @@ function wireControls(){
   });
 
   el('gTournReset').addEventListener('click', ()=>{
-    // Reset season to All, then tournament to latest overall
+    // Reset Season to All, Tournament to All. Keep current Year.
     el('gSeason').value = '__all__';
-    populateGlobalTournament(true);
+    populateGlobalTournament(false);
+    el('gTournament').value = '__all__';
+    updateFilterHint();
     populateMapFilter();
     renderOverall();
     renderPerMapAllTeams();
@@ -1546,9 +1618,12 @@ async function initial(){
     if(!TEAMS.length) TEAMS = deriveTeamsFromData(ALL);
     buildTeamIndexes();
 
-    // Populate season + tournament + map
-    populateGlobalSeason(true);
-    populateGlobalTournament(true);
+    // Populate Year → Season → Tournament (defaults: 2025 / Global Finals / All)
+    populateGlobalYear();
+    populateGlobalSeason();            // prefers "Global Finals" if available in selected year
+    populateGlobalTournament(false);   // default to All tournaments
+    el('gTournament').value='__all__';
+    updateFilterHint();
     populateMapFilter();
 
     el('overallSortDir').dataset.dir='desc'; el('overallSortDir').textContent='Desc';
