@@ -139,6 +139,16 @@
     .pHero{font-size:11px;color:#cfcfcf;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .pPass{display:flex;gap:6px;align-items:center}
     .pPass img{width:16px;height:16px;border-radius:3px;border:1px solid #333;background:#0b0b0b;object-fit:cover}
+
+    /* ===== New: Quick pick & pair buttons ===== */
+    .quickbar, .pairbar{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+    .chipbtn, .pairbtn{
+      background:#111;border:1px solid #2a2a2a;color:#ddd;
+      border-radius:999px;padding:6px 10px;cursor:pointer;font-weight:700
+    }
+    .chipbtn:hover, .pairbtn:hover{border-color:#555}
+    .pairbtn{background:#171717}
+    .pairbtn strong{color:var(--brand2)}
   </style>
 </head>
 <body>
@@ -186,6 +196,18 @@
         <label>Team B <select id="cmpTeamB"></select></label>
         <button class="btn" id="cmpSwap" title="Swap A/B">Swap</button>
       </div>
+
+      <!-- ===== New: Pair buttons (set A & B together) ===== -->
+      <div class="pairbar">
+        <span class="muted">Quick pairs:</span>
+        <button class="pairbtn" data-pair="AG|Heavy"><strong>AG</strong> vs <strong>Heavy</strong></button>
+        <button class="pairbtn" data-pair="E1|Fluxo"><strong>E1</strong> vs <strong>Fluxo</strong></button>
+        <button class="pairbtn" data-pair="AG|E1"><strong>AG</strong> vs <strong>E1</strong></button>
+        <button class="pairbtn" data-pair="AG|Fluxo"><strong>AG</strong> vs <strong>Fluxo</strong></button>
+        <button class="pairbtn" data-pair="Heavy|E1"><strong>Heavy</strong> vs <strong>E1</strong></button>
+        <button class="pairbtn" data-pair="Heavy|Fluxo"><strong>Heavy</strong> vs <strong>Fluxo</strong></button>
+      </div>
+
       <div class="caption muted" id="meta">—</div>
     </div>
   </details>
@@ -690,7 +712,7 @@ function activeSkillImpactTable(rows, limit=12){
       const src = logo || PLACEHOLDER;
       const badge = count > 1 ? `<span class="cnt">×${count}</span>` : '';
       return `<span class="logo-wrap" title="${opponent} ×${count}">
-                <img src="${src}" alt="${opponent}" loading="lazy">
+                <img src="${src}" alt="${opponent}">
                 ${badge}
               </span>`;
     }).join('');
@@ -874,7 +896,7 @@ function buildOpponentSeriesRows(rows){
       map: r.map,
       mapScore: `${r.team_score}-${r.opp_score}`,
       result: r.result,
-      banName: r.banName || '',
+      banName: r.banName,
       banImg: r.banImg || PLACEHOLDER
     });
   });
@@ -925,8 +947,8 @@ function opponentSeriesTable(rows, limit=30){
             <td class="right"><span class="wl ${r.result}">${r.result}</span></td>
             <td>
               <div class="icons">
-                <img src="${r.banImg||PLACEHOLDER}" alt="${r.banName||''}" title="${r.banName||''}">
-                <span class="muted tight">${r.banName||'—'}</span>
+                <img src="${r.banImg||PLACEHOLDER}" alt="${safe(r.banName||'')}" title="${safe(r.banName||'')}">
+                <span class="muted tight">${safe(r.banName||'—')}</span>
               </div>
             </td>
           </tr>
@@ -1200,6 +1222,56 @@ async function refresh(){
   renderAll();
 }
 
+/* ========= New: Quick-pick helpers ========= */
+// Try to set a team select to a team name (case-insensitive). Returns true if found.
+function setSelectToTeam(selectEl, name){
+  if(!selectEl) return false;
+  const opts = [...selectEl.options];
+  const target = String(name||'').trim().toLowerCase();
+  const match = opts.find(o => o.value === name)
+    || opts.find(o => (o.text||'').trim().toLowerCase() === target);
+  if (match){ selectEl.value = match.value; return true; }
+  return false;
+}
+
+async function widenFiltersAndReload(){
+  el('fTourn').value = '__ALL__';
+  el('fMap').value = '__ALL__';
+  el('fWL').value = '__ALL__';
+  const from = new Date(); from.setFullYear(from.getFullYear()-1);
+  el('fFrom').value = ymd(from);
+  el('fTo').value = ymd(new Date());
+  await refresh();
+}
+
+async function quickPick(team){
+  const target = el('quickTarget')?.value || 'A';
+  const selectEl = target === 'A' ? el('cmpTeamA') : el('cmpTeamB');
+
+  if (setSelectToTeam(selectEl, team)){ renderAll(); return; }
+  await widenFiltersAndReload();
+  if (setSelectToTeam(selectEl, team)){ renderAll(); return; }
+  alert(`No matches found for "${team}" in the current database.`);
+}
+
+async function quickPair(aTeam, bTeam){
+  const A = el('cmpTeamA'), B = el('cmpTeamB');
+  let okA = setSelectToTeam(A, aTeam);
+  let okB = setSelectToTeam(B, bTeam);
+
+  if (!okA || !okB){
+    await widenFiltersAndReload();
+    okA = setSelectToTeam(A, aTeam);
+    okB = setSelectToTeam(B, bTeam);
+  }
+  if (okA && okB){ renderAll(); return; }
+
+  const miss = [];
+  if (!okA) miss.push(aTeam);
+  if (!okB) miss.push(bTeam);
+  alert(`Could not find: ${miss.join(', ')}`);
+}
+
 /* ========= Events ========= */
 el('applyBtn').onclick = refresh;
 ['cmpTeamA','cmpTeamB'].forEach(id=> el(id).addEventListener('change', renderAll));
@@ -1213,6 +1285,18 @@ el('copyPromptBtn').addEventListener('click', async ()=>{
   const orig = btn.textContent;
   btn.textContent = ok ? 'Copied!' : 'Copy failed';
   setTimeout(()=> btn.textContent = orig, 1200);
+});
+
+// Wire up quick chips and pair buttons
+document.addEventListener('click', (e)=>{
+  const chip = e.target.closest('.chipbtn[data-team]');
+  if (chip){ quickPick(chip.dataset.team); return; }
+
+  const pair = e.target.closest('.pairbtn[data-pair]');
+  if (pair){
+    const [a,b] = pair.dataset.pair.split('|');
+    quickPair(a, b);
+  }
 });
 
 /* ========= First load ========= */
