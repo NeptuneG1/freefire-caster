@@ -598,36 +598,84 @@ function teamMapStats(rows){
     </table>`;
 }
 
+/* ===== UPDATED: Active compressed data with players ===== */
 function perSkillActiveCompressedData(rows, limit=12){
   if (!rows.length) return [];
+
   const map = new Map();
   rows.forEach(r=>{
     r.actives.forEach(a=>{
       if (!a.hero) return;
-      const obj = map.get(a.hero) || {p:0,w:0};
-      obj.p += 1; if (r.result==='W') obj.w += 1;
-      map.set(a.hero, obj);
+
+      const skillName  = a.hero;
+      const playerName = (a.player && String(a.player).trim()) || '';
+
+      const obj = map.get(skillName) || { p:0, w:0, players:new Map() };
+      obj.p += 1;
+      if (r.result === 'W') obj.w += 1;
+
+      if (playerName){
+        obj.players.set(playerName, (obj.players.get(playerName) || 0) + 1);
+      }
+      map.set(skillName, obj);
     });
   });
-  const den = rows.length * 4;
-  return [...map.entries()].map(([name,v])=>{
-    return { skill:name, picks:v.p, wins:v.w, win_rate: v.p? v.w/v.p : null, pick_rate: den? v.p/den : 0 };
-  }).sort((a,b)=> b.pick_rate - a.pick_rate || (b.win_rate||0)-(a.win_rate||0) || a.skill.localeCompare(b.skill))
-    .slice(0, limit);
+
+  const den = rows.length * 4; // 4 actives per match
+
+  return [...map.entries()].map(([name, v])=>{
+    const playerList = [...v.players.entries()]
+      .sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0]));
+
+    return {
+      skill: name,
+      picks: v.p,
+      wins: v.w,
+      win_rate: v.p ? v.w / v.p : null,
+      pick_rate: den ? v.p / den : 0,
+      players: playerList
+    };
+  }).sort((a,b)=>
+    b.pick_rate - a.pick_rate ||
+    (b.win_rate || 0) - (a.win_rate || 0) ||
+    a.skill.localeCompare(b.skill)
+  ).slice(0, limit);
 }
+
+/* ===== UPDATED: Active compressed table with Players column ===== */
 function perSkillActiveCompressed(rows, limit=12){
   const list = perSkillActiveCompressedData(rows, limit);
   if (!list.length) return `<div class="muted">No active skills.</div>`;
+
   return `<table>
-    <thead><tr><th>Skill</th><th class="right">Picks</th><th class="right">Wins</th><th class="right">Win %</th><th class="right">Pick %</th></tr></thead>
+    <thead>
+      <tr>
+        <th>Skill</th>
+        <th class="right">Picks</th>
+        <th class="right">Wins</th>
+        <th class="right">Win %</th>
+        <th class="right">Pick %</th>
+        <th>Players</th>
+      </tr>
+    </thead>
     <tbody>
-      ${list.map(r=>`<tr>
-        <td>${r.skill}</td>
-        <td class="right">${r.picks}</td>
-        <td class="right">${r.wins}</td>
-        <td class="right">${r.win_rate===null?'—':fmtPct(r.win_rate)}</td>
-        <td class="right">${fmtPct(r.pick_rate)}</td>
-      </tr>`).join('')}
+      ${list.map(r=>{
+        const playersCell = (r.players && r.players.length)
+          ? r.players
+              .slice(0, 4)
+              .map(([name, count]) => `${name}${count > 1 ? ` (${count})` : ''}`)
+              .join(', ')
+          : '—';
+
+        return `<tr>
+          <td>${r.skill}</td>
+          <td class="right">${r.picks}</td>
+          <td class="right">${r.wins}</td>
+          <td class="right">${r.win_rate===null ? '—' : fmtPct(r.win_rate)}</td>
+          <td class="right">${fmtPct(r.pick_rate)}</td>
+          <td>${playersCell}</td>
+        </tr>`;
+      }).join('')}
     </tbody>
   </table>`;
 }
@@ -1134,7 +1182,7 @@ function renderAll(){
   el('tmA').innerHTML = teamMapStats(rowsA);
   el('tmB').innerHTML = teamMapStats(rowsB);
 
-  // Per-skill compressed
+  // Per-skill compressed (Active with Players)
   el('labelPSA_Act').textContent = a; el('labelPSB_Act').textContent = b;
   el('psAAct').innerHTML = perSkillActiveCompressed(rowsA, 12);
   el('psBAct').innerHTML = perSkillActiveCompressed(rowsB, 12);
@@ -1161,7 +1209,7 @@ function renderAll(){
   el('labelTriosA').textContent = a; el('labelTriosB').textContent = b;
   const triA = buildTrios(rowsA), triB = buildTrios(rowsB);
   el('triosA').innerHTML = tableTrios(triA, 5);
-  el('triosB').innerHTML = tableTrios(triB, 5);
+  el('triosB').innerHTML = tableTrios(rowsB, 5);
 
   // Ban Impact (ignore WL)
   el('labelBIA').textContent = a; el('labelBIB').textContent = b;
@@ -1223,7 +1271,6 @@ async function refresh(){
 }
 
 /* ========= New: Quick-pick helpers ========= */
-// Try to set a team select to a team name (case-insensitive). Returns true if found.
 function setSelectToTeam(selectEl, name){
   if(!selectEl) return false;
   const opts = [...selectEl.options];
@@ -1287,7 +1334,6 @@ el('copyPromptBtn').addEventListener('click', async ()=>{
   setTimeout(()=> btn.textContent = orig, 1200);
 });
 
-// Wire up quick chips and pair buttons
 document.addEventListener('click', (e)=>{
   const chip = e.target.closest('.chipbtn[data-team]');
   if (chip){ quickPick(chip.dataset.team); return; }
