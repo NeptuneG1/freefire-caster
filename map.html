@@ -379,33 +379,69 @@ mapSelect.addEventListener("change", () => {
   saveMapState();
 });
 
-// Team icons
-const hashes = [
-  "rMieH12","FWbS5yG","BsKNJ9Q","rEbGlxb","G0TzOmp","JKab1Me","PmQPxqg","WxLMWvi","6r1RwVK","fiOwIOM","pwT70GH","sOYv4p4"
-];
-hashes.forEach((h, i) => {
-  const wrapper = document.createElement("div");
-  wrapper.style.display = "flex";
-  wrapper.style.flexDirection = "column";
-  wrapper.style.alignItems = "center";
+// Team icons — load from Supabase teams_pathplanner
+async function loadTeamIcons() {
+  const grid = document.getElementById("teamIcons");
+  grid.innerHTML = "";
 
-  const img = document.createElement("img");
-  img.src = `https://i.imgur.com/${h}.png`;
-  img.className = "team-icon";
-  img.dataset.id = "team" + (i + 1);
-  img.onclick = () => selectedIcon = img;
+  const { data, error } = await client
+    .from("teams_pathplanner")
+    .select("id, team_name, team_tag, logo_url")
+    .order("id", { ascending: true });
 
-  const colorBar = document.createElement("div");
-  colorBar.style.width = "60%";
-  colorBar.style.height = "6px";
-  colorBar.style.marginTop = "5px";
-  colorBar.style.borderRadius = "8px";
-  colorBar.style.backgroundColor = teamColors[i] || "#fff";
+  if (error) {
+    console.error("❌ Failed to load teams:", error);
+    const msg = document.createElement("p");
+    msg.textContent = "Failed to load teams.";
+    msg.style.fontSize = "0.8rem";
+    msg.style.color = "#aaa";
+    msg.style.gridColumn = "1 / -1";
+    grid.appendChild(msg);
+    return;
+  }
 
-  wrapper.appendChild(img);
-  wrapper.appendChild(colorBar);
-  document.getElementById("teamIcons").appendChild(wrapper);
-});
+  if (!data || !data.length) {
+    const msg = document.createElement("p");
+    msg.textContent = "No teams configured. Go to Team Settings to add some.";
+    msg.style.fontSize = "0.8rem";
+    msg.style.color = "#aaa";
+    msg.style.gridColumn = "1 / -1";
+    grid.appendChild(msg);
+    return;
+  }
+
+  data.slice(0, teamColors.length).forEach((team, i) => {
+    const wrapper = document.createElement("div");
+    wrapper.style.display = "flex";
+    wrapper.style.flexDirection = "column";
+    wrapper.style.alignItems = "center";
+
+    const img = document.createElement("img");
+    img.src = team.logo_url;
+    img.alt = team.team_name || team.team_tag || `Team ${i + 1}`;
+    img.className = "team-icon";
+
+    const teamId = "team" + (i + 1); // used by paths/state
+    img.dataset.id = teamId;
+    img.dataset.teamTag = team.team_tag || "";
+    img.dataset.teamName = team.team_name || "";
+    img.dataset.teamDbId = team.id;
+    img.title = `${team.team_name || "Team"} (${team.team_tag || "TAG"})`;
+
+    img.onclick = () => selectedIcon = img;
+
+    const colorBar = document.createElement("div");
+    colorBar.style.width = "60%";
+    colorBar.style.height = "6px";
+    colorBar.style.marginTop = "5px";
+    colorBar.style.borderRadius = "8px";
+    colorBar.style.backgroundColor = teamColors[i] || "#fff";
+
+    wrapper.appendChild(img);
+    wrapper.appendChild(colorBar);
+    grid.appendChild(wrapper);
+  });
+}
 
 // Draw Circle Mode Toggle
 document.getElementById("draw-circle").onclick = () => {
@@ -531,7 +567,8 @@ map.addEventListener("click", e => {
 
     const label = document.createElement("div");
     label.className = "unit-label";
-    label.textContent = id;
+    const teamTag = selectedIcon.dataset.teamTag || id;
+    label.textContent = teamTag;
 
     const reset = document.createElement("button");
     reset.className = "reset-btn";
@@ -729,7 +766,8 @@ document.getElementById("import-file").onchange = function () {
 
       const label = document.createElement("div");
       label.className = "unit-label";
-      label.textContent = id;
+      const teamTag = icon?.dataset.teamTag || id;
+      label.textContent = teamTag;
 
       const reset = document.createElement("button");
       reset.className = "reset-btn";
@@ -923,7 +961,8 @@ function applyMapState(state) {
     img.style.width = img.style.height = "30px";
     const label = document.createElement("div");
     label.className = "unit-label";
-    label.textContent = id;
+    const teamTag = icon?.dataset.teamTag || id;
+    label.textContent = teamTag;
     const reset = document.createElement("button");
     reset.className = "reset-btn";
     reset.textContent = "Reset";
@@ -979,8 +1018,12 @@ function handleMapChange(payload) {
 }
 
 // Call load on page load + realtime toggle
-window.addEventListener("DOMContentLoaded", () => {
-  loadMapState();
+window.addEventListener("DOMContentLoaded", async () => {
+  // 1) Load team icons from Supabase so applyMapState can find them
+  await loadTeamIcons();
+
+  // 2) Then load map state + realtime
+  await loadMapState();
   enableRealtime(); // ON by default
 
   const realtimeBtn = document.getElementById("realtime-toggle-btn");
