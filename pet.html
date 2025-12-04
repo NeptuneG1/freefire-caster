@@ -22,6 +22,7 @@
         }
       }
     });
+
     function logout() {
       client.auth.signOut().then(() => {
         window.location.href = "index.html";
@@ -168,10 +169,7 @@
   </div>
 
   <script>
-    // If you update pet.json in GitHub, bump this version string
-    const PET_JSON_VERSION = '2025-12-04-2'; // change when you update pet.json
-    const PET_JSON_URL = `https://neptuneg1.github.io/freefire-caster/pet.json?v=${PET_JSON_VERSION}`;
-
+    const PET_JSON_BASE_URL = 'https://neptuneg1.github.io/freefire-caster/pet.json';
     let allPets = [];
 
     function renderPetCard(pet) {
@@ -211,26 +209,33 @@
         : '<p>No pets match the selected filters.</p>';
     }
 
-    // Load pets with cache-busting via PET_JSON_VERSION
-    fetch(PET_JSON_URL)
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`HTTP error ${res.status}`);
-        }
-        return res.json();
-      })
-      .then(data => {
-        console.log('Loaded pets:', data.length);
-        allPets = Array.isArray(data) ? data : [];
-        updateGrid();
+    function loadPets() {
+      // Auto cache-bust: new timestamp each page load
+      const url = `${PET_JSON_BASE_URL}?ts=${Date.now()}`;
 
-        document.getElementById('filterRole').addEventListener('change', updateGrid);
-        document.getElementById('filterName').addEventListener('input', updateGrid);
-      })
-      .catch(err => {
-        console.error('Error loading pet data:', err);
-        document.getElementById('petGrid').innerHTML = '<p>Error loading pet data.</p>';
-      });
+      fetch(url, { cache: 'no-store' })
+        .then(res => {
+          if (!res.ok) {
+            throw new Error(`HTTP error ${res.status}`);
+          }
+          return res.json();
+        })
+        .then(data => {
+          console.log('Loaded pets:', Array.isArray(data) ? data.length : 'not an array');
+          allPets = Array.isArray(data) ? data : [];
+          updateGrid();
+
+          document.getElementById('filterRole').addEventListener('change', updateGrid);
+          document.getElementById('filterName').addEventListener('input', updateGrid);
+        })
+        .catch(err => {
+          console.error('Error loading pet data:', err);
+          document.getElementById('petGrid').innerHTML = '<p>Error loading pet data.</p>';
+        });
+    }
+
+    // Load when page is ready
+    document.addEventListener('DOMContentLoaded', loadPets);
   </script>
 </body>
 </html>
