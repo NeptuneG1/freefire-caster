@@ -30,15 +30,6 @@
     .gerr{display:none;margin:0 0 12px;background:#2a1111;border:1px solid #553;color:#ffb4b4;border-radius:10px;padding:10px 12px;white-space:pre-wrap}
     .gerr.show{display:block}
 
-    .steps{position:sticky;top:61px;z-index:15;background:#151515;border:1px solid var(--line);border-radius:12px;height:var(--step-h);display:flex;align-items:center;gap:8px;padding:6px 8px;margin-bottom:12px}
-    .step{flex:1;display:flex;align-items:center;gap:8px;justify-content:center;height:100%;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f0f;color:#cacaca;font-weight:700;cursor:pointer}
-    .step .num{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:999px;border:1px solid #3a3a3a;background:#1a1a1a;font-size:.9rem}
-    .step.active{outline:2px solid var(--brand);color:#fff}
-    .pager-nav{display:flex;gap:8px;justify-content:space-between;margin:8px 0 16px}
-    .steps-hint{color:var(--muted);font-size:.9rem}
-
-    .page{display:none}
-    .page.active{display:block}
     .section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
     .section h2{margin:0 0 10px;color:var(--brand)}
     .grid2{display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:12px}
@@ -68,7 +59,7 @@
     td.heat-top{box-shadow:inset 0 0 0 1px rgba(var(--heat-rgb), var(--heat-top-outline))}
     .err{background:#2a1111;border:1px solid #4a1a1a;color:#ffb4b4;border-radius:8px;padding:8px 10px}
 
-    details.accordion{background:var(--panel);border:1px solid var(--line);border-radius:12px}
+    details.accordion{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:14px}
     details.accordion > summary{list-style:none;cursor:pointer;padding:12px 14px;color:var(--brand);font-weight:700;border-bottom:1px solid var(--line)}
     details.accordion > .accordion-body{padding:12px}
 
@@ -96,165 +87,159 @@
 <div class="shell">
   <div id="globalErr" class="gerr"></div>
 
-  <div class="steps" id="steps">
-    <div class="step" data-page="1"><span class="num">1</span><span class="label">Overall</span></div>
-    <div class="step" data-page="2"><span class="num">2</span><span class="label">Team + Players</span></div>
+  <!-- TEAM SELECTION + CARDS AT TOP -->
+  <div class="section">
+    <h2>Team Selection</h2>
+    <div class="bar">
+      <input type="search" id="teamSearch" placeholder="Search team / region…" class="input" style="flex:1;max-width:420px">
+      <span class="chip">
+        Scope: <span id="scopeChipTeam">—</span> •
+        <a href="#" id="editFilters1" class="btn ghost" style="padding:4px 10px">Edit filters</a>
+      </span>
+    </div>
+    <div id="teamGrid" class="team-grid">Loading teams…</div>
+    <div id="teamGridErr"></div>
   </div>
-  <div class="pager-nav">
-    <button class="btn secondary" id="prevBtn">← Prev</button>
-    <div class="steps-hint">Use ←/→ keys to navigate</div>
-    <button class="btn secondary" id="nextBtn">Next →</button>
+
+  <div class="section" id="teamHeader">
+    <h2 id="teamTitle">Overview</h2>
+    <div class="grid2">
+      <div class="card" id="teamIdentity">
+        <h3>Identity</h3>
+        <div id="identityBody">Select a team.</div>
+      </div>
+      <div class="card" id="teamKPIs">
+        <h3>Key KPIs</h3>
+        <div id="kpiBody">—</div>
+      </div>
+    </div>
+    <!-- NEW: Totals / Averages / Signals cards -->
+    <div class="grid3" style="margin-top:12px">
+      <div class="card">
+        <h3>Totals</h3>
+        <div id="teamTotals">—</div>
+      </div>
+      <div class="card">
+        <h3>Averages</h3>
+        <div id="teamAverages">—</div>
+      </div>
+      <div class="card">
+        <h3>Signals</h3>
+        <div id="teamSignals">—</div>
+      </div>
+    </div>
   </div>
 
-  <!-- PAGE 1 -->
-  <div class="page" id="page1" data-page="1">
-    <div class="section">
-      <h2>Filters</h2>
+  <!-- FILTERS AFTER CARDS -->
+  <div class="section" id="filtersSection">
+    <h2>Filters</h2>
+    <div class="bar">
+      <label>Tournament
+        <select id="gTournament" class="input" style="min-width:220px">
+          <option value="__all__">All tournaments</option>
+        </select>
+      </label>
+      <label>Stage
+        <select id="gStage" class="input" style="min-width:180px">
+          <option value="__all__">All stages</option>
+        </select>
+      </label>
+      <button class="btn secondary" id="gTournReset">Reset</button>
+    </div>
+    <div class="muted" id="filterHint">—</div>
+  </div>
+
+  <!-- TEAM SECTIONS FIRST -->
+  <details class="accordion" id="teamInfoSection">
+    <summary>Team Info</summary>
+    <div class="accordion-body">
+      <div class="card" style="margin:0">
+        <div id="teamInfoBody" class="muted">—</div>
+      </div>
+    </div>
+  </details>
+
+  <details class="accordion" id="mapsDaysSection">
+    <summary>By Map & By Day Stats</summary>
+    <div class="accordion-body">
+      <div class="card" style="margin:0 0 12px 0">
+        <h3>By Map</h3>
+        <div id="tblMapTeam">—</div>
+      </div>
+      <div class="card" style="margin:0">
+        <h3>By Day (Pivot by Map)</h3>
+        <div id="tblByDay">—</div>
+      </div>
+    </div>
+  </details>
+
+  <details class="accordion" id="teamRosterSection">
+    <summary>Roster & Accolades</summary>
+    <div class="accordion-body">
+      <div class="card" style="margin:0">
+        <div id="teamRosterBody" class="muted">—</div>
+      </div>
+    </div>
+  </details>
+
+  <!-- OVERALL SECTIONS AT THE BOTTOM -->
+  <details class="accordion" id="overallSection">
+    <summary>Overall Performance (All Teams)</summary>
+    <div class="accordion-body">
       <div class="bar">
-        <label>Tournament
-          <select id="gTournament" class="input" style="min-width:220px">
-            <option value="__all__">All tournaments</option>
-          </select>
-        </label>
-        <!-- NEW: Stage filter -->
-        <label>Stage
-          <select id="gStage" class="input" style="min-width:180px">
-            <option value="__all__">All stages</option>
-          </select>
-        </label>
-        <button class="btn secondary" id="gTournReset">Reset</button>
+        <label for="overallSortKey">Sort by</label>
+        <select id="overallSortKey" class="input">
+          <option value="total_pm">Total / m</option>
+          <option value="total" selected>Total</option>
+          <option value="elims_pm">Elims / m</option>
+          <option value="elims">Elims</option>
+          <option value="placement_pm">Placement / m</option>
+          <option value="placement">Placement</option>
+          <option value="booyah_rate">Booyah %</option>
+          <option value="booyahs">Booyahs</option>
+          <option value="matches">Matches</option>
+          <option value="top3_rate">Top-3 %</option>
+          <option value="team">Team (A→Z)</option>
+        </select>
+        <button class="btn secondary" id="overallSortDir" data-dir="desc">Desc</button>
+        <button class="btn secondary" id="overallReset">Reset</button>
       </div>
-      <div class="muted" id="filterHint">—</div>
+      <div class="card" style="margin:0">
+        <div id="tblOverall">Loading…</div>
+      </div>
     </div>
-    
-    <!-- Overall Performance (All Teams) -->
-    <details class="accordion" id="overallSection">
-      <summary>Overall Performance (All Teams)</summary>
-      <div class="accordion-body">
-        <div class="bar">
-          <label for="overallSortKey">Sort by</label>
-          <select id="overallSortKey" class="input">
-            <option value="total_pm">Total / m</option>
-            <option value="total" selected>Total</option>
-            <option value="elims_pm">Elims / m</option>
-            <option value="elims">Elims</option>
-            <option value="placement_pm">Placement / m</option>
-            <option value="placement">Placement</option>
-            <option value="booyah_rate">Booyah %</option>
-            <option value="booyahs">Booyahs</option>
-            <option value="matches">Matches</option>
-            <option value="top3_rate">Top-3 %</option>
-            <option value="team">Team (A→Z)</option>
-          </select>
-          <button class="btn secondary" id="overallSortDir" data-dir="desc">Desc</button>
-          <button class="btn secondary" id="overallReset">Reset</button>
-        </div>
-        <div class="card" style="margin:0">
-          <div id="tblOverall">Loading…</div>
-        </div>
-      </div>
-    </details>
-    
-    <!-- All Teams — Per-Map Breakdown -->
-    <details class="accordion" id="perMapAllSection">
-      <summary>All Teams — Per-Map Breakdown</summary>
-      <div class="accordion-body">
-        <div class="bar">
-          <label for="mapFilter">Map</label>
-          <select id="mapFilter" class="input" style="min-width:220px">
-            <option value="__all__" selected>All maps</option>
-          </select>
-          <label for="perMapSortKey">Sort by</label>
-          <select id="perMapSortKey" class="input">
-            <option value="total_pm">Total / m</option>
-            <option value="total" selected>Total</option>
-            <option value="elims_pm">Elims / m</option>
-            <option value="elims">Elims</option>
-            <option value="placement_pm">Placement / m</option>
-            <option value="placement">Placement</option>
-            <option value="booyah_rate">Booyah %</option>
-            <option value="booyahs">Booyahs</option>
-            <option value="matches">Matches</option>
-            <option value="top3_rate">Top-3 %</option>
-            <option value="team">Team (A→Z)</option>
-          </select>
-          <button class="btn secondary" id="perMapSortDir" data-dir="desc">Desc</button>
-          <button class="btn secondary" id="perMapReset">Reset</button>
-        </div>
-        <div class="card" style="margin:0">
-          <div id="tblPerMapAllTeams">Loading…</div>
-        </div>
-      </div>
-    </details>
-    <!-- (Global Top Players / Skill & Pet Usage / Elim Summary removed) -->
-  </div><!-- CLOSE PAGE 1 -->
+  </details>
 
-  <!-- PAGE 2 -->
-  <div class="page" id="page2" data-page="2">
-    <div class="section">
-      <h2>Team Selection</h2>
+  <details class="accordion" id="perMapAllSection">
+    <summary>All Teams — Per-Map Breakdown</summary>
+    <div class="accordion-body">
       <div class="bar">
-        <input type="search" id="teamSearch" placeholder="Search team / region…" class="input" style="flex:1;max-width:420px">
-        <span class="chip">Scope: <span id="scopeChipTeam">—</span> • <a href="#" id="editFilters1" class="btn ghost" style="padding:4px 10px">Edit filters</a></span>
+        <label for="mapFilter">Map</label>
+        <select id="mapFilter" class="input" style="min-width:220px">
+          <option value="__all__" selected>All maps</option>
+        </select>
+        <label for="perMapSortKey">Sort by</label>
+        <select id="perMapSortKey" class="input">
+          <option value="total_pm">Total / m</option>
+          <option value="total" selected>Total</option>
+          <option value="elims_pm">Elims / m</option>
+          <option value="elims">Elims</option>
+          <option value="placement_pm">Placement / m</option>
+          <option value="placement">Placement</option>
+          <option value="booyah_rate">Booyah %</option>
+          <option value="booyahs">Booyahs</option>
+          <option value="matches">Matches</option>
+          <option value="top3_rate">Top-3 %</option>
+          <option value="team">Team (A→Z)</option>
+        </select>
+        <button class="btn secondary" id="perMapSortDir" data-dir="desc">Desc</button>
+        <button class="btn secondary" id="perMapReset">Reset</button>
       </div>
-      <div id="teamGrid" class="team-grid">Loading teams…</div>
-      <div id="teamGridErr"></div>
+      <div class="card" style="margin:0">
+        <div id="tblPerMapAllTeams">Loading…</div>
+      </div>
     </div>
-
-    <div class="section" id="teamHeader">
-      <h2 id="teamTitle">Overview</h2>
-      <div class="grid2">
-        <div class="card" id="teamIdentity">
-          <h3>Identity</h3>
-          <div id="identityBody">Select a team.</div>
-        </div>
-        <div class="card" id="teamKPIs">
-          <h3>Key KPIs</h3>
-          <div id="kpiBody">—</div>
-        </div>
-      </div>
-      <!-- Totals / Averages / Signals row removed -->
-    </div>
-
-    <details class="accordion" id="teamInfoSection">
-      <summary>Team Info</summary>
-      <div class="accordion-body">
-        <div class="card" style="margin:0">
-          <div id="teamInfoBody" class="muted">—</div>
-        </div>
-      </div>
-    </details>
-    
-    <!-- Player Stats removed -->
-    <details class="accordion" id="mapsDaysSection">
-      <summary>By Map & By Day Stats</summary>
-      <div class="accordion-body">
-        <div class="card" style="margin:0 0 12px 0">
-          <h3>By Map</h3>
-          <div id="tblMapTeam">—</div>
-        </div>
-        <div class="card" style="margin:0">
-          <h3>By Day (Pivot by Map)</h3>
-          <div id="tblByDay">—</div>
-        </div>
-      </div>
-    </details>
-
-    <!-- Character and Pet Usage removed -->
-
-
-
-    <details class="accordion" id="teamRosterSection">
-      <summary>Roster & Accolades</summary>
-      <div class="accordion-body">
-        <div class="card" style="margin:0">
-          <div id="teamRosterBody" class="muted">—</div>
-        </div>
-      </div>
-    </details>
-
-    <!-- Eliminations — Team Focus & Breakdowns removed -->
-  </div><!-- CLOSE PAGE 2 -->
+  </details>
 </div><!-- CLOSE SHELL -->
 
 <script>
@@ -282,25 +267,15 @@ function gerr(msg){
   console.error('[FFBR]', msg);
 }
 
-/* ============ Pager ============ */
-const PAGES=[1,2];
-function setActiveStep(p){ document.querySelectorAll('.step').forEach(s=> s.classList.toggle('active', String(s.dataset.page)===String(p))); }
-function showPage(p){
-  const target=document.querySelector(`.page[data-page="${p}"]`); if(!target) return;
-  document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active')); target.classList.add('active');
-  setActiveStep(p); localStorage.setItem('ffbr_page', String(p));
-  const url=new URL(window.location.href); url.searchParams.set('p', String(p)); history.replaceState(null,'',url.toString());
+/* Jump to filters (same page now) */
+const editFiltersLink = el('editFilters1');
+if(editFiltersLink){
+  editFiltersLink.addEventListener('click', e=>{
+    e.preventDefault();
+    const target = el('filtersSection');
+    if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
+  });
 }
-function currentPage(){ const url=new URL(window.location.href); const qp=Number(url.searchParams.get('p')); if(PAGES.includes(qp)) return qp; const ls=Number(localStorage.getItem('ffbr_page')); return PAGES.includes(ls)?ls:1; }
-function nextPage(){ const p=currentPage(); const idx=PAGES.indexOf(p); showPage(PAGES[Math.min(PAGES.length-1, idx+1)]); }
-function prevPage(){ const p=currentPage(); const idx=PAGES.indexOf(p); showPage(PAGES[Math.max(0, idx-1)]); }
-document.querySelectorAll('.step').forEach(s=> s.addEventListener('click', ()=> showPage(Number(s.dataset.page))));
-el('prevBtn').addEventListener('click', prevPage);
-el('nextBtn').addEventListener('click', nextPage);
-window.addEventListener('keydown', e=>{ if(e.key==='ArrowLeft') prevPage(); if(e.key==='ArrowRight') nextPage(); });
-
-/* Jump to filters */
-el('editFilters1').addEventListener('click', e=>{ e.preventDefault(); showPage(1); window.scrollTo({top:0,behavior:'smooth'}); });
 
 /* ============ Session chip ============ */
 (async () => {
@@ -897,7 +872,7 @@ function populateCharUsageMapFilter(){
   sel.value = '__all__';
 }
 
-/* ---------- Renders: Page 1 (Teams) ---------- */
+/* ---------- Renders: Overall / Global ---------- */
 function renderOverall(){
   const rows = aggregateOverall(baseRows(ALL));
   const sortKey = el('overallSortKey').value;
@@ -930,10 +905,10 @@ function renderPerMapAllTeams(){
     {label:'Place/m',key:'placement_pm',format:'1d',right:true},{label:'Total/m',key:'total_pm',format:'1d',right:true},
     {label:'Top3%',key:'top3_rate',format:'pct',right:true},
   ]);
-  applyColumnHeatmap('tblPerMapAllTeams', ['total_pm','elims_pm','placement_pm','booyah_rate','matches','booyahs','elims','placement','total']);
+  applyColumnHeatmap('tblPerMapAllTeams', ['total_pm','placement_pm','elims_pm','booyah_rate','matches','booyahs','elims','placement','total']);
 }
 
-/* ---------- Renders: Page 2 (Team core) ---------- */
+/* ---------- Renders: Team core ---------- */
 function kpiAndByMap(){
   if(!CURRENT_TEAM){
     const tTitle = el('teamTitle'); if(tTitle) tTitle.textContent='Selected Team — Overview';
@@ -1021,85 +996,6 @@ function renderTeamCombinedMetrics(){
     <div class="kpi">ACCURACY <strong>${fmtPct(acc)}</strong></div>
     <div class="kpi">HS / KILL <strong>${isFinite(hsRate)?hsRate.toFixed(2):'—'}</strong></div>`;
 }
-function renderTeamActiveUsage(){
-  const limitSel = el('teamActiveTop');
-  const target = el('tblTeamActive');
-  if(!limitSel || !target || !CURRENT_TEAM) return;
-  const limit=Number(limitSel.value)||10;
-  const list=countByName(lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM),'active')
-    .sort((a,b)=> b.picks-a.picks || a.name.localeCompare(b.name))
-    .slice(0,limit).map((r,i)=>({...r,rank:i+1}));
-  target.innerHTML = renderSimpleTable(list, [
-    {label:'#',key:'rank',right:true},
-    {label:'Active Skill',key:'name'},
-    {label:'Picks',key:'picks',right:true},
-  ]);
-  applyColumnHeatmap('tblTeamActive', ['picks']);
-}
-function renderTeamPetUsage(){
-  const limitSel = el('teamPetTop');
-  const target = el('tblTeamPet');
-  if(!limitSel || !target || !CURRENT_TEAM) return;
-  const limit=Number(limitSel.value)||10;
-  const list=countByName(lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM),'pet')
-    .sort((a,b)=> b.picks-a.picks || a.name.localeCompare(b.name))
-    .slice(0,limit).map((r,i)=>({...r,rank:i+1}));
-  target.innerHTML = renderSimpleTable(list, [
-    {label:'#',key:'rank',right:true},
-    {label:'Pet',key:'name'},
-    {label:'Picks',key:'picks',right:true},
-  ]);
-  applyColumnHeatmap('tblTeamPet', ['picks']);
-}
-function renderPlayers(){
-  const box = el('tblPlayers');
-  if(!box) return;
-  const base=lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
-  if(!base.length){
-    box.innerHTML='<div class="muted">No lops rows for team.</div>';
-    return;
-  }
-  const g = groupBy(base, r=>r._player||'—');
-  const rows=[];
-  for(const [player,list] of g.entries()){
-    const kills=sum(list,'kills'), assists=sum(list,'assists'), dmg=sum(list,'damage');
-    const hs=sum(list,'headshots'), nade=sum(list,'grenade'), veh=sum(list,'vehicle'), downs=sum(list,'knockdowns');
-    const shots=sum(list,'shots'), hits=sum(list,'hits'), acc=safeDiv(hits, shots), hsRate=safeDiv(hs, kills);
-    const mode=(arr)=>{
-      const m=new Map();
-      arr.map(norm).forEach(v=>{if(!v) return; m.set(v,(m.get(v)||0)+1)});
-      let b='',c=0;
-      for(const [k,v] of m){ if(v>c){b=k;c=v;} }
-      return b||'—';
-    };
-    rows.push({
-      player,
-      rows:list.length,
-      kills, assists, dmg, hs, nade, veh, downs,
-      acc, hsRate,
-      active:mode(list.map(r=>r.active)),
-      pet:mode(list.map(r=>r.pet))
-    });
-  }
-  rows.sort((a,b)=> b.kills-a.kills || a.player.localeCompare(b.player));
-  box.innerHTML = renderSimpleTable(rows.map((r,i)=>({...r,rank:i+1})), [
-    {label:'#',key:'rank',right:true,html:(_,i)=>i+1},
-    {label:'Player',key:'player'},
-    {label:'Rows',key:'rows',right:true},
-    {label:'Kills',key:'kills',right:true},
-    {label:'Assists',key:'assists',right:true},
-    {label:'Damage',key:'dmg',right:true},
-    {label:'HS',key:'hs',right:true},
-    {label:'Acc',key:'acc',right:true,html:r=>isFinite(r.acc)?fmtPct(r.acc):'—'},
-    {label:'HS/K',key:'hsRate',right:true,html:r=>isFinite(r.hsRate)?r.hsRate.toFixed(2):'—'},
-    {label:'Grenade',key:'nade',right:true},
-    {label:'Vehicle',key:'veh',right:true},
-    {label:'Knockdowns',key:'downs',right:true},
-    {label:'Most Active',key:'active'},
-    {label:'Most Pet',key:'pet'},
-  ]);
-  applyColumnHeatmap('tblPlayers', ['kills','assists','dmg','hs','nade','veh','downs','rows']);
-}
 
 /* Team Performance by Day by Map — Pivot (from ffbr_data) */
 function renderByDay(){
@@ -1145,265 +1041,35 @@ function renderByDay(){
   applyColumnHeatmap('tblByDay', days);
 }
 
-/* ---------- Per-Player Character Usage (split) ---------- */
-function renderCharUsageActive(){
-  const box = el('tblCharUsageAct');
-  if(!box) return;
-  if(!CURRENT_TEAM){
-    box.innerHTML = '<div class="muted">Select a team.</div>';
-    return;
-  }
-  if(!LOPS_READY){
-    box.innerHTML = '<div class="muted">Loading player usage…</div>';
+/* ---- Team Info (safe, schema-agnostic) ---- */
+function renderTeamInfo(info){
+  const box = el('teamInfoBody');
+  if (!box) return;
+
+  if (!info || !Object.keys(info).length){
+    box.innerHTML = '<div class="muted">No team info found.</div>';
     return;
   }
 
-  const topN  = Number(el('charUsageTop')?.value) || 10;
-  const mapSel = el('charUsageMapFilter')?.value || '__all__';
+  const pref = [
+    'Team Initials','Team','Full Name','Region','Country','Coach','Manager','Org','Organization',
+    'Owner','Founded','Sponsors','Twitter','Instagram','Facebook','YouTube','Twitch','Website'
+  ];
+  const keys = [...new Set([...pref, ...Object.keys(info)])]
+    .filter(k => info[k] != null && String(info[k]).trim() !== '');
 
-  let rows = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
-  if (mapSel !== '__all__'){
-    const lf = mapSel.toLowerCase();
-    rows = rows.filter(r => (r._map || '').toLowerCase() === lf);
-  }
-  if (!rows.length){
-    box.innerHTML = '<div class="muted">No rows for this filter.</div>';
-    return;
-  }
+  const rows = keys.map(k => {
+    const val = String(info[k]);
+    const vHtml = /^https?:\/\//i.test(val)
+      ? `<a href="${val}" target="_blank" rel="noopener">${val}</a>`
+      : val;
+    return `<tr>
+      <th style="text-align:left;padding:4px 6px;color:#b9b9b9">${k}</th>
+      <td style="padding:4px 6px">${vHtml}</td>
+    </tr>`;
+  }).join('');
 
-  const counts = new Map();
-  for (const r of rows){
-    const player = r._player || '—';
-    const role   = ROLE_BY_IGN.get(nameKey(player)) || '—';
-    const active = (r.active || '').trim();
-    if (!active) continue;
-    const key = player + '||' + active;
-    if (!counts.has(key)) counts.set(key, { player, role, active, picks: 0 });
-    counts.get(key).picks += 1;
-  }
-  const list = [...counts.values()]
-    .sort((a,b)=> a.player.localeCompare(b.player) || (b.picks - a.picks) || a.active.localeCompare(b.active))
-    .slice(0, topN);
-
-  box.innerHTML = renderSimpleTable(list, [
-    { label:'Player', key:'player' },
-    { label:'Role',   key:'role' },
-    { label:'Active', key:'active' },
-    { label:'Picks',  key:'picks', right:true },
-  ]);
-  applyColumnHeatmap('tblCharUsageAct', ['picks']);
-}
-
-function renderCharUsagePassive(){
-  const box = el('tblCharUsagePas');
-  if(!box) return;
-  if(!CURRENT_TEAM){
-    box.innerHTML = '<div class="muted">Select a team.</div>';
-    return;
-  }
-  if(!LOPS_READY){
-    box.innerHTML = '<div class="muted">Loading player usage…</div>';
-    return;
-  }
-
-  const topN  = Number(el('charUsageTop')?.value) || 10;
-  const mapSel = el('charUsageMapFilter')?.value || '__all__';
-
-  let rows = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
-  if (mapSel !== '__all__'){
-    const lf = mapSel.toLowerCase();
-    rows = rows.filter(r => (r._map || '').toLowerCase() === lf);
-  }
-  if (!rows.length){
-    box.innerHTML = '<div class="muted">No rows for this filter.</div>';
-    return;
-  }
-
-  const counts = new Map();
-  for (const r of rows){
-    const player = r._player || '—';
-    const role   = ROLE_BY_IGN.get(nameKey(player)) || '—';
-    const activeNm = (r.active||'').trim().toLowerCase().replace(/\s+/g,' ');
-    const chars = [r.char1, r.char2, r.char3, r.char4]
-      .map(c => mapCharName(c, c))
-      .map(c => String(c||''))
-      .filter(c => c && c.toLowerCase().replace(/\s+/g,' ') !== activeNm);
-
-    for(const ch of chars){
-      const key = player + '||' + ch;
-      if(!counts.has(key)) counts.set(key, { player, role, character: ch, picks: 0 });
-      counts.get(key).picks += 1;
-    }
-  }
-  const list = [...counts.values()]
-    .sort((a,b)=> a.player.localeCompare(b.player) || (b.picks - a.picks) || a.character.localeCompare(b.character))
-    .slice(0, topN);
-
-  box.innerHTML = renderSimpleTable(list, [
-    { label:'Player',    key:'player' },
-    { label:'Role',      key:'role' },
-    { label:'Character', key:'character' },
-    { label:'Picks',     key:'picks', right:true },
-  ]);
-  applyColumnHeatmap('tblCharUsagePas', ['picks']);
-}
-
-/* ---------- Eliminations (global + team) ---------- */
-function elimTeams(){
-  const s=new Set();
-  for(const r of LOPS_ALL){
-    if(r.pair_victim) s.add(r.pair_victim);
-    if(r.pair_killer) s.add(r.pair_killer);
-  }
-  return [...s].sort((a,b)=>a.localeCompare(b));
-}
-function summarizeElims(rows){
-  const matrix={}, suffered={}, given={};
-  for(const r of rows){
-    const v=r.pair_victim, k=r.pair_killer;
-    if(!v || !k) continue;
-    matrix[v] ||= {};
-    matrix[v][k] = (matrix[v][k]||0)+1;
-    suffered[v] = (suffered[v]||0)+1;
-    given[k]    = (given[k]||0)+1;
-  }
-  return {matrix, suffered, given};
-}
-function renderElimLeaderboardsUsingAll(){
-  const boxA = el('tblEliminatedBy');
-  const boxB = el('tblGiven');
-  if(!boxA || !boxB) return;
-
-  if(!LOPS_ALL.length){
-    boxA.innerHTML='<div class="muted">No LOPS rows.</div>';
-    boxB.innerHTML='<div class="muted">No LOPS rows.</div>';
-    return;
-  }
-  const teams = elimTeams();
-  const sumE = summarizeElims(LOPS_ALL);
-
-  // Eliminated By (suffered)
-  const rowsA = teams.map(t=>{
-    const row = sumE.matrix[t]||{};
-    const total = sumE.suffered[t]||0;
-    const top = Object.entries(row).sort((a,b)=>b[1]-a[1]).slice(0,3)
-      .map(([k,v])=>`${k} ${v} (${((v/Math.max(total,1))*100).toFixed(0)}%)`).join(' · ');
-    return { team:t, times: total, top };
-  }).sort((a,b)=>b.times-a.times || a.team.localeCompare(b.team));
-  boxA.innerHTML = renderSimpleTable(rowsA, [
-    {label:'Team',key:'team'},
-    {label:'Times Eliminated',key:'times',right:true},
-    {label:'Top Eliminators',key:'top'}
-  ]);
-  applyColumnHeatmap('tblEliminatedBy',['times']);
-
-  // Given (killer totals)
-  const inv={};
-  teams.forEach(v=>{
-    const row=sumE.matrix[v]||{};
-    Object.entries(row).forEach(([killer,cnt])=>{
-      inv[killer] ||= {};
-      inv[killer][v] = (inv[killer][v]||0)+cnt;
-    });
-  });
-  const rowsB = teams.map(t=>{
-    const ents = Object.entries(inv[t]||{}).sort((a,b)=>b[1]-a[1]);
-    const total = ents.reduce((a,b)=>a+b[1],0);
-    const top = ents.slice(0,3).map(([k,v])=>`${k} ${v}`).join(' · ');
-    return { eliminator:t, total, top };
-  }).sort((a,b)=>b.total-a.total || a.eliminator.localeCompare(b.eliminator));
-  boxB.innerHTML = renderSimpleTable(rowsB, [
-    {label:'Eliminator',key:'eliminator'},
-    {label:'Eliminations Given',key:'total',right:true},
-    {label:'Top Victims',key:'top'}
-  ]);
-  applyColumnHeatmap('tblGiven',['total']);
-}
-function renderElimTeamFocus(){
-  const boxA=el('elimTopPredators'), boxB=el('elimTopVictims'),
-        boxS=el('elimSignals'), boxD=el('elimByDay'), boxM=el('elimByMap');
-  const labelA = el('elimTeamCodeA');
-  const labelB = el('elimTeamCodeB');
-  if(!boxA || !boxB || !boxS || !boxD || !boxM || !labelA || !labelB) return;
-
-  labelA.textContent = CURRENT_TEAM ? CURRENT_TEAM.name : '—';
-  labelB.textContent = CURRENT_TEAM ? CURRENT_TEAM.name : '—';
-
-  if(!CURRENT_TEAM || !LOPS_ALL.length){
-    boxA.innerHTML=boxB.innerHTML=boxS.innerHTML='—';
-    boxD.innerHTML=boxM.innerHTML='—';
-    return;
-  }
-  const code = CURRENT_TEAM.name.toUpperCase();
-  const rows = LOPS_ALL; // ignore filters for global elim picture
-
-  const given = {};
-  rows.forEach(r=>{
-    if(r.pair_killer===code && r.pair_victim){
-      given[r.pair_victim]=(given[r.pair_victim]||0)+1;
-    }
-  });
-  const givenTop = Object.entries(given).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  boxB.innerHTML = givenTop.length
-    ? givenTop.map(([k,v])=>`<div class="kpi">${k}: <strong>${v}</strong></div>`).join('')
-    : '<div class="muted">No eliminations as killer in dataset.</div>';
-
-  const suffered = {};
-  rows.forEach(r=>{
-    if(r.pair_victim===code && r.pair_killer){
-      suffered[r.pair_killer]=(suffered[r.pair_killer]||0)+1;
-    }
-  });
-  const sufferedTop = Object.entries(suffered).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  boxA.innerHTML = sufferedTop.length
-    ? sufferedTop.map(([k,v])=>`<div class="kpi">${k}: <strong>${v}</strong></div>`).join('')
-    : '<div class="muted">No times eliminated in dataset.</div>';
-
-  const totalGiven = Object.values(given).reduce((a,b)=>a+b,0);
-  const totalSuffer = Object.values(suffered).reduce((a,b)=>a+b,0);
-  boxS.innerHTML = `
-    <div class="kpi">NET Δ <strong>${(totalGiven - totalSuffer)}</strong></div>
-    <div class="kpi">GIVEN <strong>${totalGiven}</strong></div>
-    <div class="kpi">SUFFERED <strong>${totalSuffer}</strong></div>
-  `;
-
-  const byDay = {};
-  rows.forEach(r=>{
-    if(r.pair_victim!==code || !r.pair_killer || !r.day) return;
-    const d = r.day;
-    byDay[d] ||= {};
-    byDay[d][r.pair_killer] = (byDay[d][r.pair_killer]||0)+1;
-  });
-  const dayRows = Object.entries(byDay).map(([d,obj])=>{
-    const top = Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>`${k} × ${v}`).join(' · ');
-    const total = Object.values(obj).reduce((a,b)=>a+b,0);
-    return { day:Number(d), total, top };
-  }).sort((a,b)=>a.day-b.day);
-  boxD.innerHTML = renderSimpleTable(dayRows, [
-    {label:'Day',key:'day'},
-    {label:'Times Eliminated',key:'total',right:true},
-    {label:'Top Eliminators',key:'top'}
-  ]);
-  applyColumnHeatmap('elimByDay',['total']);
-
-  const byMap = {};
-  rows.forEach(r=>{
-    if(r.pair_victim!==code || !r.pair_killer) return;
-    const m = r._map || '—';
-    byMap[m] ||= {};
-    byMap[m][r.pair_killer] = (byMap[m][r.pair_killer]||0)+1;
-  });
-  const mapRows = Object.entries(byMap).map(([m,obj])=>{
-    const top = Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>`${k} × ${v}`).join(' · ');
-    const total = Object.values(obj).reduce((a,b)=>a+b,0);
-    return { map:m, total, top };
-  }).sort((a,b)=> b.total-a.total || a.map.localeCompare(b.map));
-  boxM.innerHTML = renderSimpleTable(mapRows, [
-    {label:'Map',key:'map'},
-    {label:'Times Eliminated',key:'total',right:true},
-    {label:'Top Eliminators',key:'top'}
-  ]);
-  applyColumnHeatmap('elimByMap',['total']);
+  box.innerHTML = `<table style="width:100%;border-collapse:collapse">${rows}</table>`;
 }
 
 /* ---------- Team grid & selection ---------- */
@@ -1451,62 +1117,17 @@ async function selectTeam(teamObj){
 
   kpiAndByMap();
   renderTeamCombinedMetrics();
-  renderTeamActiveUsage();
-  renderTeamPetUsage();
-  renderPlayers();
-  renderByDay();
   highlightActiveTile();
+  renderByDay();
 
   const [info, roster] = await Promise.all([
     fetchTeamInfoBy(teamObj.name),
     fetchPlayersBy(teamObj.name)
   ]);
   setRoleMap(roster);
-  if(LOPS_READY){
-    populateCharUsageMapFilter();
-    renderCharUsageActive();
-    renderCharUsagePassive();
-  }else{
-    const actBox = el('tblCharUsageAct');
-    const pasBox = el('tblCharUsagePas');
-    if(actBox) actBox.innerHTML = '<div class="muted">Loading player usage…</div>';
-    if(pasBox) pasBox.innerHTML = '<div class="muted">Loading player usage…</div>';
-  }
+
   renderTeamInfo(info);
   renderRoster(roster);
-
-  renderElimTeamFocus();
-}
-
-/* ---- Team Info (safe, schema-agnostic) ---- */
-function renderTeamInfo(info){
-  const box = el('teamInfoBody');
-  if (!box) return;
-
-  if (!info || !Object.keys(info).length){
-    box.innerHTML = '<div class="muted">No team info found.</div>';
-    return;
-  }
-
-  const pref = [
-    'Team Initials','Team','Full Name','Region','Country','Coach','Manager','Org','Organization',
-    'Owner','Founded','Sponsors','Twitter','Instagram','Facebook','YouTube','Twitch','Website'
-  ];
-  const keys = [...new Set([...pref, ...Object.keys(info)])]
-    .filter(k => info[k] != null && String(info[k]).trim() !== '');
-
-  const rows = keys.map(k => {
-    const val = String(info[k]);
-    const vHtml = /^https?:\/\//i.test(val)
-      ? `<a href="${val}" target="_blank" rel="noopener">${val}</a>`
-      : val;
-    return `<tr>
-      <th style="text-align:left;padding:4px 6px;color:#b9b9b9">${k}</th>
-      <td style="padding:4px 6px">${vHtml}</td>
-    </tr>`;
-  }).join('');
-
-  box.innerHTML = `<table style="width:100%;border-collapse:collapse">${rows}</table>`;
 }
 
 /* ---------- Controls ---------- */
@@ -1544,20 +1165,11 @@ async function refreshScopeAfterFilterChange(){
     const avgs = el('teamAverages'); if(avgs) avgs.innerHTML='—';
     const sigs = el('teamSignals'); if(sigs) sigs.innerHTML='—';
 
-    const tblPlayersBox = el('tblPlayers'); if(tblPlayersBox) tblPlayersBox.innerHTML='<div class="muted">No team selected.</div>';
     const tblMapTeam = el('tblMapTeam'); if(tblMapTeam) tblMapTeam.innerHTML='—';
     const tblByDay = el('tblByDay'); if(tblByDay) tblByDay.innerHTML='—';
     const teamInfoBody = el('teamInfoBody'); if(teamInfoBody) teamInfoBody.innerHTML='<div class="muted">No team info found.</div>';
     const teamRosterBody = el('teamRosterBody'); if(teamRosterBody) teamRosterBody.innerHTML='<div class="muted">No players found.</div>';
-    const teamActive = el('tblTeamActive'); if(teamActive) teamActive.innerHTML='<div class="muted">No data.</div>';
-    const teamPet = el('tblTeamPet'); if(teamPet) teamPet.innerHTML='<div class="muted">No data.</div>';
-    const charAct = el('tblCharUsageAct'); if(charAct) charAct.innerHTML='<div class="muted">Select a team.</div>';
-    const charPas = el('tblCharUsagePas'); if(charPas) charPas.innerHTML='<div class="muted">Select a team.</div>';
   }
-
-  renderLopsActive();
-  renderLopsPet();
-  renderLopsTopKillers();
 }
 
 function wireControls(){
@@ -1610,32 +1222,6 @@ function wireControls(){
   });
 
   el('teamSearch').addEventListener('input', e=> renderTeamGrid(e.target.value||''));
-
-  const teamActiveTopEl = el('teamActiveTop');
-  if(teamActiveTopEl) teamActiveTopEl.addEventListener('change', renderTeamActiveUsage);
-
-  const teamPetTopEl = el('teamPetTop');
-  if(teamPetTopEl) teamPetTopEl.addEventListener('change', renderTeamPetUsage);
-
-  const lopsActiveTopEl = el('lopsActiveTop');
-  if(lopsActiveTopEl) lopsActiveTopEl.addEventListener('change', renderLopsActive);
-
-  const lopsPetTopEl = el('lopsPetTop');
-  if(lopsPetTopEl) lopsPetTopEl.addEventListener('change', renderLopsPet);
-
-  const lopsTopKillersTopEl = el('lopsTopKillersTop');
-  if(lopsTopKillersTopEl) lopsTopKillersTopEl.addEventListener('change', renderLopsTopKillers);
-
-  const charUsageTopEl = el('charUsageTop');
-  if(charUsageTopEl) charUsageTopEl.addEventListener('change', ()=>{
-    renderCharUsageActive();
-    renderCharUsagePassive();
-  });
-  const charUsageMapFilterEl = el('charUsageMapFilter');
-  if(charUsageMapFilterEl) charUsageMapFilterEl.addEventListener('change', ()=>{
-    renderCharUsageActive();
-    renderCharUsagePassive();
-  });
 }
 
 /* ---------- Init ---------- */
@@ -1671,95 +1257,18 @@ async function initial(){
     LOPS_READY = true;
 
     await fetchMatchApiMap();
-    populateCharUsageMapFilter();
-    renderCharUsageActive();
-    renderCharUsagePassive();
-
     renderTeamCombinedMetrics();
-    renderTeamActiveUsage();
-    renderTeamPetUsage();
-    renderPlayers();
     renderByDay();
-
-    renderLopsActive();
-    renderLopsPet();
-    renderLopsTopKillers();
-
-    renderElimLeaderboardsUsingAll();
-    renderElimTeamFocus();
 
     wireControls();
 
     document.querySelectorAll('details.accordion').forEach(d=> d.open=false);
 
-    showPage(1);
     el('veil').classList.add('hide');
   }catch(e){
     gerr('Fatal error initializing page:\n\n'+(e.stack||e.message||e));
     el('veil').classList.add('hide');
   }
-}
-
-/* LOPS global renders */
-function renderLopsActive(){
-  const limitSel = el('lopsActiveTop');
-  const box = el('tblLopsActive');
-  if(!limitSel || !box) return;
-  const limit=Number(limitSel.value)||10;
-  const list=countByName(LOPS_ALL,'active')
-    .sort((a,b)=> b.picks-a.picks || a.name.localeCompare(b.name))
-    .slice(0,limit);
-  box.innerHTML = renderSimpleTable(
-    list.map((r,i)=>({...r,rank:i+1})),
-    [
-      {label:'#',key:'rank',right:true,html:(_,i)=>i+1},
-      {label:'Active Skill',key:'name'},
-      {label:'Picks',key:'picks',right:true}
-    ]
-  );
-  applyColumnHeatmap('tblLopsActive', ['picks']);
-}
-function renderLopsPet(){
-  const limitSel = el('lopsPetTop');
-  const box = el('tblLopsPet');
-  if(!limitSel || !box) return;
-  const limit=Number(limitSel.value)||10;
-  const list=countByName(LOPS_ALL,'pet')
-    .sort((a,b)=> b.picks-a.picks || a.name.localeCompare(b.name))
-    .slice(0,limit);
-  box.innerHTML = renderSimpleTable(
-    list.map((r,i)=>({...r,rank:i+1})),
-    [
-      {label:'#',key:'rank',right:true,html:(_,i)=>i+1},
-      {label:'Pet',key:'name'},
-      {label:'Picks',key:'picks',right:true}
-    ]
-  );
-  applyColumnHeatmap('tblLopsPet', ['picks']);
-}
-function renderLopsTopKillers(){
-  const limitSel = el('lopsTopKillersTop');
-  const box = el('tblLopsTopKillers');
-  if(!limitSel || !box) return;
-  const limit=Number(limitSel.value)||10;
-  const list=lopsTopPlayersByKills(LOPS_ALL)
-    .sort((a,b)=> b.kills-a.kills || a.player.localeCompare(b.player))
-    .slice(0,limit);
-  box.innerHTML = renderSimpleTable(
-    list.map((r,i)=>({...r,rank:i+1})),
-    [
-      {label:'#',key:'rank',right:true,html:(_,i)=>i+1},
-      {label:'Player',key:'player'},
-      {label:'Team',key:'team'},
-      {label:'Rows',key:'rows',right:true},
-      {label:'Kills',key:'kills',right:true},
-      {label:'Assists',key:'assists',right:true},
-      {label:'HS',key:'headshots',right:true},
-      {label:'Grenade',key:'grenade',right:true},
-      {label:'Damage',key:'damage',right:true}
-    ]
-  );
-  applyColumnHeatmap('tblLopsTopKillers', ['rows','kills','assists','headshots','grenade','damage']);
 }
 
 initial();
