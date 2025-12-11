@@ -10,7 +10,13 @@
       --bg:#0e0e0e; --panel:#1b1b1b; --panel2:#141414; --ink:#f5f5f5; --muted:#b9b9b9;
       --brand:#ffbd59; --brand2:#ff7733; --line:#313131;
       --tile-w:96px; --tile-h:104px; --logo:44px; --code-fs:.74rem;
-      --heat-rgb:255,189,89; --heat-min:.06; --heat-max:.22; --heat-top-outline:.42; --heat-radius:8px;
+      --heat-rgb:255,189,89;
+      --heat-min:.10;
+      --heat-max:.40;
+      --heat-top-outline:.6;
+      --heat-radius:8px;
+      --heat-cool:95,205,255;
+      --heat-warm:255,153,0;
       --good:#62e887; --bad:#ff6b6b; --step-h:48px;
     }
     *{box-sizing:border-box}
@@ -53,7 +59,7 @@
     .team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--tile-w),1fr));gap:8px}
     .team-tile{height:var(--tile-h);background:#131313;border:1px solid #2a2a2a;border-radius:10px;padding:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:transform .1s ease,border-color .1s ease;overflow:hidden}
     .team-tile:hover{transform:translateY(-2px);border-color:#444}
-    .team-tile.active{outline:2px solid var(--brand2)}
+    .team-tile.active{outline:2px solid var(--brand2')}
     .team-logo{width:var(--logo);height:var(--logo);object-fit:contain;filter:drop-shadow(0 0 8px rgba(0,0,0,.4))}
     .team-code{font-weight:800;font-size:var(--code-fs);line-height:1.1;letter-spacing:.2px}
 
@@ -224,7 +230,7 @@
       </div>
     </details>
 
-    <!-- NEW: Eliminations — Summary (filters ignored) as accordion -->
+    <!-- Eliminations — Summary (filters ignored) -->
     <details class="accordion" id="elimSummarySection">
       <summary>Eliminations — Summary (All Teams)</summary>
       <div class="accordion-body">
@@ -240,7 +246,7 @@
         </div>
       </div>
     </details>
-  </div><!-- ✅ CLOSE PAGE 1 -->
+  </div><!-- CLOSE PAGE 1 -->
 
   <!-- PAGE 2 -->
   <div class="page" id="page2" data-page="2">
@@ -314,7 +320,7 @@
           </div>
         </div>
 
-        <!-- SPLIT: Per-Player Character Usage — Active -->
+        <!-- Per-Player Character Usage — Active -->
         <div class="card" style="margin-top:12px">
           <h3>Per-Player Character Usage — Active</h3>
           <div class="bar">
@@ -328,7 +334,7 @@
           <div id="tblCharUsageAct">Loading…</div>
         </div>
 
-        <!-- SPLIT: Per-Player Character Usage — Passive -->
+        <!-- Per-Player Character Usage — Passive -->
         <div class="card" style="margin-top:12px">
           <h3>Per-Player Character Usage — Passive</h3>
           <div id="tblCharUsagePas">Loading…</div>
@@ -347,7 +353,7 @@
       <div class="accordion-body"><div class="card" style="margin:0"><div id="teamRosterBody" class="muted">—</div></div></div>
     </details>
 
-    <!-- NEW: Eliminations — Team Focus + Breakdowns as one accordion -->
+    <!-- Eliminations — Team Focus + Breakdowns -->
     <details class="accordion" id="elimTeamAccordion">
       <summary>Eliminations — Team Focus & Breakdowns</summary>
       <div class="accordion-body">
@@ -378,8 +384,8 @@
         </div>
       </div>
     </details>
-  </div><!-- ✅ CLOSE PAGE 2 -->
-</div><!-- ✅ CLOSE SHELL -->
+  </div><!-- CLOSE PAGE 2 -->
+</div><!-- CLOSE SHELL -->
 
 <script>
 /* ============ Supabase init ============ */
@@ -440,7 +446,7 @@ let HELPER_BY_CODE = {};   // code -> helper meta
 let TEAMS=[]; let TEAM_BY_CODE={}; let TEAM_BY_NAME={}; let ALLOWED_TAGS=new Set();
 let ALL=[]; let TEAM_ROWS=[]; let CURRENT_TEAM=null;
 let LOPS_ALL=[];           // normalized lops rows
-let LOPS_READY=false;      // ✅ render guards
+let LOPS_READY=false;      // render guards
 let MATCH_API_MAP = new Map(); // id -> name for characters (type=2)
 let ROLE_BY_IGN = new Map();   // normalized IGN -> role text
 
@@ -501,7 +507,7 @@ async function fetchHelperTeams(){
   });
 }
 
-/* Tournaments + Stage */
+/* Tournaments + Stage filters */
 function tournamentsWithMaxId(rows){
   const m=new Map();
   for(const r of rows){
@@ -513,6 +519,46 @@ function tournamentsWithMaxId(rows){
   }
   return [...m.values()].sort((a,b)=> b.maxId - a.maxId || a.name.localeCompare(b.name));
 }
+function selectedTournament(){ return (el('gTournament')?.value || '__all__').trim(); }
+function selectedStage(){ return (el('gStage')?.value || '__all__').trim(); }
+
+function baseRowsByTournament(rows){
+  const t=selectedTournament();
+  const s=selectedStage();
+  const tLf=t.toLowerCase();
+  const sLf=s.toLowerCase();
+  return rows.filter(r=>{
+    const tVal = norm(r.tournament).toLowerCase();
+    const sVal = norm(r.stage || r.Stage || '').toLowerCase();
+    const okT = (t==='__all__') || (tVal === tLf);
+    const okS = (s==='__all__') || (sVal === sLf);
+    return okT && okS;
+  });
+}
+function rowsByTournamentOnly(rows){
+  const t=selectedTournament();
+  if(t==='__all__') return rows;
+  const lf=t.toLowerCase();
+  return rows.filter(r=> norm(r.tournament).toLowerCase()===lf);
+}
+function uniqueStagesForTournament(rows){
+  const base = rowsByTournamentOnly(rows);
+  const s=new Set();
+  for(const r of base){
+    const st = norm(r.stage || r.Stage || '');
+    if(st) s.add(st);
+  }
+  return [...s].sort((a,b)=>a.localeCompare(b));
+}
+function populateStageFilter(resetToAll=true){
+  const sel=el('gStage'); if(!sel) return;
+  const stages = uniqueStagesForTournament(ALL);
+  sel.innerHTML = `<option value="__all__">All stages</option>` +
+    stages.map(s=>`<option value="${s.replaceAll('"','&quot;')}">${s}</option>`).join('');
+  if(resetToAll || !stages.includes(sel.value)){
+    sel.value='__all__';
+  }
+}
 function populateGlobalTournament(defaultToLatest=true){
   const sel=el('gTournament'); if(!sel) return;
   const items=tournamentsWithMaxId(ALL);
@@ -520,40 +566,19 @@ function populateGlobalTournament(defaultToLatest=true){
   sel.value = (defaultToLatest && items.length) ? items[0].name : '__all__';
   updateFilterHint();
 }
-function selectedTournament(){ return (el('gTournament')?.value || '__all__').trim(); }
-function selectedStage(){ return (el('gStage')?.value || '__all__').trim(); }
-
-function rowsForTournamentOnly(rows){
-  const t = selectedTournament();
-  if(t === '__all__') return rows;
-  const lf = t.toLowerCase();
-  return rows.filter(r => norm(r.tournament).toLowerCase() === lf);
-}
-function baseRowsByTournament(rows){
-  const t = selectedTournament();
-  const s = selectedStage();
-  const tLower = t.toLowerCase();
-  const sLower = s.toLowerCase();
-  return rows.filter(r => {
-    const tVal = norm(r.tournament).toLowerCase();
-    const sVal = norm(r.stage).toLowerCase();
-    if(t !== '__all__' && tVal !== tLower) return false;
-    if(s !== '__all__' && sVal !== sLower) return false;
-    return true;
-  });
-}
 function updateFilterHint(){
-  const t = selectedTournament();
-  const s = selectedStage();
-  const total = baseRowsByTournament(ALL).length;
-  const parts = [];
-  parts.push(t === '__all__' ? 'All tournaments' : t);
-  if(s !== '__all__') parts.push(`Stage: ${s}`);
-  const scopeText = parts.join(' • ');
-  el('filterHint').textContent = `Scope: ${scopeText} • Rows: ${total}`;
-  el('scopeChip').textContent = 'Scope: ' + scopeText;
-  el('scopeChipTeam').textContent = scopeText;
+  const t=selectedTournament();
+  const s=selectedStage();
+  const total=baseRowsByTournament(ALL).length;
+  const tLabel = t==='__all__' ? 'All tournaments' : t;
+  const sLabel = s==='__all__' ? 'All stages' : s;
+  el('filterHint').textContent = `Scope: ${tLabel} • Stage: ${sLabel} • Rows: ${total}`;
+  const chip = `${tLabel} • ${sLabel}`;
+  el('scopeChip').textContent = 'Scope: ' + chip;
+  el('scopeChipTeam').textContent = chip;
 }
+
+/* Rebuild TEAMS for current scope */
 function updateTeamsForCurrentScope(){
   const scopedRows = baseRowsByTournament(ALL);
   TEAMS = deriveTeamsFromData(scopedRows);
@@ -562,59 +587,77 @@ function updateTeamsForCurrentScope(){
   renderTeamGrid(searchVal);
 }
 
-function uniqueStages(rows){
-  const s = new Set();
-  for(const r of rows){
-    const st = norm(r.stage);
-    if(st) s.add(st);
-  }
-  return [...s].sort((a,b)=>a.localeCompare(b));
-}
-function populateStageFilter(){
-  const sel = el('gStage'); if(!sel) return;
-  const base = rowsForTournamentOnly(ALL);
-  const stages = uniqueStages(base);
-  sel.innerHTML = `<option value="__all__">All stages</option>` + stages.map(st=>`<option>${st}</option>`).join('');
-  sel.value = '__all__';
-}
-
-/* Tables + heat */
+/* Tables + heat (enhanced gradient) */
 function renderSimpleTable(list, cols){
   if (!list.length) return '<div class="muted">No rows.</div>';
   const head = `<thead><tr>${cols.map(c=>`<th data-key="${c.key}" class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
   const body = `<tbody>${list.map((r,i)=>`<tr>${
     cols.map(c=>{
-      let v; if (typeof c.html==='function'){ v=c.html(r,i); }
-      else { v=r[c.key];
-             if (c.format==='pct') v=isFinite(v)?(v*100).toFixed(1)+'%':'—';
-             else if (c.format==='1d') v=isFinite(v)?Number(v).toFixed(1):'—';
-             else if (c.format==='0d') v=isFinite(v)?Number(v).toFixed(0):'—';
-             if (c.link && v && looksLikeURL(v)) v=`<a href="${v}" target="_blank" rel="noopener">${v}</a>`; }
+      let v;
+      if (typeof c.html==='function'){
+        v=c.html(r,i);
+      } else {
+        v=r[c.key];
+        if (c.format==='pct') v=isFinite(v)?(v*100).toFixed(1)+'%':'—';
+        else if (c.format==='1d') v=isFinite(v)?Number(v).toFixed(1):'—';
+        else if (c.format==='0d') v=isFinite(v)?Number(v).toFixed(0):'—';
+        if (c.link && v && looksLikeURL(v)) v=`<a href="${v}" target="_blank" rel="noopener">${v}</a>`;
+      }
       return `<td data-key="${c.key}" class="${c.right?'right':''}">${(v==null||v==='')?'—':v}</td>`;
     }).join('')
   }</tr>`).join('')}</tbody>`;
   return `<table>${head}${body}</table>`;
 }
+
 function applyColumnHeatmap(containerId, keys){
   const wrap=el(containerId); const table=wrap?.querySelector('table'); if(!table) return;
   table.querySelectorAll('td[data-key]').forEach(td=>{ td.style.backgroundColor=''; td.classList.remove('heat-top'); });
+
   const styles=getComputedStyle(document.documentElement);
-  const rgb=styles.getPropertyValue('--heat-rgb')||'255,189,89';
-  const minA=parseFloat(styles.getPropertyValue('--heat-min'))||.06;
-  const maxA=parseFloat(styles.getPropertyValue('--heat-max'))||.22;
+  const baseMinA=parseFloat(styles.getPropertyValue('--heat-min')) || .08;
+  const baseMaxA=parseFloat(styles.getPropertyValue('--heat-max')) || .35;
+
+  const parseRGB = (str, fallback) => {
+    const src = (str && String(str).trim()) || fallback;
+    const parts = src.split(',').map(x=>parseFloat(x.trim())).filter(v=>!isNaN(v));
+    if(parts.length===3) return parts;
+    return fallback.split(',').map(x=>parseFloat(x.trim()));
+  };
+  const cool = parseRGB(styles.getPropertyValue('--heat-cool'), '95,205,255');   // teal-ish
+  const warm = parseRGB(styles.getPropertyValue('--heat-warm'), '255,153,0');   // orange
   const BANDS=5;
+
   for(const key of keys){
     const cells=[...table.querySelectorAll(`td[data-key="${key}"]`)];
     if(!cells.length) continue;
-    const entries=cells.map((td,i)=>{ const raw=(td.textContent||'').trim().replace('%','').replace(/,/g,''); const v=parseFloat(raw); return {td,i,v:isFinite(v)?v:null}; }).filter(e=>e.v!=null);
+    const entries=cells.map((td,i)=>{
+      const raw=(td.textContent||'').trim().replace('%','').replace(/,/g,'');
+      const v=parseFloat(raw);
+      return {td,i,v:isFinite(v)?v:null};
+    }).filter(e=>e.v!=null);
     if(!entries.length) continue;
-    const asc=entries.slice().sort((a,b)=>a.v-b.v); const n=asc.length; const bandByIndex=new Map();
-    asc.forEach((e,rank)=>{ const p=(n<=1)?1:(rank/(n-1)); const band=Math.min(BANDS-1,Math.floor(p*BANDS)); bandByIndex.set(e.i,band); });
+
+    const asc=entries.slice().sort((a,b)=>a.v-b.v);
+    const n=asc.length;
+    const bandByIndex=new Map();
+    asc.forEach((e,rank)=>{
+      const p=(n<=1)?1:(rank/(n-1));   // 0..1 across column
+      const band=Math.min(BANDS-1,Math.floor(p*BANDS));
+      bandByIndex.set(e.i,{band,p});
+    });
     const topVal=asc[n-1].v;
-    cells.forEach((td,i)=>{ const band=bandByIndex.get(i); if(band==null) return;
-      const alpha=minA + (band/(BANDS-1))*(maxA-minA);
-      td.style.backgroundColor=`rgba(${rgb}, ${alpha.toFixed(3)})`;
-      if(isFinite(parseFloat(td.textContent)) && parseFloat(td.textContent)===topVal) td.classList.add('heat-top');
+
+    cells.forEach((td,i)=>{
+      const info=bandByIndex.get(i);
+      if(!info) return;
+      const {p}=info;
+      const alpha = baseMinA + p*(baseMaxA-baseMinA);
+      const r = Math.round(cool[0] + (warm[0]-cool[0])*p);
+      const g = Math.round(cool[1] + (warm[1]-cool[1])*p);
+      const b = Math.round(cool[2] + (warm[2]-cool[2])*p);
+      td.style.backgroundColor=`rgba(${r},${g},${b},${alpha.toFixed(3)})`;
+      const cellNum = parseFloat((td.textContent||'').replace('%','').replace(/,/g,''));
+      if(isFinite(cellNum) && cellNum===topVal) td.classList.add('heat-top');
     });
   }
 }
@@ -660,6 +703,27 @@ function aggregateTeamsForMap(rows,mapValue){
   return out;
 }
 function uniqueMaps(rows){ const s=new Set(); for(const r of rows){ const m=norm(r.map); if(m) s.add(m); } return [...s].sort((a,b)=>a.localeCompare(b)); }
+
+/* Clear team UI when no selection */
+function clearTeamSelectionUI(){
+  el('teamTitle').textContent='Selected Team — Overview';
+  el('identityBody').innerHTML='Select a team.';
+  el('kpiBody').innerHTML='—';
+  el('teamTotals').innerHTML='—';
+  el('teamAverages').innerHTML='—';
+  el('teamSignals').innerHTML='—';
+  el('tblPlayers').innerHTML='<div class="muted">No team selected.</div>';
+  el('tblMapTeam').innerHTML='—';
+  el('tblByDay').innerHTML='—';
+  el('teamInfoBody').innerHTML='<div class="muted">No team info found.</div>';
+  el('teamRosterBody').innerHTML='<div class="muted">No players found.</div>';
+  el('tblTeamActive').innerHTML='<div class="muted">No data.</div>';
+  el('tblTeamPet').innerHTML='<div class="muted">No data.</div>';
+  el('tblCharUsageAct').innerHTML='<div class="muted">Select a team.</div>';
+  el('tblCharUsagePas').innerHTML='<div class="muted">Select a team.</div>';
+  CURRENT_TEAM = null;
+  highlightActiveTile();
+}
 
 /* Team + roster info helpers */
 function asListHTML(val){
@@ -909,7 +973,7 @@ function lopsTopPlayersByKills(rows){
     o.kills+=r.kills; o.assists+=r.assists; o.headshots+=r.headshots;
     o.grenade+=r.grenade; o.damage+=r.damage; o.rows++;
   }
-  return [...m.values()];
+  return [...m.values()]; 
 }
 
 /* Sorting helper */
@@ -1000,7 +1064,7 @@ function renderPerMapAllTeams(){
     {label:'Place/m',key:'placement_pm',format:'1d',right:true},{label:'Total/m',key:'total_pm',format:'1d',right:true},
     {label:'Top3%',key:'top3_rate',format:'pct',right:true},
   ]);
-  applyColumnHeatmap('tblPerMapAllTeams', ['total_pm','placement_pm','elims_pm','booyah_rate','matches','booyahs','elims','placement','total']);
+  applyColumnHeatmap('tblPerMapAllTeams', ['total_pm','elims_pm','placement_pm','booyah_rate','matches','booyahs','elims','placement','total']);
 }
 
 /* ---------- Renders: Page 2 (Team core) ---------- */
@@ -1163,7 +1227,7 @@ function renderPlayers(){
   applyColumnHeatmap('tblPlayers', ['kills','assists','dmg','hs','nade','veh','downs','rows']);
 }
 
-/* Team Performance by Day by Map — Pivot (from ffbr_data) */
+/* Team Performance by Day by Map — Pivot */
 function renderByDay(){
   if(!TEAM_ROWS.length){
     el('tblByDay').innerHTML = '<div class="muted">No rows.</div>';
@@ -1387,7 +1451,7 @@ function renderElimTeamFocus(){
     return;
   }
   const code = CURRENT_TEAM.name.toUpperCase();
-  const rows = LOPS_ALL; // ignore tournament/stage filters globally
+  const rows = LOPS_ALL; // ignore filters; full tournament elim picture
 
   const given = {};
   rows.forEach(r=>{
@@ -1528,7 +1592,7 @@ async function selectTeam(teamObj){
   renderElimTeamFocus();
 }
 
-/* ---- Team Info (safe, schema-agnostic) ---- */
+/* Team Info (safe, schema-agnostic) */
 function renderTeamInfo(info){
   const box = el('teamInfoBody');
   if (!box) return;
@@ -1565,62 +1629,70 @@ function populateMapFilter(){
     `<option value="__all__">All maps</option>` +
     uniqueMaps(baseRowsByTournament(ALL)).map(m=>`<option>${m}</option>`).join('');
 }
-
-async function handleScopeChange(){
-  updateFilterHint();
-  updateTeamsForCurrentScope();
-  populateMapFilter();
-  renderOverall();
-  renderPerMapAllTeams();
-
-  let nextTeam = null;
-  if (CURRENT_TEAM && ALLOWED_TAGS.has(CURRENT_TEAM.name.toUpperCase())){
-    nextTeam = CURRENT_TEAM;
-  } else if (TEAMS.length){
-    nextTeam = TEAMS[0];
-  } else {
-    CURRENT_TEAM = null;
-  }
-
-  if(nextTeam){
-    await selectTeam(nextTeam);
-  } else {
-    el('teamTitle').textContent='Selected Team — Overview';
-    el('identityBody').innerHTML='Select a team.';
-    el('kpiBody').innerHTML='—';
-    el('teamTotals').innerHTML='—';
-    el('teamAverages').innerHTML='—';
-    el('teamSignals').innerHTML='—';
-    el('tblPlayers').innerHTML='<div class="muted">No team selected.</div>';
-    el('tblMapTeam').innerHTML='—';
-    el('tblByDay').innerHTML='—';
-    el('teamInfoBody').innerHTML='<div class="muted">No team info found.</div>';
-    el('teamRosterBody').innerHTML='<div class="muted">No players found.</div>';
-    el('tblTeamActive').innerHTML='<div class="muted">No data.</div>';
-    el('tblTeamPet').innerHTML='<div class="muted">No data.</div>';
-    el('tblCharUsageAct').innerHTML='<div class="muted">Select a team.</div>';
-    el('tblCharUsagePas').innerHTML='<div class="muted">Select a team.</div>';
-  }
-
-  renderLopsActive();
-  renderLopsPet();
-  renderLopsTopKillers();
-  renderElimTeamFocus();
-}
-
 function wireControls(){
   el('gTournament').addEventListener('change', async ()=>{
-    populateStageFilter();
-    await handleScopeChange();
+    populateStageFilter(true);
+    updateFilterHint();
+    updateTeamsForCurrentScope();
+    populateMapFilter();
+    renderOverall();
+    renderPerMapAllTeams();
+
+    let nextTeam = null;
+    if (CURRENT_TEAM && ALLOWED_TAGS.has(CURRENT_TEAM.name.toUpperCase())){
+      nextTeam = CURRENT_TEAM;
+    }else if (TEAMS.length){
+      nextTeam = TEAMS[0];
+    }else{
+      CURRENT_TEAM = null;
+    }
+
+    if(nextTeam){
+      await selectTeam(nextTeam);
+    }else{
+      clearTeamSelectionUI();
+    }
+
+    renderLopsActive();
+    renderLopsPet();
+    renderLopsTopKillers();
   });
 
   el('gStage').addEventListener('change', async ()=>{
-    await handleScopeChange();
+    updateFilterHint();
+    updateTeamsForCurrentScope();
+    populateMapFilter();
+    renderOverall();
+    renderPerMapAllTeams();
+
+    let nextTeam=null;
+    if(CURRENT_TEAM && ALLOWED_TAGS.has(CURRENT_TEAM.name.toUpperCase())){
+      const rowsForCurrent = baseRowsByTournament(ALL).filter(
+        r => (norm(r._tag).toUpperCase()||'') === CURRENT_TEAM.name.toUpperCase()
+      );
+      if(rowsForCurrent.length) nextTeam=CURRENT_TEAM;
+    }
+    if(!nextTeam && TEAMS.length){
+      nextTeam=TEAMS[0];
+    }else if(!nextTeam){
+      CURRENT_TEAM=null;
+    }
+
+    if(nextTeam){
+      await selectTeam(nextTeam);
+    }else{
+      clearTeamSelectionUI();
+    }
+
+    renderLopsActive();
+    renderLopsPet();
+    renderLopsTopKillers();
   });
 
   el('gTournReset').addEventListener('click', ()=>{
     const items=tournamentsWithMaxId(ALL);
     el('gTournament').value = items.length ? items[0].name : '__all__';
+    populateStageFilter(true);
     el('gTournament').dispatchEvent(new Event('change'));
   });
 
@@ -1684,7 +1756,7 @@ async function initial(){
     buildHelperIndex();
 
     populateGlobalTournament(true);
-    populateStageFilter();
+    populateStageFilter(true);
     updateTeamsForCurrentScope();
     populateMapFilter();
 
