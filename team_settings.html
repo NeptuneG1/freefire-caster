@@ -385,7 +385,7 @@
     const statusEl = document.getElementById('status');
     const countPill = document.getElementById('team-count-pill');
 
-    let rows = []; // { el, id }
+    let rows = []; // { el, id, deleted, inputs, preview }
 
     // Auth guard
     client.auth.getSession().then(({ data: { session } }) => {
@@ -459,7 +459,7 @@
       deleteBtn.type = 'button';
       deleteBtn.textContent = 'Delete';
 
-      // wire up
+      // assemble row
       rowEl.appendChild(idxEl);
       rowEl.appendChild(nameInput);
       rowEl.appendChild(tagInput);
@@ -479,7 +479,7 @@
 
       rows.push(rowObj);
 
-      // Events
+      // Logo preview change
       logoInput.addEventListener('change', () => {
         const url = logoInput.value.trim();
         previewWrap.innerHTML = '';
@@ -502,6 +502,7 @@
         }
       });
 
+      // Delete row
       deleteBtn.addEventListener('click', () => {
         if (rows.filter(r => !r.deleted).length <= MIN_TEAMS) {
           alert('You must keep at least ' + MIN_TEAMS + ' teams.');
@@ -523,12 +524,11 @@
     function updateIndices() {
       let index = 1;
       rows.forEach(r => {
+        const idxEl = r.el.querySelector('.row-index');
         if (!r.deleted) {
-          const idxEl = r.el.querySelector('.row-index');
           idxEl.textContent = index;
           index++;
         } else {
-          const idxEl = r.el.querySelector('.row-index');
           idxEl.textContent = '—';
         }
       });
@@ -563,6 +563,7 @@
       updateCountPill();
     }
 
+    // FIXED: use UPDATE + INSERT, not UPSERT with id
     async function saveTeams() {
       setStatus('Saving teams...');
       saveBtn.disabled = true;
@@ -571,32 +572,33 @@
       const toUpdate = [];
       const toDelete = [];
 
-      rows.forEach(r => {
+      // collect changes
+      for (const r of rows) {
         if (r.deleted) {
           if (r.id) {
             toDelete.push(r.id);
           }
-          return;
+          continue;
         }
 
         const name = r.inputs.nameInput.value.trim();
-        const tag = r.inputs.tagInput.value.trim();
+        const tag  = r.inputs.tagInput.value.trim();
         const logo = r.inputs.logoInput.value.trim();
 
-        // Skip completely empty rows
+        // Skip completely empty new rows
         if (!name && !tag && !logo) {
           if (r.id) {
-            // Existing row cleared -> delete
+            // existing row cleared => delete
             toDelete.push(r.id);
           }
-          return;
+          continue;
         }
 
+        // basic validation
         if (!name || !tag || !logo) {
-          // basic validation — keep it simple
           setStatus('Each active team must have a name, tag, and logo URL.', true);
           saveBtn.disabled = false;
-          throw new Error('validation');
+          return; // abort save
         }
 
         const payload = {
@@ -611,7 +613,7 @@
         } else {
           toInsert.push(payload);
         }
-      });
+      }
 
       try {
         // Deletes
@@ -623,16 +625,17 @@
           if (delError) throw delError;
         }
 
-        // Updates
-        if (toUpdate.length) {
+        // Updates — IMPORTANT: no upsert on identity id
+        for (const item of toUpdate) {
+          const { id, ...updateData } = item;
           const { error: updError } = await client
             .from(TABLE_NAME)
-            .upsert(toUpdate)
-            .select();
+            .update(updateData)
+            .eq('id', id);
           if (updError) throw updError;
         }
 
-        // Inserts
+        // Inserts (no id included, uses identity default)
         if (toInsert.length) {
           const { error: insError } = await client
             .from(TABLE_NAME)
@@ -644,12 +647,8 @@
         setStatus('Saved successfully.');
         await loadTeams();
       } catch (err) {
-        if (err.message === 'validation') {
-          // already handled
-        } else {
-          console.error('Save error:', err);
-          setStatus('Failed to save teams: ' + err.message, true);
-        }
+        console.error('Save error:', err);
+        setStatus('Failed to save teams: ' + err.message, true);
       } finally {
         saveBtn.disabled = false;
       }
