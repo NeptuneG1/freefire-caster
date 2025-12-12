@@ -1069,6 +1069,85 @@ function renderTeamInfo(info){
   box.innerHTML = `<table style="width:100%;border-collapse:collapse">${rows}</table>`;
 }
 
+/* ---- Text builders for AI (no logos/urls) ---- */
+function buildRosterTextForAi(players){
+  if(!players || !players.length) return 'No roster data available.';
+
+  const example = players[0];
+  const keys = Object.keys(example || {});
+
+  const pickKey = (patterns)=>{
+    for(const rx of patterns){
+      const key = keys.find(k => rx.test(k));
+      if(key) return key;
+    }
+    return null;
+  };
+
+  const ignKey = pickKey([
+    /^ign$/i,
+    /\bplayer\s*ign\b/i,
+    /\bin-?\s*game\s*name\b/i,
+    /\bnick\s*name\b/i,
+    /\bnickname\b/i,
+    /\bhandle\b/i,
+    /\balias\b/i,
+    /\bplayer\s*name\b/i,
+    /^name$/i
+  ]);
+  const roleKey    = pickKey([/^role$/i, /\bposition\b/i]);
+  const countryKey = pickKey([/^country$/i, /\bnation\b/i]);
+  const ageKey     = pickKey([/^age\b/i, /\bage\s*\(?(yrs|years)?\)?/i, /\byears?\s*old\b/i]);
+  const dobKey     = pickKey([/\b(dob|birth(date)?|date\s*of\s*birth)\b/i]);
+  const formerKey  = pickKey([/\b(former|previous|past|ex)[\s_]*teams?\b/i,/\bteam\s*history\b/i,/^Former Team(s)?$/i]) || 'Former Team';
+  const accolKey   = keys.includes('Accolades') ? 'Accolades' : pickKey([/accolade|achievement|title|award/i]);
+
+  const lines = players.slice(0, 10).map(p=>{
+    const ign = (() => {
+      const tryKeys = ignKey ? [ignKey] : [];
+      tryKeys.push('IGN','In-game Name','Player IGN','Player Name','Nickname','Name','name');
+      for(const k of tryKeys){
+        if(k in p && String(p[k]).trim()!=='') return String(p[k]).trim();
+      }
+      return 'Unknown';
+    })();
+    const role    = roleKey    && p[roleKey]    ? String(p[roleKey]).trim()    : '';
+    const country = countryKey && p[countryKey] ? String(p[countryKey]).trim() : '';
+    const ageNum  = parseAgeValue(p, ageKey, dobKey);
+    const age     = ageNum!=null ? ageNum : (ageKey && p[ageKey] ? String(p[ageKey]).trim() : '');
+    const former  = formerKey && p[formerKey] ? String(p[formerKey]).trim() : '';
+    const acc     = accolKey && p[accolKey]   ? String(p[accolKey]).trim()   : '';
+
+    const parts = [`IGN=${ign}`];
+    if(role)   parts.push(`Role=${role}`);
+    if(country)parts.push(`Country=${country}`);
+    if(age!=='') parts.push(`Age=${age}`);
+    if(former) parts.push(`FormerTeams=${former}`);
+    if(acc)    parts.push(`Accolades=${acc}`);
+
+    return '- ' + parts.join(' | ');
+  });
+
+  return lines.join('\n');
+}
+
+function buildTeamInfoTextForAi(info){
+  if(!info || !Object.keys(info).length){
+    return 'No additional team info available.';
+  }
+  const lines = [];
+  for(const [k,v] of Object.entries(info)){
+    if(v == null) continue;
+    const vs = String(v).trim();
+    if(!vs) continue;
+    const keyLower = k.toLowerCase();
+    if(keyLower.includes('logo') || keyLower.includes('image') || keyLower.includes('photo')) continue;
+    if(/^https?:\/\//i.test(vs)) continue; // skip standalone URLs
+    lines.push(`${k}=${vs}`);
+  }
+  return lines.length ? lines.join('\n') : 'No additional team info available.';
+}
+
 /* ---------- AI Prompt builder ---------- */
 function buildAiPrompt(){
   if(!CURRENT_TEAM){
