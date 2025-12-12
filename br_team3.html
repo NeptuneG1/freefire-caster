@@ -1070,61 +1070,6 @@ function renderTeamInfo(info){
 }
 
 /* ---------- AI Prompt builder ---------- */
-function buildRosterTextForAi(players){
-  if(!players || !players.length) return 'No roster data in br_player_info for this team.';
-
-  const keys=Object.keys(players[0]||{});
-  const pickKey=(keys, patterns)=>{
-    for(const rx of patterns){
-      const k = keys.find(k => rx.test(k));
-      if(k) return k;
-    }
-    return null;
-  };
-  const ignKey = pickKey(keys, [/^ign$/i,/\bplayer\s*ign\b/i,/\bin-?\s*game\s*name\b/i,/\bnick\s*name\b/i,/\bnickname\b/i,/\bhandle\b/i,/\balias\b/i,/\bplayer\s*name\b/i,/^name$/i]) || null;
-  const roleKey    = pickKey(keys, [/^role$/i, /\bposition\b/i]) || null;
-  const countryKey = pickKey(keys, [/^country$/i, /\bnation\b/i]) || null;
-  const ageKey     = pickKey(keys, [/^age\b/i, /\bage\s*\(?(yrs|years)?\)?/i, /\byears?\s*old\b/i]) || null;
-  const dobKey     = pickKey(keys, [/\b(dob|birth(date)?|date\s*of\s*birth)\b/i]) || null;
-  const accolKey   = keys.includes('Accolades') ? 'Accolades' : pickKey(keys, [/accolade|achievement|title|award/i]) || null;
-  const formerKey  = pickKey(keys, [/\b(former|previous|past|ex)[\s_]*teams?\b/i,/\bteam\s*history\b/i,/^Former Team(s)?$/i]) || 'Former Team';
-
-  const lines = players.map(p=>{
-    const ign = (() => {
-      const tryKeys = ignKey ? [ignKey] : [];
-      tryKeys.push('IGN','In-game Name','Player IGN','Player Name','Nickname','Name','name');
-      for(const k of tryKeys){
-        if(k in p && String(p[k]).trim()!=='') return String(p[k]).trim();
-      }
-      return 'Unknown';
-    })();
-    const role    = roleKey    ? (p[roleKey]    ?? 'Unknown') : 'Unknown';
-    const country = countryKey ? (p[countryKey] ?? 'Unknown') : 'Unknown';
-    const ageNum  = parseAgeValue(p, ageKey, dobKey);
-    const age     = (ageNum==null)
-      ? (ageKey ? String(p[ageKey] ?? 'Unknown') : 'Unknown')
-      : String(ageNum);
-    const formerTeams = formerKey ? splitToLines(p[formerKey]).join('; ') : '';
-    const accs        = accolKey ? splitToLines(p[accolKey]).join('; ')   : '';
-    return `- IGN=${ign} | Role=${role} | Country=${country} | Age=${age}` +
-           (formerTeams ? ` | FormerTeams=${formerTeams}` : '') +
-           (accs ? ` | Accolades=${accs}` : '');
-  });
-
-  return lines.join('\n');
-}
-
-function buildTeamInfoTextForAi(info){
-  if(!info || !Object.keys(info).length) return 'No extra team info in br_team_info for this team.';
-  const lines=[];
-  for(const [k,v] of Object.entries(info)){
-    if(v==null || String(v).trim()==='') continue;
-    if(/logo/i.test(k) && looksLikeURL(v)) continue; // skip logo links
-    lines.push(`${k}: ${String(v).trim()}`);
-  }
-  return lines.length ? lines.join('\n') : 'No extra team info in br_team_info for this team.';
-}
-
 function buildAiPrompt(){
   if(!CURRENT_TEAM){
     return 'Select a team from the grid above to generate an AI analysis prompt.';
@@ -1140,7 +1085,10 @@ function buildAiPrompt(){
   if(!TEAM_ROWS || !TEAM_ROWS.length){
     return `You are an esports analyst and Free Fire Battle Royale commentator.
 
-There is currently NO match data for this team within the selected scope.
+Task:
+- Give a clear and concise summary (max ~150 words).
+- Use bullet points.
+- Focus on what we can say given that NO match data exists yet in this scope.
 
 Scope:
 - Tournament filter: ${scopeTournament}
@@ -1152,7 +1100,12 @@ Team identity:
 - Region: ${CURRENT_TEAM.region || '—'}
 - East/West group: ${CURRENT_TEAM.ew || '—'}
 
-Explain that no stats are available for this scope yet, and what you would normally look for once matches are played (Booyah consistency, elims vs survival balance, map preferences, etc.).`;
+In your answer:
+- Briefly explain that we have no stats for this scope.
+- Mention what stats we would normally look for (Booyah rate, elims, consistency, map pool).
+- Suggest 2–3 short storylines or questions casters can keep in mind.
+
+Respond ONLY with short bullet points, no long paragraphs.`;
   }
 
   const teamCode = CURRENT_TEAM.name;
@@ -1203,10 +1156,10 @@ Explain that no stats are available for this scope yet, and what you would norma
   const prompt = `You are an esports analyst and Free Fire Battle Royale commentator.
 
 Task:
-- Using the stats below, analyze the performance, identity, and playstyle of the team.
-- Highlight strengths, weaknesses, consistency, map comfort, macro trends, and risk factors for upcoming matches.
-- Reference concrete numbers from the data (Booyahs, total points per match, elims per match, top 3 rate, etc.).
-- Speak in an on-air analysis style, as if you are on the analyst desk before the next FFBR match day.
+- Give a clear, concise summary of this team.
+- Use short bullet points only (no long paragraphs).
+- Keep the answer around 150–200 words max.
+- Focus on what a caster needs quickly before going live.
 
 Data scope:
 - Tournament filter: ${scopeTournament}
@@ -1233,12 +1186,12 @@ ${teamInfoText}
 Match log (each row is one game in this scope):
 ${matchLines}
 
-Now, based on all this data, give a detailed breakdown of:
-1) What kind of team this is (aggressive, placement-focused, streaky, clutch, etc.),
-2) Their best and worst maps and why,
-3) How their early–mid–late game seems to flow from the stats,
-4) What opposing teams should respect or punish,
-5) One or two key storylines a commentator can use on broadcast.`;
+In your answer, provide ONLY:
+- 3–5 bullet points on overall identity and playstyle.
+- 2–3 bullet points on map strengths/weaknesses and trends.
+- 1–2 bullet points on key storylines or talking points.
+
+Do NOT restate the raw numbers in full sentences. Interpret them briefly.`;
 
   return prompt;
 }
