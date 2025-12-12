@@ -478,6 +478,29 @@
       </div>
     </div>
   </details>
+
+  <!-- AI ANALYSIS HELPER AT THE BOTTOM -->
+  <details class="accordion" id="aiAnalysisSection">
+    <summary>AI Analysis Helper (Caster Prompt)</summary>
+    <div class="accordion-body">
+      <div class="card" style="margin:0">
+        <p class="muted" style="margin-bottom:8px">
+          This block generates a ready-to-paste prompt for an AI esports analyst / commentator based on the selected team and current filters.
+        </p>
+        <textarea
+          id="aiPrompt"
+          class="input"
+          style="width:100%;min-height:240px;white-space:pre;overflow:auto;font-family:Menlo,Consolas,monospace;font-size:.8rem;"
+          readonly
+        >Select a team from the grid above to generate an AI analysis prompt.</textarea>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;justify-content:flex-end">
+          <button class="btn secondary" type="button" id="refreshAiPromptBtn">Refresh prompt</button>
+          <button class="btn" type="button" id="copyAiPromptBtn">Copy prompt</button>
+        </div>
+        <div id="aiCopyStatus" class="muted" style="margin-top:4px;font-size:.8rem;"></div>
+      </div>
+    </div>
+  </details>
 </div><!-- CLOSE SHELL -->
 
 <script>
@@ -528,6 +551,8 @@ let HELPER_BY_CODE = {};   // code -> helper meta
 
 let TEAMS=[]; let TEAM_BY_CODE={}; let TEAM_BY_NAME={}; let ALLOWED_TAGS=new Set();
 let ALL=[]; let TEAM_ROWS=[]; let CURRENT_TEAM=null;
+let TEAM_INFO = null;
+let TEAM_PLAYERS = [];
 
 /* ============ Helpers ============ */
 function buildHelperIndex(){
@@ -1044,12 +1069,193 @@ function renderTeamInfo(info){
   box.innerHTML = `<table style="width:100%;border-collapse:collapse">${rows}</table>`;
 }
 
+/* ---------- AI Prompt builder ---------- */
+function buildRosterTextForAi(players){
+  if(!players || !players.length) return 'No roster data in br_player_info for this team.';
+
+  const keys=Object.keys(players[0]||{});
+  const pickKey=(keys, patterns)=>{
+    for(const rx of patterns){
+      const k = keys.find(k => rx.test(k));
+      if(k) return k;
+    }
+    return null;
+  };
+  const ignKey = pickKey(keys, [/^ign$/i,/\bplayer\s*ign\b/i,/\bin-?\s*game\s*name\b/i,/\bnick\s*name\b/i,/\bnickname\b/i,/\bhandle\b/i,/\balias\b/i,/\bplayer\s*name\b/i,/^name$/i]) || null;
+  const roleKey    = pickKey(keys, [/^role$/i, /\bposition\b/i]) || null;
+  const countryKey = pickKey(keys, [/^country$/i, /\bnation\b/i]) || null;
+  const ageKey     = pickKey(keys, [/^age\b/i, /\bage\s*\(?(yrs|years)?\)?/i, /\byears?\s*old\b/i]) || null;
+  const dobKey     = pickKey(keys, [/\b(dob|birth(date)?|date\s*of\s*birth)\b/i]) || null;
+  const accolKey   = keys.includes('Accolades') ? 'Accolades' : pickKey(keys, [/accolade|achievement|title|award/i]) || null;
+  const formerKey  = pickKey(keys, [/\b(former|previous|past|ex)[\s_]*teams?\b/i,/\bteam\s*history\b/i,/^Former Team(s)?$/i]) || 'Former Team';
+
+  const lines = players.map(p=>{
+    const ign = (() => {
+      const tryKeys = ignKey ? [ignKey] : [];
+      tryKeys.push('IGN','In-game Name','Player IGN','Player Name','Nickname','Name','name');
+      for(const k of tryKeys){
+        if(k in p && String(p[k]).trim()!=='') return String(p[k]).trim();
+      }
+      return 'Unknown';
+    })();
+    const role    = roleKey    ? (p[roleKey]    ?? 'Unknown') : 'Unknown';
+    const country = countryKey ? (p[countryKey] ?? 'Unknown') : 'Unknown';
+    const ageNum  = parseAgeValue(p, ageKey, dobKey);
+    const age     = (ageNum==null)
+      ? (ageKey ? String(p[ageKey] ?? 'Unknown') : 'Unknown')
+      : String(ageNum);
+    const formerTeams = formerKey ? splitToLines(p[formerKey]).join('; ') : '';
+    const accs        = accolKey ? splitToLines(p[accolKey]).join('; ')   : '';
+    return `- IGN=${ign} | Role=${role} | Country=${country} | Age=${age}` +
+           (formerTeams ? ` | FormerTeams=${formerTeams}` : '') +
+           (accs ? ` | Accolades=${accs}` : '');
+  });
+
+  return lines.join('\n');
+}
+
+function buildTeamInfoTextForAi(info){
+  if(!info || !Object.keys(info).length) return 'No extra team info in br_team_info for this team.';
+  const lines=[];
+  for(const [k,v] of Object.entries(info)){
+    if(v==null || String(v).trim()==='') continue;
+    if(/logo/i.test(k) && looksLikeURL(v)) continue; // skip logo links
+    lines.push(`${k}: ${String(v).trim()}`);
+  }
+  return lines.length ? lines.join('\n') : 'No extra team info in br_team_info for this team.';
+}
+
+function buildAiPrompt(){
+  if(!CURRENT_TEAM){
+    return 'Select a team from the grid above to generate an AI analysis prompt.';
+  }
+
+  const scopeTournament = selectedTournament()==='__all__'
+    ? 'All tournaments in this dataset'
+    : selectedTournament();
+  const scopeStage = selectedStage()==='__all__'
+    ? 'All stages'
+    : selectedStage();
+
+  if(!TEAM_ROWS || !TEAM_ROWS.length){
+    return `You are an esports analyst and Free Fire Battle Royale commentator.
+
+There is currently NO match data for this team within the selected scope.
+
+Scope:
+- Tournament filter: ${scopeTournament}
+- Stage filter: ${scopeStage}
+
+Team identity:
+- Team code: ${CURRENT_TEAM.name}
+- Team name: ${CURRENT_TEAM.fullname}
+- Region: ${CURRENT_TEAM.region || '—'}
+- East/West group: ${CURRENT_TEAM.ew || '—'}
+
+Explain that no stats are available for this scope yet, and what you would normally look for once matches are played (Booyah consistency, elims vs survival balance, map preferences, etc.).`;
+  }
+
+  const teamCode = CURRENT_TEAM.name;
+  const teamName = CURRENT_TEAM.fullname;
+  const region   = CURRENT_TEAM.region || '—';
+  const ew       = CURRENT_TEAM.ew || '—';
+
+  const k   = kpiDataset(TEAM_ROWS);
+  const last = latestYwdm(TEAM_ROWS);
+  const maps = teamMapPerf(TEAM_ROWS);
+
+  const kpiLines = [
+    `Rows=${k.matches}`,
+    `Booyahs=${k.booyahs} (BooyahRate=${fmtPct(k.booyah_rate)})`,
+    `Elims=${k.elims} (ElimsPerMatch=${k.elims_per_match.toFixed(1)})`,
+    `PlacementPoints=${k.placement} (PlacementPerMatch=${k.place_per_match.toFixed(1)})`,
+    `TotalPoints=${k.total} (TotalPerMatch=${k.total_per_match.toFixed(1)})`,
+    `Top3Rate=${fmtPct(k.top3_rate)}`,
+    `LastPlayedYWD=${fmtYwdm(last)}`
+  ].join('\n');
+
+  const mapLines = maps.length
+    ? maps.map(mp =>
+        `- Map=${mp.map} | Matches=${mp.matches} | Booyahs=${mp.booyahs} | BooyahRate=${fmtPct(mp.booyah_rate)} | ElimsPerMatch=${mp.elims_pm.toFixed(1)} | PlacementPerMatch=${mp.placement_pm.toFixed(1)} | TotalPerMatch=${mp.total_pm.toFixed(1)}`
+      ).join('\n')
+    : 'No per-map stats in this scope.';
+
+  const matchLines = TEAM_ROWS.map(r=>{
+    const byh  = n(r.booyah);
+    const tot  = n(r.total);
+    const el   = n(r.elimination);
+    const plc  = n(r.placement);
+    const top3 = n(r.top3);
+    const y = r.year ?? '';
+    const w = r.week ?? '';
+    const d = r.day ?? '';
+    const m = r.match ?? '';
+    const stage = norm(r.stage);
+    const tourn = norm(r.tournament);
+    const mapName = norm(r.map);
+    const drop = norm(r.drop);
+    return `- Y${y} W${w} D${d} M${m} | Tournament=${tourn || 'n/a'} | Stage=${stage || 'n/a'} | Map=${mapName || 'n/a'} | Drop=${drop || 'n/a'} | Booyah=${byh} | PlacementPts=${plc} | Elims=${el} | TotalPts=${tot} | Top3Flag=${top3}`;
+  }).join('\n');
+
+  const rosterText   = buildRosterTextForAi(TEAM_PLAYERS);
+  const teamInfoText = buildTeamInfoTextForAi(TEAM_INFO);
+
+  const prompt = `You are an esports analyst and Free Fire Battle Royale commentator.
+
+Task:
+- Using the stats below, analyze the performance, identity, and playstyle of the team.
+- Highlight strengths, weaknesses, consistency, map comfort, macro trends, and risk factors for upcoming matches.
+- Reference concrete numbers from the data (Booyahs, total points per match, elims per match, top 3 rate, etc.).
+- Speak in an on-air analysis style, as if you are on the analyst desk before the next FFBR match day.
+
+Data scope:
+- Tournament filter: ${scopeTournament}
+- Stage filter: ${scopeStage}
+
+Team identity:
+- Team code: ${teamCode}
+- Team name: ${teamName}
+- Region: ${region}
+- East/West group: ${ew}
+
+Overall KPIs within this scope:
+${kpiLines}
+
+Per-map performance:
+${mapLines}
+
+Roster (from br_player_info):
+${rosterText}
+
+Additional team info (from br_team_info):
+${teamInfoText}
+
+Match log (each row is one game in this scope):
+${matchLines}
+
+Now, based on all this data, give a detailed breakdown of:
+1) What kind of team this is (aggressive, placement-focused, streaky, clutch, etc.),
+2) Their best and worst maps and why,
+3) How their early–mid–late game seems to flow from the stats,
+4) What opposing teams should respect or punish,
+5) One or two key storylines a commentator can use on broadcast.`;
+
+  return prompt;
+}
+
+function updateAiPrompt(){
+  const ta = el('aiPrompt');
+  if(!ta) return;
+  ta.value = buildAiPrompt();
+}
+
 /* ---------- Renders: Team core ---------- */
 function kpiAndByMap(){
   if(!CURRENT_TEAM){
     const tTitle = el('teamTitle'); if(tTitle) tTitle.textContent='Selected Team — Overview';
     const idBody = el('identityBody'); if(idBody) idBody.innerHTML='Select a team.';
     const kpiBody = el('kpiBody'); if(kpiBody) kpiBody.innerHTML='—';
+    updateAiPrompt();
     return;
   }
   el('teamTitle').textContent = `Selected Team — Overview`;
@@ -1091,6 +1297,7 @@ function kpiAndByMap(){
     ]);
     applyColumnHeatmap('tblMapTeam', ['total_pm','placement_pm','elims_pm','booyah_rate','matches','booyahs','elims','placement','total']);
   }
+  updateAiPrompt();
 }
 
 /* Sorting helper */
@@ -1210,8 +1417,12 @@ async function selectTeam(teamObj){
     fetchPlayersBy(teamObj.name)
   ]);
 
+  TEAM_INFO = info || null;
+  TEAM_PLAYERS = roster || [];
+
   renderTeamInfo(info);
   renderRoster(roster);
+  updateAiPrompt();
 }
 
 /* ---------- Controls ---------- */
@@ -1221,7 +1432,6 @@ function populateMapFilter(){
     uniqueMaps(baseRows(ALL)).map(m=>`<option>${m}</option>`).join('');
 }
 
-/* Shared refresh used by Tournament + Stage changes */
 async function refreshScopeAfterFilterChange(){
   updateFilterHint();
   updateTeamsForCurrentScope();
@@ -1241,6 +1451,9 @@ async function refreshScopeAfterFilterChange(){
   if(nextTeam){
     await selectTeam(nextTeam);
   }else{
+    TEAM_ROWS = [];
+    TEAM_INFO = null;
+    TEAM_PLAYERS = [];
     const teamTitle = el('teamTitle'); if(teamTitle) teamTitle.textContent='Selected Team — Overview';
     const ident = el('identityBody'); if(ident) ident.innerHTML='Select a team.';
     const kpiBody = el('kpiBody'); if(kpiBody) kpiBody.innerHTML='—';
@@ -1249,7 +1462,33 @@ async function refreshScopeAfterFilterChange(){
     const tblByDay = el('tblByDay'); if(tblByDay) tblByDay.innerHTML='—';
     const teamInfoBody = el('teamInfoBody'); if(teamInfoBody) teamInfoBody.innerHTML='<div class="muted">No team info found.</div>';
     const teamRosterBody = el('teamRosterBody'); if(teamRosterBody) teamRosterBody.innerHTML='<div class="muted">No players found.</div>';
+    updateAiPrompt();
   }
+}
+
+async function copyAiPrompt(){
+  const ta = el('aiPrompt');
+  const status = el('aiCopyStatus');
+  if(!ta) return;
+  const text = ta.value || '';
+  if(!text.trim()){
+    if(status) status.textContent = 'Nothing to copy yet.';
+    return;
+  }
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(text);
+    }else{
+      ta.focus();
+      ta.select();
+      document.execCommand('copy');
+    }
+    if(status) status.textContent = 'Copied prompt to clipboard.';
+  }catch(err){
+    console.error('Clipboard error', err);
+    if(status) status.textContent = 'Copy failed — please select and copy manually.';
+  }
+  setTimeout(()=>{ if(status) status.textContent=''; }, 4000);
 }
 
 function wireControls(){
@@ -1302,6 +1541,11 @@ function wireControls(){
   });
 
   el('teamSearch').addEventListener('input', e=> renderTeamGrid(e.target.value||''));
+
+  const copyBtn = el('copyAiPromptBtn');
+  if(copyBtn) copyBtn.addEventListener('click', copyAiPrompt);
+  const refreshBtn = el('refreshAiPromptBtn');
+  if(refreshBtn) refreshBtn.addEventListener('click', updateAiPrompt);
 }
 
 /* ---------- Init ---------- */
@@ -1332,6 +1576,7 @@ async function initial(){
     if(qTeam && TEAM_BY_CODE[qTeam]) starter=TEAM_BY_CODE[qTeam];
     else if(TEAMS.length) starter=TEAMS[0];
     if(starter) await selectTeam(starter);
+    else updateAiPrompt();
 
     wireControls();
 
