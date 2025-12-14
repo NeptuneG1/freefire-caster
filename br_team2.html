@@ -265,6 +265,34 @@
       white-space:nowrap;
     }
 
+    /* STICKY RANK COLUMN (left pinned) */
+    .table-scroll thead th.col-rank{
+      position:sticky;
+      left:0;
+      z-index:10;
+      text-align:center;
+      min-width:46px;
+      border-right:1px solid #242424;
+      color:rgba(245,245,245,.65);
+      font-weight:700;
+    }
+    
+    .table-scroll tbody td.col-rank{
+      position:sticky;
+      left:0;
+      z-index:4;
+      text-align:center;
+      font-weight:700;
+      font-size:.85rem;
+      color:rgba(245,245,245,.55);
+      background:#131313;
+      border-right:1px solid #242424;
+    }
+
+    .table-scroll tbody tr:hover td.col-rank{
+      color:rgba(245,245,245,.78);
+    }
+
     /* HIDE LOW-PRIORITY COLUMNS ON SMALL SCREENS (Option 2) */
     @media (max-width:520px){
       .table-scroll th.col-ew,
@@ -693,10 +721,16 @@ function updateTeamsForCurrentScope(){
 }
 
 /* ============ Tables + heat ============ */
-function renderSimpleTable(list, cols){
+function renderSimpleTable(list, cols, opts = {}){
   if (!list.length) return '<div class="muted">No rows.</div>';
 
-  const head = `<thead><tr>` + cols.map(c=>{
+  // default: show rank (1..N) as the first column
+  const showRank = opts.rank !== false;
+  const finalCols = showRank
+    ? [{ label:'#', key:'__rank', className:'col-rank', html:(_r,i)=> (i+1) }, ...cols]
+    : cols;
+
+  const head = `<thead><tr>` + finalCols.map(c=>{
     const classes=[];
     if (c.right) classes.push('right');
     if (c.className) classes.push(c.className);
@@ -704,7 +738,7 @@ function renderSimpleTable(list, cols){
     return `<th data-key="${c.key}"${clsStr}>${c.label}</th>`;
   }).join('') + `</tr></thead>`;
 
-  const body = `<tbody>` + list.map((r,i)=>`<tr>` + cols.map(c=>{
+  const body = `<tbody>` + list.map((r,i)=>`<tr>` + finalCols.map(c=>{
     let v;
     if (typeof c.html==='function'){
       v=c.html(r,i);
@@ -716,6 +750,7 @@ function renderSimpleTable(list, cols){
       if (c.link && v && looksLikeURL(v)) v=`<a href="${v}" target="_blank" rel="noopener">${v}</a>`;
     }
     if (v==null || v==='') v='—';
+
     const classes=[];
     if (c.right) classes.push('right');
     if (c.className) classes.push(c.className);
@@ -1021,17 +1056,24 @@ function renderByDay(){
     row.set(d, (row.get(d) || 0) + n(r.total));
   }
 
-  let thead = `<thead><tr><th data-key="map">Map</th>${days.map(d=>`<th data-key="${d}" class="right">${d}</th>`).join('')}</tr></thead>`;
+  let thead = `<thead><tr>
+    <th class="col-rank">#</th>
+    <th data-key="map">Map</th>
+    ${days.map(d=>`<th data-key="${d}" class="right">${d}</th>`).join('')}
+  </tr></thead>`;
+
   let tbody = '<tbody>';
-  for(const m of maps){
+  maps.forEach((m, idx) => {
     const row = totals.get(m) || new Map();
-    tbody += `<tr><td data-key="map">${m}</td>` +
+    tbody += `<tr>
+      <td class="col-rank">${idx+1}</td>
+      <td data-key="map">${m}</td>` +
       days.map(d=>{
         const v = row.get(d);
         return `<td data-key="${d}" class="right">${(v!=null && isFinite(v)) ? Number(v).toFixed(0) : '—'}</td>`;
       }).join('') +
       `</tr>`;
-  }
+  });
   tbody += '</tbody>';
 
   box.innerHTML = `<div class="table-scroll"><table>${thead}${tbody}</table></div>`;
