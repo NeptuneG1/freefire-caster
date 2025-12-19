@@ -230,6 +230,7 @@ const client = supabase.createClient(
 
 /* ========= Utils ========= */
 const PLACEHOLDER='https://imgur.com/AdvPwAO.png';
+const ALL_TEAMS='__ALL_TEAMS__';
 const pct=(n,d)=> d? ((n/d)*100).toFixed(1)+'%':'—';
 const fmtP=(x)=> (x*100).toFixed(1)+'%';
 const uniq=(a)=>[...new Set(a)];
@@ -257,10 +258,9 @@ function barH(labels, values, opts={}){
 }
 
 function groupedBars(labels, aVals, bVals, opts={}){
-  // aVals = matches, bVals = wins
   const W = opts.width || 400;
   const labelW = 120;
-  const rightPad = 80;                  // space for "wins/matches (win%)" label
+  const rightPad = 80;
   const pad = 6, row = 12, gap = 2, grpGap = 6;
   const H = Math.max(40, labels.length*(row+gap) + labels.length*grpGap + pad*2);
   const max = Math.max(1, ...aVals, ...bVals);
@@ -269,20 +269,15 @@ function groupedBars(labels, aVals, bVals, opts={}){
   const svg = [`<svg class="chart" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" shape-rendering="crispEdges">`];
   let y = pad;
   labels.forEach((lb, i)=>{
-    const a = scale(aVals[i]);               // Matches bar
-    const b = scale(bVals[i]);               // Wins bar
+    const a = scale(aVals[i]);
+    const b = scale(bVals[i]);
     const wr = aVals[i] ? ((bVals[i]/aVals[i])*100).toFixed(1)+'%' : '—';
 
     svg.push(`<text x="2" y="${y+10}" font-size="11" fill="#ddd">${lb}</text>`);
     svg.push(`<rect x="${labelW}" y="${y}" width="${a}" height="${row}" fill="#ffbd59" stroke="#6a4e23" vector-effect="non-scaling-stroke"/>`);
     y += row + gap;
     svg.push(`<rect x="${labelW}" y="${y}" width="${b}" height="${row}" fill="#4aa86a" stroke="#2c5a3a" vector-effect="non-scaling-stroke"/>`);
-
-    // Right-side label: wins/matches (win%)
-    svg.push(
-      `<text x="${labelW + Math.max(a,b) + 6}" y="${y-2}" font-size="10" fill="#bbb" class="mono">` +
-      `${bVals[i]}/${aVals[i]} (${wr})</text>`
-    );
+    svg.push(`<text x="${labelW + Math.max(a,b) + 6}" y="${y-2}" font-size="10" fill="#bbb" class="mono">${bVals[i]}/${aVals[i]} (${wr})</text>`);
     y += row + grpGap;
   });
   svg.push(`</svg>`);
@@ -290,13 +285,13 @@ function groupedBars(labels, aVals, bVals, opts={}){
 }
 
 /* ========= Data plumbing ========= */
-let ALL_RECORDS=[]; // all rows (matches), used to derive tourn+team lists
+let ALL_RECORDS=[];
 
 function explodeRecordToRows(rec){
   const s=parseState(rec.state);
-  const picks=Array.isArray(s.picks)?s.picks:[];          // active heroes (objects)
-  const passives=Array.isArray(s.passives)?s.passives:[];  // passive trios (objects)
-  const bans=Array.isArray(s.bans)?s.bans:[];              // [{name,image_url}, {name,image_url}]
+  const picks=Array.isArray(s.picks)?s.picks:[];
+  const passives=Array.isArray(s.passives)?s.passives:[];
+  const bans=Array.isArray(s.bans)?s.bans:[];
 
   const leftWin=(rec.team_left_score??0)>(rec.team_right_score??0);
   const rightWin=(rec.team_right_score??0)>(rec.team_left_score??0);
@@ -327,8 +322,8 @@ function explodeRecordToRows(rec){
       team,opp,ts,os,res,
       banName: ban?.name || '',
       banImg : ban?.image_url || PLACEHOLDER,
-      act,    // [{hero,img} ×4]
-      pass:pas // [[{name,img}×3] ×4]
+      act,
+      pass:pas
     };
   }
   return [side(true), side(false)];
@@ -346,7 +341,6 @@ async function fetchAll(){
 
 /* ========= Filters ========= */
 function tournamentsFrom(records){
-  // return [{name, firstDate, lastDate}] sorted by lastDate desc
   const map = new Map();
   records.forEach(r=>{
     const t = r.tournament_name || '—';
@@ -357,16 +351,6 @@ function tournamentsFrom(records){
   return [...map.values()].sort((a,b)=> b.last - a.last);
 }
 
-/* NEW: all teams across all tournaments (dropdown source) */
-function allTeams(records){
-  const S = new Set();
-  records.forEach(r=>{
-    if(r.team_left) S.add(r.team_left);
-    if(r.team_right) S.add(r.team_right);
-  });
-  return [...S].sort((a,b)=>a.localeCompare(b));
-}
-
 function teamsForTournament(records, tournName){
   const S = new Set();
   records.forEach(r=>{
@@ -374,12 +358,14 @@ function teamsForTournament(records, tournName){
     if(r.team_left) S.add(r.team_left);
     if(r.team_right) S.add(r.team_right);
   });
-  return [...S].sort();
+  return [...S].sort((a,b)=>a.localeCompare(b));
 }
 
 function rowsForTeamAndTournament(records, team, tournName){
   const inTourn = (r) => (tournName==='__ALL__') || ((r.tournament_name||'—')===tournName);
   const filtered = records.filter(inTourn).flatMap(explodeRecordToRows);
+
+  if(team === ALL_TEAMS) return filtered;       // all teams in tournament scope
   return filtered.filter(r=>r.team===team);
 }
 
@@ -391,10 +377,10 @@ function kpis(rows){
   return {matches,wins,winpct,diffAvg,maps,opps};
 }
 function mostBanned(rows){
-  const m=new Map(); const imgs=new Map();
-  rows.forEach(r=>{ const b=r.banName||''; if(!b)return; m.set(b,(m.get(b)||0)+1); if(!imgs.has(b)) imgs.set(b,r.banImg||PLACEHOLDER); });
+  const m=new Map();
+  rows.forEach(r=>{ const b=r.banName||''; if(!b)return; m.set(b,(m.get(b)||0)+1); });
   const arr=[...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10);
-  return {labels:arr.map(x=>x[0]), values:arr.map(x=>x[1]), imgs};
+  return {labels:arr.map(x=>x[0]), values:arr.map(x=>x[1])};
 }
 function perfByMap(rows){
   const m=new Map();
@@ -403,24 +389,22 @@ function perfByMap(rows){
     .sort((a,b)=>b.matches-a.matches||a.name.localeCompare(b.name));
 }
 function mostPickActive(rows){
-  const m=new Map(); const imgs=new Map();
+  const m=new Map();
   rows.forEach(r=>r.act.forEach(a=>{
     if(!a.hero) return;
     m.set(a.hero,(m.get(a.hero)||0)+1);
-    if(!imgs.has(a.hero)) imgs.set(a.hero, a.img||PLACEHOLDER);
   }));
   const arr=[...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10);
-  return {labels:arr.map(x=>x[0]), values:arr.map(x=>x[1]), imgs};
+  return {labels:arr.map(x=>x[0]), values:arr.map(x=>x[1])};
 }
 function mostPickPassive(rows){
-  const m=new Map(); const imgs=new Map();
+  const m=new Map();
   rows.forEach(r=>r.pass.forEach(trio=>trio.forEach(ps=>{
     if(!ps?.name) return;
     m.set(ps.name,(m.get(ps.name)||0)+1);
-    if(!imgs.has(ps.name)) imgs.set(ps.name, ps.img||PLACEHOLDER);
   })));
   const arr=[...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10);
-  return {labels:arr.map(x=>x[0]), values:arr.map(x=>x[1]), imgs};
+  return {labels:arr.map(x=>x[0]), values:arr.map(x=>x[1])};
 }
 
 function topCombos(rows){
@@ -430,20 +414,19 @@ function topCombos(rows){
     const imgMap=new Map(); r.act.forEach(a=>{ if(a.hero&&!imgMap.has(a.hero)) imgMap.set(a.hero,a.img||PLACEHOLDER); });
     if(names.length!==4) return;
     const key=names.slice().sort((a,b)=>a.localeCompare(b)).join('|');
-    if(!combos.has(key)) combos.set(key,{names:key.split('|'), heroImgs: Object.fromEntries([...imgMap]), picks:0,wins:0,maps:new Map()});
+    if(!combos.has(key)) combos.set(key,{names:key.split('|'), heroImgs:Object.fromEntries([...imgMap]), picks:0,wins:0,maps:new Map()});
     const C=combos.get(key); C.picks++; if(r.res==='W')C.wins++; C.maps.set(r.map,(C.maps.get(r.map)||0)+1);
   });
-  const list=[...combos.values()].map(c=>({
-    ...c, winpct: c.picks?c.wins/c.picks:0,
-    topMaps: [...c.maps.entries()].sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>`${x[0]} ×${x[1]}`).join(', ')
+  return [...combos.values()].map(c=>({
+    ...c, winpct:c.picks?c.wins/c.picks:0,
+    topMaps:[...c.maps.entries()].sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>`${x[0]} ×${x[1]}`).join(', ')
   })).sort((a,b)=>b.picks-a.picks||b.wins-a.wins).slice(0,10);
-  return list;
 }
 
 function normalizeTrio(arr){
   const names=(arr||[]).map(x=>x?.name||'').filter(Boolean);
   if(names.length!==3) return null;
-  const imgs = {}; (arr||[]).forEach(x=>{ if(x?.name) imgs[x.name]=x.img||PLACEHOLDER; });
+  const imgs={}; (arr||[]).forEach(x=>{ if(x?.name) imgs[x.name]=x.img||PLACEHOLDER; });
   const sorted=[...names].sort((a,b)=>a.localeCompare(b));
   return {key:sorted.join('|'), names:sorted, imgs};
 }
@@ -456,11 +439,10 @@ function topPassiveTrios(rows){
       const T=M.get(n.key); T.picks++; if(r.res==='W')T.wins++; T.maps.set(r.map,(T.maps.get(r.map)||0)+1);
     });
   });
-  const list=[...M.values()].map(T=>({
-    ...T, winpct: T.picks?T.wins/T.picks:0,
+  return [...M.values()].map(T=>({
+    ...T, winpct:T.picks?T.wins/T.picks:0,
     topMaps:[...T.maps.entries()].sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>`${x[0]} ×${x[1]}`).join(', ')
   })).sort((a,b)=>b.picks-a.picks||b.wins-a.wins).slice(0,10);
-  return list;
 }
 
 function topActives(rows){
@@ -472,7 +454,7 @@ function topActives(rows){
     const o=S.get(a.hero); o.p++; if(r.res==='W')o.w++;
   })});
   const den=rows.length*4;
-  return [...S.entries()].map(([name,o])=>({name,img:IMG.get(name),picks:o.p, pickRate: den?o.p/den:0, wins:o.w, winRate: o.p?o.w/o.p:0}))
+  return [...S.entries()].map(([name,o])=>({name,img:IMG.get(name),picks:o.p, pickRate:den?o.p/den:0, wins:o.w, winRate:o.p?o.w/o.p:0}))
     .sort((a,b)=>b.picks-a.picks||b.wins-a.wins).slice(0,15);
 }
 function topPassives(rows){
@@ -484,12 +466,13 @@ function topPassives(rows){
     const o=S.get(ps.name); o.p++; if(r.res==='W')o.w++;
   }))});
   const den=rows.length*12;
-  return [...S.entries()].map(([name,o])=>({name,img:IMG.get(name),picks:o.p, pickRate: den?o.p/den:0, wins:o.w, winRate: o.p?o.w/o.p:0}))
+  return [...S.entries()].map(([name,o])=>({name,img:IMG.get(name),picks:o.p, pickRate:den?o.p/den:0, wins:o.w, winRate:o.p?o.w/o.p:0}))
     .sort((a,b)=>b.picks-a.picks||b.wins-a.wins).slice(0,15);
 }
 
 function perfByOpponent(rows){
-  const m=new Map(); rows.forEach(r=>{ if(!m.has(r.opp)) m.set(r.opp,{m:0,w:0}); const o=m.get(r.opp); o.m++; if(r.res==='W')o.w++; });
+  const m=new Map();
+  rows.forEach(r=>{ if(!m.has(r.opp)) m.set(r.opp,{m:0,w:0}); const o=m.get(r.opp); o.m++; if(r.res==='W')o.w++; });
   return [...m.entries()].map(([opp,o])=>({opp,matches:o.m,wins:o.w,winpct:o.m?o.w/o.m:0}))
     .sort((a,b)=>b.matches-a.matches||a.opp.localeCompare(b.opp)).slice(0,20);
 }
@@ -520,8 +503,7 @@ function recent(rows){
 /* ========= Renderers ========= */
 function renderKPIs(rows){
   const k=kpis(rows);
-  const el=document.getElementById('kpis');
-  el.innerHTML = `
+  document.getElementById('kpis').innerHTML = `
     <div class="kpi">Matches <b>${k.matches}</b></div>
     <div class="kpi">Wins <b>${k.wins}</b> <span class="muted">(${pct(k.wins,k.matches)})</span></div>
     <div class="kpi">Avg Score Diff <b>${k.diffAvg.toFixed(2)}</b></div>
@@ -532,37 +514,37 @@ function renderKPIs(rows){
 function renderMostPickAct(rows){
   const {labels, values}=mostPickActive(rows);
   const wrap=document.getElementById('actPickWrap');
-  wrap.innerHTML = labels.length ? barH(labels, values, {height: labels.length*18+16}) : `<div class="muted">No active picks.</div>`;
+  wrap.innerHTML = labels.length ? barH(labels, values) : `<div class="muted">No active picks.</div>`;
 }
 
 function renderMostPickPas(rows){
   const {labels, values}=mostPickPassive(rows);
   const wrap=document.getElementById('pasPickWrap');
-  wrap.innerHTML = labels.length ? barH(labels, values, {height: labels.length*18+16}) : `<div class="muted">No passive picks.</div>`;
+  wrap.innerHTML = labels.length ? barH(labels, values) : `<div class="muted">No passive picks.</div>`;
 }
 
 function renderMostBanned(rows){
   const {labels, values}=mostBanned(rows);
   const wrap=document.getElementById('banChartWrap');
-  wrap.innerHTML = labels.length ? barH(labels, values, {height: labels.length*18+16}) : `<div class="muted">No bans recorded for this team.</div>`;
+  wrap.innerHTML = labels.length ? barH(labels, values) : `<div class="muted">No bans recorded.</div>`;
 }
+
 function renderPerfByMap(rows){
   const data=perfByMap(rows);
   const wrap=document.getElementById('mapChartWrap');
   if(!data.length){ wrap.innerHTML='<div class="muted">No map data.</div>'; return; }
-  const labels=data.map(x=>x.name), matches=data.map(x=>x.matches), wins=data.map(x=>x.wins);
-  wrap.innerHTML = groupedBars(labels, matches, wins, {height: labels.length*26+24});
+  wrap.innerHTML = groupedBars(data.map(x=>x.name), data.map(x=>x.matches), data.map(x=>x.wins));
 }
 
 function renderCombos(rows){
   const list=topCombos(rows);
   const tbody=document.getElementById('comboBody'); tbody.innerHTML='';
-  if(!list.length){ tbody.innerHTML = `<tr><td colspan="5" class="muted">No combos found.</td></tr>`; return; }
+  if(!list.length){ tbody.innerHTML=`<tr><td colspan="5" class="muted">No combos found.</td></tr>`; return; }
   list.forEach(c=>{
     const icons = c.names.map(n=>`<img class="avatar" src="${(c.heroImgs[n]||PLACEHOLDER)}" alt="${n}" title="${n}" loading="lazy">`).join('');
     const label = `<div class="cell-icons">${icons}<span class="muted" style="margin-left:6px">${c.names.join(' · ')}</span></div>`;
     const tr=document.createElement('tr');
-    tr.innerHTML = `<td>${label}</td><td class="right mono">${c.picks}</td><td class="right mono">${c.wins}</td><td class="right mono">${fmtP(c.winpct)}</td><td>${c.topMaps||'—'}</td>`;
+    tr.innerHTML=`<td>${label}</td><td class="right mono">${c.picks}</td><td class="right mono">${c.wins}</td><td class="right mono">${fmtP(c.winpct)}</td><td>${c.topMaps||'—'}</td>`;
     tbody.appendChild(tr);
   });
 }
@@ -570,7 +552,7 @@ function renderCombos(rows){
 function renderPTrios(rows){
   const list=topPassiveTrios(rows);
   const tb=document.getElementById('ptrioBody'); tb.innerHTML='';
-  if(!list.length){ tb.innerHTML='<tr><td colspan="5" class="muted">No passive trio data.</td></tr>'; return; }
+  if(!list.length){ tb.innerHTML=`<tr><td colspan="5" class="muted">No passive trio data.</td></tr>`; return; }
   list.forEach(t=>{
     const icons = t.names.map(n=>`<img class="avatar s" src="${(t.imgs[n]||PLACEHOLDER)}" alt="${n}" title="${n}" loading="lazy">`).join('');
     const label = `<div class="cell-icons">${icons}<span class="muted" style="margin-left:6px">${t.names.join(' · ')}</span></div>`;
@@ -582,56 +564,57 @@ function renderPTrios(rows){
 
 function renderTopAct(rows){
   const list=topActives(rows); const tb=document.getElementById('actBody'); tb.innerHTML='';
-  if(!list.length){ tb.innerHTML='<tr><td colspan="5" class="muted">No active picks.</td></tr>'; return; }
+  if(!list.length){ tb.innerHTML=`<tr><td colspan="5" class="muted">No active picks.</td></tr>`; return; }
   list.forEach(r=>{
     const label=`<div class="cell-skill"><img class="avatar" src="${r.img||PLACEHOLDER}" alt="${r.name}" loading="lazy"><span>${r.name}</span></div>`;
     const tr=document.createElement('tr');
     tr.innerHTML=`<td>${label}</td><td class="right mono">${r.picks}</td><td class="right mono">${fmtP(r.pickRate)}</td><td class="right mono">${r.wins}</td><td class="right mono">${fmtP(r.winRate)}</td>`;
     tb.appendChild(tr);
-  })
+  });
 }
+
 function renderTopPas(rows){
   const list=topPassives(rows); const tb=document.getElementById('pasBody'); tb.innerHTML='';
-  if(!list.length){ tb.innerHTML='<tr><td colspan="5" class="muted">No passive picks.</td></tr>'; return; }
+  if(!list.length){ tb.innerHTML=`<tr><td colspan="5" class="muted">No passive picks.</td></tr>`; return; }
   list.forEach(r=>{
     const label=`<div class="cell-skill"><img class="avatar" src="${r.img||PLACEHOLDER}" alt="${r.name}" loading="lazy"><span>${r.name}</span></div>`;
     const tr=document.createElement('tr');
     tr.innerHTML=`<td>${label}</td><td class="right mono">${r.picks}</td><td class="right mono">${fmtP(r.pickRate)}</td><td class="right mono">${r.wins}</td><td class="right mono">${fmtP(r.winRate)}</td>`;
     tb.appendChild(tr);
-  })
+  });
 }
 
 function renderOpp(rows){
   const list=perfByOpponent(rows); const tb=document.getElementById('oppBody'); tb.innerHTML='';
-  if(!list.length){ tb.innerHTML='<tr><td colspan="4" class="muted">No opponent data.</td></tr>'; return; }
+  if(!list.length){ tb.innerHTML=`<tr><td colspan="4" class="muted">No opponent data.</td></tr>`; return; }
   list.forEach(r=>{
     const tr=document.createElement('tr');
     tr.innerHTML=`<td>${r.opp}</td><td class="right mono">${r.matches}</td><td class="right mono">${r.wins}</td><td class="right mono">${fmtP(r.winpct)}</td>`;
     tb.appendChild(tr);
-  })
+  });
 }
 
 function renderBanImpact(rows){
   const list=banImpactAgg(rows); const tb=document.getElementById('biBody'); tb.innerHTML='';
-  if(!list.length){ tb.innerHTML='<tr><td colspan="5" class="muted">Not enough ban data.</td></tr>'; return; }
+  if(!list.length){ tb.innerHTML=`<tr><td colspan="5" class="muted">Not enough ban data.</td></tr>`; return; }
   list.forEach(r=>{
     const label=`<div class="cell-skill"><img class="avatar" src="${r.img||PLACEHOLDER}" alt="${r.name}" loading="lazy"><span>${r.name}</span></div>`;
     const tr=document.createElement('tr');
     tr.innerHTML=`<td>${label}</td><td class="right mono">${r.banned}</td><td class="right mono">${fmtP(r.wBan)}</td><td class="right mono">${fmtP(r.wNot)}</td><td class="right mono" style="font-weight:700;">${fmtP(r.delta)}</td>`;
     tb.appendChild(tr);
-  })
+  });
 }
 
 function renderRecent(rows){
   const list=recent(rows); const tb=document.getElementById('recentBody'); tb.innerHTML='';
-  if(!list.length){ tb.innerHTML='<tr><td colspan="6" class="muted">No recent matches.</td></tr>'; return; }
+  if(!list.length){ tb.innerHTML=`<tr><td colspan="6" class="muted">No recent matches.</td></tr>`; return; }
   list.forEach(r=>{
     const score=`${r.ts}-${r.os}`;
     const wl=r.res==='W'?`<span style="color:var(--good);font-weight:700">W</span>`:`<span style="color:var(--bad);font-weight:700">L</span>`;
     const tr=document.createElement('tr');
     tr.innerHTML=`<td>${r.date}</td><td>${r.map}</td><td>${r.opp}</td><td class="right mono">${score}</td><td class="right">${wl}</td><td class="cell-skill"><img class="avatar" src="${r.banImg||PLACEHOLDER}" alt="${r.banName}" loading="lazy"><span>${r.banName||'—'}</span></td>`;
     tb.appendChild(tr);
-  })
+  });
 }
 
 /* ========= Orchestrator ========= */
@@ -646,26 +629,35 @@ async function init(){
   const latest = tourns[0]?.name || '__ALL__';
   tSel.value = latest;
 
-  // Team dropdown (ALWAYS all teams across all tournaments)
+  // Team dropdown (linked to tournament) + All Teams
   const teamSel = document.getElementById('teamSelect');
-  const teams = allTeams(ALL_RECORDS);
-  teamSel.innerHTML = teams.map(x=>`<option value="${x}">${x}</option>`).join('');
-  teamSel.value = teams[0] || '';
+  const refreshTeams = ()=>{
+    const teams = teamsForTournament(ALL_RECORDS, tSel.value);
+    const prev = teamSel.value;
 
-  // Load / refresh dashboard
+    teamSel.innerHTML =
+      `<option value="${ALL_TEAMS}">All Teams</option>` +
+      teams.map(x=>`<option value="${x}">${x}</option>`).join('');
+
+    if(prev === ALL_TEAMS) teamSel.value = ALL_TEAMS;
+    else teamSel.value = teams.includes(prev) ? prev : ALL_TEAMS;
+  };
+  refreshTeams();
+
   const load = ()=>{
     if(!teamSel.value) return;
     loadTeam(teamSel.value, tSel.value);
   };
 
-  tSel.addEventListener('change', load);   // tournament only filters stats now
+  tSel.addEventListener('change', ()=>{ refreshTeams(); load(); });
   teamSel.addEventListener('change', load);
   load();
 }
 
 function setMeta(team, tourn, rows){
+  const label = (team === ALL_TEAMS) ? 'All Teams' : team;
   document.getElementById('meta').textContent =
-    `${team} • ${rows.length} team-rows • ${tourn==='__ALL__'?'All tournaments':tourn}`;
+    `${label} • ${rows.length} team-rows • ${tourn==='__ALL__'?'All tournaments':tourn}`;
 }
 
 function loadTeam(team, tourn){
