@@ -6,7 +6,6 @@
   <title>Team Report Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- Optional: nicer Inter font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -34,6 +33,9 @@
       --radius-sm:10px;
       --shadow: 0 10px 28px rgba(0,0,0,.45);
       --shadow-soft: 0 6px 16px rgba(0,0,0,.35);
+
+      /* ✅ Force native selects (dropdown popup) to render dark */
+      color-scheme: dark;
     }
 
     *{box-sizing:border-box}
@@ -116,9 +118,13 @@
       position:relative;
       display:inline-flex;
       align-items:center;
+      width:auto;
     }
+
+    /* ✅ select closed state */
     select{
       appearance:none;
+      color-scheme: dark; /* ✅ important for Chromium native dropdown */
       background:linear-gradient(180deg, rgba(18,18,18,.98), rgba(10,10,10,.98));
       color:#ffe7c5;
       border:1px solid rgba(255,255,255,.10);
@@ -130,6 +136,19 @@
       outline:none;
       min-width: 210px;
     }
+
+    /* ✅ dropdown popup items (options) */
+    select option{
+      background:#0f0f0f;
+      color:#ffe7c5;
+    }
+
+    /* ✅ make All tournaments / All teams look muted in the dropdown */
+    select option[value="__ALL__"],
+    select option[value="__ALL_TEAMS__"]{
+      color:#b9b9b9;
+    }
+
     .selectWrap:after{
       content:"▾";
       position:absolute;
@@ -186,7 +205,6 @@
       box-shadow: var(--shadow-soft);
       overflow:hidden;
     }
-    /* Accent strip */
     .card:before{
       content:"";
       position:absolute;
@@ -213,7 +231,6 @@
       border-bottom:1px solid rgba(255,255,255,.06);
     }
 
-    /* Charts: remove forced tall min-height so no empty blocks */
     .chartcard{min-height:auto;}
     .chart{width:100%;height:auto;display:block;overflow:visible}
 
@@ -226,7 +243,7 @@
     .lg{width:10px;height:10px;border-radius:3px;background:#ffbd59;border:1px solid #6a4e23}
     .lg2{width:10px;height:10px;border-radius:3px;background:#4aa86a;border:1px solid #2c5a3a}
 
-    /* KPI row: more compact + grid-like */
+    /* KPI row */
     .kpis{
       display:grid;
       grid-template-columns:repeat(5, minmax(0, 1fr));
@@ -257,7 +274,6 @@
       border:1px solid rgba(255,255,255,.06);
       background:rgba(0,0,0,.18);
     }
-    /* Keep page sleek: scroll inside cards instead of endless height */
     .card.h .twrap{max-height:340px;}
     .card.l .twrap{max-height:420px;}
 
@@ -295,7 +311,6 @@
       margin:2px;font-size:.76rem;color:#ddd
     }
 
-    /* Mobile / responsive */
     @media (max-width: 980px){
       .card.q,.card.h,.card.l{grid-column:span 12}
       table{min-width:520px}
@@ -313,7 +328,7 @@
   <header>
     <div class="hdr">
       <h1>Clash Squad — Team Report</h1>
-      <small class="muted">Free Fire Caster</small>
+      <small class="muted">Sleek view • dense layout</small>
     </div>
   </header>
 
@@ -341,13 +356,11 @@
     </div>
 
     <div class="grid">
-      <!-- Overview -->
       <div class="card l" id="kpiCard">
         <h3>Overview</h3>
         <div class="kpis" id="kpis"></div>
       </div>
 
-      <!-- Charts row -->
       <div class="card q chartcard" id="actPickCard">
         <h3>Most Pick Active</h3>
         <div id="actPickWrap"></div>
@@ -369,7 +382,6 @@
         <div id="mapChartWrap"></div>
       </div>
 
-      <!-- Side-by-side tables -->
       <div class="card h" id="comboCard">
         <h3>Top Active Combos</h3>
         <div class="twrap">
@@ -844,7 +856,6 @@ function renderRecent(rows){
 async function init(){
   ALL_RECORDS = await fetchAll();
 
-  // Tournament dropdown (default to latest)
   const tourns = tournamentsFrom(ALL_RECORDS);
   const tSel = document.getElementById('tournSelect');
   tSel.innerHTML = `<option value="__ALL__">All tournaments</option>` +
@@ -852,7 +863,6 @@ async function init(){
   const latest = tourns[0]?.name || '__ALL__';
   tSel.value = latest;
 
-  // Team dropdown linked to tournament + All Teams
   const teamSel = document.getElementById('teamSelect');
   const refreshTeams = ()=>{
     const teams = teamsForTournament(ALL_RECORDS, tSel.value);
