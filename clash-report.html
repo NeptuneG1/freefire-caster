@@ -31,14 +31,14 @@
     }
     .btn{
       display:inline-flex;align-items:center;gap:8px;
-      background:var(--brand);           /* warm yellow */
-      color:#0d0d0d;                     /* dark text */
-      border:1px solid #d6a24a;          /* subtle edge */
+      background:var(--brand);
+      color:#0d0d0d;
+      border:1px solid #d6a24a;
       padding:10px 14px;
-      border-radius:18px;                /* pill */
+      border-radius:18px;
       font-weight:800;
       text-decoration:none;
-      box-shadow:0 2px 0 #8f5c1e;        /* slight depth */
+      box-shadow:0 2px 0 #8f5c1e;
       transition:
         background-color .15s ease,
         box-shadow .15s ease,
@@ -48,7 +48,7 @@
     .btn:active{ transform:translateY(1px); box-shadow:0 1px 0 #7b4f1a; }
     .btn:focus{ outline:2px solid #ffe3ad; outline-offset:2px; }
 
-    .bar .controls{margin-left:auto; margin-bottom:0;} /* ← reset inherited margin */
+    .bar .controls{margin-left:auto; margin-bottom:0;}
     @media (max-width:980px){
       .bar{flex-wrap:wrap}
       .btn{width:100%;justify-content:center}
@@ -289,7 +289,6 @@ function groupedBars(labels, aVals, bVals, opts={}){
   return svg.join('');
 }
 
-
 /* ========= Data plumbing ========= */
 let ALL_RECORDS=[]; // all rows (matches), used to derive tourn+team lists
 
@@ -357,6 +356,17 @@ function tournamentsFrom(records){
   });
   return [...map.values()].sort((a,b)=> b.last - a.last);
 }
+
+/* NEW: all teams across all tournaments (dropdown source) */
+function allTeams(records){
+  const S = new Set();
+  records.forEach(r=>{
+    if(r.team_left) S.add(r.team_left);
+    if(r.team_right) S.add(r.team_right);
+  });
+  return [...S].sort((a,b)=>a.localeCompare(b));
+}
+
 function teamsForTournament(records, tournName){
   const S = new Set();
   records.forEach(r=>{
@@ -366,6 +376,7 @@ function teamsForTournament(records, tournName){
   });
   return [...S].sort();
 }
+
 function rowsForTeamAndTournament(records, team, tournName){
   const inTourn = (r) => (tournName==='__ALL__') || ((r.tournament_name||'—')===tournName);
   const filtered = records.filter(inTourn).flatMap(explodeRecordToRows);
@@ -543,12 +554,6 @@ function renderPerfByMap(rows){
   wrap.innerHTML = groupedBars(labels, matches, wins, {height: labels.length*26+24});
 }
 
-function pillsFromMapCount(mapCount){
-  const arr=[...mapCount.entries()].sort((a,b)=>b[1]-a[1]);
-  const shown=arr.slice(0,3).map(([n,c])=>`<span class="pill">${n} ×${c}</span>`).join('');
-  const more=arr.length>3?`<span class="pill">+${arr.length-3} more</span>`:''; return shown+more;
-}
-
 function renderCombos(rows){
   const list=topCombos(rows);
   const tbody=document.getElementById('comboBody'); tbody.innerHTML='';
@@ -641,28 +646,24 @@ async function init(){
   const latest = tourns[0]?.name || '__ALL__';
   tSel.value = latest;
 
-  // Teams for selected tournament
+  // Team dropdown (ALWAYS all teams across all tournaments)
   const teamSel = document.getElementById('teamSelect');
-  const refreshTeams = ()=>{
-    const teams = teamsForTournament(ALL_RECORDS, tSel.value);
-    const prev = teamSel.value;
-    teamSel.innerHTML = teams.map(x=>`<option value="${x}">${x}</option>`).join('');
-    teamSel.value = teams.includes(prev) ? prev : (teams[0]||'');
-  };
-  refreshTeams();
+  const teams = allTeams(ALL_RECORDS);
+  teamSel.innerHTML = teams.map(x=>`<option value="${x}">${x}</option>`).join('');
+  teamSel.value = teams[0] || '';
 
-  // Load initial team
-  const load = ()=> loadTeam(teamSel.value, tSel.value);
-  tSel.addEventListener('change', ()=>{ refreshTeams(); load(); });
+  // Load / refresh dashboard
+  const load = ()=>{
+    if(!teamSel.value) return;
+    loadTeam(teamSel.value, tSel.value);
+  };
+
+  tSel.addEventListener('change', load);   // tournament only filters stats now
   teamSel.addEventListener('change', load);
   load();
 }
 
 function setMeta(team, tourn, rows){
-  const tourns = new Set();
-  ALL_RECORDS.forEach(r=>{
-    if(r.team_left===team || r.team_right===team) tourns.add(r.tournament_name||'—');
-  });
   document.getElementById('meta').textContent =
     `${team} • ${rows.length} team-rows • ${tourn==='__ALL__'?'All tournaments':tourn}`;
 }
