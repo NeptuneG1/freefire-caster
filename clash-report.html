@@ -5,83 +5,280 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Team Report Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Optional: nicer Inter font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+
   <style>
     :root{
-      --bg:#0d0d0d; --panel:#151515; --ink:#eee; --muted:#aaa;
-      --brand:#ffbd59; --brand2:#ff7733; --line:#2a2a2a;
-      --good:#71d083; --bad:#ff6b6b;
+      --bg:#070707;
+      --bg2:#0c0c0c;
+
+      --panel:#121212;
+      --panel2:#161616;
+
+      --ink:#f2f2f2;
+      --muted:#a8a8a8;
+      --muted2:#8a8a8a;
+
+      --brand:#ffbd59;
+      --brand2:#ff7733;
+      --line:rgba(255,255,255,.08);
+
+      --good:#71d083;
+      --bad:#ff6b6b;
+
+      --radius:14px;
+      --radius-sm:10px;
+      --shadow: 0 10px 28px rgba(0,0,0,.45);
+      --shadow-soft: 0 6px 16px rgba(0,0,0,.35);
     }
+
     *{box-sizing:border-box}
-    html{font-size:clamp(12px, 0.85vw + 8px, 16px);}
-    body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
-    header{position:sticky;top:0;z-index:5;background:#1a1a1a;border-bottom:2px solid var(--brand);padding:10px 12px}
-    h1{margin:0;font-size:clamp(1rem,1.2vw,1.15rem);color:var(--brand);letter-spacing:.2px}
-    .shell{max-width:min(1600px,98vw);margin:14px auto;padding:0 10px}
+    html{font-size:clamp(12px, 0.75vw + 8px, 16px);}
+    body{
+      margin:0;
+      color:var(--ink);
+      font-family:Inter,system-ui,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;
+      background:
+        radial-gradient(1200px 600px at 18% -10%, rgba(255,189,89,.18), transparent 55%),
+        radial-gradient(1100px 650px at 85% 0%, rgba(255,119,51,.12), transparent 50%),
+        linear-gradient(180deg, var(--bg), var(--bg2));
+    }
 
-    /* Controls */
-    .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
-    label{display:flex;align-items:center;gap:6px}
-    select{background:#1e1e1e;color:#ffe0b0;border:1px solid #3a3a3a;border-radius:8px;padding:6px 8px;font-weight:600}
-    .chip{color:var(--muted);font-size:.82rem}
+    header{
+      position:sticky; top:0; z-index:10;
+      background:rgba(12,12,12,.78);
+      backdrop-filter: blur(10px);
+      border-bottom:1px solid rgba(255,189,89,.28);
+      box-shadow: 0 10px 18px rgba(0,0,0,.25);
+    }
+    header .hdr{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:10px 12px;
+      max-width:min(1600px,98vw); margin:0 auto;
+    }
+    h1{
+      margin:0;
+      font-size:clamp(1rem,1.2vw,1.18rem);
+      color:var(--brand);
+      letter-spacing:.2px;
+      display:flex; align-items:center; gap:10px;
+    }
+    .hdr small{
+      color:var(--muted);
+      font-weight:600;
+      font-size:.82rem;
+      white-space:nowrap;
+    }
 
+    .shell{max-width:min(1600px,98vw);margin:12px auto;padding:0 10px}
+
+    /* Top toolbar */
     .bar{
       display:flex;align-items:center;gap:10px;
-      background:var(--panel);border:1px solid var(--line);
-      border-radius:12px;padding:8px 10px;margin-bottom:10px;
+      background:linear-gradient(180deg, rgba(22,22,22,.92), rgba(14,14,14,.92));
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      padding:10px 10px;
+      box-shadow: var(--shadow-soft);
     }
-    .btn{
-      display:inline-flex;align-items:center;gap:8px;
-      background:var(--brand);
-      color:#0d0d0d;
-      border:1px solid #d6a24a;
-      padding:10px 14px;
-      border-radius:18px;
-      font-weight:800;
-      text-decoration:none;
-      box-shadow:0 2px 0 #8f5c1e;
-      transition:
-        background-color .15s ease,
-        box-shadow .15s ease,
-        transform .06s ease;
-    }
-    .btn:hover{ background:#ffc86d; box-shadow:0 2px 0 #7b4f1a; }
-    .btn:active{ transform:translateY(1px); box-shadow:0 1px 0 #7b4f1a; }
-    .btn:focus{ outline:2px solid #ffe3ad; outline-offset:2px; }
 
-    .bar .controls{margin-left:auto; margin-bottom:0;}
+    .btn{
+      display:inline-flex;align-items:center;gap:10px;
+      background:linear-gradient(180deg, #ffcf78, var(--brand));
+      color:#151515;
+      border:1px solid rgba(255,189,89,.55);
+      padding:10px 14px;
+      border-radius:999px;
+      font-weight:900;
+      text-decoration:none;
+      box-shadow:0 2px 0 rgba(0,0,0,.35);
+      transition:transform .06s ease, filter .15s ease;
+      white-space:nowrap;
+    }
+    .btn:hover{ filter:brightness(1.03); }
+    .btn:active{ transform:translateY(1px); }
+
+    .controls{
+      margin-left:auto;
+      display:flex;flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+      justify-content:flex-end;
+    }
+
+    label{display:flex;align-items:center;gap:8px;color:var(--muted);font-weight:700;font-size:.86rem}
+
+    .selectWrap{
+      position:relative;
+      display:inline-flex;
+      align-items:center;
+    }
+    select{
+      appearance:none;
+      background:linear-gradient(180deg, rgba(18,18,18,.98), rgba(10,10,10,.98));
+      color:#ffe7c5;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:12px;
+      padding:9px 34px 9px 10px;
+      font-weight:800;
+      letter-spacing:.2px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+      outline:none;
+      min-width: 210px;
+    }
+    .selectWrap:after{
+      content:"▾";
+      position:absolute;
+      right:10px;
+      color:rgba(255,255,255,.65);
+      pointer-events:none;
+      font-size:12px;
+      transform:translateY(-1px);
+    }
+    select:focus{
+      border-color:rgba(255,189,89,.55);
+      box-shadow:0 0 0 3px rgba(255,189,89,.14);
+    }
+
+    .chip{
+      color:var(--muted);
+      font-size:.82rem;
+      font-weight:700;
+      padding:8px 10px;
+      border-radius:999px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08);
+      white-space:nowrap;
+    }
+
     @media (max-width:980px){
       .bar{flex-wrap:wrap}
       .btn{width:100%;justify-content:center}
-      .bar .controls{margin-left:0;width:100%;justify-content:space-between}
+      .controls{margin-left:0;width:100%;justify-content:space-between}
+      select{min-width: min(100%, 520px); width:100%;}
+      label{width:100%; justify-content:space-between;}
+      .selectWrap{width:100%;}
+      .chip{width:100%; text-align:center;}
     }
 
     /* Grid */
-    .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;grid-auto-flow:dense}
-    .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;min-height:110px}
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(12,minmax(0,1fr));
+      gap:10px;
+      margin-top:10px;
+      grid-auto-flow:dense;
+      align-items:start;
+    }
+
+    .card{
+      position:relative;
+      background:
+        radial-gradient(1000px 240px at 30% -40%, rgba(255,189,89,.10), transparent 60%),
+        linear-gradient(180deg, rgba(20,20,20,.95), rgba(14,14,14,.95));
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      padding:10px;
+      box-shadow: var(--shadow-soft);
+      overflow:hidden;
+    }
+    /* Accent strip */
+    .card:before{
+      content:"";
+      position:absolute;
+      left:0; top:0; bottom:0;
+      width:3px;
+      background:linear-gradient(180deg, rgba(255,189,89,.9), rgba(255,119,51,.65));
+      opacity:.55;
+    }
+
     .card.q{grid-column:span 3;}
     .card.h{grid-column:span 6;}
     .card.l{grid-column:span 12;}
-    .card h3{margin:0 0 6px 0;color:var(--brand2);font-size:clamp(.9rem,1vw,.95rem)}
 
-    /* Charts */
-    .chartcard{min-height:clamp(280px, 34vh, 420px);}
+    .card h3{
+      margin:0 0 8px 0;
+      color:#ffd59a;
+      font-size:clamp(.92rem,1vw,1rem);
+      letter-spacing:.2px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding-bottom:8px;
+      border-bottom:1px solid rgba(255,255,255,.06);
+    }
+
+    /* Charts: remove forced tall min-height so no empty blocks */
+    .chartcard{min-height:auto;}
     .chart{width:100%;height:auto;display:block;overflow:visible}
-    .legend{display:flex;gap:10px;align-items:center;font-size:.78rem;color:#cfcfcf}
-    .legend span{display:inline-flex;align-items:center;gap:6px}
-    .lg{width:10px;height:10px;border-radius:2px;background:#ffbd59;border:1px solid #6a4e23}
-    .lg2{width:10px;height:10px;border-radius:2px;background:#4aa86a;border:1px solid #2c5a3a}
 
-    /* KPI row */
-    .kpis{display:flex;gap:6px;flex-wrap:wrap}
-    .kpi{background:#111;border:1px solid #2a2a2a;border-radius:10px;padding:6px 8px;font-size:.9rem;white-space:nowrap}
-    .kpi b{font-size:1rem}
+    .legend{
+      display:flex;gap:10px;align-items:center;
+      font-size:.78rem;color:#cfcfcf;
+      margin-bottom:6px;
+    }
+    .legend span{display:inline-flex;align-items:center;gap:6px}
+    .lg{width:10px;height:10px;border-radius:3px;background:#ffbd59;border:1px solid #6a4e23}
+    .lg2{width:10px;height:10px;border-radius:3px;background:#4aa86a;border:1px solid #2c5a3a}
+
+    /* KPI row: more compact + grid-like */
+    .kpis{
+      display:grid;
+      grid-template-columns:repeat(5, minmax(0, 1fr));
+      gap:8px;
+    }
+    .kpi{
+      background:rgba(0,0,0,.35);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:12px;
+      padding:8px 10px;
+      font-size:.86rem;
+      display:flex;
+      align-items:baseline;
+      justify-content:space-between;
+      gap:10px;
+      min-width:0;
+      white-space:nowrap;
+    }
+    .kpi b{font-size:1.05rem}
+    @media (max-width:980px){
+      .kpis{grid-template-columns:repeat(2, minmax(0, 1fr));}
+    }
 
     /* Tables */
-    .twrap{overflow:auto}
-    table{width:100%;border-collapse:collapse;font-size:clamp(.8rem,.9vw,.9rem);min-width:560px}
-    th,td{border-bottom:1px solid #222;padding:6px 6px;vertical-align:middle}
-    thead th{background:#141414;text-align:left;color:#ddd;position:sticky;top:0}
-    tbody tr:hover{background:#121212}
+    .twrap{
+      overflow:auto;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.06);
+      background:rgba(0,0,0,.18);
+    }
+    /* Keep page sleek: scroll inside cards instead of endless height */
+    .card.h .twrap{max-height:340px;}
+    .card.l .twrap{max-height:420px;}
+
+    table{width:100%;border-collapse:collapse;font-size:clamp(.78rem,.9vw,.9rem);min-width:560px}
+    th,td{
+      border-bottom:1px solid rgba(255,255,255,.06);
+      padding:7px 8px;
+      vertical-align:middle;
+      line-height:1.25;
+    }
+    thead th{
+      background:rgba(15,15,15,.9);
+      text-align:left;
+      color:#e6e6e6;
+      position:sticky;
+      top:0;
+      z-index:2;
+      backdrop-filter: blur(6px);
+    }
+    tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
+    tbody tr:hover{background:rgba(255,189,89,.06)}
     .mono{font-variant-numeric:tabular-nums}
     .right{text-align:right}
     .muted{color:var(--muted)}
@@ -89,13 +286,19 @@
     /* Skill chips / icons */
     .cell-skill{display:flex;align-items:center;gap:8px}
     .cell-icons{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-    .avatar{width:18px;height:18px;border-radius:4px;object-fit:cover;background:#222;border:1px solid #333}
-    .avatar.s{width:16px;height:16px;border-radius:3px}
+    .avatar{width:18px;height:18px;border-radius:5px;object-fit:cover;background:#222;border:1px solid rgba(255,255,255,.10)}
+    .avatar.s{width:16px;height:16px;border-radius:4px}
+    .pill{
+      display:inline-block;padding:2px 7px;border-radius:999px;
+      background:rgba(0,0,0,.35);
+      border:1px solid rgba(255,255,255,.08);
+      margin:2px;font-size:.76rem;color:#ddd
+    }
 
-    .pill{display:inline-block;padding:2px 6px;border-radius:999px;background:#111;border:1px solid #2a2a2a;margin:2px;font-size:.78rem;color:#ddd}
-
+    /* Mobile / responsive */
     @media (max-width: 980px){
       .card.q,.card.h,.card.l{grid-column:span 12}
+      table{min-width:520px}
     }
     @media (min-width:1600px){
       .grid{grid-template-columns:repeat(16,minmax(0,1fr))}
@@ -105,19 +308,34 @@
     }
   </style>
 </head>
+
 <body>
-  <header><h1>Clash Squad — Team Report</h1></header>
+  <header>
+    <div class="hdr">
+      <h1>Clash Squad — Team Report</h1>
+      <small class="muted">Sleek view • dense layout</small>
+    </div>
+  </header>
 
   <div class="shell">
     <div class="bar">
       <a class="btn" href="dashboard.html"><span aria-hidden="true">←</span> Back to Dashboard</a>
+
       <div class="controls">
-        <label class="muted">Tournament
-          <select id="tournSelect"></select>
+        <label>
+          Tournament
+          <span class="selectWrap">
+            <select id="tournSelect" aria-label="Tournament"></select>
+          </span>
         </label>
-        <label class="muted">Team
-          <select id="teamSelect"></select>
+
+        <label>
+          Team
+          <span class="selectWrap">
+            <select id="teamSelect" aria-label="Team"></select>
+          </span>
         </label>
+
         <span class="chip" id="meta">Loading…</span>
       </div>
     </div>
@@ -144,7 +362,10 @@
       </div>
       <div class="card q chartcard" id="mapCard">
         <h3>Performance by Map</h3>
-        <div class="legend" style="margin-bottom:4px"><span><i class="lg"></i> Matches</span><span><i class="lg2"></i> Wins</span></div>
+        <div class="legend">
+          <span><i class="lg"></i> Matches</span>
+          <span><i class="lg2"></i> Wins</span>
+        </div>
         <div id="mapChartWrap"></div>
       </div>
 
@@ -240,7 +461,7 @@ function parseState(v){if(!v) return {}; if (typeof v==='object') return v; try{
 /* ========= Micro SVGs ========= */
 function barH(labels, values, opts={}){
   const W = opts.width || 380;
-  const labelW = 110;
+  const labelW = 120;
   const pad = 4, row = 14, gap = 3;
   const H = Math.max(40, labels.length*(row+gap) + pad*2);
   const max = Math.max(1, ...values);
@@ -251,7 +472,7 @@ function barH(labels, values, opts={}){
     const w = scale(values[i]);
     svg.push(`<text x="2" y="${y+10}" font-size="11" fill="#ddd">${lb}</text>`);
     svg.push(`<rect x="${labelW}" y="${y}" width="${w}" height="${row}" fill="#ffbd59" stroke="#6a4e23" vector-effect="non-scaling-stroke"/>`);
-    svg.push(`<text x="${labelW + w + 4}" y="${y+10}" font-size="10" fill="#ccc" class="mono">${values[i]}</text>`);
+    svg.push(`<text x="${labelW + w + 4}" y="${y+10}" font-size="10" fill="#cfcfcf" class="mono">${values[i]}</text>`);
   });
   svg.push(`</svg>`);
   return svg.join('');
@@ -259,8 +480,8 @@ function barH(labels, values, opts={}){
 
 function groupedBars(labels, aVals, bVals, opts={}){
   const W = opts.width || 400;
-  const labelW = 120;
-  const rightPad = 80;
+  const labelW = 130;
+  const rightPad = 86;
   const pad = 6, row = 12, gap = 2, grpGap = 6;
   const H = Math.max(40, labels.length*(row+gap) + labels.length*grpGap + pad*2);
   const max = Math.max(1, ...aVals, ...bVals);
@@ -365,15 +586,18 @@ function rowsForTeamAndTournament(records, team, tournName){
   const inTourn = (r) => (tournName==='__ALL__') || ((r.tournament_name||'—')===tournName);
   const filtered = records.filter(inTourn).flatMap(explodeRecordToRows);
 
-  if(team === ALL_TEAMS) return filtered;       // all teams in tournament scope
+  if(team === ALL_TEAMS) return filtered;
   return filtered.filter(r=>r.team===team);
 }
 
 /* ========= Aggregations ========= */
 function kpis(rows){
-  const matches=rows.length; const wins=rows.filter(r=>r.res==='W').length; const winpct=matches?wins/matches:0;
+  const matches=rows.length;
+  const wins=rows.filter(r=>r.res==='W').length;
+  const winpct=matches?wins/matches:0;
   const diffAvg=matches? (rows.reduce((a,r)=>a+(r.ts-r.os),0)/matches):0;
-  const maps=uniq(rows.map(r=>r.map)).length; const opps=uniq(rows.map(r=>r.opp)).length;
+  const maps=uniq(rows.map(r=>r.map)).length;
+  const opps=uniq(rows.map(r=>r.opp)).length;
   return {matches,wins,winpct,diffAvg,maps,opps};
 }
 function mostBanned(rows){
@@ -504,31 +728,28 @@ function recent(rows){
 function renderKPIs(rows){
   const k=kpis(rows);
   document.getElementById('kpis').innerHTML = `
-    <div class="kpi">Matches <b>${k.matches}</b></div>
-    <div class="kpi">Wins <b>${k.wins}</b> <span class="muted">(${pct(k.wins,k.matches)})</span></div>
-    <div class="kpi">Avg Score Diff <b>${k.diffAvg.toFixed(2)}</b></div>
-    <div class="kpi">Maps <b>${k.maps}</b></div>
-    <div class="kpi">Opponents <b>${k.opps}</b></div>`;
+    <div class="kpi"><span class="muted">Matches</span> <b>${k.matches}</b></div>
+    <div class="kpi"><span class="muted">Wins</span> <b>${k.wins}</b> <span class="muted">(${pct(k.wins,k.matches)})</span></div>
+    <div class="kpi"><span class="muted">Avg Diff</span> <b>${k.diffAvg.toFixed(2)}</b></div>
+    <div class="kpi"><span class="muted">Maps</span> <b>${k.maps}</b></div>
+    <div class="kpi"><span class="muted">Opps</span> <b>${k.opps}</b></div>`;
 }
 
 function renderMostPickAct(rows){
   const {labels, values}=mostPickActive(rows);
-  const wrap=document.getElementById('actPickWrap');
-  wrap.innerHTML = labels.length ? barH(labels, values) : `<div class="muted">No active picks.</div>`;
+  document.getElementById('actPickWrap').innerHTML =
+    labels.length ? barH(labels, values) : `<div class="muted">No active picks.</div>`;
 }
-
 function renderMostPickPas(rows){
   const {labels, values}=mostPickPassive(rows);
-  const wrap=document.getElementById('pasPickWrap');
-  wrap.innerHTML = labels.length ? barH(labels, values) : `<div class="muted">No passive picks.</div>`;
+  document.getElementById('pasPickWrap').innerHTML =
+    labels.length ? barH(labels, values) : `<div class="muted">No passive picks.</div>`;
 }
-
 function renderMostBanned(rows){
   const {labels, values}=mostBanned(rows);
-  const wrap=document.getElementById('banChartWrap');
-  wrap.innerHTML = labels.length ? barH(labels, values) : `<div class="muted">No bans recorded.</div>`;
+  document.getElementById('banChartWrap').innerHTML =
+    labels.length ? barH(labels, values) : `<div class="muted">No bans recorded.</div>`;
 }
-
 function renderPerfByMap(rows){
   const data=perfByMap(rows);
   const wrap=document.getElementById('mapChartWrap');
@@ -600,7 +821,7 @@ function renderBanImpact(rows){
   list.forEach(r=>{
     const label=`<div class="cell-skill"><img class="avatar" src="${r.img||PLACEHOLDER}" alt="${r.name}" loading="lazy"><span>${r.name}</span></div>`;
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${label}</td><td class="right mono">${r.banned}</td><td class="right mono">${fmtP(r.wBan)}</td><td class="right mono">${fmtP(r.wNot)}</td><td class="right mono" style="font-weight:700;">${fmtP(r.delta)}</td>`;
+    tr.innerHTML=`<td>${label}</td><td class="right mono">${r.banned}</td><td class="right mono">${fmtP(r.wBan)}</td><td class="right mono">${fmtP(r.wNot)}</td><td class="right mono" style="font-weight:900;">${fmtP(r.delta)}</td>`;
     tb.appendChild(tr);
   });
 }
@@ -610,7 +831,9 @@ function renderRecent(rows){
   if(!list.length){ tb.innerHTML=`<tr><td colspan="6" class="muted">No recent matches.</td></tr>`; return; }
   list.forEach(r=>{
     const score=`${r.ts}-${r.os}`;
-    const wl=r.res==='W'?`<span style="color:var(--good);font-weight:700">W</span>`:`<span style="color:var(--bad);font-weight:700">L</span>`;
+    const wl=r.res==='W'
+      ? `<span style="color:var(--good);font-weight:900">W</span>`
+      : `<span style="color:var(--bad);font-weight:900">L</span>`;
     const tr=document.createElement('tr');
     tr.innerHTML=`<td>${r.date}</td><td>${r.map}</td><td>${r.opp}</td><td class="right mono">${score}</td><td class="right">${wl}</td><td class="cell-skill"><img class="avatar" src="${r.banImg||PLACEHOLDER}" alt="${r.banName}" loading="lazy"><span>${r.banName||'—'}</span></td>`;
     tb.appendChild(tr);
@@ -629,7 +852,7 @@ async function init(){
   const latest = tourns[0]?.name || '__ALL__';
   tSel.value = latest;
 
-  // Team dropdown (linked to tournament) + All Teams
+  // Team dropdown linked to tournament + All Teams
   const teamSel = document.getElementById('teamSelect');
   const refreshTeams = ()=>{
     const teams = teamsForTournament(ALL_RECORDS, tSel.value);
