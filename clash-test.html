@@ -3,2317 +3,2951 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Clash Squad — Skills Report</title>
-
-  <!-- Supabase JS v2 (CDN) -->
+  <title>Clash Squad — Skills Report & Summary</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
     :root{
-      --bg:#070709;
-      --panel:#111114;
-      --panel2:#0d0d10;
-      --ink:#f5f5f7;
-      --muted:#b6b6bc;
+      --bg0:#070707;
+      --bg1:#0e0e0e;
+      --panel:#171717;
+      --panel2:#121212;
+      --panel3:#0f0f0f;
+
+      --ink:#f4f4f4;
+      --muted:#b7b7b7;
+      --line:#2a2a2a;
+
       --brand:#ffbd59;
       --brand2:#ff7733;
-      --line:rgba(255,255,255,.10);
-      --stroke:rgba(255,255,255,.08);
-      --shadow:0 18px 60px rgba(0,0,0,.55);
-      --radius:14px;
-      --radius-lg:18px;
+
       --good:#71d083;
       --bad:#ff6b6b;
 
-      /* Sleek glass vibe */
-      --glass:rgba(25,25,28,.58);
-      --glass2:rgba(18,18,20,.68);
-      --glow:0 0 0 1px rgba(255,189,89,.14), 0 18px 48px rgba(0,0,0,.55);
-      --glow2:0 0 0 1px rgba(255,119,51,.12), 0 18px 48px rgba(0,0,0,.55);
-      --blur:12px;
+      --shadow: 0 14px 40px rgba(0,0,0,.35);
+      --radius: 14px;
+      --radius-sm: 10px;
+
+      --sel-bg:#101010;
+      --sel-ink:#f5f5f5;
+      --sel-line:#343434;
+
+      --chip-bg: rgba(255,189,89,.10);
+      --chip-line: rgba(255,189,89,.32);
+
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     }
 
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
       margin:0;
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif;
       color:var(--ink);
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;
       background:
-        radial-gradient(1200px 700px at 20% -10%, rgba(255,189,89,.18), transparent 55%),
-        radial-gradient(1000px 600px at 90% 0%, rgba(255,119,51,.16), transparent 52%),
-        radial-gradient(900px 600px at 50% 120%, rgba(120,150,255,.08), transparent 55%),
-        linear-gradient(180deg, #050507, #0a0a0d 45%, #050507 100%);
+        radial-gradient(1200px 600px at 20% -10%, rgba(255,189,89,.10), transparent 55%),
+        radial-gradient(900px 500px at 95% 0%, rgba(255,119,51,.10), transparent 55%),
+        radial-gradient(circle at top, #141414 0, #070707 62%);
       overflow-x:hidden;
     }
 
-    a{color:inherit}
-    .wrap{
-      max-width:1200px;
-      margin:0 auto;
-      padding:14px 14px 80px;
-    }
-
-    /* Top bar */
-    .topbar{
+    /* ===== Header ===== */
+    header{
       position:sticky;
       top:0;
       z-index:50;
-      backdrop-filter: blur(var(--blur));
-      background:linear-gradient(180deg, rgba(8,8,10,.92), rgba(8,8,10,.65));
-      border-bottom:1px solid var(--line);
+      background: linear-gradient(180deg, rgba(20,20,20,.92) 0%, rgba(12,12,12,.86) 100%);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255,189,89,.18);
     }
-    .topbar-inner{
-      max-width:1200px;
-      margin:0 auto;
-      padding:12px 14px;
+    .header-inner{
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 14px 14px;
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:12px;
     }
-    .brand{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      min-width:0;
-    }
-    .logo{
-      width:34px;height:34px;border-radius:10px;
-      background:
-        radial-gradient(circle at 30% 30%, rgba(255,189,89,.85), rgba(255,119,51,.35) 60%, rgba(0,0,0,0) 61%),
-        linear-gradient(135deg, rgba(255,189,89,.18), rgba(255,119,51,.10));
-      box-shadow:0 0 0 1px rgba(255,189,89,.22), 0 14px 26px rgba(0,0,0,.55);
-    }
-    .titleblock{min-width:0}
-    .title{
-      font-weight:900;
+    h1{
+      margin:0;
+      font-size:1.08rem;
       letter-spacing:.2px;
-      font-size:1.02rem;
-      line-height:1.1;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .subtitle{
-      font-size:.82rem;
-      color:var(--muted);
-      margin-top:3px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-
-    .top-actions{display:flex; align-items:center; gap:10px}
-    .btn{
-      appearance:none;
-      border:none;
-      cursor:pointer;
-      padding:10px 12px;
-      border-radius:12px;
-      color:var(--ink);
-      background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
-      box-shadow:0 0 0 1px rgba(255,255,255,.10);
-      font-weight:800;
-      font-size:.86rem;
-      transition:transform .12s ease, box-shadow .12s ease, background .12s ease;
-      user-select:none;
-    }
-    .btn:hover{transform:translateY(-1px); box-shadow:0 0 0 1px rgba(255,255,255,.14), 0 16px 36px rgba(0,0,0,.55)}
-    .btn:active{transform:translateY(0px)}
-    .btn.primary{
-      background:linear-gradient(180deg, rgba(255,189,89,.22), rgba(255,119,51,.12));
-      box-shadow:0 0 0 1px rgba(255,189,89,.20), 0 18px 46px rgba(0,0,0,.58);
-    }
-
-    /* Tabs */
-    .tabs{
+      color:var(--brand);
       display:flex;
-      gap:10px;
       align-items:center;
-      padding:10px 0 0;
-      flex-wrap:wrap;
-    }
-    .tab{
-      padding:10px 14px;
-      border-radius:999px;
-      border:1px solid var(--line);
-      background:rgba(255,255,255,.04);
-      color:var(--muted);
-      font-weight:900;
-      font-size:.88rem;
-      cursor:pointer;
-      transition:.12s ease;
-      user-select:none;
-    }
-    .tab:hover{color:var(--ink); border-color:rgba(255,255,255,.16)}
-    .tab.active{
-      color:#1b1204;
-      border-color:rgba(255,189,89,.35);
-      background:linear-gradient(180deg, rgba(255,189,89,.95), rgba(255,170,80,.85));
-      box-shadow:0 10px 26px rgba(0,0,0,.45);
-    }
-
-    /* Controls panel */
-    .panel{
-      margin-top:14px;
-      background:linear-gradient(180deg, var(--glass), rgba(15,15,18,.55));
-      border:1px solid var(--stroke);
-      border-radius:var(--radius-lg);
-      box-shadow:var(--shadow);
-      backdrop-filter: blur(var(--blur));
-      padding:14px;
-    }
-    .controls{
-      display:grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
       gap:10px;
-      align-items:end;
+      white-space:nowrap;
     }
-    .controls .field{min-width:0}
-    label{
-      display:block;
+    .title-pill{
       font-size:.72rem;
-      color:var(--muted);
-      letter-spacing:.3px;
-      margin:0 0 6px 2px;
+      color:#f7e2c2;
+      padding:3px 10px;
+      border:1px solid var(--chip-line);
+      background:var(--chip-bg);
+      border-radius:999px;
+      letter-spacing:.35px;
       text-transform:uppercase;
-      font-weight:800;
     }
-
-    input[type="date"], select{
-      width:100%;
-      padding:10px 12px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(10,10,12,.72);
-      color:var(--ink);
-      outline:none;
-      font-weight:800;
-      font-size:.90rem;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
-    }
-
-    /* Fix: dropdown options turning white/light */
-    select option{
-      background:#0b0b0f;
-      color:#f5f5f7;
-    }
-
-    input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1) opacity(.8)}
-
-    .controls .actions{
+    .user-controls{
       display:flex;
+      align-items:center;
       gap:10px;
-      justify-content:flex-end;
-      grid-column: span 2;
-    }
-
-    .note{
-      margin-top:10px;
-      color:var(--muted);
-      font-size:.86rem;
-      display:flex;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .pillrow{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
-    .pill{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:7px 10px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.10);
-      background:rgba(255,255,255,.04);
-      color:var(--muted);
-      font-size:.82rem;
-      font-weight:800;
-      white-space:nowrap;
-    }
-    .dot{
-      width:8px;height:8px;border-radius:99px;background:rgba(255,189,89,.85);
-      box-shadow:0 0 0 3px rgba(255,189,89,.18);
-    }
-
-    /* Content blocks */
-    .grid{
-      margin-top:14px;
-      display:grid;
-      grid-template-columns:repeat(3, minmax(0, 1fr));
-      gap:14px;
-      align-items:start;
-    }
-    .block{
-      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-      border:1px solid var(--stroke);
-      border-radius:var(--radius-lg);
-      box-shadow:var(--shadow);
-      padding:14px;
-      min-height:120px;
-      backdrop-filter: blur(var(--blur));
-    }
-    .block h3{
-      margin:0 0 10px;
-      font-size:.98rem;
-      letter-spacing:.2px;
-    }
-    .muted{color:var(--muted)}
-    .mono{font-variant-numeric: tabular-nums}
-    .badge{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:6px 10px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.10);
-      background:rgba(255,255,255,.04);
-      font-weight:900;
-      font-size:.80rem;
-      color:var(--muted);
-      white-space:nowrap;
-    }
-
-    /* Match list */
-    .match{
-      background:linear-gradient(180deg, rgba(0,0,0,.22), rgba(0,0,0,.10));
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:16px;
-      padding:12px;
-      margin-top:10px;
-    }
-    .matchHead{
-      display:flex;
-      gap:10px;
-      align-items:center;
-      justify-content:space-between;
-      flex-wrap:wrap;
-      margin-bottom:10px;
-    }
-    .matchTitle{
-      font-weight:1000;
-      letter-spacing:.2px;
-    }
-    .matchMeta{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
-
-    .row{
-      display:grid;
-      grid-template-columns: 1.1fr 1.1fr 1fr;
-      gap:12px;
-      align-items:start;
-    }
-    .teamBox{
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:14px;
-      background:rgba(255,255,255,.03);
-      padding:10px;
-      min-height:92px;
-    }
-    .teamName{
-      font-weight:1000;
-      letter-spacing:.2px;
-      display:flex;
-      align-items:center;
-      gap:8px;
-      margin-bottom:8px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .teamName .miniDot{width:8px;height:8px;border-radius:99px;background:rgba(255,119,51,.75)}
-    .playersWrap{
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-    }
-    .player{
-      display:flex;
-      gap:10px;
-      align-items:flex-start;
-      padding:8px 10px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,.08);
-      background:rgba(0,0,0,.18);
-    }
-    .pInfo{
-      flex:1;
       min-width:0;
-    }
-    .pName{
-      font-weight:900;
-      font-size:.88rem;
-      line-height:1.15;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      margin-bottom:2px;
-    }
-    .pHero{
-      font-size:.80rem;
-      color:var(--muted);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .pActs{
-      display:flex;
-      gap:6px;
-      align-items:center;
-      flex-wrap:wrap;
-      justify-content:flex-end;
-    }
-    .pAct{
-      width:30px;height:30px;border-radius:8px;
-      object-fit:cover;
-      box-shadow:0 0 0 1px rgba(255,255,255,.10);
-      background:#111;
-    }
-
-    /* Passive icons line */
-    .pPass{
-      margin-top:6px;
-      display:flex;
-      gap:6px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
-    .pPassItem{
-      display:flex;
-      gap:6px;
-      align-items:center;
-      border:1px solid rgba(255,255,255,.08);
-      background:rgba(0,0,0,.14);
-      padding:5px 8px;
-      border-radius:999px;
-      max-width:100%;
-    }
-    .pPassItem img{
-      width:18px;height:18px;border-radius:6px;object-fit:cover;
-      box-shadow:0 0 0 1px rgba(255,255,255,.08);
-      background:#111;
-      flex:0 0 auto;
-    }
-    .pPassItem span{
-      font-size:.78rem;
-      color:var(--muted);
-      font-weight:800;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width:200px;
-    }
-
-    /* Bans box */
-    .bansBox{
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:14px;
-      background:rgba(255,255,255,.03);
-      padding:10px;
-      min-height:92px;
-    }
-    .bansGrid{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      align-items:center;
-      margin-top:8px;
-    }
-    .banCell{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      border:1px solid rgba(255,255,255,.08);
-      background:rgba(0,0,0,.18);
-      padding:7px 10px;
-      border-radius:12px;
-      max-width:100%;
-    }
-    .banCell img{
-      width:30px;height:30px;border-radius:8px;object-fit:cover;
-      box-shadow:0 0 0 1px rgba(255,255,255,.10);
-      background:#111;
-      flex:0 0 auto;
-    }
-    .banCell .bn{
-      font-weight:900;
-      font-size:.86rem;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width:180px;
-    }
-    .banCell .bt{
-      font-size:.74rem;color:var(--muted);font-weight:800;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width:220px;
-    }
-
-    /* Summary cards */
-    .cardsGrid{
-      display:grid;
-      grid-template-columns:repeat(3, minmax(0, 1fr));
-      gap:14px;
-      margin-top:14px;
-      align-items:start;
-    }
-    .card{background:var(--panel2);border:1px solid var(--stroke);border-radius:16px;padding:12px;box-shadow:var(--shadow);min-width:0;overflow:hidden}
-    .card h4{
-      margin:0 0 8px;
-      font-size:.95rem;
-      letter-spacing:.2px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-    }
-    .kpis{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      margin-bottom:10px;
     }
     .chip{
-      display:inline-flex;
-      align-items:center;
-      gap:7px;
-      padding:7px 10px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.10);
-      background:rgba(255,255,255,.04);
-      font-weight:900;
-      font-size:.80rem;
-      color:var(--muted);
-      white-space:nowrap;
-    }
-
-    .sum-table{
-      width:100%;
-      border-collapse:collapse;
-      font-size:.92rem;
-      table-layout:fixed;
-    }
-    .sum-table thead th{
-      text-align:left;
-      color:var(--muted);
-      font-weight:900;
-      font-size:.76rem;
-      letter-spacing:.3px;
-      text-transform:uppercase;
-      padding:10px 8px;
-      border-bottom:1px solid rgba(255,255,255,.08);
-      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
-    }
-    .sum-table th,.sum-table td{
-      padding:10px 8px;
-      border-bottom:1px solid rgba(255,255,255,.06);
-      vertical-align:middle;
-    }
-
-    /* Prevent table overflow inside cards */
-    .tableWrap{max-width:100%;overflow:auto;-webkit-overflow-scrolling:touch;border-radius:12px}
-    .tableWrap table{width:100%}
-    .card .sum-table th:first-child,.card .sum-table td:first-child{white-space:normal;overflow-wrap:anywhere}
-    .card .sum-table th:not(:first-child),.card .sum-table td:not(:first-child){white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
-    .sum-table tbody tr:hover{background:rgba(255,255,255,.03)}
-    .right{text-align:right}
-    .good{color:var(--good);font-weight:1000}
-    .bad{color:var(--bad);font-weight:1000}
-
-    /* Skill cell includes icon + name */
-    .skill-cell{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      min-width:0;
-    }
-    .skill-cell img{
-      width:30px;height:30px;border-radius:8px;object-fit:cover;
-      box-shadow:0 0 0 1px rgba(255,255,255,.10);
-      background:#111;
-      flex:0 0 auto;
-    }
-    .skill-name{
-      font-weight:950;
+      font-size:.85rem;
+      color:#ddd;
+      opacity:.95;
+      max-width: 46vw;
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
-      min-width:0;
     }
+    .btn{
+      background: linear-gradient(180deg, var(--brand) 0%, #f0a93e 100%);
+      color:#1b1b1b;
+      border:0;
+      border-radius:10px;
+      padding:8px 12px;
+      font-weight:800;
+      cursor:pointer;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      box-shadow: 0 10px 22px rgba(0,0,0,.25);
+      transition: transform .12s ease, filter .12s ease, box-shadow .12s ease;
+      user-select:none;
+    }
+    .btn:hover{ filter:brightness(1.03); transform: translateY(-1px); }
+    .btn:active{ transform: translateY(0px); }
+    .btn:disabled{ opacity:.55; cursor:not-allowed; transform:none; }
 
-    /* Team × Map view */
-    .twoCol{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:14px;
-      margin-top:14px;
+    .btn-ghost{
+      background: transparent;
+      color: var(--ink);
+      border: 1px solid rgba(255,255,255,.16);
+      box-shadow:none;
+      font-weight:750;
     }
-    .section{
-      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-      border:1px solid var(--stroke);
-      border-radius:var(--radius-lg);
-      box-shadow:var(--shadow);
-      padding:14px;
-      backdrop-filter: blur(var(--blur));
+    .btn-ghost:hover{ border-color: rgba(255,189,89,.32); }
+
+    .shell{ max-width:1240px; margin:18px auto; padding:0 14px 28px; }
+
+    /* ===== Top bar ===== */
+    .bar{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+      margin-bottom:12px;
     }
-    .section h3{
-      margin:0 0 10px;
+    .bar .spacer{flex:1}
+    .toggle{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border-radius:999px;
+      background: rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.10);
+      color:var(--muted);
+      font-size:.86rem;
+      user-select:none;
+    }
+    .toggle input{ accent-color: var(--brand); }
+
+    /* ===== Blocks ===== */
+    .block{
+      background: linear-gradient(180deg, rgba(25,25,25,.96) 0%, rgba(15,15,15,.96) 100%);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow);
+    }
+    .block h2{
+      margin: 0 0 10px 0;
+      color: var(--brand);
+      font-size: 1.02rem;
+      letter-spacing:.2px;
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:10px;
     }
-
-    /* Tooltip for skill details (from character.json) */
-    .tt{
-      position:fixed;
-      z-index:9999;
-      max-width:min(420px, calc(100vw - 24px));
-      pointer-events:none;
-      transform:translate3d(-9999px,-9999px,0);
-      opacity:0;
-      transition:opacity .08s ease;
-      padding:10px 12px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.14);
-      background:linear-gradient(180deg, rgba(18,18,22,.96), rgba(10,10,12,.94));
-      box-shadow:0 22px 60px rgba(0,0,0,.7);
-      backdrop-filter: blur(10px);
+    .submeta{
+      margin-top:-4px;
+      color: var(--muted);
+      font-size: .9rem;
+      line-height:1.25;
     }
-    .tt.show{opacity:1}
-    .tt .tt-top{
+    .muted{ color: var(--muted); font-size:.9rem; }
+    .mono{ font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+    /* ===== Controls (sleek selects/inputs) ===== */
+    .controls{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin: 8px 0 10px;
+      align-items:flex-end;
+    }
+    .controls label{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      padding:10px 10px 9px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.08);
+      min-width: 150px;
+    }
+    .controls label > span.labeltxt{
+      font-size:.78rem;
+      color: rgba(255,255,255,.72);
+      letter-spacing:.28px;
+      text-transform:uppercase;
+    }
+
+    /* Fix: dropdown light-on-white -> force dark theme selects */
+    select, input[type="date"], input[type="text"], input[type="number"]{
+      appearance:none;
+      -webkit-appearance:none;
+      -moz-appearance:none;
+      background: var(--sel-bg);
+      color: var(--sel-ink);
+      border: 1px solid var(--sel-line);
+      border-radius: 10px;
+      padding: 9px 10px;
+      font-weight: 700;
+      outline:none;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+    }
+    input[type="date"]{ padding: 8px 10px; }
+
+    select{
+      padding-right: 36px;
+      background-image:
+        linear-gradient(45deg, transparent 50%, rgba(245,245,245,.9) 50%),
+        linear-gradient(135deg, rgba(245,245,245,.9) 50%, transparent 50%),
+        linear-gradient(to right, transparent, transparent);
+      background-position:
+        calc(100% - 18px) 50%,
+        calc(100% - 12px) 50%,
+        calc(100% - 2.3rem) 50%;
+      background-size: 6px 6px, 6px 6px, 1px 1.8rem;
+      background-repeat: no-repeat;
+    }
+    select:focus, input:focus{
+      border-color: rgba(255,189,89,.55);
+      box-shadow: 0 0 0 3px rgba(255,189,89,.14);
+    }
+    option{
+      background: #0f0f0f;
+      color: #f5f5f5;
+    }
+
+    .controls .btn{
+      height: 40px;
+      padding: 0 14px;
+      border-radius: 12px;
+    }
+
+    /* ===== Tabs ===== */
+    .tabs{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin:10px 0 0;
+    }
+    .tab{
+      background: rgba(255,255,255,.04);
+      color:#ddd;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 999px;
+      padding:7px 12px;
+      cursor:pointer;
+      font-weight:800;
+      letter-spacing:.15px;
+      transition: background .12s ease, border-color .12s ease, transform .12s ease;
+      user-select:none;
+    }
+    .tab:hover{ border-color: rgba(255,189,89,.30); transform: translateY(-1px); }
+    .tab.active{
+      background: linear-gradient(180deg, rgba(255,189,89,.98) 0%, rgba(240,169,62,.98) 100%);
+      color:#1b1b1b;
+      border-color: rgba(255,189,89,.6);
+      transform:none;
+    }
+
+    .js-section{ display:none; }
+    .js-section.active{ display:block; }
+
+    /* ===== Tables ===== */
+    table{ width:100%; border-collapse: collapse; }
+    thead th{
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: rgba(10,10,10,.92);
+      backdrop-filter: blur(6px);
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      text-align:left;
+      padding: 10px 10px;
+      font-size: .86rem;
+      color: rgba(255,255,255,.82);
+      letter-spacing:.22px;
+      text-transform: uppercase;
+      white-space:nowrap;
+    }
+    tbody td{
+      border-bottom: 1px solid rgba(255,255,255,.07);
+      padding: 10px 10px;
+      vertical-align: top;
+      font-size: .92rem;
+    }
+    tbody tr:hover{ background: rgba(255,255,255,.02); }
+    .right{text-align:right}
+
+    .wl{
+      font-weight:900;
+      padding:3px 10px;
+      border-radius:999px;
+      display:inline-block;
+      font-size:.82rem;
+      letter-spacing:.5px;
+    }
+    .wl.W{ background: rgba(113,208,131,.12); color: var(--good); border: 1px solid rgba(113,208,131,.28); }
+    .wl.L{ background: rgba(255,107,107,.12); color: var(--bad); border: 1px solid rgba(255,107,107,.28); }
+
+    /* ===== Players (2x2 grid) ===== */
+    .playersWrap{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(240px, 1fr));
+      gap:10px;
+      overflow:visible;
+      padding-bottom:0;
+    }
+    .pCard{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px;
+      padding:8px 10px;
+      width:100%;
+      min-width:0;
+    }
+    .pAct{
+      width:44px; height:44px;
+      object-fit:cover;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: #0b0b0b;
+      flex:0 0 44px;
+    }
+    .pPassCol{ display:flex; flex-direction:column; gap:4px; }
+    .pPassRow{ display:flex; align-items:center; gap:6px; }
+    .pPassRow img{
+      width:16px; height:16px;
+      object-fit:cover;
+      border-radius:6px;
+      border:1px solid rgba(255,255,255,.14);
+      background:#0b0b0b;
+    }
+    .pPassRow span{
+      font-size:.78rem;
+      color:#cfcfcf;
+      max-width:120px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .pInfo{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      min-width:0;
+      line-height:1.2;
+    }
+    .pName{ font-weight:900; font-size:.92rem; }
+    .pHero{ font-size:.86rem; color:#e3e3e3; }
+
+    /* ===== Summary cards ===== */
+    .grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:12px; }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.035) 0%, rgba(255,255,255,.02) 100%);
+      border: 1px solid rgba(255,255,255,.09);
+      border-radius: var(--radius);
+      padding:12px;
+    }
+    .card h3{
+      margin:0 0 8px 0;
+      color: var(--brand2);
+      font-size: 1.02rem;
+      letter-spacing:.2px;
+    }
+    .kpis{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+    .kpi{
+      background: rgba(0,0,0,.35);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px;
+      padding: 7px 9px;
+      font-size:.88rem;
+    }
+    .sum-table{ width:100%; border-collapse: collapse; font-size:.9rem; }
+    .sum-table th,.sum-table td{ border-bottom: 1px solid rgba(255,255,255,.08); padding:7px 7px; }
+    .caption{ margin: 6px 0 10px 0; }
+
+    /* ===== Per-skill table visuals ===== */
+    .skill-controls{
+      display:flex;
+      gap:10px;
+      justify-content:flex-start;
+      align-items:flex-end;
+      flex-wrap:wrap;
+      margin-bottom:10px;
+    }
+    .skill-controls label{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      padding:10px 10px 9px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.08);
+      min-width: 160px;
+    }
+    .skill-controls label > span.labeltxt{
+      font-size:.78rem;
+      color: rgba(255,255,255,.72);
+      letter-spacing:.28px;
+      text-transform:uppercase;
+    }
+    .skill-controls button{
+      height: 40px;
+      border-radius: 12px;
+      padding: 0 14px;
+      border: 0;
+      cursor:pointer;
+      font-weight:900;
+      background: linear-gradient(180deg, var(--brand2) 0%, #d85c26 100%);
+      color:#fff;
+      box-shadow: 0 12px 22px rgba(0,0,0,.25);
+      transition: transform .12s ease, filter .12s ease;
+    }
+    .skill-controls button:hover{ filter:brightness(1.03); transform: translateY(-1px); }
+
+    .skill-cell{ display:flex; align-items:center; gap:10px; }
+    .skill-cell img{
+      width:30px; height:30px;
+      object-fit:cover;
+      border-radius: 10px;
+      background:#0b0b0b;
+      border:1px solid rgba(255,255,255,.14);
+      flex:0 0 auto;
+    }
+    .skill-name{ color:#eee; font-weight:900; }
+
+    /* Pills */
+    .pill{
+      display:inline-block;
+      padding:3px 10px;
+      border-radius:999px;
+      background: rgba(0,0,0,.35);
+      border: 1px solid rgba(255,255,255,.10);
+      margin:2px;
+      font-size:.84rem;
+      color:#ddd;
+      white-space:nowrap;
+    }
+    .pill small{opacity:.8; font-size:.8em; margin-left:4px}
+
+    .comboIcons{display:flex; gap:6px; align-items:center; flex-wrap:wrap}
+    .comboIcons img{
+      width:28px; height:28px;
+      border-radius: 10px;
+      border:1px solid rgba(255,255,255,.14);
+      background:#0b0b0b
+    }
+    .icons{display:flex; gap:6px; align-items:center; flex-wrap:wrap}
+    .icons img{
+      width:28px; height:28px;
+      border-radius: 10px;
+      border:1px solid rgba(255,255,255,.14);
+      background:#0b0b0b
+    }
+
+    /* Compact / passive-name-hide */
+    body.compact .block{ padding: 12px; }
+    body.compact .card{ padding: 10px; }
+    body.compact table thead th{ padding: 9px 9px; font-size:.82rem; }
+    body.compact table tbody td{ padding: 9px 9px; font-size:.9rem; }
+    body.compact .pAct{ width:34px; height:34px; border-radius: 10px; flex-basis:34px; }
+    body.compact .pPassRow img{ width:14px; height:14px; border-radius:5px; }
+    body.compact .pPassRow span{ max-width:92px; font-size:.72rem; }
+    body.compact .pName{ font-size:.86rem; }
+    body.compact .pHero{ font-size:.78rem; }
+
+    body.passive-hidden .pPassRow span{ visibility:hidden; }
+    body.passive-hidden .pCard:hover .pPassRow span{ visibility:visible; }
+
+    .combo-row, .pair-row, .row-click{ cursor:pointer; }
+    .combo-detail td, .pair-detail td, .tri-detail td{
+      background: rgba(255,255,255,.02);
+    }
+
+    /* ===== Tooltip (Skill info from character.json) ===== */
+    .skillTip{
+      position: fixed;
+      z-index: 9999;
+      min-width: 260px;
+      max-width: 380px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(12,12,12,.92);
+      border: 1px solid rgba(255,189,89,.26);
+      box-shadow: 0 18px 50px rgba(0,0,0,.45);
+      backdrop-filter: blur(10px);
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity .08s ease, transform .08s ease;
+    }
+    .skillTip.show{
+      opacity: 1;
+      transform: translateY(0px);
+    }
+    .skillTip .top{
       display:flex;
       gap:10px;
       align-items:center;
-      margin-bottom:8px;
-      min-width:0;
+      margin-bottom:6px;
     }
-    .tt .tt-top img{
-      width:42px;height:42px;border-radius:12px;object-fit:cover;
-      box-shadow:0 0 0 1px rgba(255,255,255,.12);
-      background:#111;
-      flex:0 0 auto;
+    .skillTip .ico{
+      width:34px;height:34px;
+      border-radius: 12px;
+      border:1px solid rgba(255,255,255,.14);
+      background:#0b0b0b;
+      object-fit:cover;
+      flex:0 0 34px;
     }
-    .tt .tt-titles{min-width:0}
-    .tt .tt-name{
-      font-weight:1000;
+    .skillTip .title{
+      font-weight: 1000;
       letter-spacing:.2px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
+      line-height:1.1;
     }
-    .tt .tt-skill{
-      margin-top:2px;
-      font-size:.82rem;
-      color:rgba(255,189,89,.95);
-      font-weight:900;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .tt .tt-desc{
-      color:var(--muted);
+    .skillTip .subtitle{
       font-size:.86rem;
-      line-height:1.25;
-      margin:0;
-      white-space:normal;
-      overflow-wrap:anywhere;
+      color: rgba(255,255,255,.78);
+      margin-top:2px;
     }
-    .tt .tt-meta{
-      margin-top:8px;
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
+    .skillTip .desc{
+      font-size:.9rem;
+      color: rgba(255,255,255,.84);
+      line-height: 1.32;
+      margin-top: 6px;
+      white-space: pre-wrap;
     }
-    .tt .tt-pill{
-      font-size:.72rem;
-      font-weight:900;
-      color:var(--muted);
-      padding:5px 8px;
-      border:1px solid rgba(255,255,255,.10);
-      border-radius:999px;
-      background:rgba(255,255,255,.04);
-      white-space:nowrap;
+    .skillTip .hint{
+      margin-top: 8px;
+      font-size:.78rem;
+      color: rgba(255,255,255,.55);
     }
 
-    /* Responsive */
-    @media (max-width: 1024px){
-      .controls{grid-template-columns: repeat(3, minmax(0,1fr));}
-      .controls .actions{grid-column: span 3; justify-content:flex-start}
-      .grid{grid-template-columns:1fr}
-      .cardsGrid{grid-template-columns:1fr}
-      .row{grid-template-columns:1fr}
-      .twoCol{grid-template-columns:1fr}
+    @media (max-width: 980px){
+      .playersWrap{ grid-template-columns: 1fr; }
+      .chip{ max-width: 48vw; }
+    }
+    @media (max-width: 540px){
+      .header-inner{ padding: 12px; }
+      h1{ font-size: 1rem; }
+      .title-pill{ display:none; }
+      .controls label, .skill-controls label{ min-width: 100%; }
+      .btn{ width:auto; }
+      .chip{ max-width: 52vw; }
     }
   </style>
 </head>
 
 <body>
-  <div class="topbar">
-    <div class="topbar-inner">
-      <div class="brand">
-        <div class="logo" aria-hidden="true"></div>
-        <div class="titleblock">
-          <div class="title">Clash Squad — Skills Report</div>
-          <div class="subtitle" id="subline">Picks, bans, and performance by active/passive skills</div>
-        </div>
-      </div>
-      <div class="top-actions">
-        <button class="btn" id="btnRefresh">Refresh</button>
-        <button class="btn primary" id="btnExport">Export CSV</button>
+  <header>
+    <div class="header-inner">
+      <h1>
+        Clash Squad — Skills Report & Summary
+        <span class="title-pill">Draft Analytics</span>
+      </h1>
+      <div class="user-controls">
+        <span class="chip" id="user-info">Checking login…</span>
+        <button class="btn btn-ghost" id="logoutBtn">Logout</button>
       </div>
     </div>
-  </div>
+  </header>
 
-  <div class="wrap">
-    <div class="tabs" role="tablist" aria-label="Views">
-      <div class="tab active" data-tab="matches" role="tab" aria-selected="true">Matches</div>
-      <div class="tab" data-tab="summary" role="tab" aria-selected="false">Summary</div>
-      <div class="tab" data-tab="teammap" role="tab" aria-selected="false">Team × Map</div>
+  <div class="shell">
+    <!-- Top bar -->
+    <div class="bar">
+      <a href="dashboard.html" class="btn btn-ghost">← Back</a>
+      <div class="spacer"></div>
+      <label class="toggle"><input type="checkbox" id="compactToggle"> Compact</label>
+      <label class="toggle"><input type="checkbox" id="hidePassiveToggle"> Hide passive names (hover)</label>
     </div>
 
-    <div class="panel">
+    <!-- FILTERS -->
+    <div class="block">
+      <h2>Filters</h2>
+
       <div class="controls">
-        <div class="field">
-          <label for="fFrom">From</label>
-          <input type="date" id="fFrom"/>
-        </div>
-        <div class="field">
-          <label for="fTo">To</label>
-          <input type="date" id="fTo"/>
-        </div>
-        <div class="field">
-          <label for="fTourn">Tournament</label>
+        <label>
+          <span class="labeltxt">From</span>
+          <input type="date" id="fFrom">
+        </label>
+
+        <label>
+          <span class="labeltxt">To</span>
+          <input type="date" id="fTo">
+        </label>
+
+        <label>
+          <span class="labeltxt">Map</span>
+          <select id="fMap">
+            <option value="__ALL__">All maps</option>
+            <option value="Bermuda">Bermuda</option>
+            <option value="Kalahari">Kalahari</option>
+            <option value="Purgatory">Purgatory</option>
+            <option value="Alpine">Alpine</option>
+            <option value="Nexterra">Nexterra</option>
+            <option value="Solara">Solara</option>
+          </select>
+        </label>
+
+        <label>
+          <span class="labeltxt">Tournament</span>
           <select id="fTourn"></select>
-        </div>
-        <div class="field">
-          <label for="fMap">Map</label>
-          <select id="fMap"></select>
-        </div>
-        <div class="field">
-          <label for="fTeam">Team</label>
+        </label>
+
+        <label>
+          <span class="labeltxt">Team</span>
           <select id="fTeam"></select>
-        </div>
-        <div class="actions">
-          <button class="btn" id="btnApply">Apply</button>
-          <button class="btn" id="btnReset">Reset</button>
-        </div>
+        </label>
+
+        <label>
+          <span class="labeltxt">Outcome</span>
+          <select id="fWL">
+            <option value="__ALL__">All</option>
+            <option value="W">Wins only</option>
+            <option value="L">Losses only</option>
+          </select>
+        </label>
+
+        <button class="btn" id="applyBtn">Apply</button>
       </div>
 
-      <div class="note">
-        <div class="pillrow" id="scopePills">
-          <span class="pill"><span class="dot"></span><span class="mono" id="pillMatches">Loaded 0 matches</span></span>
-          <span class="pill"><span class="mono" id="pillTeam">Team: All teams</span></span>
-          <span class="pill"><span class="mono" id="pillMap">Map: All maps</span></span>
-          <span class="pill"><span class="mono" id="pillTourn">Tournament: —</span></span>
-        </div>
-        <div class="pillrow">
-          <span class="badge mono" id="lastSync">Last sync: —</span>
-        </div>
-      </div>
-    </div>
+      <div class="submeta" id="filterMeta">—</div>
 
-    <!-- Matches view -->
-    <div id="viewMatches">
-      <div class="grid">
-        <div class="block">
-          <h3>Quick KPIs</h3>
-          <div class="pillrow" id="kpiRow"></div>
-          <div class="muted" style="margin-top:8px">KPIs computed from filtered matches.</div>
-        </div>
-
-        <div class="block">
-          <h3>Top Active Picks</h3>
-          <div id="topActive" class="muted">—</div>
-        </div>
-
-        <div class="block">
-          <h3>Top Passive Picks</h3>
-          <div id="topPassive" class="muted">—</div>
-        </div>
-      </div>
-
-      <div class="section" style="margin-top:14px">
-        <h3>Match List <span class="muted" id="matchCount">0</span></h3>
-        <div id="matchList" class="muted">Loading…</div>
+      <!-- Tabs -->
+      <div class="tabs">
+        <button data-tab="match" class="tab active">Matches</button>
+        <button data-tab="summary" class="tab">Summary</button>
+        <button data-tab="teammap" class="tab">Team × Map</button>
+        <button data-tab="skillsbymap" class="tab">Skills by Map</button>
+        <button data-tab="combos" class="tab">Active Combos</button>
+        <button data-tab="pairs" class="tab">Active Pairs</button>
+        <button data-tab="passivebuilder" class="tab">Passive Trios</button>
+        <button data-tab="banimpact" class="tab">Ban Impact</button>
+        <button data-tab="perskill" class="tab">Per-Skill</button>
       </div>
     </div>
 
-    <!-- Summary view -->
-    <div id="viewSummary" style="display:none">
-      <div class="panel" style="margin-top:14px">
-        <div class="controls" style="grid-template-columns: repeat(4, minmax(0,1fr));">
-          <div class="field">
-            <label for="sumGroup">Group by</label>
-            <select id="sumGroup">
-              <option value="team">Team</option>
-              <option value="map">Map</option>
-              <option value="tournament">Tournament</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="sumSubject">Subject</label>
-            <select id="sumSubject">
-              <option value="active">Active skills</option>
-              <option value="passive">Passive skills</option>
-              <option value="bans">Banned skills</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="sumMin">Min count</label>
-            <select id="sumMin">
-              <option value="1">1+</option>
-              <option value="2">2+</option>
-              <option value="3">3+</option>
-              <option value="5">5+</option>
-              <option value="8">8+</option>
-            </select>
-          </div>
-          <div class="actions" style="grid-column: span 1; justify-content:flex-end">
-            <button class="btn primary" id="btnRecalc">Recalculate</button>
-          </div>
-        </div>
-
-        <div class="note">
-          <div class="muted mono" id="sumMeta">—</div>
-        </div>
-      </div>
-
-      <div class="cardsGrid" id="summaryCards"></div>
+    <!-- MATCH LIST -->
+    <div id="sec-match" class="block js-section active">
+      <h2>Per-Match Team Rows</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Game</th>
+            <th>Map</th>
+            <th>Team</th>
+            <th>Opponent</th>
+            <th>Score</th>
+            <th>Result</th>
+            <th>Ban</th>
+            <th>Players (Active + 3×Passive)</th>
+          </tr>
+        </thead>
+        <tbody id="rowsBody"></tbody>
+      </table>
+      <div id="rowsPager" class="bar" style="justify-content:space-between; margin-top:10px;"></div>
     </div>
 
-    <!-- Team × Map view -->
-    <div id="viewTeamMap" style="display:none">
-      <div class="twoCol">
-        <div class="section">
-          <h3>Skill Performance by Map <span class="muted" id="tmMeta1">—</span></h3>
-          <div class="muted" style="margin-bottom:10px">
-            Tracks how often a skill appears and its win rate on each map.
-          </div>
-          <div id="tmTable1" class="muted">—</div>
-        </div>
+    <!-- SUMMARY -->
+    <div id="sec-summary" class="block js-section">
+      <h2>Summary: Picks/Bans</h2>
 
-        <div class="section">
-          <h3>Ban Impact <span class="muted" id="tmMeta2">—</span></h3>
-          <div class="muted" style="margin-bottom:10px">
-            When a skill is banned, how does the banning team perform?
-          </div>
-          <div id="tmTable2" class="muted">—</div>
-        </div>
+      <div class="controls sum-controls">
+        <label>
+          <span class="labeltxt">Group by</span>
+          <select id="sumGroupBy">
+            <option value="team">Team</option>
+            <option value="player" selected>Player</option>
+          </select>
+        </label>
+
+        <label>
+          <span class="labeltxt">Subject</span>
+          <select id="sumKind">
+            <option value="active">Active skills</option>
+            <option value="passive">Passive skills</option>
+            <option value="ban">Bans</option>
+          </select>
+        </label>
+
+        <label>
+          <span class="labeltxt">Card order</span>
+          <select id="sumCardSort">
+            <option value="subjectAppear" selected>Appearances</option>
+            <option value="subjectRate">Appear Rate</option>
+            <option value="subjectWinrate">Win %</option>
+            <option value="matches">Matches</option>
+            <option value="wins">Wins</option>
+            <option value="winpct">Overall Win %</option>
+            <option value="name">A→Z</option>
+          </select>
+        </label>
+
+        <label>
+          <span class="labeltxt">Card dir</span>
+          <select id="sumCardDir">
+            <option value="desc" selected>Desc</option>
+            <option value="asc">Asc</option>
+          </select>
+        </label>
+
+        <label>
+          <span class="labeltxt">Skills order</span>
+          <select id="sumSkillSort">
+            <option value="appearRate" selected>Rate</option>
+            <option value="count">Count</option>
+            <option value="winrate">Win %</option>
+            <option value="name">A→Z</option>
+          </select>
+        </label>
+
+        <label>
+          <span class="labeltxt">Skills dir</span>
+          <select id="sumSkillDir">
+            <option value="desc" selected>Desc</option>
+            <option value="asc">Asc</option>
+          </select>
+        </label>
       </div>
 
-      <div class="section" style="margin-top:14px">
-        <h3>Combos & Pairings <span class="muted" id="tmMeta3">—</span></h3>
-        <div class="muted" style="margin-bottom:10px">
-          Most common pairs of actives across the same player, and team-wide combos per match.
-        </div>
-        <div id="tmTable3" class="muted">—</div>
+      <div class="caption muted" id="sumMeta">—</div>
+      <div class="grid" id="sumGrid"></div>
+    </div>
+
+    <!-- TEAM × MAP WIN RATE -->
+    <div id="sec-teammap" class="block js-section">
+      <h2>Per Team × Map Win Rate</h2>
+      <div class="controls">
+        <label>
+          <span class="labeltxt">Sort</span>
+          <select id="tmSort">
+            <option value="matches" selected>Matches</option>
+            <option value="winpct">Win %</option>
+            <option value="wins">Wins</option>
+            <option value="team">Team</option>
+            <option value="map">Map</option>
+          </select>
+        </label>
+
+        <label>
+          <span class="labeltxt">Dir</span>
+          <select id="tmDir">
+            <option value="desc" selected>Desc</option>
+            <option value="asc">Asc</option>
+          </select>
+        </label>
+      </div>
+      <div class="muted" id="tmMeta">—</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Team</th><th>Map</th><th class="right">Matches</th><th class="right">Wins</th><th class="right">Win %</th>
+          </tr>
+        </thead>
+        <tbody id="tmBody"></tbody>
+      </table>
+    </div>
+
+    <!-- SKILLS SUMMARY BY MAP -->
+    <div id="sec-skillsbymap" class="block js-section">
+      <h2>Skills Summary by Map</h2>
+      <div class="controls">
+        <label>
+          <span class="labeltxt">Group by</span>
+          <select id="ssGroupBy">
+            <option value="team" selected>Team</option>
+            <option value="player">Player</option>
+          </select>
+        </label>
+
+        <label>
+          <span class="labeltxt">Subject</span>
+          <select id="ssKind">
+            <option value="active" selected>Active</option>
+            <option value="passive">Passive</option>
+            <option value="ban">Ban</option>
+          </select>
+        </label>
+
+        <label>
+          <span class="labeltxt">Card order</span>
+          <select id="ssCardSort">
+            <option value="subjectAppear" selected>Appearances</option>
+            <option value="subjectRate">Appear Rate</option>
+            <option value="subjectWinrate">Win %</option>
+            <option value="matches">Matches</option>
+            <option value="wins">Wins</option>
+            <option value="winpct">Overall Win %</option>
+            <option value="name">A→Z</option>
+          </select>
+        </label>
+
+        <label>
+          <span class="labeltxt">Card dir</span>
+          <select id="ssCardDir">
+            <option value="desc" selected>Desc</option>
+            <option value="asc">Asc</option>
+          </select>
+        </label>
+
+        <label>
+          <span class="labeltxt">Skills order</span>
+          <select id="ssSkillSort">
+            <option value="appearRate" selected>Rate</option>
+            <option value="count">Count</option>
+            <option value="winrate">Win %</option>
+            <option value="name">A→Z</option>
+          </select>
+        </label>
+
+        <label>
+          <span class="labeltxt">Skills dir</span>
+          <select id="ssSkillDir">
+            <option value="desc" selected>Desc</option>
+            <option value="asc">Asc</option>
+          </select>
+        </label>
       </div>
 
-      <div class="section" style="margin-top:14px">
-        <h3>Passive Skill Bundles <span class="muted" id="tmMeta4">—</span></h3>
-        <div class="muted" style="margin-bottom:10px">
-          Passive sets used by players, and which bundles correlate with wins.
-        </div>
-        <div id="tmTable4" class="muted">—</div>
+      <div class="caption muted" id="ssMeta">—</div>
+      <div id="ssWrap"></div>
+    </div>
+
+    <!-- ACTIVE SKILL COMBOS -->
+    <div id="sec-combos" class="block js-section">
+      <h2>Active Skill Combos</h2>
+      <div class="controls">
+        <label>
+          <span class="labeltxt">Min picks</span>
+          <input type="number" id="comboMin" value="1" min="1" step="1" />
+        </label>
+
+        <label>
+          <span class="labeltxt">Sort by</span>
+          <select id="comboSort">
+            <option value="picks" selected>Picks</option>
+            <option value="wins">Wins</option>
+            <option value="winpct">Win %</option>
+            <option value="name">A→Z</option>
+          </select>
+        </label>
+
+        <label>
+          <span class="labeltxt">Dir</span>
+          <select id="comboDir">
+            <option value="desc" selected>Desc</option>
+            <option value="asc">Asc</option>
+          </select>
+        </label>
       </div>
+
+      <div class="caption muted" id="comboMeta">—</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Combo (4× Active)</th>
+            <th class="right">Picks</th>
+            <th class="right">Wins</th>
+            <th class="right">Win %</th>
+            <th>Teams Used</th>
+            <th>Maps Used</th>
+          </tr>
+        </thead>
+        <tbody id="comboBody"></tbody>
+      </table>
+    </div>
+
+    <!-- ACTIVE PAIRS -->
+    <div id="sec-pairs" class="block js-section">
+      <h2>Active Pair Synergy</h2>
+      <div class="controls">
+        <label>
+          <span class="labeltxt">Min picks</span>
+          <input type="number" id="pairMin" value="3" min="1" step="1"/>
+        </label>
+
+        <label>
+          <span class="labeltxt">Sort by</span>
+          <select id="pairSort">
+            <option value="picks" selected>Picks</option>
+            <option value="wins">Wins</option>
+            <option value="winpct">Win %</option>
+            <option value="teams">#Teams</option>
+            <option value="name">A→Z</option>
+          </select>
+        </label>
+
+        <label>
+          <span class="labeltxt">Dir</span>
+          <select id="pairDir">
+            <option value="desc" selected>Desc</option>
+            <option value="asc">Asc</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="caption muted" id="pairMeta">—</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Pair (2× Active)</th>
+            <th class="right">Picks</th>
+            <th class="right">Wins</th>
+            <th class="right">Win %</th>
+            <th>Teams Used</th>
+            <th>Maps Used</th>
+          </tr>
+        </thead>
+        <tbody id="pairBody"></tbody>
+      </table>
+    </div>
+
+    <!-- PASSIVE TRIOS BUILDER -->
+    <div id="sec-passivebuilder" class="block js-section">
+      <h2>Passive Trios by Active</h2>
+      <div class="controls">
+        <label>
+          <span class="labeltxt">Active</span>
+          <select id="pbaActive">
+            <option value="__ALL__">All actives</option>
+          </select>
+        </label>
+
+        <label>
+          <span class="labeltxt">Min picks</span>
+          <input type="number" id="pbaMin" value="3" min="1" step="1">
+        </label>
+
+        <label>
+          <span class="labeltxt">Sort</span>
+          <select id="pbaSort">
+            <option value="picks" selected>Picks</option>
+            <option value="wins">Wins</option>
+            <option value="winpct">Win %</option>
+            <option value="name">Name</option>
+          </select>
+        </label>
+
+        <label>
+          <span class="labeltxt">Dir</span>
+          <select id="pbaDir">
+            <option value="desc" selected>Desc</option>
+            <option value="asc">Asc</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="caption muted" id="pbaMeta">—</div>
+
+      <h3 style="color:var(--brand2);margin:12px 0 8px">Top Passive Trios</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Active → Passive Trio</th>
+            <th class="right">Picks</th>
+            <th class="right">Wins</th>
+            <th class="right">Win %</th>
+            <th class="right">#Players</th>
+            <th class="right">#Teams</th>
+            <th>Maps Used</th>
+          </tr>
+        </thead>
+        <tbody id="triTablePB"></tbody>
+      </table>
+
+      <h3 style="color:var(--brand2);margin:18px 0 8px">Per-Player (selected Active)</h3>
+      <div class="caption muted">
+        Shows each player’s go-to passive trio(s) when they picked the chosen Active. Click a row to expand details.
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Player</th>
+            <th>Active</th>
+            <th class="right">Total Picks</th>
+            <th class="right">Total Wins</th>
+            <th class="right">Win %</th>
+            <th>Teams</th>
+            <th>Top Trio</th>
+          </tr>
+        </thead>
+        <tbody id="ppTablePB"></tbody>
+      </table>
+    </div>
+
+    <!-- BAN IMPACT -->
+    <div id="sec-banimpact" class="block js-section">
+      <h2>Ban Impact</h2>
+      <div class="controls">
+        <label>
+          <span class="labeltxt">Min banned matches</span>
+          <input type="number" id="biMin" value="3" min="1" step="1"/>
+        </label>
+
+        <label>
+          <span class="labeltxt">Sort by</span>
+          <select id="biSort">
+            <option value="delta" selected>Δ Win %</option>
+            <option value="banned">Banned Matches</option>
+            <option value="win_when_ban">Win % (banned)</option>
+            <option value="win_when_not">Win % (not banned)</option>
+            <option value="name">A→Z</option>
+          </select>
+        </label>
+
+        <label>
+          <span class="labeltxt">Dir</span>
+          <select id="biDir">
+            <option value="desc" selected>Desc</option>
+            <option value="asc">Asc</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="caption muted" id="biMeta">—</div>
+      <div class="caption muted" id="biLegend" style="line-height:1.35">
+        <strong>Legend — Ban Impact</strong>:
+        <b>Skill</b> = the skill your side banned;
+        <b>Banned Matches</b> = # of your team-rows that banned it;
+        <b>Win % (banned)</b> = wins_when_banned ÷ banned_matches;
+        <b>Other Matches</b> = your rows where you didn’t ban it;
+        <b>Win % (not banned)</b> = wins_when_not_banned ÷ other_matches;
+        <b>Δ Win %</b> = Win%(banned) − Win%(not banned) (↑ positive means ban helped).
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Skill</th>
+            <th class="right">Banned Matches</th>
+            <th class="right">Win % (banned)</th>
+            <th class="right">Other Matches</th>
+            <th class="right">Win % (not banned)</th>
+            <th class="right">Δ Win %</th>
+          </tr>
+        </thead>
+        <tbody id="biBody"></tbody>
+      </table>
+    </div>
+
+    <!-- PER-SKILL -->
+    <div id="sec-perskill" class="block js-section">
+      <h2>Per-Skill Stats</h2>
+
+      <div class="skill-controls">
+        <label>
+          <span class="labeltxt">Type</span>
+          <select id="skillTypeSelect">
+            <option value="active" selected>Active</option>
+            <option value="passive">Passive</option>
+          </select>
+        </label>
+
+        <label>
+          <span class="labeltxt">Sort by</span>
+          <select id="skillSortBy">
+            <option value="picks" selected>Picks</option>
+            <option value="pickRate">Pick %</option>
+            <option value="bans">Bans</option>
+            <option value="banRate">Ban %</option>
+            <option value="wins">Wins</option>
+            <option value="winRate">Win %</option>
+            <option value="name">Name</option>
+          </select>
+        </label>
+
+        <label>
+          <span class="labeltxt">Order</span>
+          <select id="skillSortDir">
+            <option value="desc" selected>Desc</option>
+            <option value="asc">Asc</option>
+          </select>
+        </label>
+
+        <button id="skillComputeBtn" type="button">Compute</button>
+      </div>
+
+      <div id="skillStatsMeta" class="muted">—</div>
+
+      <table class="skill-table" style="margin-top:10px;">
+        <thead>
+          <tr>
+            <th>Skill</th>
+            <th class="right">Picks</th>
+            <th class="right">Pick %</th>
+            <th class="right">Bans</th>
+            <th class="right">Ban %</th>
+            <th class="right">Wins</th>
+            <th class="right">Win %</th>
+          </tr>
+        </thead>
+        <tbody id="skillStatsBody"></tbody>
+      </table>
     </div>
   </div>
 
   <!-- Tooltip element -->
-  <div class="tt" id="tt">
-    <div class="tt-top">
-      <img id="ttImg" src="" alt="">
-      <div class="tt-titles">
-        <div class="tt-name" id="ttName">—</div>
-        <div class="tt-skill" id="ttSkill">—</div>
-      </div>
-    </div>
-    <p class="tt-desc" id="ttDesc">—</p>
-    <div class="tt-meta" id="ttMeta"></div>
-  </div>
+  <div id="skillTip" class="skillTip" aria-hidden="true"></div>
 
 <script>
-/* ===========================
-   CONFIG: Supabase + Tables
-=========================== */
-const SUPABASE_URL = 'https://gkugecflfddkpitlrmws.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.Oa8tBjsB2F41h6-ivH8kW1TWD8i3WQdACNf1vJt8Q0o';
+/* ========= Supabase init + auth ========= */
+const client = supabase.createClient(
+  'https://gkugecflfddkpitlrmws.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
+);
 
-const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-/**
- * Expected table structure (flexible): "clash_squad_skills" or similar
- * We'll default to "clash_squad_skills" and accept whatever columns exist in rows.
- * You can change this if your table name differs:
- */
-const TABLE_NAME = 'clash_squad_skills';
-
-/**
- * Character JSON (for tooltip skill name + description).
- * Update this path if your character.json is elsewhere.
- */
-const CHARACTER_JSON_URL = './character.json';
-
-/* ===========================
-   STATE
-=========================== */
-let RAW_MATCHES = [];
-let RAW_RECORDS = [];
-let CHAR_INDEX = new Map(); // character name -> normalized info
-
-const DEFAULTS = {
-  map: '__ALL__',
-  team: '__ALL__',
-  tournament: '__ALL__',
-};
-
-function el(id){ return document.getElementById(id); }
-function escapeHtml(s){
-  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-function fmtPct(x){
-  if(!isFinite(x)) return '0.0%';
-  return (x*100).toFixed(1)+'%';
-}
-function fmtNum(x){ return (Number(x)||0).toLocaleString(); }
-
-function toISODate(d){
-  const z = n => String(n).padStart(2,'0');
-  return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;
-}
-
-/* ===========================
-   CHARACTER.JSON -> Tooltip DB
-=========================== */
-function normName(s){ return String(s ?? '').trim(); }
-
-function pick(obj, keys){
-  for(const k of keys){
-    if(obj && obj[k] != null && String(obj[k]).trim() !== '') return obj[k];
-  }
-  return '';
-}
-
-function normalizeCharacterRow(row){
-  const name = normName(pick(row, ['name','character','hero','Character','Hero','Name']));
-  if(!name) return null;
-
-  const image = String(pick(row, ['image','img','portrait','icon','photo','Image','Img','Icon']) || '').trim();
-
-  const skillName = String(pick(row, ['skill_name','skillName','skill','ability','SkillName','Skill','Ability','active_skill','activeSkill']) || '').trim();
-  const skillDesc = String(pick(row, ['skill_desc','skillDesc','description','desc','SkillDesc','Description','Desc','skill_description','skillDescription']) || '').trim();
-
-  const skillType = String(pick(row, ['skill_type','skillType','type','SkillType','Type']) || '').trim();
-  const role = String(pick(row, ['role','Role']) || '').trim();
-
-  const meta = String(pick(row, ['meta','cs_meta','br_meta','Meta','CS_META','BR_META']) || '').trim();
-
-  return { name, image, skillName, skillDesc, skillType, role, meta };
-}
-
-async function loadCharacterJSON(){
-  try{
-    const res = await fetch(CHARACTER_JSON_URL, {cache:'no-store'});
-    if(!res.ok) throw new Error('Failed to fetch character.json');
-    const json = await res.json();
-    const arr = Array.isArray(json) ? json : (json?.data && Array.isArray(json.data) ? json.data : []);
-    const map = new Map();
-    for(const row of arr){
-      const n = normalizeCharacterRow(row);
-      if(n && n.name){
-        map.set(n.name.toLowerCase(), n);
-      }
-    }
-    CHAR_INDEX = map;
-  }catch(err){
-    console.warn('Character JSON not loaded:', err);
-    CHAR_INDEX = new Map();
-  }
-}
-
-function getSkillInfo(characterName){
-  const key = normName(characterName).toLowerCase();
-  return CHAR_INDEX.get(key) || null;
-}
-
-/* ===========================
-   TOOLTIP (delegated)
-=========================== */
-const tt = el('tt');
-const ttImg = el('ttImg');
-const ttName = el('ttName');
-const ttSkill = el('ttSkill');
-const ttDesc = el('ttDesc');
-const ttMeta = el('ttMeta');
-
-function isSkillNode(node){
-  if(!node) return false;
-  if(node.dataset && node.dataset.skill) return true;
-  if(node.tagName === 'IMG'){
-    // icons in these wrappers are usually skills
-    return !!node.closest('.playersWrap, .skill-cell, .comboIcons, .icons, .banCell, .pPass');
-  }
-  return false;
-}
-
-function getSkillNameFromNode(node){
-  if(node.dataset && node.dataset.skill) return node.dataset.skill;
-  if(node.tagName === 'IMG'){
-    return node.getAttribute('alt') || node.getAttribute('title') || '';
-  }
-  return '';
-}
-
-let ttVisible = false;
-
-function showTT(skillName, x, y){
-  const info = getSkillInfo(skillName);
-  if(!info || (!info.skillName && !info.skillDesc)){
-    hideTT();
+(async () => {
+  const { data: { session } } = await client.auth.getSession();
+  if (!session) {
+    window.location.href = "index.html";
     return;
   }
+  const ui = document.getElementById('user-info');
+  if (ui && session.user?.email) ui.textContent = `Logged in as: ${session.user.email}`;
+})();
+document.getElementById('logoutBtn').onclick = async () => {
+  await client.auth.signOut();
+  window.location.href = "index.html";
+};
 
-  ttName.textContent = info.name || skillName || '—';
-  ttSkill.textContent = info.skillName || '—';
-  ttDesc.textContent = info.skillDesc || '—';
+/* ========= Utilities ========= */
+const PLACEHOLDER = 'https://imgur.com/AdvPwAO.png';
+const fmtPct = (num) => isFinite(num) ? (num*100).toFixed(1) + '%' : '—';
+const pct = (num, den) => den ? fmtPct(num/den) : '—';
+const uniq = (arr) => [...new Set(arr)];
+const el = (id) => document.getElementById(id);
 
-  if(info.image){
-    ttImg.src = info.image;
-    ttImg.style.display = '';
-  }else{
-    ttImg.src = '';
-    ttImg.style.display = 'none';
+function ymd(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${da}`;
+}
+// Safely parse the `state` column whether it's JSONB or text
+function parseState(val){
+  if (!val) return {};
+  if (typeof val === 'object') return val;
+  try { return JSON.parse(val); } catch(e){ console.warn('Bad state JSON:', e, val); return {}; }
+}
+function normalizeYMD(val){
+  if (!val) return '';
+  if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) return val.slice(0,10);
+  const d = new Date(val);
+  return isNaN(d) ? '' : ymd(d);
+}
+
+/* ========= Skill info lookup (character.json) =========
+   Goal: Hover ANY skill character icon/name -> show popup with Skill Name + Description.
+   Works even if your character.json uses slightly different field names.
+====================================================== */
+let CHAR_INDEX = new Map(); // key: character name lower -> {charName, skillName, desc, raw}
+let CHAR_READY = false;
+
+function normKey(s){
+  return String(s || '').trim().toLowerCase();
+}
+function pickFirst(obj, keys){
+  for (const k of keys){
+    if (obj && obj[k] != null && String(obj[k]).trim() !== '') return obj[k];
   }
+  return '';
+}
+async function loadCharacterIndex(){
+  try{
+    // cache-bust so updates reflect immediately (no manual bump)
+    const res = await fetch(`character.json?v=${Date.now()}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
 
-  ttMeta.innerHTML = '';
-  const pills = [];
-  if(info.skillType) pills.push(info.skillType);
-  if(info.role) pills.push(info.role);
-  if(info.meta) pills.push(String(info.meta).toUpperCase());
-  for(const p of pills){
-    const div = document.createElement('div');
-    div.className = 'tt-pill';
-    div.textContent = p;
-    ttMeta.appendChild(div);
+    // allow either array or {data:[...]} shapes
+    const list = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+    const map = new Map();
+
+    list.forEach(c=>{
+      const charName = pickFirst(c, ['name','character','char_name','charName','title']);
+      if (!charName) return;
+
+      const skillName = pickFirst(c, [
+        'skill_name','skillName','ability_name','abilityName','skill','ability','active_skill','activeSkill'
+      ]);
+
+      const desc = pickFirst(c, [
+        'description','desc','skill_description','skillDesc','ability_description','abilityDesc','details'
+      ]);
+
+      const entry = {
+        charName: String(charName).trim(),
+        skillName: String(skillName || '').trim(),
+        desc: String(desc || '').trim(),
+        raw: c
+      };
+      map.set(normKey(charName), entry);
+
+      // Optional extra aliases: if json has "aliases" array or "tag"
+      const aliases = c?.aliases;
+      if (Array.isArray(aliases)){
+        aliases.forEach(a=>{
+          const k = normKey(a);
+          if (k) map.set(k, entry);
+        });
+      }
+      const tag = pickFirst(c, ['tag','code','short']);
+      if (tag) map.set(normKey(tag), entry);
+    });
+
+    CHAR_INDEX = map;
+    CHAR_READY = true;
+  } catch(err){
+    console.warn('Failed to load character.json for tooltips:', err);
+    CHAR_READY = false;
   }
+}
+loadCharacterIndex();
 
-  // Position (clamped)
+/* ===== Tooltip behavior ===== */
+const tip = el('skillTip');
+let tipActive = false;
+let tipTargetKey = '';
+
+function getSkillInfoByName(name){
+  const k = normKey(name);
+  if (!k) return null;
+  return CHAR_INDEX.get(k) || null;
+}
+function buildTipHTML({charName, skillName, desc}, imgUrl){
+  const title = charName || '—';
+  const sub = skillName ? skillName : '(No skill name found in character.json)';
+  const body = desc ? desc : '(No description found in character.json)';
+  const img = imgUrl || PLACEHOLDER;
+
+  return `
+    <div class="top">
+      <img class="ico" src="${img}" alt="${title}">
+      <div>
+        <div class="title">${escapeHTML(title)}</div>
+        <div class="subtitle">${escapeHTML(sub)}</div>
+      </div>
+    </div>
+    <div class="desc">${escapeHTML(body)}</div>
+    <div class="hint">Tip: Hover icons or skill names • Source: character.json</div>
+  `;
+}
+function escapeHTML(s){
+  return String(s ?? '')
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'","&#39;");
+}
+function positionTip(x, y){
   const pad = 12;
-  tt.classList.add('show');
-  ttVisible = true;
+  const rect = tip.getBoundingClientRect();
+  let tx = x + 14;
+  let ty = y + 14;
 
-  // First place offscreen so we can measure
-  tt.style.transform = 'translate3d(-9999px,-9999px,0)';
+  if (tx + rect.width + pad > window.innerWidth) tx = x - rect.width - 14;
+  if (ty + rect.height + pad > window.innerHeight) ty = y - rect.height - 14;
 
-  requestAnimationFrame(() => {
-    const rect = tt.getBoundingClientRect();
-    let nx = x + 14;
-    let ny = y + 14;
+  tx = Math.max(pad, Math.min(tx, window.innerWidth - rect.width - pad));
+  ty = Math.max(pad, Math.min(ty, window.innerHeight - rect.height - pad));
 
-    if(nx + rect.width + pad > window.innerWidth) nx = x - rect.width - 14;
-    if(ny + rect.height + pad > window.innerHeight) ny = y - rect.height - 14;
-    nx = Math.max(pad, Math.min(nx, window.innerWidth - rect.width - pad));
-    ny = Math.max(pad, Math.min(ny, window.innerHeight - rect.height - pad));
+  tip.style.left = tx + 'px';
+  tip.style.top  = ty + 'px';
+}
+function showTip(name, imgUrl, x, y){
+  if (!CHAR_READY) return;
+  const info = getSkillInfoByName(name);
+  if (!info) return;
 
-    tt.style.transform = `translate3d(${nx}px, ${ny}px, 0)`;
-  });
+  tip.innerHTML = buildTipHTML(info, imgUrl);
+  tip.classList.add('show');
+  tip.setAttribute('aria-hidden','false');
+  tipActive = true;
+  positionTip(x, y);
+}
+function hideTip(){
+  tip.classList.remove('show');
+  tip.setAttribute('aria-hidden','true');
+  tipActive = false;
+  tipTargetKey = '';
 }
 
-function hideTT(){
-  if(!ttVisible) return;
-  ttVisible = false;
-  tt.classList.remove('show');
-  tt.style.transform = 'translate3d(-9999px,-9999px,0)';
-}
+document.addEventListener('mousemove', (e)=>{
+  if (!tipActive) return;
+  positionTip(e.clientX, e.clientY);
+});
 
-function bindSkillTooltipDelegation(){
-  document.addEventListener('mousemove', (e) => {
-    if(!ttVisible) return;
-    // follow cursor smoothly
-    const rect = tt.getBoundingClientRect();
-    const pad = 12;
-    let nx = e.clientX + 14;
-    let ny = e.clientY + 14;
-    if(nx + rect.width + pad > window.innerWidth) nx = e.clientX - rect.width - 14;
-    if(ny + rect.height + pad > window.innerHeight) ny = e.clientY - rect.height - 14;
-    nx = Math.max(pad, Math.min(nx, window.innerWidth - rect.width - pad));
-    ny = Math.max(pad, Math.min(ny, window.innerHeight - rect.height - pad));
-    tt.style.transform = `translate3d(${nx}px, ${ny}px, 0)`;
-  });
+// Event delegation:
+// Any element with data-char="NAME" will trigger tooltip.
+// We also allow data-char-img for reliable icon.
+document.addEventListener('mouseover', (e)=>{
+  const node = e.target?.closest?.('[data-char]');
+  if (!node) return;
 
-  document.addEventListener('mouseover', (e) => {
-    const t = e.target;
-    if(!isSkillNode(t)) return;
-    const name = getSkillNameFromNode(t);
-    if(!name) return;
-    showTT(name, e.clientX, e.clientY);
-  }, true);
+  const name = node.getAttribute('data-char') || '';
+  const img  = node.getAttribute('data-char-img') || (node.tagName==='IMG' ? node.getAttribute('src') : '');
+  const key = normKey(name);
 
-  document.addEventListener('mouseout', (e) => {
-    const t = e.target;
-    if(!isSkillNode(t)) return;
-    hideTT();
-  }, true);
+  if (!key || key === tipTargetKey) return;
+  tipTargetKey = key;
+  showTip(name, img, e.clientX, e.clientY);
+});
 
-  document.addEventListener('scroll', hideTT, true);
-  window.addEventListener('blur', hideTT);
-}
+document.addEventListener('mouseout', (e)=>{
+  const from = e.target?.closest?.('[data-char]');
+  if (!from) return;
+  // if moving within same data-char element, ignore
+  const to = e.relatedTarget?.closest?.('[data-char]');
+  if (to && to === from) return;
+  hideTip();
+});
 
-/* ===========================
-   DATA FETCH
-=========================== */
-function getFilters(){
-  return {
-    from: el('fFrom').value,
-    to: el('fTo').value,
-    tournament: el('fTourn').value,
-    map: el('fMap').value,
-    team: el('fTeam').value,
-  };
-}
+/* ========= State ========= */
+let RAW_RECORDS = [];
+let CURRENT_ROWS = [];
+let PAGE_SIZE = 25;
+let PAGE = 1;
+let FIRST_LOAD_TOURN = true;
 
-async function fetchRecords(filters){
-  // Basic date filtering + optional tournament/map/team
-  let q = client.from(TABLE_NAME).select('*');
+/* ========= Init filters ========= */
+(function initFilters(){
+  const today = new Date();
+  const from = new Date(today); from.setDate(from.getDate()-30);
+  el('fFrom').value = ymd(from);
+  el('fTo').value = ymd(today);
+  el('fMap').value = '__ALL__';
+  el('fWL').value = '__ALL__';
+  el('fTourn').innerHTML = `<option value="__ALL__">All tournaments</option>`;
+  el('fTeam').innerHTML  = `<option value="__ALL__">All teams</option>`;
+})();
 
-  if(filters.from) q = q.gte('date', filters.from);
-  if(filters.to)   q = q.lte('date', filters.to);
+/* ========= Mode toggles ========= */
+el('compactToggle')?.addEventListener('change', (e)=>{
+  document.body.classList.toggle('compact', e.target.checked);
+});
+el('hidePassiveToggle')?.addEventListener('change', (e)=>{
+  document.body.classList.toggle('passive-hidden', e.target.checked);
+});
 
-  if(filters.tournament && filters.tournament !== '__ALL__'){
-    q = q.eq('tournament', filters.tournament);
+/* ========= Tournament start helper ========= */
+async function getTournamentStartDate(tournName){
+  if (!tournName || tournName === '__ALL__') return null;
+  const { data, error } = await client
+    .from('draft_records')
+    .select('match_date')
+    .eq('tournament_name', tournName)
+    .order('match_date', { ascending: true })
+    .limit(1);
+
+  if (error) {
+    console.warn('Failed to get tournament start date:', error);
+    return null;
   }
-  if(filters.map && filters.map !== '__ALL__'){
-    q = q.eq('map', filters.map);
-  }
-  if(filters.team && filters.team !== '__ALL__'){
-    // Records can be stored as team_left/team_right OR team field; we’ll handle both later.
-    // Here, be permissive: fetch all and filter in JS if needed.
+  const first = data?.[0]?.match_date;
+  return first ? normalizeYMD(first) : null;
+}
+
+/* ========= Fetch & build ========= */
+async function fetchRecords(){
+  const from = el('fFrom').value;
+  const toRaw = el('fTo').value;
+
+  const map  = el('fMap').value;
+  const team = el('fTeam').value || '__ALL__';
+  const tourn= el('fTourn').value || '__ALL__';
+
+  let q = client
+    .from('draft_records')
+    .select('id, match_date, game_number, team_left, team_right, team_left_score, team_right_score, map, tournament_name, state')
+    .gte('match_date', from);
+
+  // Half-open window: include entire "to" day regardless of DATE vs TIMESTAMP type
+  if (toRaw) {
+    const d = new Date(toRaw);
+    d.setDate(d.getDate() + 1);
+    q = q.lt('match_date', ymd(d));
   }
 
-  const {data, error} = await q.order('date', {ascending:false}).limit(5000);
-  if(error) throw error;
+  if (map !== '__ALL__') q = q.eq('map', map);
+  if (team && team !== '__ALL__') q = q.or(`team_left.eq.${team},team_right.eq.${team}`);
+  if (tourn && tourn !== '__ALL__') q = q.eq('tournament_name', tourn);
+
+  q = q.order('match_date', { ascending:false }).order('id', { ascending:false });
+
+  const { data, error } = await q;
+  if (error) {
+    console.error('Fetch error', error);
+    alert(`Failed to load records: ${error.message}`);
+    return [];
+  }
   return data || [];
 }
 
-/* ===========================
-   NORMALIZATION helpers
-=========================== */
-function asArray(v){
-  if(Array.isArray(v)) return v;
-  if(v == null) return [];
-  if(typeof v === 'string'){
-    // try JSON parse if looks like array
-    const s = v.trim();
-    if((s.startsWith('[') && s.endsWith(']')) || (s.startsWith('{') && s.endsWith('}'))){
-      try{
-        const j = JSON.parse(s);
-        if(Array.isArray(j)) return j;
-      }catch(_){}
-    }
-    // fallback split
-    return s.split(',').map(x=>x.trim()).filter(Boolean);
-  }
-  return [v];
-}
-
-function getTeamNamesFromRow(r){
-  // Accept multiple schemas:
-  // - team_left / team_right
-  // - teamA / teamB
-  // - team (single)
-  const left = normName(r.team_left || r.teamA || r.team1 || '');
-  const right = normName(r.team_right || r.teamB || r.team2 || '');
-  const one = normName(r.team || '');
-  const teams = [];
-  if(left) teams.push(left);
-  if(right) teams.push(right);
-  if(!left && !right && one) teams.push(one);
-  return teams;
-}
-
-function getWinnerFromRow(r){
-  // Flexible winner fields
-  const w = normName(r.winner || r.win_team || r.winning_team || r.team_win || '');
-  return w;
-}
-
-function getMatchId(r){
-  return String(r.match_id || r.id || r.game_id || `${r.date||''}-${r.map||''}-${r.round||''}-${r.match||''}` || '').trim();
-}
-
-function getPlayersFromRow(r, side){
-  // side = 'left' or 'right'
-  // Support:
-  // - players_left (array), players_right
-  // - team_left_players, team_right_players
-  // - player1..player4 etc not supported unless provided as arrays
-  const key1 = side === 'left' ? 'players_left' : 'players_right';
-  const key2 = side === 'left' ? 'team_left_players' : 'team_right_players';
-  const arr = asArray(r[key1] || r[key2]);
-  // Normalize player object:
-  return arr.map(p => {
-    if(typeof p === 'string'){
-      return { name: p, active: '', passives: [] };
-    }
-    return {
-      name: normName(p.name || p.player || p.ign || ''),
-      active: normName(p.active || p.hero || p.character || p.skill || ''),
-      passives: asArray(p.passives || p.passive || p.passive_skills || p.passiveSkills || []),
-    };
-  });
-}
-
-function getBansFromRow(r){
-  // Support:
-  // - bans (array)
-  // - bans_left + bans_right
-  // - ban1.. etc
-  const b = []
-    .concat(asArray(r.bans))
-    .concat(asArray(r.bans_left))
-    .concat(asArray(r.bans_right))
-    .concat(asArray(r.ban));
-  const flat = b.map(x => {
-    if(typeof x === 'string') return { name: normName(x) };
-    return { name: normName(x.name || x.skill || x.character || '') , team: normName(x.team || '') };
-  }).filter(x=>x.name);
-  return flat;
-}
-
-function getActiveImageFromRow(r, activeName){
-  // If row contains an images map, use it.
-  // Otherwise fallback to character.json image if available.
-  if(r && r.active_images){
-    try{
-      const m = typeof r.active_images === 'string' ? JSON.parse(r.active_images) : r.active_images;
-      if(m && m[activeName]) return m[activeName];
-    }catch(_){}
-  }
-  const info = getSkillInfo(activeName);
-  return info?.image || '';
-}
-
-function getPassiveImageFromRow(r, passiveName){
-  if(r && r.passive_images){
-    try{
-      const m = typeof r.passive_images === 'string' ? JSON.parse(r.passive_images) : r.passive_images;
-      if(m && m[passiveName]) return m[passiveName];
-    }catch(_){}
-  }
-  const info = getSkillInfo(passiveName);
-  return info?.image || '';
-}
-
-function normalizeMatches(records){
-  const byMatch = new Map();
-
-  for(const r of records){
-    const id = getMatchId(r);
-    if(!id) continue;
-
-    const teams = getTeamNamesFromRow(r);
-    const left = normName(r.team_left || r.teamA || r.team1 || teams[0] || '');
-    const right = normName(r.team_right || r.teamB || r.team2 || teams[1] || '');
-
-    const m = {
-      id,
-      date: normName(r.date || ''),
-      tournament: normName(r.tournament || ''),
-      map: normName(r.map || ''),
-      round: normName(r.round || r.stage || r.day || ''),
-      leftTeam: left,
-      rightTeam: right,
-      winner: getWinnerFromRow(r),
-      playersLeft: getPlayersFromRow(r, 'left'),
-      playersRight: getPlayersFromRow(r, 'right'),
-      bans: getBansFromRow(r),
-      raw: r,
-    };
-
-    // optional: scores
-    m.leftScore = Number(r.left_score || r.team_left_score || r.score_left || 0) || 0;
-    m.rightScore = Number(r.right_score || r.team_right_score || r.score_right || 0) || 0;
-
-    byMatch.set(id, m);
-  }
-  return Array.from(byMatch.values()).sort((a,b)=> (b.date||'').localeCompare(a.date||''));
-}
-
-/* ===========================
-   FILTER OPTIONS
-=========================== */
-function uniqueSorted(arr){
-  return Array.from(new Set(arr.filter(Boolean))).sort((a,b)=>a.localeCompare(b));
-}
-
-function populateTournamentDropdown(records){
-  const sel = el('fTourn');
-  const list = uniqueSorted(records.map(r => normName(r.tournament)));
-  const prev = sel.value || DEFAULTS.tournament;
-  sel.innerHTML = `<option value="__ALL__">All tournaments</option>` + list.map(x => `<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join('');
-  sel.value = list.includes(prev) ? prev : (list[0] || '__ALL__');
-}
-
-function populateMapDropdown(records){
-  const sel = el('fMap');
-  const list = uniqueSorted(records.map(r => normName(r.map)));
-  const prev = sel.value || DEFAULTS.map;
-  sel.innerHTML = `<option value="__ALL__">All maps</option>` + list.map(x => `<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join('');
-  sel.value = list.includes(prev) ? prev : '__ALL__';
-}
-
 function populateTeamDropdown(records){
-  const sel = el('fTeam');
-  const teams = [];
-  for(const r of records){
-    for(const t of getTeamNamesFromRow(r)) teams.push(t);
-  }
-  const list = uniqueSorted(teams);
-  const prev = sel.value || DEFAULTS.team;
-  sel.innerHTML = `<option value="__ALL__">All teams</option>` + list.map(x => `<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join('');
-  sel.value = list.includes(prev) ? prev : '__ALL__';
+  const dd = el('fTeam');
+  const prior = dd.value || '__ALL__';
+
+  const teams = new Set();
+  records.forEach(r => { if (r.team_left) teams.add(r.team_left); if (r.team_right) teams.add(r.team_right); });
+
+  dd.innerHTML = '';
+  dd.appendChild(new Option('All teams', '__ALL__'));
+
+  [...teams].sort().forEach(t => dd.appendChild(new Option(t, t)));
+
+  // restore selection if still valid; otherwise back to All
+  dd.value = [...dd.options].some(o => o.value === prior) ? prior : '__ALL__';
 }
 
-/* ===========================
-   RENDER: Matches
-=========================== */
-function computeKPIs(matches){
-  const total = matches.length;
-  let wins = 0;
-  let picks = 0;
-  let bans = 0;
+async function populateTournamentDropdown(records){
+  const dd = el('fTourn');
+  const prior = dd.value || '__ALL__';
 
-  for(const m of matches){
-    const w = normName(m.winner);
-    if(w) wins++;
+  const tourns = new Set();
+  let latest = null;
 
-    // picks = actives across all players
-    const players = m.playersLeft.concat(m.playersRight);
-    picks += players.filter(p=>p.active).length;
-
-    // bans
-    bans += m.bans.length;
-  }
-
-  return {
-    totalMatches: total,
-    matchesWithWinner: wins,
-    totalPicks: picks,
-    totalBans: bans,
-  };
-}
-
-function playerCardHTML(player, r){
-  const hero = player.active || '';
-  const heroImg = hero ? getActiveImageFromRow(r, hero) : '';
-  const passives = asArray(player.passives).filter(Boolean);
-
-  const passHTML = passives.length ? `
-    <div class="pPass">
-      ${passives.slice(0,6).map(ps=>{
-        const img = getPassiveImageFromRow(r, ps);
-        return `
-          <div class="pPassItem">
-            ${img ? `<img src="${escapeHtml(img)}" alt="${escapeHtml(ps)}" title="${escapeHtml(ps)}">` : ''}
-            <span data-skill="${escapeHtml(ps)}">${escapeHtml(ps)}</span>
-          </div>
-        `;
-      }).join('')}
-    </div>
-  ` : '';
-
-  return `
-    <div class="player">
-      <div class="pInfo">
-        <div class="pName">${escapeHtml(player.name || '—')}</div>
-        <div class="pHero" data-skill="${escapeHtml(hero)}">${escapeHtml(hero || '—')}</div>
-        ${passHTML}
-      </div>
-      <div class="pActs">
-        ${hero ? `<img class="pAct" src="${escapeHtml(heroImg)}" alt="${escapeHtml(hero)}" title="${escapeHtml(hero)}">` : ''}
-      </div>
-    </div>
-  `;
-}
-
-function renderMatchList(matches, filters){
-  const list = el('matchList');
-  el('matchCount').textContent = fmtNum(matches.length);
-
-  if(!matches.length){
-    list.innerHTML = `<div class="muted">No matches found for the selected filters.</div>`;
-    return;
-  }
-
-  const teamFilter = filters.team;
-
-  const html = matches.map(m=>{
-    // optional team filter in JS (if schema doesn't allow eq in query)
-    if(teamFilter && teamFilter !== '__ALL__'){
-      const teams = [m.leftTeam, m.rightTeam].filter(Boolean);
-      if(!teams.includes(teamFilter)) return '';
+  records.forEach(r => {
+    const tn = r.tournament_name;
+    if (!tn) return;
+    tourns.add(tn);
+    if (!latest || (String(r.match_date) > String(latest.date))) {
+      latest = { name: tn, date: r.match_date };
     }
+  });
 
-    const winner = normName(m.winner);
-    const wTag = winner ? `<span class="badge">Winner: <span class="mono">${escapeHtml(winner)}</span></span>` : `<span class="badge">Winner: <span class="mono">—</span></span>`;
-    const meta = `
-      <span class="badge mono">${escapeHtml(m.date || '—')}</span>
-      <span class="badge mono">${escapeHtml(m.tournament || '—')}</span>
-      <span class="badge mono">${escapeHtml(m.map || '—')}</span>
-      ${m.round ? `<span class="badge mono">${escapeHtml(m.round)}</span>` : ''}
-      ${wTag}
-    `;
+  dd.innerHTML = '';
+  dd.appendChild(new Option('All tournaments', '__ALL__'));
+  [...tourns].sort().forEach(tn => dd.appendChild(new Option(tn, tn)));
 
-    const bans = m.bans || [];
-    const bansHTML = bans.length ? `
-      <div class="bansGrid">
-        ${bans.slice(0,10).map(b=>{
-          const img = getActiveImageFromRow(m.raw, b.name) || getPassiveImageFromRow(m.raw, b.name);
-          return `
-            <div class="banCell">
-              ${img ? `<img src="${escapeHtml(img)}" alt="${escapeHtml(b.name)}" title="${escapeHtml(b.name)}">` : ''}
-              <div style="min-width:0">
-                <div class="bn" data-skill="${escapeHtml(b.name)}">${escapeHtml(b.name)}</div>
-                <div class="bt">${escapeHtml(b.team || '')}</div>
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    ` : `<div class="muted">No bans recorded.</div>`;
+  if (FIRST_LOAD_TOURN && latest && (prior === '__ALL__' || !prior)) {
+    dd.value = latest.name;
 
-    return `
-      <div class="match">
-        <div class="matchHead">
-          <div class="matchTitle">${escapeHtml(m.leftTeam || 'Team A')} vs ${escapeHtml(m.rightTeam || 'Team B')}</div>
-          <div class="matchMeta">${meta}</div>
-        </div>
-        <div class="row">
-          <div class="teamBox">
-            <div class="teamName"><span class="miniDot"></span>${escapeHtml(m.leftTeam || '—')}</div>
-            <div class="playersWrap">
-              ${m.playersLeft.map(p => playerCardHTML(p, m.raw)).join('') || `<div class="muted">No players</div>`}
-            </div>
-          </div>
-          <div class="teamBox">
-            <div class="teamName"><span class="miniDot" style="background:rgba(255,189,89,.85)"></span>${escapeHtml(m.rightTeam || '—')}</div>
-            <div class="playersWrap">
-              ${m.playersRight.map(p => playerCardHTML(p, m.raw)).join('') || `<div class="muted">No players</div>`}
-            </div>
-          </div>
-          <div class="bansBox">
-            <div class="teamName"><span class="miniDot" style="background:rgba(120,150,255,.75)"></span>Bans</div>
-            ${bansHTML}
-          </div>
-        </div>
-      </div>
-    `;
-  }).filter(Boolean).join('');
+    // set From date to the start of the most recent tournament
+    const start = await getTournamentStartDate(latest.name);
+    if (start) el('fFrom').value = start;
 
-  list.innerHTML = html || `<div class="muted">No matches found for the selected team filter.</div>`;
-}
-
-function computeTopSkills(matches, subject){
-  const count = new Map();
-  const wins = new Map();
-
-  for(const m of matches){
-    const winner = normName(m.winner);
-    const didWin = (t) => winner && (winner === t);
-
-    if(subject === 'active'){
-      const players = m.playersLeft.concat(m.playersRight);
-      for(const p of players){
-        const s = normName(p.active);
-        if(!s) continue;
-        count.set(s, (count.get(s)||0) + 1);
-
-        // if player belongs to winning team, count as win appearance
-        const team = m.playersLeft.includes(p) ? m.leftTeam : m.rightTeam;
-        if(didWin(team)) wins.set(s, (wins.get(s)||0) + 1);
-      }
-    }else if(subject === 'passive'){
-      const players = m.playersLeft.concat(m.playersRight);
-      for(const p of players){
-        const team = m.playersLeft.includes(p) ? m.leftTeam : m.rightTeam;
-        for(const ps of asArray(p.passives)){
-          const s = normName(ps);
-          if(!s) continue;
-          count.set(s, (count.get(s)||0) + 1);
-          if(didWin(team)) wins.set(s, (wins.get(s)||0) + 1);
-        }
-      }
-    }else if(subject === 'bans'){
-      for(const b of (m.bans||[])){
-        const s = normName(b.name);
-        if(!s) continue;
-        count.set(s, (count.get(s)||0) + 1);
-        // wins not meaningful for bans, skip
-      }
-    }
+    FIRST_LOAD_TOURN = false;
+  } else {
+    dd.value = [...dd.options].some(o => o.value === prior) ? prior : '__ALL__';
   }
-
-  const rows = Array.from(count.entries()).map(([name, c]) => {
-    const w = wins.get(name) || 0;
-    return { name, count:c, winRate: c ? (w/c) : 0 };
-  }).sort((a,b)=> b.count - a.count);
-
-  return rows.slice(0, 8);
 }
 
-function renderTopList(elm, rows, type){
-  if(!rows.length){
-    elm.innerHTML = `<div class="muted">—</div>`;
-    return;
-  }
-  elm.innerHTML = rows.map(r => {
-    const info = getSkillInfo(r.name);
-    const img = info?.image || '';
-    const wr = type === 'bans' ? '' : `<span class="muted">• WR ${fmtPct(r.winRate)}</span>`;
-    return `
-      <div class="pill" style="margin:6px 0; width:100%; justify-content:space-between">
-        <span class="skill-cell" style="gap:8px">
-          ${img ? `<img src="${escapeHtml(img)}" alt="${escapeHtml(r.name)}">` : ''}
-          <span class="mono" data-skill="${escapeHtml(r.name)}">${escapeHtml(r.name)}</span>
-        </span>
-        <span class="mono">${fmtNum(r.count)} ${wr}</span>
-      </div>
-    `;
-  }).join('');
-}
+/* ===== Tournament change: auto-link Team dropdown + date range ===== */
+el('fTourn').addEventListener('change', async ()=>{
+  // when user changes tournament, set From to that tournament start (if known)
+  const t = el('fTourn').value;
+  const start = await getTournamentStartDate(t);
+  if (start) el('fFrom').value = start;
 
-function renderKPIs(matches){
-  const kpi = computeKPIs(matches);
-  const row = el('kpiRow');
-  row.innerHTML = `
-    <span class="pill"><span class="dot"></span><span class="mono">Matches: ${fmtNum(kpi.totalMatches)}</span></span>
-    <span class="pill"><span class="dot" style="background:rgba(120,150,255,.8)"></span><span class="mono">Picks: ${fmtNum(kpi.totalPicks)}</span></span>
-    <span class="pill"><span class="dot" style="background:rgba(255,119,51,.8)"></span><span class="mono">Bans: ${fmtNum(kpi.totalBans)}</span></span>
-  `;
-}
+  // refresh immediately so "All Teams" list is linked to tournament filter
+  refresh();
+});
 
-/* ===========================
-   SUMMARY VIEW
-=========================== */
-function groupKey(match, groupBy){
-  if(groupBy === 'team') return '__TEAM__'; // handled below
-  if(groupBy === 'map') return match.map || '—';
-  if(groupBy === 'tournament') return match.tournament || '—';
-  return '—';
-}
+/* Build per-team rows from a record */
+function explodeRecordToRows(rec){
+  const s = parseState(rec.state);
+  const picks    = Array.isArray(s.picks)       ? s.picks       : [];
+  const passives = Array.isArray(s.passives)    ? s.passives    : [];
+  const bans     = Array.isArray(s.bans)        ? s.bans        : [];
+  const names    = Array.isArray(s.playerCards) ? s.playerCards : [];
 
-function buildSummaryGroups(matches, groupBy){
-  const groups = new Map();
+  const leftWin  = (rec.team_left_score ?? 0) > (rec.team_right_score ?? 0);
+  const rightWin = (rec.team_right_score ?? 0) > (rec.team_left_score ?? 0);
 
-  if(groupBy === 'team'){
-    for(const m of matches){
-      const t1 = m.leftTeam || '—';
-      const t2 = m.rightTeam || '—';
-      if(!groups.has(t1)) groups.set(t1, []);
-      if(!groups.has(t2)) groups.set(t2, []);
-      groups.get(t1).push(m);
-      groups.get(t2).push(m);
-    }
-    return groups;
-  }
+  function sideRow(side){
+    const isLeft = side==='L';
+    const team   = isLeft ? rec.team_left : rec.team_right;
+    const opp    = isLeft ? rec.team_right : rec.team_left;
+    const tScore = isLeft ? rec.team_left_score : rec.team_right_score;
+    const oScore = isLeft ? rec.team_right_score : rec.team_left_score;
+    const res    = (isLeft ? leftWin : rightWin) ? 'W' : 'L';
 
-  for(const m of matches){
-    const k = groupKey(m, groupBy) || '—';
-    if(!groups.has(k)) groups.set(k, []);
-    groups.get(k).push(m);
-  }
-  return groups;
-}
+    const banObj = bans[ isLeft ? 0 : 1 ];
+    const ban    = banObj?.name || '';
+    const banImg = banObj?.image_url || '';
 
-function buildSkillCounts(matches, subject, groupKeyName){
-  const count = new Map();
-  const wins = new Map();
-  const appearedInMatch = new Set();
+    const idx = isLeft ? [0,1,2,3] : [7,6,5,4];
 
-  for(const m of matches){
-    const winner = normName(m.winner);
-    const teamWin = (team) => winner && team && winner === team;
+    const actives = idx.map((i, k) => {
+      const player = (names[i] && String(names[i]).trim()) ? names[i].trim() : `P${k+1}`;
+      const heroObj= (picks[i] && typeof picks[i] === 'object') ? picks[i] : null;
+      return { player, hero: heroObj?.name || '', heroImg: heroObj?.image_url || PLACEHOLDER };
+    });
 
-    if(subject === 'active'){
-      const players = m.playersLeft.concat(m.playersRight);
-      for(const p of players){
-        const s = normName(p.active);
-        if(!s) continue;
+    const passiveLines = idx.map((i, k) => {
+      const player = (names[i] && String(names[i]).trim()) ? names[i].trim() : `P${k+1}`;
+      const trioRaw = Array.isArray(passives[i]) ? passives[i] : [];
+      const trioObjs = trioRaw.filter(Boolean).map(ps => ({
+        name: ps?.name || '',
+        img : ps?.image_url || PLACEHOLDER
+      }));
+      while (trioObjs.length < 3) trioObjs.push({name:'', img: PLACEHOLDER});
+      return { player, trio: trioObjs.slice(0,3) };
+    });
 
-        count.set(s, (count.get(s)||0)+1);
-
-        const team = m.playersLeft.includes(p) ? m.leftTeam : m.rightTeam;
-        if(teamWin(team)) wins.set(s, (wins.get(s)||0)+1);
-
-        appearedInMatch.add(`${m.id}::${s}`);
-      }
-    }else if(subject === 'passive'){
-      const players = m.playersLeft.concat(m.playersRight);
-      for(const p of players){
-        const team = m.playersLeft.includes(p) ? m.leftTeam : m.rightTeam;
-        for(const ps of asArray(p.passives)){
-          const s = normName(ps);
-          if(!s) continue;
-          count.set(s, (count.get(s)||0)+1);
-          if(teamWin(team)) wins.set(s, (wins.get(s)||0)+1);
-          appearedInMatch.add(`${m.id}::${s}`);
-        }
-      }
-    }else if(subject === 'bans'){
-      for(const b of (m.bans||[])){
-        const s = normName(b.name);
-        if(!s) continue;
-        count.set(s, (count.get(s)||0)+1);
-        appearedInMatch.add(`${m.id}::${s}`);
-      }
-    }
-  }
-
-  const rows = Array.from(count.entries()).map(([name,c])=>{
-    const w = wins.get(name)||0;
     return {
-      name,
-      count:c,
-      pickRate: matches.length ? (appearedInMatchCount(appearedInMatch, name, matches) / matches.length) : 0,
-      winRate: subject === 'bans' ? 0 : (c ? (w/c) : 0)
+      rec_id: rec.id,
+      match_date: rec.match_date,
+      game_number: rec.game_number,
+      map: rec.map,
+      team, opponent: opp,
+      team_score: tScore ?? 0,
+      opp_score: oScore ?? 0,
+      result: res,
+      banName: ban,
+      banImg,
+      actives,
+      passives: passiveLines,
+      tournament_name: rec.tournament_name
     };
-  }).sort((a,b)=> b.count - a.count);
+  }
 
+  return [sideRow('L'), sideRow('R')];
+}
+
+function applyRowFilters(allRows){
+  const wl = el('fWL').value;
+  const team = el('fTeam').value || '__ALL__';
+  let rows = allRows.slice();
+
+  if (team !== '__ALL__') rows = rows.filter(r => r.team === team);
+  if (wl !== '__ALL__') rows = rows.filter(r => r.result === wl);
   return rows;
 }
 
-function appearedInMatchCount(set, skillName, matches){
-  let n = 0;
-  for(const m of matches){
-    if(set.has(`${m.id}::${skillName}`)) n++;
-  }
-  return n;
+/* Player card HTML */
+function playerCardHTML(player, heroName, heroImg, trio){
+  const passRows = (trio || [])
+    .filter(ps => ps && ps.name)
+    .map(ps => `
+      <div class="pPassRow">
+        <img src="${ps.img || PLACEHOLDER}" alt="${ps.name}" loading="lazy"
+             data-char="${escapeHTML(ps.name)}" data-char-img="${ps.img || PLACEHOLDER}">
+        <span data-char="${escapeHTML(ps.name)}" data-char-img="${ps.img || PLACEHOLDER}">${escapeHTML(ps.name)}</span>
+      </div>
+    `).join('');
+
+  const img  = heroImg || PLACEHOLDER;
+  const hero = heroName || '—';
+  const p    = player || '';
+
+  return `
+    <div class="pCard">
+      <img class="pAct" src="${img}" alt="${escapeHTML(hero)}" loading="lazy"
+           data-char="${escapeHTML(hero)}" data-char-img="${img}">
+      <div class="pPassCol">${passRows || ''}</div>
+      <div class="pInfo">
+        <div class="pName">${escapeHTML(p)}</div>
+        <div class="pHero" data-char="${escapeHTML(hero)}" data-char-img="${img}">${escapeHTML(hero)}</div>
+      </div>
+    </div>
+  `;
 }
 
-function renderSummary(matches){
-  const groupBy = el('sumGroup').value;
-  const subject = el('sumSubject').value;
-  const minCount = Number(el('sumMin').value || 1);
+function renderRows(rows){
+  const body = el('rowsBody');
+  body.innerHTML = '';
+  if (!rows.length){
+    body.innerHTML = `<tr><td colspan="9" class="muted">No rows for your selection.</td></tr>`;
+    return;
+  }
 
-  const groups = buildSummaryGroups(matches, groupBy);
-  const keys = Array.from(groups.keys()).sort((a,b)=>a.localeCompare(b));
+  rows.forEach(r => {
+    const banImg = r.banImg || PLACEHOLDER;
+    const banTxt = r.banName || '—';
 
-  el('sumMeta').textContent = `${fmtNum(keys.length)} ${groupBy} group(s) • ${fmtNum(keys.reduce((acc,k)=>acc + groups.get(k).length, 0))} match-row(s) in view`;
+    const byPlayer = r.actives.map(a => {
+      const p = r.passives.find(pp => pp.player === a.player) || { trio: [] };
+      return playerCardHTML(a.player, a.hero, a.heroImg, p.trio);
+    }).join('');
+
+    const tr=document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHTML(String(r.match_date || ''))}</td>
+      <td>Game ${escapeHTML(String(r.game_number || ''))}</td>
+      <td>${escapeHTML(String(r.map || ''))}</td>
+      <td>
+        <div><strong>${escapeHTML(r.team || '')}</strong></div>
+        <div class="muted">vs ${escapeHTML(r.opponent || '')}</div>
+      </td>
+      <td>${escapeHTML(r.opponent || '')}</td>
+      <td class="mono">${escapeHTML(String(r.team_score))} - ${escapeHTML(String(r.opp_score))}</td>
+      <td><span class="wl ${r.result}">${r.result}</span></td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <img src="${banImg}" alt="${escapeHTML(banTxt)}" loading="lazy"
+               style="width:30px;height:30px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:#0b0b0b"
+               data-char="${escapeHTML(banTxt)}" data-char-img="${banImg}">
+          <span data-char="${escapeHTML(banTxt)}" data-char-img="${banImg}">${escapeHTML(banTxt)}</span>
+        </div>
+      </td>
+      <td><div class="playersWrap">${byPlayer}</div></td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
+/* Pagination for match rows */
+function renderRowsPaged(rows){
+  const total = rows.length;
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  PAGE = Math.min(Math.max(1, PAGE), pages);
+  const start = (PAGE-1)*PAGE_SIZE;
+  const slice = rows.slice(start, start + PAGE_SIZE);
+  renderRows(slice);
+
+  el('rowsPager').innerHTML =
+    `<div class="muted">Page <span class="mono">${PAGE}</span>/<span class="mono">${pages}</span> • <span class="mono">${total}</span> rows</div>
+     <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+       <button class="btn btn-ghost" ${PAGE<=1?'disabled':''} onclick="PAGE=1;renderRowsPaged(CURRENT_ROWS)">« First</button>
+       <button class="btn btn-ghost" ${PAGE<=1?'disabled':''} onclick="PAGE--;renderRowsPaged(CURRENT_ROWS)">‹ Prev</button>
+       <button class="btn btn-ghost" ${PAGE>=pages?'disabled':''} onclick="PAGE++;renderRowsPaged(CURRENT_ROWS)">Next ›</button>
+       <button class="btn btn-ghost" ${PAGE>=pages?'disabled':''} onclick="PAGE=${pages};renderRowsPaged(CURRENT_ROWS)">Last »</button>
+     </div>`;
+}
+
+/* ===== Summary (global) ===== */
+function buildBucketsFromRows(rows, groupBy, kind){
+  const buckets = new Map();
+  rows.forEach(r => {
+    const keys = (groupBy === 'team') ? [r.team] : uniq(r.actives.map(a => a.player)).filter(Boolean);
+    keys.forEach(key => {
+      if (!buckets.has(key)){
+        buckets.set(key, { name:key, matches:0, wins:0, skills:new Map() });
+      }
+      const B = buckets.get(key);
+      B.matches += 1;
+      if (r.result === 'W') B.wins += 1;
+
+      if (kind === 'active'){
+        r.actives.forEach(a => {
+          if (groupBy==='player' && a.player !== key) return;
+          const nm = a.hero; if (!nm) return;
+          const S = B.skills.get(nm) || { occ:0, appear:0, appearWins:0, img: a.heroImg || PLACEHOLDER };
+          S.occ += 1; S.appear += 1; if (r.result === 'W') S.appearWins += 1;
+          if (!S.img && a.heroImg) S.img = a.heroImg;
+          B.skills.set(nm, S);
+        });
+      } else if (kind === 'passive'){
+        r.passives.forEach(p => {
+          if (groupBy==='player' && p.player !== key) return;
+          (p.trio || []).forEach(x => {
+            const nm = x?.name || ''; if (!nm) return;
+            const S = B.skills.get(nm) || { occ:0, appear:0, appearWins:0, img: x.img || PLACEHOLDER };
+            S.occ += 1; S.appear += 1; if (r.result === 'W') S.appearWins += 1;
+            if (!S.img && x.img) S.img = x.img;
+            B.skills.set(nm, S);
+          });
+        });
+      } else {
+        const nm = r.banName; if (!nm) return;
+        const S = B.skills.get(nm) || { occ:0, appear:0, appearWins:0, img: r.banImg || PLACEHOLDER };
+        S.occ += 1; S.appear += 1; if (r.result === 'W') S.appearWins += 1;
+        if (!S.img && r.banImg) S.img = r.banImg;
+        B.skills.set(nm, S);
+      }
+    });
+  });
+  return buckets;
+}
+
+function renderSummary(buckets, groupBy, kind){
+  const grid = el('sumGrid');
+  const meta = el('sumMeta');
+  const totalEntities = buckets.size;
+  const totalRows = CURRENT_ROWS.length;
+  meta.textContent = `${totalEntities} ${groupBy === 'team' ? 'team' : 'player'} group(s) • ${totalRows} team-row(s) in view`;
+
+  if (!totalEntities){
+    grid.innerHTML = `<div class="card"><div class="muted">No data for this selection.</div></div>`;
+    return;
+  }
+
+  const cardSort  = el('sumCardSort').value;
+  const cardDir   = el('sumCardDir').value;
+  const skillSort = el('sumSkillSort').value;
+  const skillDir  = el('sumSkillDir').value;
+
+  const ordered = [...buckets.values()].map(b => {
+    const subj = [...b.skills.values()].reduce((acc, s) => {
+      acc.appear     += (s.appear || 0);
+      acc.appearWins += (s.appearWins || 0);
+      acc.occ        += (s.occ || 0);
+      return acc;
+    }, { appear:0, appearWins:0, occ:0 });
+    subj.rate    = b.matches ? (subj.appear / b.matches) : 0;
+    subj.winrate = subj.appear ? (subj.appearWins / subj.appear) : 0;
+    b._subj = subj;
+    return b;
+  });
+
+  const cardCmp = (a, b) => {
+    let A,B;
+    if (cardSort==='name'){ A=a.name?.toLowerCase()||''; B=b.name?.toLowerCase()||''; }
+    else if (cardSort==='matches'){ A=a.matches; B=b.matches; }
+    else if (cardSort==='wins'){ A=a.wins; B=b.wins; }
+    else if (cardSort==='winpct'){ A=a.matches ? a.wins/a.matches : -1; B=b.matches ? b.wins/b.matches : -1; }
+    else if (cardSort==='subjectAppear'){ A=a._subj.appear; B=b._subj.appear; }
+    else if (cardSort==='subjectRate'){ A=a._subj.rate; B=b._subj.rate; }
+    else { A=a._subj.winrate; B=b._subj.winrate; }
+    if (A<B) return cardDir==='asc' ? -1 : 1;
+    if (A>B) return cardDir==='asc' ? 1 : -1;
+    return (a.name||'').localeCompare(b.name||'');
+  };
+  ordered.sort(cardCmp);
 
   const cards = [];
-  for(const k of keys){
-    const ms = groups.get(k) || [];
-    const winnerMatches = ms.filter(x => !!normName(x.winner)).length;
+  ordered.forEach(b => {
+    let skills = [...b.skills.entries()].map(([name, s]) => {
+      const appearRate = b.matches ? (s.appear / b.matches) : 0;
+      const winRate    = s.appear ? (s.appearWins / s.appear) : 0;
+      return { name, ...s, appearRate, winRate };
+    });
 
-    // Team-specific wins only for groupBy=team
-    let wins = 0;
-    if(groupBy === 'team'){
-      for(const m of ms){
-        if(normName(m.winner) && m.winner === k) wins++;
-      }
-    }
+    const skillCmp = (x,y) => {
+      let A,B;
+      if (skillSort==='name'){ A=x.name.toLowerCase(); B=y.name.toLowerCase(); }
+      else if (skillSort==='count'){ A=x.occ; B=y.occ; }
+      else if (skillSort==='winrate'){ A=x.winRate; B=y.winRate; }
+      else { A=x.appearRate; B=y.appearRate; }
+      if (A<B) return skillDir==='asc' ? -1 : 1;
+      if (A>B) return skillDir==='asc' ? 1 : -1;
+      return x.name.toLowerCase().localeCompare(y.name.toLowerCase());
+    };
+    skills.sort(skillCmp);
 
-    const skills = buildSkillCounts(ms, subject, k).filter(r => r.count >= minCount).slice(0, 12);
-
-    const kpis = groupBy === 'team'
-      ? `<div class="kpis">
-          <span class="chip mono">Matches ${fmtNum(ms.length)}</span>
-          <span class="chip mono">Wins ${fmtNum(wins)} (${ms.length?fmtPct(wins/ms.length):'0.0%'})</span>
-          <span class="chip mono">When Appeared ${fmtPct(skills.length?skills[0].pickRate:0)}</span>
-        </div>`
-      : `<div class="kpis">
-          <span class="chip mono">Matches ${fmtNum(ms.length)}</span>
-          <span class="chip mono">Winners logged ${fmtNum(winnerMatches)}</span>
-        </div>`;
-
-    const table = skills.length ? `
-      <div class="tableWrap"><table class="sum-table">
-        <thead>
-          <tr>
-            <th>${subject === 'bans' ? 'Skill' : 'Skill'}</th>
-            <th class="right">Count</th>
-            <th class="right">${subject === 'bans' ? 'Ban Rate' : 'Pick Rate'}</th>
-            <th class="right">${subject === 'bans' ? '—' : 'Win Rate'}</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${skills.map(s=>{
-            const info = getSkillInfo(s.name);
-            const img = info?.image || '';
-            return `
-              <tr>
-                <td>
-                  <div class="skill-cell">
-                    ${img ? `<img src="${escapeHtml(img)}" alt="${escapeHtml(s.name)}">` : ''}
-                    <span class="skill-name" data-skill="${escapeHtml(s.name)}">${escapeHtml(s.name)}</span>
-                  </div>
-                </td>
-                <td class="right mono">${fmtNum(s.count)}</td>
-                <td class="right mono">${fmtPct(s.pickRate)}</td>
-                <td class="right mono">${subject === 'bans' ? '—' : fmtPct(s.winRate)}</td>
-              </tr>
-            `;
-          }).join('')}
-        </tbody>
-      </table></div>`
-      : `<div class="muted">No ${subject} data for this group.</div>`;
+    const table = skills.length
+      ? `<table class="sum-table">
+           <thead><tr><th>Skill</th><th class="right">Count</th><th class="right">${(kind==='ban')?'Ban Rate':'Pick Rate'}</th><th class="right">Win Rate</th></tr></thead>
+           <tbody>
+             ${skills.map(s => `
+               <tr>
+                 <td>
+                   <span data-char="${escapeHTML(s.name)}" data-char-img="${s.img || PLACEHOLDER}">
+                     ${escapeHTML(s.name)}
+                   </span>
+                 </td>
+                 <td class="right mono">${s.occ}</td>
+                 <td class="right mono">${pct(s.appear,b.matches)}</td>
+                 <td class="right mono">${pct(s.appearWins,s.appear)}</td>
+               </tr>`).join('')}
+           </tbody>
+         </table>`
+      : `<div class="muted">No ${kind} data.</div>`;
 
     cards.push(`
       <div class="card">
-        <h4><span>${escapeHtml(k || '—')}</span><span class="muted mono">${groupBy}</span></h4>
-        ${kpis}
+        <h3>${escapeHTML(b.name)}</h3>
+        <div class="kpis">
+          <div class="kpi">Matches <strong class="mono">${b.matches}</strong></div>
+          <div class="kpi">Wins <strong class="mono">${b.wins}</strong> <span class="muted">(${pct(b.wins,b.matches)})</span></div>
+          <div class="kpi">${(kind==='ban'?'Bans':'Picks')} <strong class="mono">${b._subj.appear}</strong> <span class="muted">(${pct(b._subj.appear,b.matches)})</span></div>
+          <div class="kpi">When Appeared: <strong class="mono">${pct(b._subj.appearWins,b._subj.appear)}</strong></div>
+        </div>
         ${table}
       </div>
     `);
-  }
+  });
 
-  el('summaryCards').innerHTML = cards.join('') || `<div class="muted">No groups to display.</div>`;
+  grid.innerHTML = cards.join('');
 }
 
-/* ===========================
-   TEAM × MAP VIEW
-=========================== */
-function computeSkillStats(matches){
-  // Build per-map stats for actives
-  const perMap = new Map(); // map -> skill -> {count, wins, matchesAppeared}
-  const allMaps = new Set();
+/* ========= Team × Map Win Rate ========= */
+function renderTeamMapWinRate(){
+  const sortBy = el('tmSort').value;
+  const dir = el('tmDir').value;
 
-  for(const m of matches){
-    const map = m.map || '—';
-    allMaps.add(map);
-    if(!perMap.has(map)) perMap.set(map, new Map());
-    const mm = perMap.get(map);
+  const agg = new Map(); // key = team||map -> {team,map,matches,wins}
+  RAW_RECORDS.forEach(r=>{
+    const l = r.team_left, rt = r.team_right;
+    const m = r.map;
+    const ls = r.team_left_score ?? 0, rs = r.team_right_score ?? 0;
 
-    const winner = normName(m.winner);
+    const k1 = l+'||'+m;
+    const k2 = rt+'||'+m;
+    if (!agg.has(k1)) agg.set(k1,{team:l,map:m,matches:0,wins:0});
+    if (!agg.has(k2)) agg.set(k2,{team:rt,map:m,matches:0,wins:0});
+    agg.get(k1).matches += 1;
+    agg.get(k2).matches += 1;
+    if (ls>rs) agg.get(k1).wins += 1;
+    if (rs>ls) agg.get(k2).wins += 1;
+  });
 
-    // active picks
-    const players = m.playersLeft.concat(m.playersRight);
-    const appeared = new Set();
+  const rows = [...agg.values()].map(x => ({...x, winpct: x.matches? x.wins/x.matches : 0}));
 
-    for(const p of players){
-      const s = normName(p.active);
-      if(!s) continue;
-      if(!mm.has(s)) mm.set(s, {count:0,wins:0,appeared:0});
-      const rec = mm.get(s);
-      rec.count += 1;
+  const s = (dir==='asc')?1:-1;
+  rows.sort((a,b)=>{
+    if (sortBy==='winpct') return s*(a.winpct - b.winpct);
+    if (sortBy==='wins')   return s*(a.wins - b.wins);
+    if (sortBy==='matches')return s*(a.matches - b.matches);
+    if (sortBy==='team')   return s*a.team.localeCompare(b.team);
+    if (sortBy==='map')    return s*a.map.localeCompare(b.map);
+    return 0;
+  });
 
-      const team = m.playersLeft.includes(p) ? m.leftTeam : m.rightTeam;
-      if(winner && team && winner === team) rec.wins += 1;
-
-      appeared.add(s);
-    }
-
-    for(const s of appeared){
-      mm.get(s).appeared += 1;
-    }
-  }
-
-  return { perMap, maps: Array.from(allMaps).sort((a,b)=>a.localeCompare(b)) };
+  const tbody = el('tmBody'); tbody.innerHTML='';
+  rows.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHTML(r.team||'')}</td>
+      <td>${escapeHTML(r.map||'')}</td>
+      <td class="right mono">${r.matches}</td>
+      <td class="right mono">${r.wins}</td>
+      <td class="right mono">${fmtPct(r.winpct)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  el('tmMeta').textContent = `${rows.length} team×map rows • From current filters`;
 }
+['tmSort','tmDir'].forEach(id=>{
+  el(id).addEventListener('change', ()=> renderTeamMapWinRate());
+});
 
-function renderSkillByMap(matches){
-  const {perMap, maps} = computeSkillStats(matches);
-  el('tmMeta1').textContent = `${fmtNum(maps.length)} map(s)`;
-
-  if(!maps.length){
-    el('tmTable1').innerHTML = `<div class="muted">No data.</div>`;
+/* ========= Skills Summary by Map ========= */
+function renderCardsToGrid(buckets, groupBy, kind, cfg, gridEl){
+  const totalEntities = buckets.size;
+  const rateLabel = (kind === 'ban') ? 'Ban Rate' : 'Pick Rate';
+  if (!totalEntities){
+    gridEl.innerHTML = `<div class="card"><div class="muted">No data for this selection.</div></div>`;
     return;
   }
 
-  // Aggregate across selected maps
-  const agg = new Map(); // skill -> {count, wins, appeared, matches}
-  const totalMatches = matches.length;
+  const ordered = [...buckets.values()].map(b => {
+    const subj = [...b.skills.values()].reduce((acc, s) => {
+      acc.appear     += (s.appear || 0);
+      acc.appearWins += (s.appearWins || 0);
+      acc.occ        += (s.occ || 0);
+      return acc;
+    }, { appear:0, appearWins:0, occ:0 });
+    subj.rate    = b.matches ? (subj.appear / b.matches) : 0;
+    subj.winrate = subj.appear ? (subj.appearWins / subj.appear) : 0;
+    b._subj = subj;
+    return b;
+  });
 
-  for(const map of maps){
-    const mm = perMap.get(map);
-    for(const [skill, rec] of mm.entries()){
-      if(!agg.has(skill)) agg.set(skill, {count:0,wins:0,appeared:0});
-      const a = agg.get(skill);
-      a.count += rec.count;
-      a.wins += rec.wins;
-      a.appeared += rec.appeared;
-    }
-  }
+  const cardCmp = (a, b) => {
+    let A,B;
+    if (cfg.cardSort==='name'){ A=a.name?.toLowerCase()||''; B=b.name?.toLowerCase()||''; }
+    else if (cfg.cardSort==='matches'){ A=a.matches; B=b.matches; }
+    else if (cfg.cardSort==='wins'){ A=a.wins; B=b.wins; }
+    else if (cfg.cardSort==='winpct'){ A=a.matches ? a.wins/a.matches : -1; B=b.matches ? b.wins/b.matches : -1; }
+    else if (cfg.cardSort==='subjectAppear'){ A=a._subj.appear; B=b._subj.appear; }
+    else if (cfg.cardSort==='subjectRate'){ A=a._subj.rate; B=b._subj.rate; }
+    else { A=a._subj.winrate; B=b._subj.winrate; }
+    if (A<B) return cfg.cardDir==='asc' ? -1 : 1;
+    if (A>B) return cfg.cardDir==='asc' ? 1 : -1;
+    return (a.name||'').localeCompare(b.name||'');
+  };
+  ordered.sort(cardCmp);
 
-  const rows = Array.from(agg.entries()).map(([name, r]) => ({
-    name,
-    count:r.count,
-    pickRate: totalMatches ? (r.appeared/totalMatches) : 0,
-    winRate: r.count ? (r.wins/r.count) : 0,
-  })).sort((a,b)=> b.count - a.count).slice(0, 25);
+  const cards = [];
+  ordered.forEach(b => {
+    let skills = [...b.skills.entries()].map(([name, s]) => {
+      const appearRate = b.matches ? (s.appear / b.matches) : 0;
+      const winRate    = s.appear ? (s.appearWins / s.appear) : 0;
+      return { name, ...s, appearRate, winRate };
+    });
 
-  el('tmTable1').innerHTML = `
-    <table class="sum-table skill-table">
-      <thead>
-        <tr>
-          <th>Skill</th>
-          <th class="right">Count</th>
-          <th class="right">Pick Rate</th>
-          <th class="right">Win Rate</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rows.map(r=>{
-          const info = getSkillInfo(r.name);
-          const img = info?.image || '';
-          return `
-            <tr>
-              <td>
-                <div class="skill-cell">
-                  ${img ? `<img src="${escapeHtml(img)}" alt="${escapeHtml(r.name)}">` : ''}
-                  <span class="skill-name" data-skill="${escapeHtml(r.name)}">${escapeHtml(r.name)}</span>
-                </div>
-              </td>
-              <td class="right mono">${fmtNum(r.count)}</td>
-              <td class="right mono">${fmtPct(r.pickRate)}</td>
-              <td class="right mono">${fmtPct(r.winRate)}</td>
-            </tr>
-          `;
-        }).join('')}
-      </tbody>
-    </table>
-  `;
+    const skillCmp = (x,y) => {
+      let A,B;
+      if (cfg.skillSort==='name'){ A=x.name.toLowerCase(); B=y.name.toLowerCase(); }
+      else if (cfg.skillSort==='count'){ A=x.occ; B=y.occ; }
+      else if (cfg.skillSort==='winrate'){ A=x.winRate; B=y.winRate; }
+      else { A=x.appearRate; B=y.appearRate; }
+      if (A<B) return cfg.skillDir==='asc' ? -1 : 1;
+      if (A>B) return cfg.skillDir==='asc' ? 1 : -1;
+      return x.name.toLowerCase().localeCompare(y.name.toLowerCase());
+    };
+    skills.sort(skillCmp);
+
+    const table = skills.length
+      ? `<table class="sum-table">
+           <thead><tr><th>Skill</th><th class="right">Count</th><th class="right">${rateLabel}</th><th class="right">Win Rate</th></tr></thead>
+           <tbody>
+             ${skills.map(s => `
+               <tr>
+                 <td><span data-char="${escapeHTML(s.name)}" data-char-img="${s.img || PLACEHOLDER}">${escapeHTML(s.name)}</span></td>
+                 <td class="right mono">${s.occ}</td>
+                 <td class="right mono">${pct(s.appear,b.matches)}</td>
+                 <td class="right mono">${pct(s.appearWins,s.appear)}</td>
+               </tr>`).join('')}
+           </tbody>
+         </table>`
+      : `<div class="muted">No ${kind} data.</div>`;
+
+    cards.push(`
+      <div class="card">
+        <h3>${escapeHTML(b.name)}</h3>
+        <div class="kpis">
+          <div class="kpi">Matches <strong class="mono">${b.matches}</strong></div>
+          <div class="kpi">Wins <strong class="mono">${b.wins}</strong> <span class="muted">(${pct(b.wins,b.matches)})</span></div>
+          <div class="kpi">${(kind==='ban'?'Bans':'Picks')} <strong class="mono">${b._subj.appear}</strong> <span class="muted">(${pct(b._subj.appear,b.matches)})</span></div>
+          <div class="kpi">When Appeared: <strong class="mono">${pct(b._subj.appearWins,b._subj.appear)}</strong></div>
+        </div>
+        ${table}
+      </div>
+    `);
+  });
+
+  gridEl.innerHTML = `<div class="grid">${cards.join('')}</div>`;
 }
 
-function computeBanImpact(matches){
-  // For each banned skill, compute banning-team performance (win rate)
-  const banMap = new Map(); // skill -> {bans, banMatches, wins}
-  for(const m of matches){
-    const winner = normName(m.winner);
-    if(!m.bans || !m.bans.length) continue;
+function renderSkillsByMap(){
+  const mapSel = el('fMap').value;
+  const rows = CURRENT_ROWS;
+  const maps = (mapSel==='__ALL__') ? uniq(rows.map(r=>r.map)).sort() : [mapSel];
 
-    for(const b of m.bans){
-      const s = normName(b.name);
-      if(!s) continue;
-      if(!banMap.has(s)) banMap.set(s, {bans:0, matches:0, wins:0});
-      const rec = banMap.get(s);
-      rec.bans += 1;
-      rec.matches += 1;
-      if(winner && b.team && winner === b.team) rec.wins += 1;
-    }
-  }
-  const rows = Array.from(banMap.entries()).map(([name,r])=>({
-    name,
-    bans:r.bans,
-    winRate: r.matches ? (r.wins/r.matches) : 0
-  })).sort((a,b)=> b.bans - a.bans).slice(0, 25);
+  const groupBy = el('ssGroupBy').value;
+  const kind    = el('ssKind').value;
+  const cfg = {
+    cardSort:  el('ssCardSort').value,
+    cardDir:   el('ssCardDir').value,
+    skillSort: el('ssSkillSort').value,
+    skillDir:  el('ssSkillDir').value
+  };
 
-  return rows;
-}
+  el('ssMeta').textContent = `${maps.length} map(s) • Using current filters`;
 
-function renderBanImpact(matches){
-  const rows = computeBanImpact(matches);
-  el('tmMeta2').textContent = `${fmtNum(rows.length)} skill(s)`;
+  const container = el('ssWrap');
+  container.innerHTML='';
 
-  if(!rows.length){
-    el('tmTable2').innerHTML = `<div class="muted">No ban data found.</div>`;
+  if (!maps.length){
+    container.innerHTML = `<div class="card"><div class="muted">No maps available for this selection.</div></div>`;
     return;
   }
 
-  el('tmTable2').innerHTML = `
-    <table class="sum-table skill-table">
-      <thead>
-        <tr>
-          <th>Skill</th>
-          <th class="right">Bans</th>
-          <th class="right">Banning Team WR</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rows.map(r=>{
-          const info = getSkillInfo(r.name);
-          const img = info?.image || '';
-          return `
-            <tr>
-              <td>
-                <div class="skill-cell">
-                  ${img ? `<img src="${escapeHtml(img)}" alt="${escapeHtml(r.name)}">` : ''}
-                  <span class="skill-name" data-skill="${escapeHtml(r.name)}">${escapeHtml(r.name)}</span>
-                </div>
-              </td>
-              <td class="right mono">${fmtNum(r.bans)}</td>
-              <td class="right mono">${fmtPct(r.winRate)}</td>
-            </tr>
-          `;
-        }).join('')}
-      </tbody>
-    </table>
-  `;
-}
+  if (maps.length === 1){
+    const mapName = maps[0];
+    const mapRows = rows.filter(r=>r.map===mapName);
+    const buckets = buildBucketsFromRows(mapRows, groupBy, kind);
+    const inner = document.createElement('div');
+    container.appendChild(inner);
+    renderCardsToGrid(buckets, groupBy, kind, cfg, inner);
+  } else {
+    maps.forEach(m=>{
+      const details = document.createElement('details');
+      details.className = 'card';
+      details.style.padding = '10px 12px';
+      const summary = document.createElement('summary');
+      summary.style.cursor='pointer';
+      summary.style.fontWeight='900';
+      summary.style.color='var(--brand2)';
+      summary.textContent = m;
+      details.appendChild(summary);
 
-function computePairs(matches){
-  // Pairings within same player: two actives not possible (one active), so do passive pairs per player
-  // Team-wide combos: top 3 actives per team per match (set)
-  const passivePairs = new Map(); // "A||B" -> {count,wins}
-  const teamCombos = new Map(); // "A+B+C" -> {count,wins}
+      const inner = document.createElement('div');
+      inner.style.marginTop='10px';
+      details.appendChild(inner);
+      container.appendChild(details);
 
-  for(const m of matches){
-    const winner = normName(m.winner);
-
-    // passive pairs
-    const players = m.playersLeft.concat(m.playersRight);
-    for(const p of players){
-      const team = m.playersLeft.includes(p) ? m.leftTeam : m.rightTeam;
-      const pass = asArray(p.passives).map(normName).filter(Boolean);
-      for(let i=0;i<pass.length;i++){
-        for(let j=i+1;j<pass.length;j++){
-          const a = pass[i], b = pass[j];
-          const key = [a,b].sort().join('||');
-          if(!passivePairs.has(key)) passivePairs.set(key, {count:0,wins:0,a:[a,b]});
-          const rec = passivePairs.get(key);
-          rec.count += 1;
-          if(winner && team && winner === team) rec.wins += 1;
+      details.addEventListener('toggle', ()=>{
+        if (details.open && !inner.hasChildNodes()){
+          const mapRows = rows.filter(r=>r.map===m);
+          const buckets = buildBucketsFromRows(mapRows, groupBy, kind);
+          renderCardsToGrid(buckets, groupBy, kind, cfg, inner);
         }
+      }, { once:true });
+    });
+  }
+}
+['ssGroupBy','ssKind','ssCardSort','ssCardDir','ssSkillSort','ssSkillDir'].forEach(id=>{
+  el(id).addEventListener('change', ()=> renderSkillsByMap());
+});
+
+/* ========= Helpers shared by combos/pairs ========= */
+function pillsFromSet(setLike, maxShow=6){
+  const arr = [...setLike].sort();
+  const shown = arr.slice(0, maxShow).map(t => `<span class="pill" title="${escapeHTML(t)}">${escapeHTML(t)}</span>`).join('');
+  const more = arr.length>maxShow ? `<span class="pill" title="${escapeHTML(arr.join(', '))}">+${arr.length-maxShow} more</span>` : '';
+  return shown + more;
+}
+function pillsFromMapCount(mapCount, maxShow=6){
+  const arr = [...mapCount.entries()].sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0]));
+  const shown = arr.slice(0, maxShow).map(([name,c]) => `<span class="pill" title="${escapeHTML(name)} ×${c}">${escapeHTML(name)} <small>×${c}</small></span>`).join('');
+  const more = arr.length>maxShow ? `<span class="pill" title="${escapeHTML(arr.map(([n,c])=>`${n}×${c}`).join(', '))}">+${arr.length-maxShow} more</span>` : '';
+  return shown + more;
+}
+
+/* ========= Active Combos ========= */
+function buildActiveCombos(rows){
+  const combos = new Map(); // key: sorted combo "A|B|C|D"
+  rows.forEach(r => {
+    const heroes = r.actives.map(a => a.hero).filter(Boolean);
+    if (heroes.length !== 4) return;
+
+    const imgsMap = new Map();
+    r.actives.forEach(a => { if (a.hero) imgsMap.set(a.hero, a.heroImg || PLACEHOLDER); });
+
+    const sorted = [...heroes].sort((a,b)=>a.localeCompare(b));
+    const key = sorted.join('|');
+
+    if (!combos.has(key)){
+      combos.set(key, {
+        key,
+        heroes: sorted,
+        heroImgs: Object.fromEntries(sorted.map(h => [h, imgsMap.get(h) || PLACEHOLDER])),
+        picks: 0,
+        wins: 0,
+        teams: new Set(),
+        maps: new Map(),
+        matches: []
+      });
+    }
+    const C = combos.get(key);
+    C.picks += 1;
+    if (r.result === 'W') C.wins += 1;
+    C.teams.add(r.team);
+    const m = r.map || '—';
+    C.maps.set(m, (C.maps.get(m)||0) + 1);
+    C.matches.push({
+      date: r.match_date,
+      game: r.game_number,
+      map: r.map,
+      team: r.team,
+      opp: r.opponent,
+      ts: r.team_score,
+      os: r.opp_score,
+      res: r.result
+    });
+  });
+  return combos;
+}
+
+function comboIdFromKey(key){
+  return 'combo_' + key.replace(/[^a-z0-9]+/gi,'_').replace(/^_+|_+$/g,'').toLowerCase();
+}
+function matchLineHTML(m){
+  const score = `${m.ts}-${m.os}`;
+  return `
+    <li>
+      <strong>${escapeHTML(m.team)}</strong> vs ${escapeHTML(m.opp)}
+      • <em>${escapeHTML(m.map||'')}</em> • Game ${escapeHTML(String(m.game||''))}
+      • <span class="wl ${m.res}">${m.res}</span>
+      • <span class="mono">${escapeHTML(score)}</span>
+      <span class="muted">(${escapeHTML(String(m.date||''))})</span>
+    </li>`;
+}
+
+function renderActiveCombos(){
+  const min = Math.max(1, parseInt(el('comboMin').value||'1',10));
+  const sortBy = el('comboSort').value;
+  const dir = el('comboDir').value;
+
+  const combos = buildActiveCombos(CURRENT_ROWS);
+  let rows = [...combos.values()].filter(c => c.picks >= min).map(c => ({
+    ...c,
+    winpct: c.picks ? (c.wins / c.picks) : 0
+  }));
+
+  const sgn = (dir==='asc')?1:-1;
+  rows.sort((a,b)=>{
+    if (sortBy==='name') return sgn * a.heroes.join(',').localeCompare(b.heroes.join(','));
+    if (sortBy==='wins') return sgn * (a.wins - b.wins);
+    if (sortBy==='winpct') return sgn * (a.winpct - b.winpct);
+    return sgn * (a.picks - b.picks);
+  });
+
+  const tbody = el('comboBody'); tbody.innerHTML='';
+  if (!rows.length){
+    tbody.innerHTML = `<tr><td colspan="6" class="muted">No combos for your selection.</td></tr>`;
+    el('comboMeta').textContent = `0 combo(s) • Using current filters`;
+    return;
+  }
+
+  rows.forEach(c=>{
+    const icons = c.heroes.map(h=>{
+      const img = c.heroImgs[h] || PLACEHOLDER;
+      return `<img src="${img}" alt="${escapeHTML(h)}" loading="lazy"
+                  data-char="${escapeHTML(h)}" data-char-img="${img}">`;
+    }).join('');
+
+    const names = `<div class="muted" style="margin-top:6px">${c.heroes.map(h=>`<span data-char="${escapeHTML(h)}" data-char-img="${c.heroImgs[h]||PLACEHOLDER}">${escapeHTML(h)}</span>`).join(' · ')}</div>`;
+    const id = comboIdFromKey(c.key);
+
+    const tr = document.createElement('tr');
+    tr.className = 'combo-row';
+    tr.dataset.target = id;
+    tr.innerHTML = `
+      <td>
+        <div class="comboIcons">${icons}</div>
+        ${names}
+      </td>
+      <td class="right mono">${c.picks}</td>
+      <td class="right mono">${c.wins}</td>
+      <td class="right mono">${fmtPct(c.winpct)}</td>
+      <td>${pillsFromSet(c.teams)}</td>
+      <td>${pillsFromMapCount(c.maps)}</td>
+    `;
+    tbody.appendChild(tr);
+
+    const dr = document.createElement('tr');
+    dr.className = 'combo-detail';
+    dr.id = id;
+    dr.style.display = 'none';
+    dr.innerHTML = `
+      <td colspan="6">
+        <div class="muted" style="margin-bottom:8px;">${c.matches.length} match(es) with this combo</div>
+        <ul style="margin:0; padding-left:18px; line-height:1.45;">
+          ${c.matches.map(matchLineHTML).join('')}
+        </ul>
+      </td>`;
+    tbody.appendChild(dr);
+  });
+
+  tbody.querySelectorAll('tr.combo-row').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      const id = row.dataset.target;
+      const drow = document.getElementById(id);
+      if (!drow) return;
+      drow.style.display = (drow.style.display === 'none' ? '' : 'none');
+    });
+  });
+
+  el('comboMeta').textContent = `${rows.length} combo(s) • Using current filters`;
+}
+['comboMin','comboSort','comboDir'].forEach(id => el(id).addEventListener('change', renderActiveCombos));
+
+/* ========= Active Pairs ========= */
+function buildActivePairs(rows){
+  const pairs = new Map();
+  rows.forEach(r=>{
+    const names = r.actives.map(a=>a.hero).filter(Boolean);
+    if (names.length < 2) return;
+
+    const imgOf = new Map();
+    r.actives.forEach(a=>{ if (a.hero) imgOf.set(a.hero, a.heroImg || PLACEHOLDER); });
+
+    for (let i=0;i<names.length;i++){
+      for (let j=i+1;j<names.length;j++){
+        const [A,B] = [names[i], names[j]].sort((x,y)=>x.localeCompare(y));
+        const key = A + '|' + B;
+        if (!pairs.has(key)){
+          pairs.set(key, {
+            a:A, b:B,
+            imgs: { [A]: imgOf.get(A) || PLACEHOLDER, [B]: imgOf.get(B) || PLACEHOLDER },
+            picks:0, wins:0,
+            teams:new Set(),
+            maps:new Map(),
+            matches:[]
+          });
+        }
+        const P = pairs.get(key);
+        P.picks += 1;
+        if (r.result==='W') P.wins += 1;
+        P.teams.add(r.team);
+        const m = r.map || '—';
+        P.maps.set(m, (P.maps.get(m)||0)+1);
+        P.matches.push({
+          date:r.match_date, game:r.game_number, map:r.map,
+          team:r.team, opp:r.opponent, ts:r.team_score, os:r.opp_score, res:r.result
+        });
       }
     }
-
-    // team combos by actives
-    const teamSides = [
-      {team:m.leftTeam, players:m.playersLeft},
-      {team:m.rightTeam, players:m.playersRight},
-    ];
-    for(const side of teamSides){
-      const actives = side.players.map(p=>normName(p.active)).filter(Boolean);
-      const set = Array.from(new Set(actives)).sort();
-      if(!set.length) continue;
-      const key = set.join(' + ');
-      if(!teamCombos.has(key)) teamCombos.set(key, {count:0,wins:0, skills:set});
-      const rec = teamCombos.get(key);
-      rec.count += 1;
-      if(winner && side.team && winner === side.team) rec.wins += 1;
-    }
-  }
-
-  const pairRows = Array.from(passivePairs.entries()).map(([k,r])=>({
-    key:k,
-    a:r.a[0],
-    b:r.a[1],
-    count:r.count,
-    winRate: r.count ? (r.wins/r.count) : 0
-  })).sort((x,y)=> y.count-x.count).slice(0, 20);
-
-  const comboRows = Array.from(teamCombos.entries()).map(([k,r])=>({
-    key:k,
-    skills:r.skills,
-    count:r.count,
-    winRate: r.count ? (r.wins/r.count) : 0
-  })).sort((x,y)=> y.count-x.count).slice(0, 20);
-
-  return {pairRows, comboRows};
+  });
+  return pairs;
 }
 
-function renderCombos(matches){
-  const {pairRows, comboRows} = computePairs(matches);
-  el('tmMeta3').textContent = `${fmtNum(pairRows.length)} pairs • ${fmtNum(comboRows.length)} combos`;
-
-  const iconRow = (name) => {
-    const info = getSkillInfo(name);
-    const img = info?.image || '';
-    return img ? `<img src="${escapeHtml(img)}" alt="${escapeHtml(name)}" title="${escapeHtml(name)}">` : '';
-  };
-
-  const pairTable = pairRows.length ? `
-    <h4 style="margin:0 0 8px;font-size:.92rem;color:var(--muted)">Passive pairs (same player)</h4>
-    <table class="sum-table skill-table">
-      <thead>
-        <tr>
-          <th>Pair</th>
-          <th class="right">Count</th>
-          <th class="right">Win Rate</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${pairRows.map(r=>{
-          return `
-            <tr>
-              <td>
-                <div class="skill-cell comboIcons" style="gap:8px">
-                  ${iconRow(r.a)}${iconRow(r.b)}
-                  <span class="skill-name" data-skill="${escapeHtml(r.a)}">${escapeHtml(r.a)}</span>
-                  <span class="muted">+</span>
-                  <span class="skill-name" data-skill="${escapeHtml(r.b)}">${escapeHtml(r.b)}</span>
-                </div>
-              </td>
-              <td class="right mono">${fmtNum(r.count)}</td>
-              <td class="right mono">${fmtPct(r.winRate)}</td>
-            </tr>
-          `;
-        }).join('')}
-      </tbody>
-    </table>
-  ` : `<div class="muted">No passive pair data.</div>`;
-
-  const comboTable = comboRows.length ? `
-    <h4 style="margin:14px 0 8px;font-size:.92rem;color:var(--muted)">Team active combos (per team per match)</h4>
-    <table class="sum-table skill-table">
-      <thead>
-        <tr>
-          <th>Combo</th>
-          <th class="right">Count</th>
-          <th class="right">Win Rate</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${comboRows.map(r=>{
-          const icons = r.skills.slice(0,6).map(iconRow).join('');
-          return `
-            <tr>
-              <td>
-                <div class="skill-cell comboIcons" style="gap:8px">
-                  <span class="icons" style="display:flex;gap:6px;flex-wrap:wrap">${icons}</span>
-                  <span class="mono" style="color:var(--muted)">${escapeHtml(r.key)}</span>
-                </div>
-              </td>
-              <td class="right mono">${fmtNum(r.count)}</td>
-              <td class="right mono">${fmtPct(r.winRate)}</td>
-            </tr>
-          `;
-        }).join('')}
-      </tbody>
-    </table>
-  ` : `<div class="muted">No team combo data.</div>`;
-
-  el('tmTable3').innerHTML = pairTable + comboTable;
+function pairIdFromKey(key){
+  return 'pair_' + key.replace(/[^a-z0-9]+/gi,'_').replace(/^_+|_+$/g,'').toLowerCase();
 }
 
-function computePassiveBundles(matches){
-  const bundles = new Map(); // "A+B+C" -> {count,wins}
-  for(const m of matches){
-    const winner = normName(m.winner);
-    const players = m.playersLeft.concat(m.playersRight);
+function renderActivePairs(){
+  const min  = Math.max(1, parseInt(el('pairMin').value||'1',10));
+  const sort = el('pairSort').value;
+  const dir  = el('pairDir').value;
 
-    for(const p of players){
-      const team = m.playersLeft.includes(p) ? m.leftTeam : m.rightTeam;
-      const pass = Array.from(new Set(asArray(p.passives).map(normName).filter(Boolean))).sort();
-      if(!pass.length) continue;
-      const key = pass.join(' + ');
-      if(!bundles.has(key)) bundles.set(key, {count:0,wins:0, skills:pass});
-      const rec = bundles.get(key);
-      rec.count += 1;
-      if(winner && team && winner === team) rec.wins += 1;
-    }
+  const pairs = buildActivePairs(CURRENT_ROWS);
+  let rows = [...pairs.values()].filter(p=>p.picks >= min).map(p=>({
+    ...p, winpct: p.picks ? (p.wins/p.picks) : 0
+  }));
+
+  const sgn = (dir==='asc')?1:-1;
+  rows.sort((a,b)=>{
+    if (sort==='name')   return sgn * ( (a.a+a.b).localeCompare(b.a+b.b) );
+    if (sort==='wins')   return sgn * (a.wins - b.wins);
+    if (sort==='winpct') return sgn * (a.winpct - b.winpct);
+    if (sort==='teams')  return sgn * (a.teams.size - b.teams.size);
+    return sgn * (a.picks - b.picks);
+  });
+
+  const tbody = el('pairBody'); tbody.innerHTML='';
+  if (!rows.length){
+    tbody.innerHTML = `<tr><td colspan="6" class="muted">No pairs for your selection.</td></tr>`;
+    el('pairMeta').textContent = `0 pair(s) • Using current filters`;
+    return;
   }
 
-  const rows = Array.from(bundles.entries()).map(([k,r])=>({
-    key:k,
-    skills:r.skills,
-    count:r.count,
-    winRate: r.count ? (r.wins/r.count) : 0
-  })).sort((a,b)=> b.count-a.count).slice(0, 25);
+  rows.forEach(p=>{
+    const id = pairIdFromKey(`${p.a}|${p.b}`);
+    const aImg = p.imgs[p.a] || PLACEHOLDER;
+    const bImg = p.imgs[p.b] || PLACEHOLDER;
+
+    const icons = `
+      <div class="comboIcons">
+        <img src="${aImg}" alt="${escapeHTML(p.a)}" loading="lazy" data-char="${escapeHTML(p.a)}" data-char-img="${aImg}">
+        <img src="${bImg}" alt="${escapeHTML(p.b)}" loading="lazy" data-char="${escapeHTML(p.b)}" data-char-img="${bImg}">
+      </div>
+      <div class="muted" style="margin-top:6px">
+        <span data-char="${escapeHTML(p.a)}" data-char-img="${aImg}">${escapeHTML(p.a)}</span> ·
+        <span data-char="${escapeHTML(p.b)}" data-char-img="${bImg}">${escapeHTML(p.b)}</span>
+      </div>
+    `;
+    const tr=document.createElement('tr');
+    tr.className = 'pair-row';
+    tr.dataset.target = id;
+    tr.innerHTML = `
+      <td>${icons}</td>
+      <td class="right mono">${p.picks}</td>
+      <td class="right mono">${p.wins}</td>
+      <td class="right mono">${fmtPct(p.winpct)}</td>
+      <td>${pillsFromSet(p.teams)}</td>
+      <td>${pillsFromMapCount(p.maps)}</td>
+    `;
+    tbody.appendChild(tr);
+
+    const dr = document.createElement('tr');
+    dr.className = 'pair-detail';
+    dr.id = id;
+    dr.style.display = 'none';
+    dr.innerHTML = `
+      <td colspan="6">
+        <div class="muted" style="margin-bottom:8px;">${p.matches.length} match(es) with this pair</div>
+        <ul style="margin:0; padding-left:18px; line-height:1.45;">
+          ${p.matches.map(matchLineHTML).join('')}
+        </ul>
+      </td>
+    `;
+    tbody.appendChild(dr);
+  });
+
+  tbody.querySelectorAll('tr.pair-row').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      const id = row.dataset.target;
+      const drow = document.getElementById(id);
+      if (!drow) return;
+      drow.style.display = (drow.style.display === 'none' ? '' : 'none');
+    });
+  });
+
+  el('pairMeta').textContent = `${rows.length} pair(s) • Using current filters`;
+}
+['pairMin','pairSort','pairDir'].forEach(id=> el(id).addEventListener('change', renderActivePairs));
+
+/* ========= Passive Trios Builder ========= */
+function normalizeTrioPB(trio){
+  const names = (trio||[])
+    .map(x => (x?.name||'').trim())
+    .filter(Boolean);
+  if (names.length !== 3) return null;
+
+  const imgs = {};
+  (trio||[]).forEach(x => { if (x?.name) imgs[x.name] = x.img || x.image_url || PLACEHOLDER; });
+
+  const sorted = [...names].sort((a,b)=>a.localeCompare(b));
+  return { key: sorted.join('|'), names: sorted, imgs };
+}
+
+function buildPassiveEventsPB(rows){
+  const events = [];
+  rows.forEach(r=>{
+    r.actives.forEach(a=>{
+      const p = r.passives.find(x=>x.player===a.player);
+      const trio = normalizeTrioPB(p?.trio || []);
+      if (!a.hero || !trio) return;
+      events.push({
+        active: a.hero,
+        heroImg: a.heroImg || PLACEHOLDER,
+        trioKey: trio.key,
+        trioNames: trio.names,
+        trioImgs: trio.imgs,
+        player: a.player || '',
+        team: r.team,
+        map: r.map || '—',
+        won: r.result==='W',
+        match: {
+          date: r.match_date, game: r.game_number, map: r.map,
+          team: r.team, opp: r.opponent, ts: r.team_score, os: r.opp_score, res: r.result
+        }
+      });
+    });
+  });
+  return events;
+}
+
+function populateActiveDropdownPB(rows){
+  const actives = uniq(rows.flatMap(r=>r.actives.map(a=>a.hero).filter(Boolean))).sort();
+  const dd = el('pbaActive');
+  const prior = dd.value || '__ALL__';
+  dd.innerHTML = `<option value="__ALL__">All actives</option>` + actives.map(a=>`<option value="${escapeHTML(a)}">${escapeHTML(a)}</option>`).join('');
+  dd.value = [...dd.options].some(o => o.value === prior) ? prior : '__ALL__';
+}
+
+function renderPassiveTriosPB(events){
+  const activeSel = el('pbaActive').value;
+  const min = Math.max(1, parseInt(el('pbaMin').value||'1',10));
+  const sort = el('pbaSort').value;
+  const dir  = el('pbaDir').value;
+
+  const filtered = (activeSel==='__ALL__') ? events : events.filter(e=>e.active===activeSel);
+
+  const combos = new Map();
+  filtered.forEach(e=>{
+    const key = e.active + '||' + e.trioKey;
+    if (!combos.has(key)){
+      combos.set(key, {
+        active: e.active, heroImg: e.heroImg,
+        trioKey: e.trioKey, trioNames: e.trioNames, trioImgs: e.trioImgs,
+        picks:0, wins:0, players: new Set(), teams: new Set(), maps: new Map(), matches: []
+      });
+    }
+    const C = combos.get(key);
+    C.picks += 1;
+    if (e.won) C.wins += 1;
+    C.players.add(e.player);
+    C.teams.add(e.team);
+    C.maps.set(e.map, (C.maps.get(e.map)||0)+1);
+    C.matches.push(e.match);
+  });
+
+  let rows = [...combos.values()].filter(c=>c.picks>=min).map(c=>({
+    ...c, winpct: c.picks ? (c.wins/c.picks) : 0
+  }));
+
+  const sgn = (dir==='asc')?1:-1;
+  rows.sort((a,b)=>{
+    if (sort==='name'){
+      const A = (a.active + '|' + a.trioNames.join('·')).toLowerCase();
+      const B = (b.active + '|' + b.trioNames.join('·')).toLowerCase();
+      return sgn * A.localeCompare(B);
+    }
+    if (sort==='wins') return sgn * (a.wins - b.wins);
+    if (sort==='winpct') return sgn * (a.winpct - b.winpct);
+    return sgn * (a.picks - b.picks);
+  });
+
+  const tbody = el('triTablePB'); tbody.innerHTML='';
+  if (!rows.length){
+    tbody.innerHTML = `<tr><td colspan="7" class="muted">No passive trio data for your selection.</td></tr>`;
+  } else {
+    rows.forEach((c, idx)=>{
+      const id = 'triPB_' + (c.active+'_'+c.trioKey).replace(/[^a-z0-9]+/gi,'_').toLowerCase() + '_' + idx;
+      const activeIcon = `<img src="${c.heroImg||PLACEHOLDER}" alt="${escapeHTML(c.active)}"
+                              data-char="${escapeHTML(c.active)}" data-char-img="${c.heroImg||PLACEHOLDER}"
+                              loading="lazy" style="width:28px;height:28px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:#0b0b0b">`;
+      const trioIcons = c.trioNames.map(n=>{
+        const img = c.trioImgs[n] || PLACEHOLDER;
+        return `<img src="${img}" alt="${escapeHTML(n)}" loading="lazy" data-char="${escapeHTML(n)}" data-char-img="${img}">`;
+      }).join('');
+
+      const tr = document.createElement('tr');
+      tr.className = 'row-click';
+      tr.dataset.target = id;
+      tr.innerHTML = `
+        <td>
+          <div class="icons" style="margin-bottom:6px">${activeIcon}<span class="muted">→</span>${trioIcons}</div>
+          <div class="muted">
+            <span data-char="${escapeHTML(c.active)}" data-char-img="${c.heroImg||PLACEHOLDER}">${escapeHTML(c.active)}</span>
+            → ${c.trioNames.map(n=>`<span data-char="${escapeHTML(n)}" data-char-img="${c.trioImgs[n]||PLACEHOLDER}">${escapeHTML(n)}</span>`).join(' · ')}
+          </div>
+        </td>
+        <td class="right mono">${c.picks}</td>
+        <td class="right mono">${c.wins}</td>
+        <td class="right mono">${fmtPct(c.winpct)}</td>
+        <td class="right mono">${c.players.size}</td>
+        <td class="right mono">${c.teams.size}</td>
+        <td>${pillsFromMapCount(c.maps)}</td>
+      `;
+      tbody.appendChild(tr);
+
+      const dr = document.createElement('tr');
+      dr.className = 'tri-detail';
+      dr.id = id;
+      dr.style.display = 'none';
+      dr.innerHTML = `
+        <td colspan="7">
+          <div class="muted" style="margin-bottom:8px;">${c.matches.length} occurrence(s)</div>
+          <ul style="margin:0; padding-left:18px; line-height:1.45;">
+            ${c.matches.map(matchLineHTML).join('')}
+          </ul>
+        </td>`;
+      tbody.appendChild(dr);
+    });
+
+    tbody.querySelectorAll('tr.row-click').forEach(row=>{
+      row.addEventListener('click', ()=>{
+        const d = document.getElementById(row.dataset.target);
+        if (d) d.style.display = (d.style.display==='none' ? '' : 'none');
+      });
+    });
+  }
+
+  const actLabel = (activeSel==='__ALL__') ? 'All actives' : activeSel;
+  el('pbaMeta').textContent = `${rows.length} trio row(s) • Active: ${actLabel}`;
+}
+
+function renderPassivePerPlayerPB(events){
+  const activeSel = el('pbaActive').value;
+  const filtered = (activeSel==='__ALL__') ? events : events.filter(e=>e.active===activeSel);
+
+  const groups = new Map(); // key: player||active
+  filtered.forEach(e=>{
+    const key = e.player + '||' + e.active;
+    if (!groups.has(key)){
+      groups.set(key, {
+        player: e.player, active: e.active, teams: new Set(),
+        picks:0, wins:0, trios: new Map()
+      });
+    }
+    const G = groups.get(key);
+    G.picks += 1; if (e.won) G.wins += 1;
+    G.teams.add(e.team);
+
+    if (!G.trios.has(e.trioKey)){
+      G.trios.set(e.trioKey, {
+        names: e.trioNames, imgs: e.trioImgs, picks:0, wins:0, maps:new Map(), matches:[]
+      });
+    }
+    const T = G.trios.get(e.trioKey);
+    T.picks += 1; if (e.won) T.wins += 1;
+    T.maps.set(e.map, (T.maps.get(e.map)||0)+1);
+    T.matches.push(e.match);
+  });
+
+  const tbody = el('ppTablePB'); tbody.innerHTML='';
+  if (!groups.size){
+    tbody.innerHTML = `<tr><td colspan="7" class="muted">No player rows for this selection.</td></tr>`;
+    return;
+  }
+
+  const rows = [...groups.values()].map(G=>{
+    const allTrios = [...G.trios.values()].map(T=>({ ...T, winpct: T.picks ? (T.wins/T.picks) : 0 }));
+    allTrios.sort((a,b)=> (b.picks - a.picks) || (b.wins - a.wins));
+    const top = allTrios[0] || null;
+    return {
+      player: G.player,
+      active: G.active,
+      teams: G.teams,
+      picks: G.picks,
+      wins: G.wins,
+      winpct: G.picks ? (G.wins/G.picks) : 0,
+      topTrio: top,
+      allTrios
+    };
+  }).sort((a,b)=> (b.picks - a.picks) || a.player.localeCompare(b.player) );
+
+  rows.forEach((R, idx)=>{
+    const id = 'ppPB_' + (R.player+'_'+R.active).replace(/[^a-z0-9]+/gi,'_').toLowerCase() + '_' + idx;
+
+    const topIcons = R.topTrio
+      ? R.topTrio.names.map(n=>{
+          const img = R.topTrio.imgs[n] || PLACEHOLDER;
+          return `<img src="${img}" alt="${escapeHTML(n)}" loading="lazy"
+                      style="width:24px;height:24px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:#0b0b0b"
+                      data-char="${escapeHTML(n)}" data-char-img="${img}">`;
+        }).join('')
+      : '<span class="muted">—</span>';
+
+    const tr = document.createElement('tr');
+    tr.className = 'row-click';
+    tr.dataset.target = id;
+    tr.innerHTML = `
+      <td><strong>${escapeHTML(R.player)}</strong></td>
+      <td>
+        <span data-char="${escapeHTML(R.active)}" data-char-img="${(CURRENT_ROWS.find(x=>x.actives.some(a=>a.hero===R.active))?.actives.find(a=>a.hero===R.active)?.heroImg)||PLACEHOLDER}">
+          ${escapeHTML(R.active)}
+        </span>
+      </td>
+      <td class="right mono">${R.picks}</td>
+      <td class="right mono">${R.wins}</td>
+      <td class="right mono">${fmtPct(R.winpct)}</td>
+      <td>${pillsFromSet(R.teams)}</td>
+      <td>
+        ${R.topTrio ? `
+          <div class="icons" style="gap:4px">${topIcons}</div>
+          <div class="muted">${R.topTrio.names.map(n=>`<span data-char="${escapeHTML(n)}" data-char-img="${R.topTrio.imgs[n]||PLACEHOLDER}">${escapeHTML(n)}</span>`).join(' · ')}
+            (<span class="mono">${R.topTrio.picks}</span> picks, <span class="mono">${fmtPct(R.topTrio.winpct)}</span>)
+          </div>` : '—'}
+      </td>
+    `;
+    tbody.appendChild(tr);
+
+    const detail = document.createElement('tr');
+    detail.className = 'tri-detail';
+    detail.id = id;
+    detail.style.display = 'none';
+    detail.innerHTML = `
+      <td colspan="7">
+        <div class="muted" style="margin-bottom:8px;">All trios used by <b>${escapeHTML(R.player)}</b> with <b>${escapeHTML(R.active)}</b>:</div>
+        <ul style="margin:0; padding-left:18px; line-height:1.45;">
+          ${R.allTrios.map(T => `
+            <li style="margin-bottom:10px;">
+              <span class="icons" style="gap:4px; vertical-align:middle;">
+                ${T.names.map(n=>{
+                  const img = T.imgs[n] || PLACEHOLDER;
+                  return `<img src="${img}" alt="${escapeHTML(n)}" loading="lazy"
+                              style="width:20px;height:20px;border-radius:9px;border:1px solid rgba(255,255,255,.14);background:#0b0b0b"
+                              data-char="${escapeHTML(n)}" data-char-img="${img}">`;
+                }).join('')}
+              </span>
+              &nbsp; ${T.names.map(n=>`<span data-char="${escapeHTML(n)}" data-char-img="${T.imgs[n]||PLACEHOLDER}">${escapeHTML(n)}</span>`).join(' · ')}
+              — <strong class="mono">${T.picks}</strong> picks, <strong class="mono">${T.wins}</strong> wins
+              <span class="muted">(${fmtPct(T.winpct)})</span>
+              <div style="margin-top:6px">${pillsFromMapCount(T.maps, 8)}</div>
+              <details style="margin-top:6px;">
+                <summary class="muted" style="cursor:pointer;">Show matches</summary>
+                <ul style="margin:0; padding-left:18px; line-height:1.45;">
+                  ${T.matches.map(matchLineHTML).join('')}
+                </ul>
+              </details>
+            </li>
+          `).join('')}
+        </ul>
+      </td>
+    `;
+    tbody.appendChild(detail);
+  });
+
+  tbody.querySelectorAll('tr.row-click').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      const d = document.getElementById(row.dataset.target);
+      if (d) d.style.display = (d.style.display==='none' ? '' : 'none');
+    });
+  });
+}
+
+function renderPassiveTriosBuilder(){
+  populateActiveDropdownPB(CURRENT_ROWS);
+  const events = buildPassiveEventsPB(CURRENT_ROWS);
+  renderPassiveTriosPB(events);
+  renderPassivePerPlayerPB(events);
+}
+['pbaActive','pbaMin','pbaSort','pbaDir'].forEach(id=>{
+  el(id).addEventListener('change', ()=> {
+    const events = buildPassiveEventsPB(CURRENT_ROWS);
+    renderPassiveTriosPB(events);
+    renderPassivePerPlayerPB(events);
+  });
+});
+
+/* ========= Ban Impact ========= */
+function getRowsIgnoringWL(){
+  const allRows = RAW_RECORDS.flatMap(explodeRecordToRows);
+  const teamSel = el('fTeam').value || '__ALL__';
+  let rows = allRows;
+  if (teamSel !== '__ALL__') rows = rows.filter(r => r.team === teamSel);
+
+  const mapSel = el('fMap').value;
+  if (mapSel !== '__ALL__') rows = rows.filter(r => r.map === mapSel);
+
+  const tournSel = el('fTourn').value || '__ALL__';
+  if (tournSel !== '__ALL__') rows = rows.filter(r => r.tournament_name === tournSel);
 
   return rows;
 }
 
-function renderPassiveBundles(matches){
-  const rows = computePassiveBundles(matches);
-  el('tmMeta4').textContent = `${fmtNum(rows.length)} bundle(s)`;
+function renderBanImpact(){
+  const min  = Math.max(1, parseInt(el('biMin').value||'1',10));
+  const sort = el('biSort').value;
+  const dir  = el('biDir').value;
 
-  if(!rows.length){
-    el('tmTable4').innerHTML = `<div class="muted">No passive bundle data.</div>`;
+  const rows = getRowsIgnoringWL();
+  const skills = new Map(); // name -> {ban:{n,w}, noban:{n,w}, img}
+
+  rows.forEach(r=>{
+    const banned = r.banName || '';
+    if (banned){
+      if (!skills.has(banned)) skills.set(banned, { name:banned, img: r.banImg || PLACEHOLDER, ban:{n:0,w:0}, noban:{n:0,w:0} });
+      const S = skills.get(banned);
+      S.ban.n += 1; if (r.result==='W') S.ban.w += 1;
+    }
+  });
+
+  // baseline = rows where side did NOT ban that skill
+  const rowsBySkill = Object.fromEntries([...skills.keys()].map(k=>[k, {n:0,w:0}]));
+  rows.forEach(r=>{
+    const resW = (r.result==='W') ? 1 : 0;
+    for (const key in rowsBySkill){
+      if ((r.banName||'') !== key){
+        rowsBySkill[key].n += 1;
+        rowsBySkill[key].w += resW;
+      }
+    }
+  });
+  for (const [name, S] of skills.entries()){
+    S.noban = rowsBySkill[name] || {n:0,w:0};
+  }
+
+  let list = [...skills.values()].map(S=>{
+    const bannedN = S.ban.n, bannedW = S.ban.w;
+    const nobanN  = S.noban.n, nobanW = S.noban.w;
+    const winWhenBan = bannedN ? (bannedW/bannedN) : 0;
+    const winWhenNot = nobanN ? (nobanW/nobanN) : 0;
+    return { name:S.name, img:S.img, bannedN, winWhenBan, nobanN, winWhenNot, delta: winWhenBan - winWhenNot };
+  }).filter(r=>r.bannedN >= min);
+
+  const sgn = (dir==='asc')?1:-1;
+  list.sort((a,b)=>{
+    if (sort==='name')         return sgn * a.name.localeCompare(b.name);
+    if (sort==='banned')       return sgn * (a.bannedN - b.bannedN);
+    if (sort==='win_when_ban') return sgn * (a.winWhenBan - b.winWhenBan);
+    if (sort==='win_when_not') return sgn * (a.winWhenNot - b.winWhenNot);
+    return sgn * (a.delta - b.delta);
+  });
+
+  const tbody = el('biBody'); tbody.innerHTML='';
+  if (!list.length){
+    tbody.innerHTML = `<tr><td colspan="6" class="muted">No ban data for your selection.</td></tr>`;
+    el('biMeta').textContent = `0 skill(s) • Using current filters (Outcome forced to All)`;
     return;
   }
 
-  const iconRow = (name) => {
-    const info = getSkillInfo(name);
-    const img = info?.image || '';
-    return img ? `<img src="${escapeHtml(img)}" alt="${escapeHtml(name)}" title="${escapeHtml(name)}">` : '';
+  list.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <span data-char="${escapeHTML(r.name)}" data-char-img="${r.img||PLACEHOLDER}">
+          ${escapeHTML(r.name)}
+        </span>
+      </td>
+      <td class="right mono">${r.bannedN}</td>
+      <td class="right mono">${fmtPct(r.winWhenBan)}</td>
+      <td class="right mono">${r.nobanN}</td>
+      <td class="right mono">${fmtPct(r.winWhenNot)}</td>
+      <td class="right mono" style="font-weight:1000;">${fmtPct(r.delta)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  const teamLabel = (el('fTeam').value||'__ALL__')==='__ALL__' ? 'All teams' : el('fTeam').value;
+  el('biMeta').textContent = `${list.length} skill(s) • ${teamLabel} • Outcome forced to All`;
+}
+['biMin','biSort','biDir'].forEach(id=> el(id).addEventListener('change', renderBanImpact));
+
+/* ========= Tabs behavior ========= */
+const TAB_TO_SECTION = {
+  match: 'sec-match',
+  summary: 'sec-summary',
+  teammap: 'sec-teammap',
+  skillsbymap: 'sec-skillsbymap',
+  combos: 'sec-combos',
+  pairs: 'sec-pairs',
+  passivebuilder: 'sec-passivebuilder',
+  banimpact: 'sec-banimpact',
+  perskill: 'sec-perskill'
+};
+document.querySelectorAll('.tab').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const target = TAB_TO_SECTION[btn.dataset.tab];
+    document.querySelectorAll('.js-section').forEach(s=>s.classList.remove('active'));
+    document.getElementById(target)?.classList.add('active');
+
+    if (target==='sec-match')       { PAGE=1; renderRowsPaged(CURRENT_ROWS); }
+    if (target==='sec-summary')     { const b=buildBucketsFromRows(CURRENT_ROWS, el('sumGroupBy').value, el('sumKind').value); renderSummary(b, el('sumGroupBy').value, el('sumKind').value); }
+    if (target==='sec-teammap')     { renderTeamMapWinRate(); }
+    if (target==='sec-skillsbymap') { renderSkillsByMap(); }
+    if (target==='sec-combos')      { renderActiveCombos(); }
+    if (target==='sec-pairs')       { renderActivePairs(); }
+    if (target==='sec-passivebuilder'){ renderPassiveTriosBuilder(); }
+    if (target==='sec-banimpact')   { renderBanImpact(); }
+    if (target==='sec-perskill')    { computeSkillStats(); }
+  });
+});
+
+/* ========= Main refresh ========= */
+async function refresh(){
+  RAW_RECORDS = await fetchRecords();
+
+  const beforeT = el('fTourn').value || '__ALL__';
+  const beforeFrom = el('fFrom').value;
+
+  populateTeamDropdown(RAW_RECORDS);
+  await populateTournamentDropdown(RAW_RECORDS);
+
+  const afterT = el('fTourn').value || '__ALL__';
+  const afterFrom = el('fFrom').value;
+
+  // Refetch if tournament OR start-date changed
+  if (beforeT !== afterT || beforeFrom !== afterFrom) {
+    RAW_RECORDS = await fetchRecords();
+    populateTeamDropdown(RAW_RECORDS);
+  }
+
+  const teamSel  = el('fTeam').value || '__ALL__';
+  const tournSel = el('fTourn').value || '__ALL__';
+  el('filterMeta').textContent =
+    `Loaded ${RAW_RECORDS.length} matches • Team: ${teamSel==='__ALL__'?'All teams':teamSel} • Map: ${el('fMap').value} • Tournament: ${tournSel==='__ALL__'?'All':tournSel}`;
+
+  const exploded = RAW_RECORDS.flatMap(explodeRecordToRows);
+  CURRENT_ROWS = applyRowFilters(exploded);
+
+  const active = document.querySelector('.js-section.active')?.id || 'sec-match';
+  if (active==='sec-match'){ PAGE = 1; renderRowsPaged(CURRENT_ROWS); }
+  if (active==='sec-summary'){
+    const buckets = buildBucketsFromRows(CURRENT_ROWS, el('sumGroupBy').value, el('sumKind').value);
+    renderSummary(buckets, el('sumGroupBy').value, el('sumKind').value);
+  }
+  if (active==='sec-teammap'){ renderTeamMapWinRate(); }
+  if (active==='sec-skillsbymap'){ renderSkillsByMap(); }
+  if (active==='sec-combos'){ renderActiveCombos(); }
+  if (active==='sec-pairs'){ renderActivePairs(); }
+  if (active==='sec-passivebuilder'){ renderPassiveTriosBuilder(); }
+  if (active==='sec-banimpact'){ renderBanImpact(); }
+  if (active==='sec-perskill'){ computeSkillStats(); }
+}
+
+/* ========= Events ========= */
+el('applyBtn').onclick = refresh;
+
+['sumGroupBy','sumKind','sumCardSort','sumCardDir','sumSkillSort','sumSkillDir'].forEach(id=>{
+  el(id).addEventListener('change', () => {
+    if (!document.getElementById('sec-summary').classList.contains('active')) return;
+    const buckets = buildBucketsFromRows(CURRENT_ROWS, el('sumGroupBy').value, el('sumKind').value);
+    renderSummary(buckets, el('sumGroupBy').value, el('sumKind').value);
+  });
+});
+
+/* ========= First load ========= */
+refresh();
+
+/* ===== Per-Skill Stats (Active/Passive) ===== */
+el('skillComputeBtn').addEventListener('click', computeSkillStats);
+
+async function computeSkillStats() {
+  const type  = el('skillTypeSelect').value;
+  const team  = (el('fTeam').value || '__ALL__');
+  const from  = el('fFrom').value;
+  const toRaw = el('fTo').value;
+  const tourn = (el('fTourn').value || '__ALL__');
+  const map   = (el('fMap').value || '__ALL__');
+
+  if (!from || !toRaw) {
+    alert('Please set a From and To date for Skill Stats.');
+    return;
+  }
+
+  const end = new Date(toRaw);
+  end.setDate(end.getDate() + 1);
+  const nextYMD = ymd(end);
+
+  let q = client
+    .from('draft_records')
+    .select('team_left, team_right, team_left_score, team_right_score, match_date, map, tournament_name, state')
+    .gte('match_date', from)
+    .lt('match_date', nextYMD);
+
+  if (team !== '__ALL__')  q = q.or(`team_left.eq.${team},team_right.eq.${team}`);
+  if (tourn !== '__ALL__') q = q.eq('tournament_name', tourn);
+  if (map !== '__ALL__')   q = q.eq('map', map);
+
+  const { data, error } = await q;
+  if (error) {
+    console.error('❌ Skill stats fetch error:', error);
+    alert('Failed to fetch records for Skill Stats: ' + error.message);
+    return;
+  }
+
+  const sidesPerMatch = (team === '__ALL__') ? 2 : 1;
+  const activeSlotsPerMatch  = 4 * sidesPerMatch;
+  const passiveSlotsPerMatch = 12 * sidesPerMatch;
+  const banSlotsPerMatch     = 1 * sidesPerMatch;
+
+  const matches = data.length;
+
+  const pickDen = (type === 'active') ? (matches * activeSlotsPerMatch)
+                                      : (matches * passiveSlotsPerMatch);
+  const banDen  = (type === 'active') ? (matches * banSlotsPerMatch) : 0;
+
+  const skills = new Map(); // name -> {name,img,picks,bans,wins}
+  const addSkill = (name, img) => {
+    if (!name) return null;
+    if (!skills.has(name)) skills.set(name, { name, img: img || PLACEHOLDER, picks: 0, bans: 0, wins: 0 });
+    return skills.get(name);
   };
 
-  el('tmTable4').innerHTML = `
-    <table class="sum-table skill-table">
-      <thead>
-        <tr>
-          <th>Bundle</th>
-          <th class="right">Count</th>
-          <th class="right">Win Rate</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rows.map(r=>{
-          const icons = r.skills.slice(0,6).map(iconRow).join('');
-          return `
-            <tr>
-              <td>
-                <div class="skill-cell icons" style="gap:10px">
-                  <span class="icons" style="display:flex;gap:6px;flex-wrap:wrap">${icons}</span>
-                  <span class="mono" style="color:var(--muted)">${escapeHtml(r.key)}</span>
-                </div>
-              </td>
-              <td class="right mono">${fmtNum(r.count)}</td>
-              <td class="right mono">${fmtPct(r.winRate)}</td>
-            </tr>
-          `;
-        }).join('')}
-      </tbody>
-    </table>
-  `;
-}
-
-/* ===========================
-   EXPORT CSV
-=========================== */
-function downloadCSV(filename, rows){
-  const csv = rows.map(r => r.map(v => `"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-}
-
-function exportCurrent(){
-  const tab = document.querySelector('.tab.active')?.dataset?.tab || 'matches';
-  if(tab === 'matches'){
-    const rows = [
-      ['match_id','date','tournament','map','left_team','right_team','winner','bans_count','picks_count']
-    ];
-    for(const m of RAW_MATCHES){
-      const picks = m.playersLeft.concat(m.playersRight).filter(p=>p.active).length;
-      rows.push([
-        m.id, m.date, m.tournament, m.map, m.leftTeam, m.rightTeam, m.winner, (m.bans||[]).length, picks
-      ]);
+  const forSide = (r, side, fn) => {
+    if (team !== '__ALL__') {
+      const sideTeam = (side === 'L') ? r.team_left : r.team_right;
+      if (sideTeam !== team) return;
     }
-    downloadCSV('cs_skills_matches.csv', rows);
-  }else if(tab === 'summary'){
-    // Export current summary view table (flatten)
-    const groupBy = el('sumGroup').value;
-    const subject = el('sumSubject').value;
-    const minCount = Number(el('sumMin').value || 1);
-    const groups = buildSummaryGroups(RAW_MATCHES, groupBy);
-    const keys = Array.from(groups.keys()).sort((a,b)=>a.localeCompare(b));
+    fn();
+  };
 
-    const rows = [['group', 'skill', 'count', 'pick_rate', 'win_rate']];
-    for(const k of keys){
-      const ms = groups.get(k) || [];
-      const skills = buildSkillCounts(ms, subject, k).filter(r=>r.count>=minCount).slice(0, 200);
-      for(const s of skills){
-        rows.push([k, s.name, s.count, s.pickRate, s.winRate]);
-      }
-    }
-    downloadCSV('cs_skills_summary.csv', rows);
-  }else{
-    // teammap: export top actives by map + ban impact
-    const skillStats = computeSkillStats(RAW_MATCHES);
-    const maps = skillStats.maps;
-    const rows = [['map','skill','count','appeared_matches']];
-    for(const map of maps){
-      const mm = skillStats.perMap.get(map);
-      const list = Array.from(mm.entries()).map(([name,r])=>({name, ...r})).sort((a,b)=>b.count-a.count).slice(0, 50);
-      for(const it of list){
-        rows.push([map, it.name, it.count, it.appeared]);
-      }
-    }
-    downloadCSV('cs_skills_teammap.csv', rows);
-  }
-}
+  data.forEach(r => {
+    const s = parseState(r.state);
+    const picks = Array.isArray(s.picks) ? s.picks : [];
+    const bans  = Array.isArray(s.bans) ? s.bans : [];
+    const pass  = Array.isArray(s.passives) ? s.passives : [];
 
-/* ===========================
-   PAGE: Tabs
-=========================== */
-function setActiveTab(tabName){
-  document.querySelectorAll('.tab').forEach(t=>{
-    const active = t.dataset.tab === tabName;
-    t.classList.toggle('active', active);
-    t.setAttribute('aria-selected', active ? 'true' : 'false');
+    const lScore = r.team_left_score ?? 0;
+    const rScore = r.team_right_score ?? 0;
+    const lWin = lScore > rScore;
+    const rWin = rScore > lScore;
+
+    if (type === 'active') {
+      forSide(r, 'L', () => {
+        [0,1,2,3].forEach(i => {
+          const hero = picks[i];
+          if (!hero || !hero.name) return;
+          const sk = addSkill(hero.name, hero.image_url);
+          if (!sk) return;
+          sk.picks += 1;
+          if (lWin) sk.wins += 1;
+        });
+        const ban = bans[0];
+        if (ban && ban.name) {
+          const sk = addSkill(ban.name, ban.image_url);
+          if (sk) sk.bans += 1;
+        }
+      });
+
+      forSide(r, 'R', () => {
+        [4,5,6,7].forEach(i => {
+          const hero = picks[i];
+          if (!hero || !hero.name) return;
+          const sk = addSkill(hero.name, hero.image_url);
+          if (!sk) return;
+          sk.picks += 1;
+          if (rWin) sk.wins += 1;
+        });
+        const ban = bans[1];
+        if (ban && ban.name) {
+          const sk = addSkill(ban.name, ban.image_url);
+          if (sk) sk.bans += 1;
+        }
+      });
+    } else {
+      forSide(r, 'L', () => {
+        [0,1,2,3].forEach(i => {
+          const trio = pass[i] || [];
+          trio.forEach(ps => {
+            if (!ps || !ps.name) return;
+            const sk = addSkill(ps.name, ps.image_url);
+            if (!sk) return;
+            sk.picks += 1;
+            if (lWin) sk.wins += 1;
+          });
+        });
+      });
+      forSide(r, 'R', () => {
+        [4,5,6,7].forEach(i => {
+          const trio = pass[i] || [];
+          trio.forEach(ps => {
+            if (!ps || !ps.name) return;
+            const sk = addSkill(ps.name, ps.image_url);
+            if (!sk) return;
+            sk.picks += 1;
+            if (rWin) sk.wins += 1;
+          });
+        });
+      });
+    }
   });
 
-  el('viewMatches').style.display = tabName === 'matches' ? '' : 'none';
-  el('viewSummary').style.display = tabName === 'summary' ? '' : 'none';
-  el('viewTeamMap').style.display = tabName === 'teammap' ? '' : 'none';
+  const rows = Array.from(skills.values()).map(sk => {
+    const pickRate = pickDen ? (sk.picks / pickDen) : 0;
+    const banRate  = (type === 'active' && banDen) ? (sk.bans / banDen) : null;
+    const winRate  = sk.picks ? (sk.wins / sk.picks) : null;
+    return { ...sk, pickRate, banRate, winRate };
+  });
+
+  const sortBy = el('skillSortBy').value;
+  const dir    = el('skillSortDir').value;
+
+  const sign = (dir === 'asc') ? 1 : -1;
+  const num = k => (isNaN(k) || k === null) ? -Infinity : +k;
+
+  rows.sort((a,b)=>{
+    switch (sortBy) {
+      case 'name':     return sign * a.name.localeCompare(b.name);
+      case 'picks':    return sign * (a.picks - b.picks);
+      case 'pickRate': return sign * (num(a.pickRate) - num(b.pickRate));
+      case 'bans':     return sign * (a.bans - b.bans);
+      case 'banRate':  return sign * (num(a.banRate) - num(b.banRate));
+      case 'wins':     return sign * (a.wins - b.wins);
+      case 'winRate':  return sign * (num(a.winRate) - num(b.winRate));
+      default:         return 0;
+    }
+  });
+
+  const tbody = el('skillStatsBody');
+  tbody.innerHTML = '';
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <div class="skill-cell">
+          <img src="${r.img || PLACEHOLDER}" alt="${escapeHTML(r.name)}" loading="lazy"
+               data-char="${escapeHTML(r.name)}" data-char-img="${r.img || PLACEHOLDER}">
+          <span class="skill-name" data-char="${escapeHTML(r.name)}" data-char-img="${r.img || PLACEHOLDER}">${escapeHTML(r.name)}</span>
+        </div>
+      </td>
+      <td class="right mono">${r.picks}</td>
+      <td class="right mono">${pct(r.picks, pickDen)}</td>
+      <td class="right mono">${(type === 'active') ? r.bans : '—'}</td>
+      <td class="right mono">${(type === 'active') ? pct(r.bans, banDen) : '—'}</td>
+      <td class="right mono">${r.wins}</td>
+      <td class="right mono">${(r.winRate === null) ? '—' : (r.winRate * 100).toFixed(1) + '%'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  const teamLabel  = (team === '__ALL__') ? 'All teams' : team;
+  const typeLabel  = (type === 'active') ? 'Active' : 'Passive';
+  const tournLabel = (tourn === '__ALL__') ? 'All tournaments' : tourn;
+  const mapLabel   = (map === '__ALL__') ? 'All maps' : map;
+
+  el('skillStatsMeta').textContent =
+    `${teamLabel} • ${tournLabel} • ${mapLabel} • ${typeLabel} • Matches: ${matches} • Slots: ` +
+    `${(type==='active') ? pickDen + ' active' : pickDen + ' passive'}` +
+    `${(type==='active') ? ` • Ban slots: ${banDen}` : ''}`;
 }
 
-/* ===========================
-   APPLY / REFRESH
-=========================== */
-function setPills(filters){
-  el('pillMatches').textContent = `Loaded ${fmtNum(RAW_MATCHES.length)} matches`;
-  el('pillTeam').textContent = `Team: ${(filters.team==='__ALL__') ? 'All teams' : filters.team}`;
-  el('pillMap').textContent = `Map: ${(filters.map==='__ALL__') ? 'All maps' : filters.map}`;
-  el('pillTourn').textContent = `Tournament: ${(filters.tournament==='__ALL__') ? 'All tournaments' : filters.tournament}`;
-  el('lastSync').textContent = `Last sync: ${new Date().toLocaleString()}`;
-}
-
-function filterMatchesByTeam(matches, team){
-  if(!team || team === '__ALL__') return matches;
-  return matches.filter(m => m.leftTeam === team || m.rightTeam === team);
-}
-
-async function refresh(){
-  const filters = getFilters();
-
-  el('matchList').innerHTML = `<div class="muted">Loading…</div>`;
-  try{
-    RAW_RECORDS = await fetchRecords(filters);
-    // Keep dropdowns linked to current view (tournament drives team list, etc.)
-    populateTournamentDropdown(RAW_RECORDS);
-    populateMapDropdown(RAW_RECORDS);
-    populateTeamDropdown(RAW_RECORDS);
-
-    RAW_MATCHES = normalizeMatches(RAW_RECORDS);
-
-    // Apply team filter (JS-side)
-    const viewMatches = filterMatchesByTeam(RAW_MATCHES, filters.team);
-
-    setPills(filters);
-
-    // Matches view renders
-    renderKPIs(viewMatches);
-    renderMatchList(viewMatches, filters);
-
-    renderTopList(el('topActive'), computeTopSkills(viewMatches, 'active'), 'active');
-    renderTopList(el('topPassive'), computeTopSkills(viewMatches, 'passive'), 'passive');
-
-    // Summary view render
-    renderSummary(viewMatches);
-
-    // Team × Map view render
-    renderSkillByMap(viewMatches);
-    renderBanImpact(viewMatches);
-    renderCombos(viewMatches);
-    renderPassiveBundles(viewMatches);
-
-  }catch(err){
-    console.error(err);
-    el('matchList').innerHTML = `<div class="muted">Error loading data: ${escapeHtml(err.message || String(err))}</div>`;
-    el('summaryCards').innerHTML = `<div class="muted">Error loading summary.</div>`;
-    el('tmTable1').innerHTML = `<div class="muted">Error.</div>`;
-    el('tmTable2').innerHTML = `<div class="muted">Error.</div>`;
-    el('tmTable3').innerHTML = `<div class="muted">Error.</div>`;
-    el('tmTable4').innerHTML = `<div class="muted">Error.</div>`;
-  }
-}
-
-/* ===========================
-   DEFAULT DATE RANGE + Latest Tournament
-=========================== */
-function setDefaultDates(){
-  const today = new Date();
-  const to = toISODate(today);
-  const from = toISODate(new Date(today.getTime() - 1000*60*60*24*30)); // last 30 days
-  el('fFrom').value = from;
-  el('fTo').value = to;
-}
-
-async function getLatestTournament(records){
-  // latest tournament by max(date) then tournament name
-  const rows = records
-    .filter(r => r.tournament && r.date)
-    .sort((a,b)=> String(b.date).localeCompare(String(a.date)));
-  return rows[0]?.tournament || '__ALL__';
-}
-
-async function getTournamentStartDate(tourn){
-  // Find min date for a tournament among current raw records (or query)
-  // We'll query a small sample for min date.
-  try{
-    const {data, error} = await client
-      .from(TABLE_NAME)
-      .select('date')
-      .eq('tournament', tourn)
-      .order('date', {ascending:true})
-      .limit(1);
-    if(error) throw error;
-    return data?.[0]?.date || '';
-  }catch(_){
-    return '';
-  }
-}
-
-/* ===========================
-   INIT
-=========================== */
-document.querySelectorAll('.tab').forEach(t=>{
-  t.addEventListener('click', () => setActiveTab(t.dataset.tab));
-});
-
-el('btnApply').addEventListener('click', refresh);
-el('btnRefresh').addEventListener('click', refresh);
-
-el('btnReset').addEventListener('click', () => {
-  setDefaultDates();
-  el('fMap').value = '__ALL__';
-  el('fTeam').value = '__ALL__';
-  el('fTourn').value = '__ALL__';
-  refresh();
-});
-
-el('btnExport').addEventListener('click', exportCurrent);
-
-el('btnRecalc').addEventListener('click', () => {
-  const filters = getFilters();
-  const viewMatches = filterMatchesByTeam(RAW_MATCHES, filters.team);
-  renderSummary(viewMatches);
-});
-
-['sumGroup','sumSubject','sumMin'].forEach(id=>{
+['skillTypeSelect','skillSortBy','skillSortDir'].forEach(id=>{
   el(id).addEventListener('change', () => {
-    const filters = getFilters();
-    const viewMatches = filterMatchesByTeam(RAW_MATCHES, filters.team);
-    renderSummary(viewMatches);
+    if (!document.getElementById('sec-perskill').classList.contains('active')) return;
+    computeSkillStats();
   });
 });
-
-// Tournament change should re-link team dropdown (and default to tournament start)
-el('fTourn').addEventListener('change', async () => {
-  const tourn = el('fTourn').value;
-  if(tourn && tourn !== '__ALL__'){
-    const start = await getTournamentStartDate(tourn);
-    if(start) el('fFrom').value = start;
-  }
-  // reset team to All when switching tournaments (avoid empty results)
-  el('fTeam').value = '__ALL__';
-  refresh();
-});
-
-// Map change refresh
-el('fMap').addEventListener('change', () => refresh());
-
-// Team change refresh (optional)
-el('fTeam').addEventListener('change', () => refresh());
-
-(async function init(){
-  bindSkillTooltipDelegation();
-  setDefaultDates();
-  await loadCharacterJSON();
-
-  // Initial fetch to populate dropdowns and auto-select latest tournament
-  try{
-    const baseFilters = getFilters();
-    RAW_RECORDS = await fetchRecords(baseFilters);
-
-    populateTournamentDropdown(RAW_RECORDS);
-    populateMapDropdown(RAW_RECORDS);
-    populateTeamDropdown(RAW_RECORDS);
-
-    const latest = await getLatestTournament(RAW_RECORDS);
-    if(latest && latest !== '__ALL__'){
-      el('fTourn').value = latest;
-      const start = await getTournamentStartDate(latest);
-      if(start) el('fFrom').value = start;
-    }
-
-  }catch(err){
-    console.warn('Initial dropdown load failed:', err);
-  }
-
-  await refresh();
-})();
 </script>
 </body>
 </html>
