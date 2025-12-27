@@ -671,12 +671,12 @@
       text-align:center;
     }
 
-  @media (max-width: 1200px){
+    @media (max-width: 1200px){
       .quickbar{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      }
+    }
     @media (max-width: 980px){
       .quickbar{ grid-template-columns: 1fr; }
-      }
+    }
 
     /* Mobile / Responsive */
     @media (max-width: 980px){
@@ -897,7 +897,7 @@
                 </div>
               </div>
 
-              <!-- Loadout (NEW) -->
+              <!-- Loadout -->
               <div class="qv-item">
                 <div class="qv-head">
                   <div class="qv-title">
@@ -1012,7 +1012,6 @@
 
       function syncIcon(){
         if (!path) return;
-        // collapsed => arrow points right, expanded => arrow points left
         path.setAttribute('d', sidebar.classList.contains('collapsed')
           ? 'M10 7l5 5-5 5'
           : 'M14 7l-5 5 5 5'
@@ -1053,7 +1052,7 @@
       character: { url:'https://neptuneg1.github.io/freefire-caster/character.json', items:[], selected:0 },
       pet:       { url:'https://neptuneg1.github.io/freefire-caster/pet.json',       items:[], selected:0 },
       weapon:    { url:'https://neptuneg1.github.io/freefire-caster/weapon.json',    items:[], selected:0 },
-      // NEW: loadout slot
+      // UPDATED: new loadout.json format (details.br/details.cs are strings)
       loadout:   { url:'https://neptuneg1.github.io/freefire-caster/loadout.json',   items:[], selected:0 },
     };
 
@@ -1084,67 +1083,49 @@
 
     function buildDesc(type, item){
       if (!item) return '—';
-    
+
       if (type === 'character'){
         const skill = safeText(item.skill || '');
         const d = safeText(item.description || '');
         return (skill ? skill : '—') + (d ? ` — ${d}` : '');
       }
-    
+
       if (type === 'pet'){
         const skill = safeText(item.skill || item.ability || '');
         const d = safeText(item.description || '');
         return (skill ? skill : '—') + (d ? ` — ${d}` : '');
       }
-    
+
       if (type === 'weapon'){
         const t = safeText(item.type || item.category || '');
         const d = safeText(item.description || item.special || item.desc || '');
         return (t ? t : '—') + (d ? ` — ${d}` : '');
       }
-    
-      // ✅ FIXED: loadout supports object/array fields
+
+      // ✅ UPDATED for new loadout.json:
+      // loadout.details.br and loadout.details.cs are already formatted strings
       if (type === 'loadout'){
-        // preferred top-level description
-        if (item.description) return safeText(item.description);
-    
-        const fmtItem = (x) => {
-          if (x == null) return '';
-          if (typeof x === 'string' || typeof x === 'number' || typeof x === 'boolean') return String(x);
-          if (Array.isArray(x)) return x.map(fmtItem).filter(Boolean).join(', ');
-          if (typeof x === 'object') {
-            // common useful fields
-            if (x.name) return String(x.name);
-            if (x.title) return String(x.title);
-            if (x.desc) return String(x.desc);
-            if (x.description) return String(x.description);
-    
-            // if it contains a list
-            if (Array.isArray(x.items)) return x.items.map(fmtItem).filter(Boolean).join(', ');
-    
-            // fallback: show primitive key: value pairs only
-            const parts = [];
-            for (const [k,v] of Object.entries(x)){
-              if (v == null) continue;
-              if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean'){
-                parts.push(`${k}: ${v}`);
-              }
-            }
-            return parts.join(' • ');
-          }
-          return '';
+        const details = item.details || {};
+        const br = safeText(details.br || '');
+        const cs = safeText(details.cs || '');
+
+        const headLine = (txt, max=170) => {
+          const t = safeText(txt).trim();
+          if (!t) return '';
+          const first = (t.split('\n').find(l => l.trim()) || t).trim();
+          return first.length > max ? first.slice(0, max-1) + '…' : first;
         };
-    
-        const brTxt = fmtItem(item.br);
-        const csTxt = fmtItem(item.cs);
-    
+
+        const brHead = headLine(br);
+        const csHead = headLine(cs);
+
         const parts = [];
-        if (brTxt) parts.push(`BR: ${brTxt}`);
-        if (csTxt) parts.push(`CS: ${csTxt}`);
-    
+        if (brHead) parts.push(`BR: ${brHead}`);
+        if (csHead) parts.push(`CS: ${csHead}`);
+
         return parts.join('  ') || '—';
       }
-    
+
       return '—';
     }
 
@@ -1269,7 +1250,7 @@
         const cats = Array.from(new Set(items.map(it => getCategory(currentPickerType, it)).filter(Boolean)))
           .sort((a,b) => a.localeCompare(b));
 
-        const stateKey = currentPickerType; // 'pet' or 'weapon'
+        const stateKey = currentPickerType;
         const current = FILTER_STATE[stateKey] || 'all';
 
         pickerFilterSelect.innerHTML = [
@@ -1331,9 +1312,16 @@
         if (!q) return true;
 
         const name = safeText(it?.name).toLowerCase();
-        const skill = safeText(it?.skill || it?.type || it?.ability || it?.category || it?.br || it?.cs || '').toLowerCase();
-        const desc = safeText(it?.description || it?.special || it?.desc || '').toLowerCase();
-        return name.includes(q) || skill.includes(q) || desc.includes(q);
+
+        // UPDATED: include loadout.details text in searching
+        const dbr = safeText(it?.details?.br || '');
+        const dcs = safeText(it?.details?.cs || '');
+
+        const skill = safeText(it?.skill || it?.type || it?.ability || it?.category || '').toLowerCase();
+        const desc = safeText(it?.description || it?.special || it?.desc || dbr || dcs).toLowerCase();
+        const detailsBlob = (dbr + ' ' + dcs).toLowerCase();
+
+        return name.includes(q) || skill.includes(q) || desc.includes(q) || detailsBlob.includes(q);
       });
 
       pickerCount.textContent = `${filtered.length.toLocaleString()} item${filtered.length===1?'':'s'}`;
