@@ -32,10 +32,11 @@
       --sb-w: 260px;
       --sb-w-collapsed: 82px;
 
-      --slotTop: 64px;
-      --slotBot: 48px;
-      --slotGap: 8px;
-      --slotRad: 10px;
+      /* Build panel sizing (slightly bigger) */
+      --slotTop: 74px;   /* big row height */
+      --slotBot: 56px;   /* bottom row slot size */
+      --slotGap: 10px;   /* spacing */
+      --slotRad: 14px;   /* rounding */
     }
 
     *{box-sizing:border-box}
@@ -221,9 +222,7 @@
       gap:12px;
     }
 
-    .burger{
-      display:none;
-    }
+    .burger{display:none;}
 
     .search{
       flex:1;
@@ -472,7 +471,6 @@
       color: rgba(244,246,255,.92);
       white-space:normal;
       overflow:visible;
-      text-overflow:unset;
       word-break:break-word;
       line-height:1.15rem;
     }
@@ -481,49 +479,69 @@
       font-size:.84rem;
       white-space:normal;
       overflow:visible;
-      text-overflow:unset;
       word-break:break-word;
       line-height:1.22rem;
     }
 
-    /* === Screenshot-style Build Bar === */
+    /* Layout: left build + right summary */
+    .dash-grid{
+      display:grid;
+      grid-template-columns: minmax(0, 1fr) 380px;
+      gap: 14px;
+      align-items:start;
+      margin-top: 10px;
+    }
+    @media (max-width: 980px){
+      .dash-grid{grid-template-columns: 1fr;}
+      .quickbar{grid-template-columns: 1fr;}
+    }
+
+    /* Under-QuickView: Build Panel (replicate) */
     .buildbar{
       margin-top: 12px;
       padding-top: 12px;
       border-top: 1px solid rgba(255,255,255,.08);
     }
-    .buildpanel{
+
+    .build-panel{
       display:flex;
       flex-direction:column;
       gap: var(--slotGap);
-      align-items:flex-start;
-      width:100%;
     }
-    .bp-top, .bp-bottom{
+
+    .bp-top{
       display:flex;
+      align-items:stretch;
       gap: var(--slotGap);
+    }
+
+    .bp-bottom{
+      display:flex;
       align-items:center;
+      gap: var(--slotGap);
       flex-wrap:wrap;
     }
 
     .bp-slot{
-      width: var(--slotTop);
-      height: var(--slotTop);
+      width: var(--slotBot);
+      height: var(--slotBot);
       border-radius: var(--slotRad);
-      background: rgba(0,0,0,.25);
-      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.22);
+      border: 1px solid rgba(255,255,255,.10);
       overflow:hidden;
       position:relative;
       cursor:pointer;
       transition: .18s ease;
       display:grid;
       place-items:center;
+      box-shadow: 0 0 0 0 rgba(77,211,255,.0);
     }
+
     .bp-slot:hover{
       transform: translateY(-1px);
-      border-color: rgba(255,189,89,.22);
-      box-shadow: 0 0 0 3px rgba(255,189,89,.10);
-      background: rgba(0,0,0,.30);
+      background: rgba(255,255,255,.06);
+      border-color: rgba(77,211,255,.18);
+      box-shadow: 0 0 0 3px rgba(77,211,255,.10);
     }
 
     .bp-slot img{
@@ -531,53 +549,162 @@
       height:100%;
       display:block;
       background: rgba(255,255,255,.02);
-      object-fit: contain;
     }
 
-    /* Active: portrait fill */
-    .bp-active img{ object-fit: cover; }
-
-    /* Bottom row smaller slots */
-    .bp-bottom .bp-slot{
-      width: var(--slotBot);
-      height: var(--slotBot);
-      border-radius: 12px;
-      background: rgba(0,0,0,.22);
-      border-color: rgba(255,255,255,.12);
+    /* Big Active */
+    .bp-active{
+      width: var(--slotTop);
+      height: var(--slotTop);
+      border-radius: calc(var(--slotRad) + 2px);
+      border-color: rgba(255,189,89,.22);
+      background: linear-gradient(135deg, rgba(255,189,89,.10), rgba(0,0,0,.22));
+      flex: 0 0 auto;
+    }
+    .bp-active:hover{
+      border-color: rgba(255,189,89,.30);
+      box-shadow: 0 0 0 3px rgba(255,189,89,.10);
     }
 
-    /* Bottom characters are round portraits inside square */
-    .bp-bottom .bp-slot[data-type="character"] img{
-      width: calc(100% - 8px);
-      height: calc(100% - 8px);
-      border-radius: 50%;
-      object-fit: cover;
-      margin: 4px;
-      background: rgba(0,0,0,.18);
-      border: 1px solid rgba(255,255,255,.10);
-    }
-
-    /* Weapons: one square containing two halves (matches screenshot) */
+    /* Weapons wide box (top-right) */
     .bp-weapons{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:0;
-      background: rgba(0,0,0,.35);
+      flex:1;
+      height: var(--slotTop);
+      border-radius: calc(var(--slotRad) + 2px);
+      background: rgba(0,0,0,.22);
+      border: 1px solid rgba(255,255,255,.10);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: var(--slotGap);
+      padding: var(--slotGap);
+      min-width: 220px; /* increased width baseline */
     }
-    .bp-weapons:hover{ border-color: rgba(77,211,255,.22); box-shadow: 0 0 0 3px rgba(77,211,255,.10); }
-    .bp-weapons .wh{
-      width:100%;
-      height:100%;
+
+    .bp-mini{
+      flex: 1;
+      height: 100%;
+      border-radius: var(--slotRad);
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+      position:relative;
+      cursor:pointer;
+      transition:.18s ease;
       display:grid;
       place-items:center;
-      position:relative;
     }
-    .bp-weapons .wh:first-child{ border-right: 1px solid rgba(255,255,255,.10); }
-    .bp-weapons .wh img{
-      width: 88%;
-      height: 88%;
+    .bp-mini:hover{
+      transform: translateY(-1px);
+      background: rgba(255,255,255,.08);
+      border-color: rgba(77,211,255,.18);
+      box-shadow: 0 0 0 3px rgba(77,211,255,.10);
+    }
+    .bp-mini img{
+      width:100%;
+      height:100%;
       object-fit: contain;
-      opacity:.95;
+      display:block;
+      background: rgba(255,255,255,.02);
+    }
+
+    /* object-fit rules */
+    .bp-active img,
+    .bp-slot[data-type="character"] img{ object-fit: cover; }
+    .bp-slot[data-type="pet"] img,
+    .bp-slot[data-type="loadout"] img{ object-fit: contain; }
+
+    /* hover badges (hidden by default for "exact" look) */
+    .bp-slot::after,
+    .bp-mini::after{
+      content: attr(data-badge);
+      position:absolute;
+      left:6px;
+      bottom:6px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      font-size: .62rem;
+      font-weight: 900;
+      letter-spacing:.3px;
+      background: rgba(0,0,0,.60);
+      border: 1px solid rgba(255,255,255,.12);
+      color: rgba(244,246,255,.88);
+      opacity:0;
+      transform: translateY(2px);
+      transition:.16s ease;
+      pointer-events:none;
+      max-width: calc(100% - 12px);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .bp-slot:hover::after,
+    .bp-mini:hover::after{
+      opacity:1;
+      transform: translateY(0);
+    }
+
+    /* Summary panel */
+    .build-summary{
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.09);
+      min-width:0;
+    }
+    .build-summary h4{
+      margin:0 0 10px 0;
+      font-family: Orbitron, sans-serif;
+      letter-spacing:.5px;
+      color: var(--brand);
+      font-size: 1.0rem;
+    }
+
+    .sum-item{
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.18);
+      border-radius: 14px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .sum-head{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin-bottom:8px;
+      min-width:0;
+    }
+    .sum-ico{
+      width:42px;height:42px;
+      border-radius: 12px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      overflow:hidden;
+      flex:0 0 auto;
+      display:grid;place-items:center;
+    }
+    .sum-ico img{width:100%;height:100%;object-fit:contain;background:rgba(255,255,255,.02)}
+    .sum-title{min-width:0}
+    .sum-title b{
+      display:block;
+      font-size:.95rem;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .sum-title small{
+      display:block;
+      color: var(--muted);
+      font-size:.78rem;
+      margin-top:2px;
+    }
+
+    /* IMPORTANT: make long BR/CS + weapon text show */
+    .sum-desc{
+      color: rgba(244,246,255,.88);
+      font-size:.86rem;
+      line-height:1.28rem;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
 
     /* Modal Picker */
@@ -781,10 +908,9 @@
       }
       .backdrop.show{opacity:1; pointer-events:auto;}
       .app{padding: 14px;}
-      .quickbar{grid-template-columns: 1fr;}
+
       .modal-controls input{min-width: 0; width:100%;}
       .modal-controls select{min-width: 0; width:100%;}
-      :root{ --slotTop: 60px; --slotBot: 46px; --slotGap: 7px; }
     }
   </style>
 </head>
@@ -923,116 +1049,137 @@
           </div>
 
           <div class="card-inner">
-            <div class="quickbar">
-              <!-- Character -->
-              <div class="qv-item" data-open="character" role="button" tabindex="0" aria-label="Choose Character">
-                <div class="qv-head">
-                  <div class="qv-title">
-                    Character
-                    <span class="qv-count" id="charCount">—</span>
+            <div class="dash-grid">
+              <!-- LEFT -->
+              <div>
+                <div class="quickbar">
+                  <!-- Character -->
+                  <div class="qv-item" data-open="character" role="button" tabindex="0" aria-label="Choose Character">
+                    <div class="qv-head">
+                      <div class="qv-title">
+                        Character
+                        <span class="qv-count" id="charCount">—</span>
+                      </div>
+                      <div class="qv-edit" aria-hidden="true" title="Choose Character">
+                        <svg viewBox="0 0 24 24" fill="none">
+                          <path d="M4 20h4l10.5-10.5a2.8 2.8 0 0 0 0-4L17.5 4a2.8 2.8 0 0 0-4 0L3 14.5V18a2 2 0 0 0 2 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                          <path d="M13.5 6.5 17.5 10.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                      </div>
+                    </div>
+                    <div class="qv-body">
+                      <div class="qv-thumb"><img id="charThumb" alt="Character" /></div>
+                      <div class="qv-meta">
+                        <b id="charName">—</b>
+                        <span id="charDesc">—</span>
+                      </div>
+                    </div>
                   </div>
-                  <div class="qv-edit" aria-hidden="true" title="Choose Character">
-                    <svg viewBox="0 0 24 24" fill="none">
-                      <path d="M4 20h4l10.5-10.5a2.8 2.8 0 0 0 0-4L17.5 4a2.8 2.8 0 0 0-4 0L3 14.5V18a2 2 0 0 0 2 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                      <path d="M13.5 6.5 17.5 10.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
+
+                  <!-- Pet -->
+                  <div class="qv-item" data-open="pet" role="button" tabindex="0" aria-label="Choose Pet">
+                    <div class="qv-head">
+                      <div class="qv-title">
+                        Pet
+                        <span class="qv-count" id="petCount">—</span>
+                      </div>
+                      <div class="qv-edit" aria-hidden="true" title="Choose Pet">
+                        <svg viewBox="0 0 24 24" fill="none">
+                          <path d="M4 20h4l10.5-10.5a2.8 2.8 0 0 0 0-4L17.5 4a2.8 2.8 0 0 0-4 0L3 14.5V18a2 2 0 0 0 2 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                          <path d="M13.5 6.5 17.5 10.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                      </div>
+                    </div>
+                    <div class="qv-body">
+                      <div class="qv-thumb"><img id="petThumb" alt="Pet" /></div>
+                      <div class="qv-meta">
+                        <b id="petName">—</b>
+                        <span id="petDesc">—</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Weapon (Quick View = Weapon 1) -->
+                  <div class="qv-item" data-open="weapon" role="button" tabindex="0" aria-label="Choose Weapon">
+                    <div class="qv-head">
+                      <div class="qv-title">
+                        Weapon
+                        <span class="qv-count" id="weaponCount">—</span>
+                      </div>
+                      <div class="qv-edit" aria-hidden="true" title="Choose Weapon">
+                        <svg viewBox="0 0 24 24" fill="none">
+                          <path d="M4 20h4l10.5-10.5a2.8 2.8 0 0 0 0-4L17.5 4a2.8 2.8 0 0 0-4 0L3 14.5V18a2 2 0 0 0 2 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                          <path d="M13.5 6.5 17.5 10.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                      </div>
+                    </div>
+                    <div class="qv-body">
+                      <div class="qv-thumb"><img id="weaponThumb" alt="Weapon" /></div>
+                      <div class="qv-meta">
+                        <b id="weaponName">—</b>
+                        <span id="weaponDesc">—</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div class="qv-body">
-                  <div class="qv-thumb"><img id="charThumb" alt="Character" /></div>
-                  <div class="qv-meta">
-                    <b id="charName">—</b>
-                    <span id="charDesc">—</span>
+
+                <!-- Build Panel (replicate layout) -->
+                <div class="buildbar">
+                  <div class="build-panel" id="buildPanel">
+                    <div class="bp-top">
+                      <!-- Active -->
+                      <div class="bp-slot bp-active" data-build-slot="active" data-type="character" data-badge="Active" title="Active Character">
+                        <img id="bpActiveImg" alt="Active Character" />
+                      </div>
+
+                      <!-- Weapons wide box -->
+                      <div class="bp-weapons" title="Weapons">
+                        <div class="bp-mini" data-build-slot="weapon0" data-type="weapon" data-badge="Weapon 1" title="Weapon 1">
+                          <img id="bpWeapon1Img" alt="Weapon 1" />
+                        </div>
+                        <div class="bp-mini" data-build-slot="weapon1" data-type="weapon" data-badge="Weapon 2" title="Weapon 2">
+                          <img id="bpWeapon2Img" alt="Weapon 2" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="bp-bottom">
+                      <!-- Passives -->
+                      <div class="bp-slot" data-build-slot="passive0" data-type="character" data-badge="Passive 1" title="Passive 1">
+                        <img id="bpPassive1Img" alt="Passive 1" />
+                      </div>
+                      <div class="bp-slot" data-build-slot="passive1" data-type="character" data-badge="Passive 2" title="Passive 2">
+                        <img id="bpPassive2Img" alt="Passive 2" />
+                      </div>
+                      <div class="bp-slot" data-build-slot="passive2" data-type="character" data-badge="Passive 3" title="Passive 3">
+                        <img id="bpPassive3Img" alt="Passive 3" />
+                      </div>
+
+                      <!-- Pet -->
+                      <div class="bp-slot" data-build-slot="pet" data-type="pet" data-badge="Pet" title="Pet">
+                        <img id="bpPetImg" alt="Pet" />
+                      </div>
+
+                      <!-- Loadout -->
+                      <div class="bp-slot" data-build-slot="loadout" data-type="loadout" data-badge="Loadout" title="Loadout">
+                        <img id="bpLoadoutImg" alt="Loadout" />
+                      </div>
+                    </div>
                   </div>
+                </div>
+
+                <div class="muted" style="font-size:.8rem; padding: 10px 2px 0 2px;">
+                  Free Fire Caster © 2025 — Neptune
                 </div>
               </div>
 
-              <!-- Pet -->
-              <div class="qv-item" data-open="pet" role="button" tabindex="0" aria-label="Choose Pet">
-                <div class="qv-head">
-                  <div class="qv-title">
-                    Pet
-                    <span class="qv-count" id="petCount">—</span>
-                  </div>
-                  <div class="qv-edit" aria-hidden="true" title="Choose Pet">
-                    <svg viewBox="0 0 24 24" fill="none">
-                      <path d="M4 20h4l10.5-10.5a2.8 2.8 0 0 0 0-4L17.5 4a2.8 2.8 0 0 0-4 0L3 14.5V18a2 2 0 0 0 2 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                      <path d="M13.5 6.5 17.5 10.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                  </div>
-                </div>
-                <div class="qv-body">
-                  <div class="qv-thumb"><img id="petThumb" alt="Pet" /></div>
-                  <div class="qv-meta">
-                    <b id="petName">—</b>
-                    <span id="petDesc">—</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Weapon -->
-              <div class="qv-item" data-open="weapon" role="button" tabindex="0" aria-label="Choose Weapon">
-                <div class="qv-head">
-                  <div class="qv-title">
-                    Weapon
-                    <span class="qv-count" id="weaponCount">—</span>
-                  </div>
-                  <div class="qv-edit" aria-hidden="true" title="Choose Weapon">
-                    <svg viewBox="0 0 24 24" fill="none">
-                      <path d="M4 20h4l10.5-10.5a2.8 2.8 0 0 0 0-4L17.5 4a2.8 2.8 0 0 0-4 0L3 14.5V18a2 2 0 0 0 2 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                      <path d="M13.5 6.5 17.5 10.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                  </div>
-                </div>
-                <div class="qv-body">
-                  <div class="qv-thumb"><img id="weaponThumb" alt="Weapon" /></div>
-                  <div class="qv-meta">
-                    <b id="weaponName">—</b>
-                    <span id="weaponDesc">—</span>
-                  </div>
-                </div>
+              <!-- RIGHT: Combined Description -->
+              <div class="build-summary" id="buildSummary">
+                <h4>Current Build</h4>
+                <div class="muted" style="font-size:.85rem;">Select slots to see combined details.</div>
               </div>
             </div>
 
-            <!-- Screenshot-style Build Bar -->
-            <div class="buildbar">
-              <div class="buildpanel" id="buildPanel">
-                <!-- Top row: Active + Weapons (2 inside one box) -->
-                <div class="bp-top">
-                  <div class="bp-slot bp-active" data-build-slot="active" data-type="character" title="Active Character">
-                    <img id="bpActiveImg" alt="Active Character" />
-                  </div>
-
-                  <div class="bp-slot bp-weapons" data-build-slot="weaponsStack" data-type="weapon" title="Weapons (Left = W1, Right = W2)">
-                    <div class="wh" data-w="0"><img id="bpWeapon1Img" alt="Weapon 1" /></div>
-                    <div class="wh" data-w="1"><img id="bpWeapon2Img" alt="Weapon 2" /></div>
-                  </div>
-                </div>
-
-                <!-- Bottom row: 3 passive + pet + loadout -->
-                <div class="bp-bottom">
-                  <div class="bp-slot" data-build-slot="passive0" data-type="character" title="Passive 1">
-                    <img id="bpPassive1Img" alt="Passive 1" />
-                  </div>
-                  <div class="bp-slot" data-build-slot="passive1" data-type="character" title="Passive 2">
-                    <img id="bpPassive2Img" alt="Passive 2" />
-                  </div>
-                  <div class="bp-slot" data-build-slot="passive2" data-type="character" title="Passive 3">
-                    <img id="bpPassive3Img" alt="Passive 3" />
-                  </div>
-                  <div class="bp-slot" data-build-slot="pet" data-type="pet" title="Pet">
-                    <img id="bpPetImg" alt="Pet" />
-                  </div>
-                  <div class="bp-slot" data-build-slot="loadout" data-type="loadout" title="Loadout">
-                    <img id="bpLoadoutImg" alt="Loadout" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="muted" style="font-size:.8rem; padding: 10px 2px 0 2px;">
-              Free Fire Caster © 2025 — Neptune
-            </div>
           </div>
         </div>
       </section>
@@ -1056,9 +1203,11 @@
       <div class="modal-controls">
         <div class="modal-row">
           <input id="pickerSearch" placeholder="Search..." />
+          <!-- used for Pets/Weapons (category) -->
           <select id="pickerFilterSelect" style="display:none"></select>
           <div class="modal-count" id="pickerCount">—</div>
         </div>
+        <!-- used for Characters (meta/skill type) -->
         <div class="filter-pills" id="pickerFilterPills" style="display:none"></div>
       </div>
 
@@ -1170,10 +1319,10 @@
       character: 'all', // all | brmeta | csmeta | active | passive
       pet: 'all',       // all | <category>
       weapon: 'all',    // all | <category>
-      loadout: 'all'    // all | <category>
+      loadout: 'all'
     };
 
-    // Build bar state (matches screenshot layout)
+    // Build panel state
     const BUILD = {
       active: 0,
       passives: [0,0,0],
@@ -1198,8 +1347,7 @@
       if (type === 'weapon'){
         return norm(item.category || item.type || item.weapon_type || item.class || item.group || 'Other') || 'Other';
       }
-      // loadout
-      return norm(item.category || item.type || 'Loadout') || 'Loadout';
+      return 'Other';
     }
 
     function buildDesc(type, item){
@@ -1208,27 +1356,46 @@
       if (type === 'character'){
         const skill = safeText(item.skill || '');
         const d = safeText(item.description || '');
-        return (skill ? skill : '—') + (d ? ` — ${d}` : '');
+        return (skill ? skill : '—') + (d ? `\n${d}` : '');
       }
+
       if (type === 'pet'){
         const skill = safeText(item.skill || item.ability || '');
         const d = safeText(item.description || '');
-        return (skill ? skill : '—') + (d ? ` — ${d}` : '');
+        return (skill ? skill : '—') + (d ? `\n${d}` : '');
       }
+
       if (type === 'weapon'){
-        const t = safeText(item.type || item.category || '');
-        const d = safeText(item.description || item.special || '');
-        return (t ? t : '—') + (d ? ` — ${d}` : '');
+        const parts = [];
+        const cat = safeText(item.category || item.type || item.class || '');
+        const sp  = safeText(item.special || item.unique || item.passive || item.effect || '');
+        const d   = safeText(item.description || item.desc || '');
+
+        if (cat) parts.push(cat);
+        if (sp)  parts.push(sp);
+        if (d)   parts.push(d);
+
+        if (!parts.length){
+          const statKeys = ["damage","rate","range","accuracy","magazine","reload","armor_pen","move_speed"];
+          const statParts = statKeys
+            .filter(k => item[k] !== undefined && item[k] !== null && String(item[k]).trim() !== '')
+            .map(k => `${k.toUpperCase()}: ${item[k]}`);
+          if (statParts.length) parts.push(statParts.join(" • "));
+        }
+
+        return parts.join("\n") || '—';
       }
+
       // loadout
+      const d = safeText(item.description || '');
       const br = safeText(item.br || '');
       const cs = safeText(item.cs || '');
-      const d = safeText(item.description || '');
+
       if (d) return d;
       const parts = [];
-      if (br) parts.push(`BR: ${br}`);
-      if (cs) parts.push(`CS: ${cs}`);
-      return parts.join(' | ') || '—';
+      if (br) parts.push(`BR:\n${br}`);
+      if (cs) parts.push(`CS:\n${cs}`);
+      return parts.join("\n\n") || '—';
     }
 
     async function loadJson(url){
@@ -1271,7 +1438,7 @@
     }
 
     /***********************
-     * Build Bar render
+     * Build panel render
      ***********************/
     function firstIndex(items, predicate){
       const i = (items || []).findIndex(predicate);
@@ -1320,7 +1487,6 @@
       const p1 = chars[BUILD.passives[0]] || chars[0];
       const p2 = chars[BUILD.passives[1]] || chars[0];
       const p3 = chars[BUILD.passives[2]] || chars[0];
-
       const pet = pets[BUILD.pet] || pets[0];
       const loadout = loadouts[BUILD.loadout] || loadouts[0];
 
@@ -1331,12 +1497,71 @@
       document.getElementById('bpPassive1Img').src = p1 ? pickImg(p1) : '';
       document.getElementById('bpPassive2Img').src = p2 ? pickImg(p2) : '';
       document.getElementById('bpPassive3Img').src = p3 ? pickImg(p3) : '';
-
       document.getElementById('bpPetImg').src      = pet ? pickImg(pet) : '';
       document.getElementById('bpLoadoutImg').src  = loadout ? pickImg(loadout) : '';
-
       document.getElementById('bpWeapon1Img').src  = w1 ? pickImg(w1) : '';
       document.getElementById('bpWeapon2Img').src  = w2 ? pickImg(w2) : '';
+
+      // keep quickview weapon synced to Weapon 1 (optional, but feels natural)
+      if (weapons.length){
+        DATA.weapon.selected = BUILD.weapons[0];
+        applyQuickView('weapon');
+      }
+
+      renderBuildSummary();
+    }
+
+    function renderBuildSummary(){
+      const box = document.getElementById('buildSummary');
+      if (!box) return;
+
+      const chars = DATA.character.items || [];
+      const pets = DATA.pet.items || [];
+      const weapons = DATA.weapon.items || [];
+      const loadouts = DATA.loadout.items || [];
+
+      const active = chars[BUILD.active] || chars[0];
+      const p1 = chars[BUILD.passives[0]] || chars[0];
+      const p2 = chars[BUILD.passives[1]] || chars[0];
+      const p3 = chars[BUILD.passives[2]] || chars[0];
+
+      const pet = pets[BUILD.pet] || pets[0];
+      const loadout = loadouts[BUILD.loadout] || loadouts[0];
+
+      const w1 = weapons[BUILD.weapons[0]] || weapons[0];
+      const w2 = weapons[BUILD.weapons[1]] || weapons[0];
+
+      const blocks = [
+        { label:"Active", type:"character", item: active },
+        { label:"Passive 1", type:"character", item: p1 },
+        { label:"Passive 2", type:"character", item: p2 },
+        { label:"Passive 3", type:"character", item: p3 },
+        { label:"Pet", type:"pet", item: pet },
+        { label:"Loadout", type:"loadout", item: loadout },
+        { label:"Weapon 1", type:"weapon", item: w1 },
+        { label:"Weapon 2", type:"weapon", item: w2 },
+      ];
+
+      box.innerHTML = `
+        <h4>Current Build</h4>
+        ${blocks.map(b => {
+          const name = safeText(b.item?.name || '—');
+          const img = b.item ? pickImg(b.item) : '';
+          const desc = buildDesc(b.type, b.item);
+          return `
+            <div class="sum-item">
+              <div class="sum-head">
+                <div class="sum-ico">${img ? `<img src="${img}" alt="">` : ''}</div>
+                <div class="sum-title">
+                  <b>${b.label}: ${name}</b>
+                  <small>${(b.type || '').toUpperCase()}</small>
+                </div>
+              </div>
+              <div class="sum-desc">${(desc || '—').replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
+            </div>
+          `;
+        }).join("")}
+      `;
     }
 
     /***********************
@@ -1361,25 +1586,24 @@
       currentPickerType = type;
       PICK_TARGET = target || { kind:'quickview', type, slot:null };
 
-      // auto-filter helpful defaults for build slots
+      // force defaults for build character slots
       if (PICK_TARGET.kind === 'build' && type === 'character'){
         if (PICK_TARGET.slot === 'active') FILTER_STATE.character = 'active';
         if (String(PICK_TARGET.slot || '').startsWith('passive')) FILTER_STATE.character = 'passive';
       }
 
-      const label =
-        type === 'character' ? 'Character' :
-        type === 'pet' ? 'Pet' :
-        type === 'weapon' ? 'Weapon' :
-        'Loadout';
+      const label = type === 'character' ? 'Character'
+                  : type === 'pet' ? 'Pet'
+                  : type === 'weapon' ? 'Weapon'
+                  : 'Loadout';
 
       let titleLabel = `Select ${label}`;
       if (PICK_TARGET.kind === 'build'){
         if (PICK_TARGET.slot === 'active') titleLabel = 'Select Active Character';
         if (String(PICK_TARGET.slot || '').startsWith('passive')) titleLabel = 'Select Passive Character';
         if (PICK_TARGET.slot === 'pet') titleLabel = 'Select Pet';
-        if (PICK_TARGET.slot === 'loadout') titleLabel = 'Select Loadout';
         if (String(PICK_TARGET.slot || '').startsWith('weapon')) titleLabel = 'Select Weapon';
+        if (PICK_TARGET.slot === 'loadout') titleLabel = 'Select Loadout';
       }
 
       pickerTitle.textContent = titleLabel;
@@ -1428,8 +1652,7 @@
           });
         });
 
-      } else {
-        // Pets / Weapons / Loadout use select (category)
+      } else if (currentPickerType === 'pet' || currentPickerType === 'weapon') {
         pickerFilterPills.style.display = 'none';
         pickerFilterSelect.style.display = 'inline-flex';
 
@@ -1437,7 +1660,7 @@
         const cats = Array.from(new Set(items.map(it => getCategory(currentPickerType, it)).filter(Boolean)))
           .sort((a,b) => a.localeCompare(b));
 
-        const stateKey = currentPickerType; // pet | weapon | loadout
+        const stateKey = currentPickerType;
         const current = FILTER_STATE[stateKey] || 'all';
 
         pickerFilterSelect.innerHTML = [
@@ -1452,6 +1675,10 @@
           FILTER_STATE[stateKey] = pickerFilterSelect.value || 'all';
           renderPickerGrid();
         };
+      } else {
+        // loadout: no category filter
+        pickerFilterPills.style.display = 'none';
+        pickerFilterSelect.style.display = 'none';
       }
     }
 
@@ -1469,10 +1696,20 @@
         return true;
       }
 
-      const key = currentPickerType; // pet / weapon / loadout
-      const f = FILTER_STATE[key] || 'all';
-      if (f === 'all') return true;
-      return getCategory(currentPickerType, it) === f;
+      if (currentPickerType === 'pet'){
+        const f = FILTER_STATE.pet || 'all';
+        if (f === 'all') return true;
+        return getCategory('pet', it) === f;
+      }
+
+      if (currentPickerType === 'weapon'){
+        const fw = FILTER_STATE.weapon || 'all';
+        if (fw === 'all') return true;
+        return getCategory('weapon', it) === fw;
+      }
+
+      // loadout
+      return true;
     }
 
     function renderPickerGrid(){
@@ -1485,8 +1722,8 @@
         if (!q) return true;
 
         const name = safeText(it?.name).toLowerCase();
-        const skill = safeText(it?.skill || it?.type || it?.ability || it?.category || '').toLowerCase();
-        const desc = safeText(it?.description || it?.special || it?.br || it?.cs || '').toLowerCase();
+        const skill = safeText(it?.skill || it?.type || it?.ability || it?.category || it?.br || it?.cs || '').toLowerCase();
+        const desc = safeText(it?.description || it?.special || it?.desc || '').toLowerCase();
         return name.includes(q) || skill.includes(q) || desc.includes(q);
       });
 
@@ -1497,8 +1734,9 @@
         const img = pickImg(it);
         const name = safeText(it?.name || '—');
         const tip = buildDesc(currentPickerType, it);
+        const safeTip = safeText(tip).replace(/"/g,'&quot;');
         return `
-          <div class="pick-card" data-idx="${idx}" title="${name}${tip ? ' — ' + tip : ''}">
+          <div class="pick-card" data-idx="${idx}" title="${name}${safeTip ? ' — ' + safeTip : ''}">
             <div class="pick-thumb"><img src="${img}" alt="${name}" /></div>
             <div class="pick-name">${name}</div>
           </div>
@@ -1554,22 +1792,20 @@
       });
     });
 
-    // Build panel openers (weapons box picks W1 or W2 depending on click half)
+    // Build panel click handling
     document.getElementById('buildPanel')?.addEventListener('click', (e) => {
+      const mini = e.target.closest('.bp-mini');
+      if (mini){
+        const slot = mini.getAttribute('data-build-slot'); // weapon0/weapon1
+        openPicker('weapon', { kind:'build', type:'weapon', slot });
+        return;
+      }
+
       const slotEl = e.target.closest('.bp-slot');
       if (!slotEl) return;
 
       const slot = slotEl.getAttribute('data-build-slot');
       const dtype = slotEl.getAttribute('data-type');
-
-      if (slot === 'weaponsStack'){
-        // decide left/right half
-        const rect = slotEl.getBoundingClientRect();
-        const x = (e.clientX - rect.left);
-        const half = x < rect.width / 2 ? 0 : 1;
-        openPicker('weapon', { kind:'build', type:'weapon', slot: `weapon${half}` });
-        return;
-      }
 
       if (dtype === 'character'){
         openPicker('character', { kind:'build', type:'character', slot });
