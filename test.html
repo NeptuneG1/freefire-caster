@@ -47,6 +47,7 @@
       overflow-x:hidden;
     }
 
+    /* subtle “arc” accents */
     body::before, body::after{
       content:"";
       position:fixed;
@@ -67,6 +68,7 @@
 
     a{color:inherit}
 
+    /* App Layout */
     .app{
       height:100%;
       display:flex;
@@ -96,9 +98,8 @@
     .brand{
       display:flex;
       align-items:center;
-      justify-content:space-between;
       gap:10px;
-      padding:16px 14px 10px 14px;
+      padding:16px 16px 10px 16px;
       border-bottom: 1px solid var(--line);
     }
     .brand-left{display:flex;align-items:center;gap:10px;min-width:0;}
@@ -133,18 +134,6 @@
       text-overflow:ellipsis;
       max-width: 150px;
     }
-
-    .sb-toggle{
-      width:42px;height:42px;border-radius:14px;
-      background: rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.10);
-      display:grid;place-items:center;
-      cursor:pointer;
-      transition:.2s ease;
-      flex:0 0 auto;
-    }
-    .sb-toggle:hover{transform: translateY(-1px); background: rgba(255,255,255,.08)}
-    .sb-toggle svg{width:18px;height:18px;opacity:.92}
 
     .nav{
       padding: 12px;
@@ -195,39 +184,17 @@
       min-width:0;
     }
 
+    /* collapsed behavior */
     .sidebar.collapsed .brand h1,
     .sidebar.collapsed .brand small,
     .sidebar.collapsed .nav-label{display:none;}
-
+    .sidebar.collapsed .brand{justify-content:center;}
+    .sidebar.collapsed .brand-left{justify-content:center;}
     .sidebar.collapsed .nav-item{
       justify-content:center;
       gap:0;
       padding:10px 8px;
     }
-
-    .sidebar-foot{
-      margin-top:auto;
-      padding:12px 14px 14px 14px;
-      border-top:1px solid var(--line);
-      color: var(--muted);
-      font-size:.82rem;
-    }
-    .pill{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:8px 10px;
-      border-radius: 999px;
-      background: rgba(255,255,255,.05);
-      border:1px solid rgba(255,255,255,.09);
-    }
-    .dot{
-      width:8px;height:8px;border-radius:999px;background: var(--brand);
-      box-shadow: 0 0 18px rgba(255,189,89,.35);
-    }
-    .sidebar.collapsed .sidebar-foot{display:grid;place-items:center;}
-    .sidebar.collapsed .pill{padding:8px;gap:0;}
-    .sidebar.collapsed .pill span:not(.dot){display:none;}
 
     /* Main */
     .main{
@@ -296,6 +263,8 @@
       display:grid;place-items:center;
       cursor:pointer;
       transition:.2s ease;
+      color: var(--ink);
+      flex:0 0 auto;
     }
     .icon-btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.08)}
     .icon-btn svg{width:18px;height:18px;opacity:.92}
@@ -727,7 +696,7 @@
       text-align:center;
     }
 
-    /* Mobile */
+    /* Mobile / Responsive */
     @media (max-width: 980px){
       .burger{display:grid; place-items:center}
       .sidebar{
@@ -772,12 +741,6 @@
             <small class="muted">Caster Dashboard</small>
           </div>
         </div>
-
-        <button class="sb-toggle" id="sbToggle" aria-label="Collapse sidebar" title="Collapse sidebar">
-          <svg viewBox="0 0 24 24" fill="none">
-            <path d="M14 7l-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
       </div>
 
       <nav class="nav" id="nav">
@@ -848,10 +811,6 @@
           <span class="nav-label">Free Fire Update</span>
         </a>
       </nav>
-
-      <div class="sidebar-foot">
-        <span class="pill"><span class="dot"></span> Neptune UI • V2</span>
-      </div>
     </aside>
 
     <!-- MAIN -->
@@ -867,6 +826,13 @@
           </svg>
           <input id="searchInput" placeholder="Search pages..." />
         </div>
+
+        <!-- collapse button moved here (next to search) -->
+        <button class="icon-btn" id="sbToggle" aria-label="Collapse sidebar" title="Collapse sidebar">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path id="sbTogglePath" d="M14 7l-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
 
         <div class="top-actions">
           <div class="userchip">
@@ -1023,12 +989,11 @@
     }
 
     /***********************
-     * Sidebar UX
+     * Sidebar + Topbar UX
      ***********************/
     const sidebar = document.getElementById('sidebar');
     const burger = document.getElementById('burger');
     const backdrop = document.getElementById('backdrop');
-    const sbToggle = document.getElementById('sbToggle');
 
     function openSidebar(){
       sidebar.classList.add('open');
@@ -1045,30 +1010,34 @@
     });
     backdrop?.addEventListener('click', closeSidebar);
 
+    // desktop collapse toggle (in header)
     (function initSidebarCollapse(){
       const key = 'ff_sidebar_collapsed_v1';
       const saved = localStorage.getItem(key);
       if (saved === '1') sidebar.classList.add('collapsed');
 
-      sbToggle?.addEventListener('click', () => {
+      const btn = document.getElementById('sbToggle');
+      const path = document.getElementById('sbTogglePath');
+
+      function syncIcon(){
+        if (!path) return;
+        // collapsed => arrow points right, expanded => arrow points left
+        path.setAttribute('d', sidebar.classList.contains('collapsed')
+          ? 'M10 7l5 5-5 5'
+          : 'M14 7l-5 5 5 5'
+        );
+      }
+
+      syncIcon();
+
+      btn?.addEventListener('click', () => {
         sidebar.classList.toggle('collapsed');
         localStorage.setItem(key, sidebar.classList.contains('collapsed') ? '1' : '0');
-
-        const path = sbToggle.querySelector('path');
-        if (path){
-          path.setAttribute('d', sidebar.classList.contains('collapsed')
-            ? 'M10 7l5 5-5 5'
-            : 'M14 7l-5 5 5 5'
-          );
-        }
+        syncIcon();
       });
-
-      const path = sbToggle?.querySelector('path');
-      if (path && sidebar.classList.contains('collapsed')){
-        path.setAttribute('d','M10 7l5 5-5 5');
-      }
     })();
 
+    // highlight active nav based on filename
     (function setActiveNav(){
       const here = (location.pathname.split('/').pop() || 'dashboard.html').toLowerCase();
       document.querySelectorAll('.nav-item').forEach(a => {
@@ -1077,6 +1046,7 @@
       });
     })();
 
+    // sidebar search filters nav items
     document.getElementById('searchInput')?.addEventListener('input', (e) => {
       const q = (e.target.value || '').toLowerCase().trim();
       document.querySelectorAll('#nav .nav-item').forEach(a => {
@@ -1199,7 +1169,6 @@
       pickerSub.textContent = `Click a ${label.toLowerCase()} to apply it to Quick View.`;
       pickerSearch.value = '';
 
-      // ensure filter UI matches type
       setupPickerFilters();
       renderPickerGrid();
 
@@ -1214,7 +1183,6 @@
     }
 
     function setupPickerFilters(){
-      // clear previous listeners safely by reassigning handlers
       pickerFilterSelect.onchange = null;
 
       if (currentPickerType === 'character'){
@@ -1238,14 +1206,12 @@
         pickerFilterPills.querySelectorAll('button').forEach(btn => {
           btn.addEventListener('click', () => {
             FILTER_STATE.character = btn.getAttribute('data-f') || 'all';
-            // update active state
             pickerFilterPills.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
             renderPickerGrid();
           });
         });
 
       } else {
-        // pets / weapons: category dropdown
         pickerFilterPills.style.display = 'none';
         pickerFilterSelect.style.display = 'inline-flex';
 
@@ -1261,7 +1227,6 @@
           ...cats.map(c => `<option value="${c}">${c}</option>`)
         ].join('');
 
-        // keep selection if possible
         pickerFilterSelect.value = cats.includes(current) ? current : 'all';
         FILTER_STATE[stateKey] = pickerFilterSelect.value;
 
@@ -1279,19 +1244,10 @@
         const f = FILTER_STATE.character || 'all';
         if (f === 'all') return true;
 
-        if (f === 'brmeta'){
-          return normLower(it.meta || 'no') === 'yes';
-        }
-        if (f === 'csmeta'){
-          return normLower(it.cs_meta || 'no') === 'yes';
-        }
-        if (f === 'active'){
-          // accept anything NOT passive
-          return normLower(it.skill_type || '') !== 'passive';
-        }
-        if (f === 'passive'){
-          return normLower(it.skill_type || '') === 'passive';
-        }
+        if (f === 'brmeta') return normLower(it.meta || 'no') === 'yes';
+        if (f === 'csmeta') return normLower(it.cs_meta || 'no') === 'yes';
+        if (f === 'active') return normLower(it.skill_type || '') !== 'passive';
+        if (f === 'passive') return normLower(it.skill_type || '') === 'passive';
         return true;
       }
 
@@ -1301,7 +1257,6 @@
         return getCategory('pet', it) === f;
       }
 
-      // weapon
       const fw = FILTER_STATE.weapon || 'all';
       if (fw === 'all') return true;
       return getCategory('weapon', it) === fw;
@@ -1314,7 +1269,6 @@
 
       const filtered = all.filter(it => {
         if (!passesTypeFilter(it)) return false;
-
         if (!q) return true;
 
         const name = safeText(it?.name).toLowerCase();
