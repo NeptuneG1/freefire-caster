@@ -1,1678 +1,1612 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FFBR — Teams</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Free Fire Dashboard</title>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <!-- Supabase JS v2 (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
     :root{
-      --bg:#0e0e0e; --panel:#1b1b1b; --panel2:#141414; --ink:#f5f5f5; --muted:#b9b9b9;
-      --brand:#ffbd59; --brand2:#ff7733; --line:#313131;
-      --tile-w:96px; --tile-h:104px; --logo:44px; --code-fs:.74rem;
-      --heat-rgb:255,189,89; --heat-min:.06; --heat-max:.22; --heat-top-outline:.42; --heat-radius:8px;
-      --good:#62e887; --bad:#ff6b6b; --step-h:48px;
+      --bg:#07090f;
+      --bg2:#0b1020;
+      --panel: rgba(20, 26, 38, .72);
+      --panel2: rgba(14, 18, 28, .70);
+      --line: rgba(255,255,255,.08);
+      --ink:#f4f6ff;
+      --muted:#aab1c5;
+
+      --brand:#ffbd59;
+      --brand2:#ff7733;
+      --accent:#4dd3ff;
+
+      --radius:16px;
+      --radius-lg:22px;
+      --shadow: 0 22px 70px rgba(0,0,0,.55);
+
+      --sb-w: 260px;
+      --sb-w-collapsed: 82px;
     }
+
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif}
-    header{position:sticky;top:0;z-index:20;background:#1f1f1f;border-bottom:3px solid var(--brand);padding:14px 16px}
-    h1{margin:0;font-size:1.1rem;letter-spacing:.3px;color:var(--brand)}
-    .user-controls{position:absolute;right:16px;top:12px;display:flex;gap:10px;align-items:center}
-    .chip{font-size:.85rem;color:#ddd;background:#272727;border:1px solid #3a3a3a;border-radius:999px;padding:4px 10px}
-    .btn{background:var(--brand);color:var(--panel);border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
-    .btn.secondary{background:#2a2a2a;color:#ddd;border:1px solid #3a3a3a}
-    .btn.ghost{background:transparent;color:#ddd;border:1px solid #3a3a3a}
-    .shell{max-width:1180px;margin:22px auto;padding:0 12px}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: Roboto, system-ui, -apple-system, Segoe UI, Arial;
+      color:var(--ink);
+      background:
+        radial-gradient(900px 500px at 18% 12%, rgba(77,211,255,.15), transparent 60%),
+        radial-gradient(700px 420px at 85% 18%, rgba(255,189,89,.12), transparent 60%),
+        radial-gradient(900px 620px at 50% 110%, rgba(255,119,51,.10), transparent 60%),
+        linear-gradient(180deg, var(--bg), var(--bg2));
+      overflow-x:hidden;
+    }
 
-    .gerr{display:none;margin:0 0 12px;background:#2a1111;border:1px solid #553;color:#ffb4b4;border-radius:10px;padding:10px 12px;white-space:pre-wrap}
-    .gerr.show{display:block}
+    body::before, body::after{
+      content:"";
+      position:fixed;
+      inset:auto auto 0 0;
+      width:520px; height:520px;
+      border-radius:50%;
+      border:10px solid rgba(77,211,255,.14);
+      transform: translate(-45%, -35%);
+      filter: blur(.2px);
+      pointer-events:none;
+    }
+    body::after{
+      inset: -120px 0 auto auto;
+      width:420px; height:420px;
+      border:10px solid rgba(77,211,255,.10);
+      transform: translate(38%, 0%);
+    }
 
-    .steps{position:sticky;top:61px;z-index:15;background:#151515;border:1px solid var(--line);border-radius:12px;height:var(--step-h);display:flex;align-items:center;gap:8px;padding:6px 8px;margin-bottom:12px}
-    .step{flex:1;display:flex;align-items:center;gap:8px;justify-content:center;height:100%;border-radius:10px;border:1px solid #2a2a2a;background:#0f0f0f;color:#cacaca;font-weight:700;cursor:pointer}
-    .step .num{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:999px;border:1px solid #3a3a3a;background:#1a1a1a;font-size:.9rem}
-    .step.active{outline:2px solid var(--brand);color:#fff}
-    .pager-nav{display:flex;gap:8px;justify-content:space-between;margin:8px 0 16px}
-    .steps-hint{color:var(--muted);font-size:.9rem}
+    a{color:inherit}
 
-    .page{display:none}
-    .page.active{display:block}
-    .section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
-    .section h2{margin:0 0 10px;color:var(--brand)}
-    .grid2{display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:12px}
-    .grid3{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:12px}
-    .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px}
-    .card h3{margin:0 0 6px;color:var(--brand2);font-size:1.0rem}
-    .kpis{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
-    .kpi{background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:6px 10px;font-size:.9rem}
-    .kpi strong{font-weight:800}
-    .bar{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
-    .bar label{color:var(--muted);font-size:.9rem}
-    .input{background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:7px 10px}
-    .muted{color:var(--muted)}
+    .app{
+      height:100%;
+      display:flex;
+      gap:18px;
+      padding:18px;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
 
-    .team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--tile-w),1fr));gap:8px}
-    .team-tile{height:var(--tile-h);background:#131313;border:1px solid #2a2a2a;border-radius:10px;padding:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:transform .1s ease,border-color .1s ease;overflow:hidden}
-    .team-tile:hover{transform:translateY(-2px);border-color:#444}
-    .team-tile.active{outline:2px solid var(--brand2)}
-    .team-logo{width:var(--logo);height:var(--logo);object-fit:contain;filter:drop-shadow(0 0 8px rgba(0,0,0,.4))}
-    .team-code{font-weight:800;font-size:var(--code-fs);line-height:1.1;letter-spacing:.2px}
+    /* Sidebar */
+    .sidebar{
+      width: var(--sb-w);
+      background: var(--panel2);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      position:relative;
+      transition: width .18s ease;
+    }
+    .sidebar.collapsed{ width: var(--sb-w-collapsed); }
 
-    table{width:100%;border-collapse:separate;border-spacing:0 6px;font-size:.92rem}
-    thead th{background:#191919;position:sticky;top:0;text-align:left;border-radius:8px;padding:8px 6px;z-index:1}
-    th,td{padding:6px 6px;vertical-align:top}
-    .right{text-align:right}
-    td[data-key]{transition:background-color .18s ease, box-shadow .18s ease;border-radius:var(--heat-radius);background-clip:padding-box}
-    td.heat-top{box-shadow:inset 0 0 0 1px rgba(var(--heat-rgb), var(--heat-top-outline))}
-    .err{background:#2a1111;border:1px solid #4a1a1a;color:#ffb4b4;border-radius:8px;padding:8px 10px}
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:16px 16px 10px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .brand-left{display:flex;align-items:center;gap:10px;min-width:0;}
+    .logo{
+      width:36px;height:36px;border-radius:12px;
+      background: linear-gradient(135deg, rgba(255,189,89,.25), rgba(77,211,255,.18));
+      border:1px solid rgba(255,255,255,.10);
+      display:grid;place-items:center;
+      font-family: Orbitron, sans-serif;
+      letter-spacing:.5px;
+      color:var(--brand);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      flex:0 0 auto;
+    }
+    .brand h1{
+      margin:0;
+      font-family: Orbitron, sans-serif;
+      font-size: 1.05rem;
+      letter-spacing:.6px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 150px;
+    }
+    .brand small{
+      display:block;
+      color: var(--muted);
+      font-size:.78rem;
+      margin-top:2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 150px;
+    }
 
-    details.accordion{background:var(--panel);border:1px solid var(--line);border-radius:12px}
-    details.accordion > summary{list-style:none;cursor:pointer;padding:12px 14px;color:var(--brand);font-weight:700;border-bottom:1px solid var(--line)}
-    details.accordion > .accordion-body{padding:12px}
+    .nav{
+      padding: 12px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      overflow:auto;
+    }
+    .nav::-webkit-scrollbar{width:10px}
+    .nav::-webkit-scrollbar-thumb{background: rgba(255,255,255,.08); border-radius:10px}
+    .nav::-webkit-scrollbar-track{background: transparent}
 
-    #veil{position:fixed;inset:0;display:grid;place-items:center;background:rgba(10,10,10,.95);z-index:9999}
-    #veil .box{background:#121212;border:1px solid #2a2a2a;border-radius:12px;padding:14px 16px;color:#ddd}
-    #veil.hide{display:none}
+    .nav-item{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 10px;
+      border-radius: 12px;
+      border:1px solid transparent;
+      color: var(--muted);
+      text-decoration:none;
+      transition: .2s ease;
+      cursor:pointer;
+      min-width:0;
+    }
+    .nav-item:hover{
+      background: rgba(255,255,255,.05);
+      border-color: rgba(255,255,255,.08);
+      color: var(--ink);
+    }
+    .nav-item.active{
+      background: linear-gradient(135deg, rgba(255,189,89,.14), rgba(77,211,255,.09));
+      border-color: rgba(255,189,89,.22);
+      color: var(--ink);
+    }
+    .nav-ico{
+      width:26px;height:26px;border-radius:10px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.08);
+      display:grid;place-items:center;
+      flex: 0 0 auto;
+    }
+    .nav-ico svg{width:14px;height:14px;opacity:.9}
+    .nav-label{
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      min-width:0;
+    }
 
-    @media (max-width:980px){.grid3{grid-template-columns:1fr}}
-    @media (max-width:860px){.grid2{grid-template-columns:1fr}}
+    .sidebar.collapsed .brand h1,
+    .sidebar.collapsed .brand small,
+    .sidebar.collapsed .nav-label{display:none;}
+    .sidebar.collapsed .brand{justify-content:center;}
+    .sidebar.collapsed .brand-left{justify-content:center;}
+    .sidebar.collapsed .nav-item{
+      justify-content:center;
+      gap:0;
+      padding:10px 8px;
+    }
+
+    /* Main */
+    .main{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      min-width: 0;
+      gap: 14px;
+    }
+
+    /* Topbar */
+    .topbar{
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      padding: 12px 14px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+
+    .burger{
+      display:none;
+    }
+
+    .search{
+      flex:1;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 10px 12px;
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 14px;
+      min-width: 0;
+    }
+    .search input{
+      width:100%;
+      background: transparent;
+      border:0;
+      outline:none;
+      color: var(--ink);
+      font-size: .95rem;
+    }
+    .search input::placeholder{color: rgba(170,177,197,.75)}
+
+    .top-actions{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex:0 0 auto;
+    }
+
+    .icon-btn{
+      width:42px;height:42px;border-radius:14px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      display:grid;place-items:center;
+      cursor:pointer;
+      transition:.2s ease;
+      color: var(--ink);
+      flex:0 0 auto;
+    }
+    .icon-btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.08)}
+    .icon-btn svg{width:18px;height:18px;opacity:.92}
+
+    .userchip{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      max-width: 260px;
+    }
+    .avatar{
+      width:28px;height:28px;border-radius:10px;
+      background: linear-gradient(135deg, rgba(255,189,89,.30), rgba(77,211,255,.18));
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .usertext{min-width:0}
+    .usertext b{
+      display:block;
+      font-size:.92rem;
+      font-family: Orbitron, sans-serif;
+      color: var(--brand);
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      max-width: 170px;
+    }
+    .usertext span{display:block; font-size:.78rem; color: var(--muted)}
+
+    .logout{
+      color: rgba(255,255,255,.70);
+      text-decoration:none;
+      font-size:.85rem;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.04);
+      transition:.2s ease;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .logout:hover{
+      border-color: rgba(255,77,77,.35);
+      color: #ff8d8d;
+      box-shadow: 0 0 0 3px rgba(255,77,77,.10);
+    }
+
+    /* Content */
+    .content{
+      min-height: 0;
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      gap: 14px;
+    }
+
+    .card{
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      overflow:hidden;
+    }
+    .card-inner{padding:14px}
+
+    .hero{
+      position:relative;
+      height: 170px;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(90deg, rgba(0,0,0,.55), rgba(0,0,0,.10)),
+        url('https://i.imgur.com/qXFpizS.jpg') center/cover no-repeat;
+    }
+    .hero::after{
+      content:"";
+      position:absolute; inset:0;
+      background: radial-gradient(420px 220px at 55% 45%, rgba(255,189,89,.16), transparent 60%);
+      pointer-events:none;
+    }
+    .hero-content{
+      position:absolute;
+      left:16px; right:16px; bottom:14px;
+      display:flex;
+      align-items:flex-end;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .hero-title h2{
+      font-family: Orbitron, sans-serif;
+      font-size: 1.55rem;
+      color: var(--brand);
+      text-shadow: 0 0 18px rgba(255,189,89,.20);
+      margin:0;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Horizontal Quick View */
+    .quickbar{
+      display:grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .qv-item{
+      padding: 10px 12px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.09);
+      transition: .2s ease;
+      min-width:0;
+      cursor:pointer;
+      position:relative;
+    }
+    .qv-item:hover{
+      background: rgba(255,255,255,.07);
+      transform: translateY(-1px);
+    }
+    .qv-item:focus{
+      outline:none;
+      box-shadow: 0 0 0 3px rgba(77,211,255,.12);
+      border-color: rgba(77,211,255,.22);
+    }
+
+    .qv-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:10px;
+      min-width:0;
+    }
+    .qv-title{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      min-width:0;
+      font-weight:700;
+      color: rgba(244,246,255,.92);
+      letter-spacing:.2px;
+      font-size:.9rem;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .qv-count{
+      font-size:.75rem;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      color: rgba(244,246,255,.78);
+      flex:0 0 auto;
+    }
+    .qv-edit{
+      width:28px;height:28px;border-radius:10px;
+      background: rgba(0,0,0,.18);
+      border:1px solid rgba(255,255,255,.10);
+      display:grid;place-items:center;
+      opacity:.65;
+      transition:.18s ease;
+      flex:0 0 auto;
+    }
+    .qv-item:hover .qv-edit{opacity:1; border-color: rgba(255,189,89,.18);}
+    .qv-edit svg{width:14px;height:14px;opacity:.92}
+
+    .qv-body{
+      display:flex;
+      align-items:flex-start;
+      gap:10px;
+      min-width:0;
+    }
+    .qv-thumb{
+      width:54px;
+      height:54px;
+      border-radius: 14px;
+      background: rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+      flex:0 0 auto;
+      display:grid;
+      place-items:center;
+    }
+    .qv-thumb img{
+      width:100%;
+      height:100%;
+      object-fit: contain;
+      display:block;
+      background: rgba(255,255,255,.02);
+    }
+
+    .qv-meta{
+      min-width:0;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      flex:1;
+    }
+    .qv-meta b{
+      font-size:.95rem;
+      font-weight:800;
+      color: rgba(244,246,255,.92);
+      white-space:normal;
+      overflow:visible;
+      text-overflow:unset;
+      word-break:break-word;
+      line-height:1.15rem;
+    }
+    .qv-meta span{
+      color: var(--muted);
+      font-size:.84rem;
+      white-space:normal;
+      overflow:visible;
+      text-overflow:unset;
+      word-break:break-word;
+      line-height:1.22rem;
+    }
+
+    /* Under-QuickView: Build Bar (1 active, 3 passive, 1 pet, 1 loadout placeholder, 2 weapons) */
+    .buildbar{
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,.08);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .build-row{
+      display:flex;
+      align-items:center;
+      justify-content:flex-start;
+      gap:10px;
+      flex-wrap:wrap;
+      width:100%;
+    }
+
+    .build-slot{
+      width:46px; height:46px;
+      border-radius: 14px;
+      background: rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+      display:grid;
+      place-items:center;
+      position:relative;
+      cursor:pointer;
+      transition:.18s ease;
+      flex:0 0 auto;
+    }
+    .build-slot:hover{
+      transform: translateY(-1px);
+      background: rgba(255,255,255,.06);
+      border-color: rgba(77,211,255,.18);
+      box-shadow: 0 0 0 3px rgba(77,211,255,.10);
+    }
+
+    .build-slot.big{
+      width:58px; height:58px;
+      border-radius: 16px;
+      border-color: rgba(255,189,89,.20);
+      background: linear-gradient(135deg, rgba(255,189,89,.10), rgba(0,0,0,.18));
+    }
+    .build-slot.big:hover{
+      border-color: rgba(255,189,89,.28);
+      box-shadow: 0 0 0 3px rgba(255,189,89,.10);
+    }
+
+    .build-slot img{
+      width:100%;
+      height:100%;
+      display:block;
+      background: rgba(255,255,255,.02);
+    }
+    .build-slot[data-type="character"] img{ object-fit: cover; }
+    .build-slot[data-type="pet"] img,
+    .build-slot[data-type="weapon"] img{ object-fit: contain; }
+
+    .slot-badge{
+      position:absolute;
+      left:6px;
+      bottom:6px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      font-size: .62rem;
+      font-weight: 900;
+      letter-spacing:.3px;
+      background: rgba(0,0,0,.55);
+      border: 1px solid rgba(255,255,255,.12);
+      color: rgba(244,246,255,.88);
+      pointer-events:none;
+      max-width: calc(100% - 12px);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .build-slot.big .slot-badge{
+      border-color: rgba(255,189,89,.20);
+      color: rgba(255,220,160,.95);
+    }
+
+    .build-slot.disabled{
+      cursor: default;
+      opacity:.85;
+    }
+    .build-slot.disabled:hover{
+      transform:none;
+      box-shadow:none;
+      border-color: rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+    }
+    .loadout-placeholder{
+      width:100%;
+      height:100%;
+      display:grid;
+      place-items:center;
+      font-family: Orbitron, sans-serif;
+      font-size: .78rem;
+      color: rgba(244,246,255,.90);
+      background:
+        radial-gradient(40px 40px at 25% 30%, rgba(77,211,255,.18), transparent 60%),
+        radial-gradient(40px 40px at 75% 70%, rgba(255,189,89,.16), transparent 60%),
+        rgba(0,0,0,.16);
+    }
+
+    /* Modal Picker */
+    .modal{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.62);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+      z-index: 1000;
+    }
+    .modal.show{display:flex;}
+    .modal-card{
+      width: min(1040px, 100%);
+      max-height: min(84vh, 820px);
+      background: rgba(14, 18, 28, .92);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 22px;
+      box-shadow: 0 26px 80px rgba(0,0,0,.65);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+    .modal-top{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      padding: 14px 14px 10px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .modal-top h3{
+      margin:0;
+      font-family: Orbitron, sans-serif;
+      letter-spacing:.6px;
+      color: var(--brand);
+      font-size: 1.05rem;
+    }
+    .modal-top p{
+      margin:6px 0 0 0;
+      color: var(--muted);
+      font-size:.85rem;
+    }
+
+    .modal-controls{
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .modal-row{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .modal-controls input{
+      flex:1;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.12);
+      outline:none;
+      color: var(--ink);
+      font-size:.95rem;
+      min-width: 220px;
+    }
+    .modal-controls select{
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.12);
+      outline:none;
+      color: var(--ink);
+      font-size:.92rem;
+      min-width: 220px;
+    }
+    .modal-count{
+      flex:0 0 auto;
+      font-size:.78rem;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.20);
+      color: rgba(244,246,255,.80);
+      white-space:nowrap;
+    }
+
+    .filter-pills{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+    }
+    .pill-btn{
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      color: rgba(244,246,255,.86);
+      cursor:pointer;
+      font-weight:800;
+      font-size:.82rem;
+      transition:.18s ease;
+      white-space:nowrap;
+    }
+    .pill-btn:hover{
+      background: rgba(0,0,0,.28);
+      border-color: rgba(77,211,255,.22);
+      box-shadow: 0 0 0 3px rgba(77,211,255,.10);
+    }
+    .pill-btn.active{
+      background: linear-gradient(135deg, rgba(255,189,89,.18), rgba(255,119,51,.10));
+      border-color: rgba(255,189,89,.25);
+      color: rgba(244,246,255,.95);
+    }
+
+    .modal-grid{
+      padding: 14px;
+      overflow:auto;
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+      gap: 12px;
+    }
+    .modal-grid::-webkit-scrollbar{width:10px}
+    .modal-grid::-webkit-scrollbar-thumb{background: rgba(255,255,255,.10); border-radius:10px}
+    .modal-grid::-webkit-scrollbar-track{background: transparent}
+
+    .pick-card{
+      padding: 10px 10px 8px 10px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.09);
+      cursor:pointer;
+      transition:.18s ease;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      min-width:0;
+    }
+    .pick-card:hover{
+      background: rgba(255,255,255,.08);
+      transform: translateY(-1px);
+      border-color: rgba(255,189,89,.18);
+    }
+    .pick-thumb{
+      width:100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 14px;
+      background: rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+      display:grid;
+      place-items:center;
+    }
+    .pick-thumb img{
+      width:100%;
+      height:100%;
+      object-fit: contain;
+      display:block;
+      background: rgba(255,255,255,.02);
+    }
+    .pick-name{
+      font-size:.82rem;
+      font-weight:800;
+      color: rgba(244,246,255,.92);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      text-align:center;
+    }
+
+    /* Mobile / Responsive */
+    @media (max-width: 980px){
+      .burger{display:grid}
+      #sbToggle{display:none}
+
+      .sidebar{
+        position: fixed;
+        top: 18px; bottom: 18px; left: 18px;
+        transform: translateX(-110%);
+        transition: .22s ease;
+        z-index: 30;
+      }
+      .sidebar.open{transform: translateX(0)}
+      .backdrop{
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.55);
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+        opacity:0;
+        pointer-events:none;
+        transition:.22s ease;
+        z-index: 25;
+      }
+      .backdrop.show{opacity:1; pointer-events:auto;}
+      .app{padding: 14px;}
+      .quickbar{grid-template-columns: 1fr;}
+      .modal-controls input{min-width: 0; width:100%;}
+      .modal-controls select{min-width: 0; width:100%;}
+    }
   </style>
 </head>
+
 <body>
-<header>
-  <h1>FFBR — Teams</h1>
-  <div class="user-controls">
-    <a class="btn secondary" id="homeBtn" href="dashboard.html">← Back to Dashboard</a>
-    <span class="chip" id="scopeChip">Scope: —</span>
-    <span class="chip" id="user-info">Checking login…</span>
-    <button class="btn" id="logoutBtn">Logout</button>
+  <div class="backdrop" id="backdrop"></div>
+
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-left">
+          <div class="logo">FF</div>
+          <div class="brand-text">
+            <h1>Free Fire</h1>
+            <small class="muted">Caster Dashboard</small>
+          </div>
+        </div>
+      </div>
+
+      <nav class="nav" id="nav">
+        <a class="nav-item active" href="dashboard.html" data-page="dashboard.html" title="Dashboard">
+          <span class="nav-ico">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M4 13h7V4H4v9Zm9 7h7V4h-7v16ZM4 20h7v-5H4v5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </span>
+          <span class="nav-label">Dashboard</span>
+        </a>
+
+        <a class="nav-item" href="char.html" data-page="char.html" title="Character Skills">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4 0-7 2-7 4v2h14v-2c0-2-3-4-7-4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Character Skills</span>
+        </a>
+
+        <a class="nav-item" href="pet.html" data-page="pet.html" title="Pets">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M7 14c-1.7 0-3-1.3-3-3S5.3 8 7 8s3 1.3 3 3-1.3 3-3 3Zm10 0c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3ZM7 20c-2.8 0-5-1.8-5-4v-1h6v1c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2v-1h6v1c0 2.2-2.2 4-5 4H7Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Pets</span>
+        </a>
+
+        <a class="nav-item" href="weapon.html" data-page="weapon.html" title="Weapons">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M3 21l6-6m0 0 2 2 8-8-2-2-8 8Zm0 0-2-2 4-4 2 2-4 4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Weapons</span>
+        </a>
+
+        <a class="nav-item" href="map.html" data-page="map.html" title="Map">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M10 6 4 8v14l6-2 4 2 6-2V6l-6 2-4-2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Map</span>
+        </a>
+
+        <a class="nav-item" href="split-view.html" data-page="split-view.html" title="Split View">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16M4 12h16M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Split View</span>
+        </a>
+
+        <a class="nav-item" href="clash-draft.html" data-page="clash-draft.html" title="Clash Squad Draft">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h10M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Draft</span>
+        </a>
+
+        <a class="nav-item" href="clash-data.html" data-page="clash-data.html" title="Clash Squad Data">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19V5m0 14h16M8 17v-6m4 6V7m4 10v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Data</span>
+        </a>
+
+        <a class="nav-item" href="clash-compare.html" data-page="clash-compare.html" title="Clash Squad Comparison">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M10 3v18M14 3v18M4 7h6M14 17h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Comparison</span>
+        </a>
+
+        <a class="nav-item" href="clash-report.html" data-page="clash-report.html" title="Clash Squad Team Report">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Team Report</span>
+        </a>
+
+        <a class="nav-item" href="clash-store.html" data-page="clash-store.html" title="Clash Squad Store">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16l-1 14H5L4 7Zm3 0 1-3h8l1 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Store</span>
+        </a>
+
+        <a class="nav-item" href="br_team2.html" data-page="br_team2.html" title="BR Data">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M6 20V10m6 10V4m6 16v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">BR Data</span>
+        </a>
+
+        <a class="nav-item" href="ff-update.html" data-page="ff-update.html" title="Free Fire Update">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2v6m0 14v-6M4.9 4.9l4.2 4.2m10.8 10.8-4.2-4.2M2 12h6m14 0h-6M4.9 19.1l4.2-4.2m10.8-10.8-4.2 4.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Free Fire Update</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <header class="topbar">
+        <!-- mobile menu -->
+        <button class="burger icon-btn" id="burger" aria-label="Open menu" title="Menu">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+
+        <!-- desktop collapse (next to search) -->
+        <button class="icon-btn" id="sbToggle" aria-label="Collapse sidebar" title="Collapse sidebar">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path id="sbTogglePath" d="M14 7l-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;opacity:.85">
+            <path d="M21 21l-4.3-4.3m1.3-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <input id="searchInput" placeholder="Search pages..." />
+        </div>
+
+        <div class="top-actions">
+          <div class="userchip">
+            <div class="avatar"></div>
+            <div class="usertext">
+              <b id="gamertag">PlayerOne</b>
+              <span id="userEmail" class="muted">loading…</span>
+            </div>
+          </div>
+
+          <a class="logout" href="#" id="logoutBtn">Logout</a>
+        </div>
+      </header>
+
+      <section class="content">
+        <div class="card">
+          <div class="hero">
+            <div class="hero-content">
+              <div class="hero-title">
+                <h2>Free Fire Dashboard</h2>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-inner">
+            <div class="quickbar">
+              <!-- Character -->
+              <div class="qv-item" data-open="character" role="button" tabindex="0" aria-label="Choose Character">
+                <div class="qv-head">
+                  <div class="qv-title">
+                    Character
+                    <span class="qv-count" id="charCount">—</span>
+                  </div>
+                  <div class="qv-edit" aria-hidden="true" title="Choose Character">
+                    <svg viewBox="0 0 24 24" fill="none">
+                      <path d="M4 20h4l10.5-10.5a2.8 2.8 0 0 0 0-4L17.5 4a2.8 2.8 0 0 0-4 0L3 14.5V18a2 2 0 0 0 2 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      <path d="M13.5 6.5 17.5 10.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                </div>
+                <div class="qv-body">
+                  <div class="qv-thumb"><img id="charThumb" alt="Character" /></div>
+                  <div class="qv-meta">
+                    <b id="charName">—</b>
+                    <span id="charDesc">—</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Pet -->
+              <div class="qv-item" data-open="pet" role="button" tabindex="0" aria-label="Choose Pet">
+                <div class="qv-head">
+                  <div class="qv-title">
+                    Pet
+                    <span class="qv-count" id="petCount">—</span>
+                  </div>
+                  <div class="qv-edit" aria-hidden="true" title="Choose Pet">
+                    <svg viewBox="0 0 24 24" fill="none">
+                      <path d="M4 20h4l10.5-10.5a2.8 2.8 0 0 0 0-4L17.5 4a2.8 2.8 0 0 0-4 0L3 14.5V18a2 2 0 0 0 2 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      <path d="M13.5 6.5 17.5 10.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                </div>
+                <div class="qv-body">
+                  <div class="qv-thumb"><img id="petThumb" alt="Pet" /></div>
+                  <div class="qv-meta">
+                    <b id="petName">—</b>
+                    <span id="petDesc">—</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Weapon -->
+              <div class="qv-item" data-open="weapon" role="button" tabindex="0" aria-label="Choose Weapon">
+                <div class="qv-head">
+                  <div class="qv-title">
+                    Weapon
+                    <span class="qv-count" id="weaponCount">—</span>
+                  </div>
+                  <div class="qv-edit" aria-hidden="true" title="Choose Weapon">
+                    <svg viewBox="0 0 24 24" fill="none">
+                      <path d="M4 20h4l10.5-10.5a2.8 2.8 0 0 0 0-4L17.5 4a2.8 2.8 0 0 0-4 0L3 14.5V18a2 2 0 0 0 2 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      <path d="M13.5 6.5 17.5 10.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                </div>
+                <div class="qv-body">
+                  <div class="qv-thumb"><img id="weaponThumb" alt="Weapon" /></div>
+                  <div class="qv-meta">
+                    <b id="weaponName">—</b>
+                    <span id="weaponDesc">—</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Build Bar (replicate: 1 Active, 3 Passive, 1 Pet, 1 Loadout placeholder, 2 Weapons) -->
+            <div class="buildbar">
+              <div class="build-row" id="buildRow">
+                <!-- Active -->
+                <div class="build-slot big" data-build-slot="active" data-type="character" title="Active Character">
+                  <img id="buildActiveImg" alt="Active Character" />
+                  <span class="slot-badge">Active</span>
+                </div>
+
+                <!-- Passives -->
+                <div class="build-slot" data-build-slot="passive0" data-type="character" title="Passive 1">
+                  <img id="buildPassive1Img" alt="Passive 1" />
+                  <span class="slot-badge">P1</span>
+                </div>
+                <div class="build-slot" data-build-slot="passive1" data-type="character" title="Passive 2">
+                  <img id="buildPassive2Img" alt="Passive 2" />
+                  <span class="slot-badge">P2</span>
+                </div>
+                <div class="build-slot" data-build-slot="passive2" data-type="character" title="Passive 3">
+                  <img id="buildPassive3Img" alt="Passive 3" />
+                  <span class="slot-badge">P3</span>
+                </div>
+
+                <!-- Pet -->
+                <div class="build-slot" data-build-slot="pet" data-type="pet" title="Pet">
+                  <img id="buildPetImg" alt="Pet" />
+                  <span class="slot-badge">Pet</span>
+                </div>
+
+                <!-- Loadout placeholder -->
+                <div class="build-slot disabled" data-build-slot="loadout" data-type="loadout" title="Loadout (coming soon)">
+                  <div class="loadout-placeholder">LOAD</div>
+                  <span class="slot-badge">Loadout</span>
+                </div>
+
+                <!-- Weapons -->
+                <div class="build-slot" data-build-slot="weapon0" data-type="weapon" title="Weapon 1">
+                  <img id="buildWeapon1Img" alt="Weapon 1" />
+                  <span class="slot-badge">W1</span>
+                </div>
+                <div class="build-slot" data-build-slot="weapon1" data-type="weapon" title="Weapon 2">
+                  <img id="buildWeapon2Img" alt="Weapon 2" />
+                  <span class="slot-badge">W2</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="muted" style="font-size:.8rem; padding: 10px 2px 0 2px;">
+              Free Fire Caster © 2025 — Neptune
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
   </div>
-</header>
 
-<div id="veil"><div class="box">Loading data…</div></div>
+  <!-- Picker Modal -->
+  <div class="modal" id="pickerModal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="Picker">
+      <div class="modal-top">
+        <div>
+          <h3 id="pickerTitle">Select</h3>
+          <p id="pickerSub">Click an item to apply it.</p>
+        </div>
+        <button class="icon-btn" id="pickerClose" aria-label="Close picker" title="Close">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
 
-<div class="shell">
-  <div id="globalErr" class="gerr"></div>
+      <!-- Search + Filters -->
+      <div class="modal-controls">
+        <div class="modal-row">
+          <input id="pickerSearch" placeholder="Search..." />
+          <!-- used for Pets/Weapons (category) -->
+          <select id="pickerFilterSelect" style="display:none"></select>
+          <div class="modal-count" id="pickerCount">—</div>
+        </div>
+        <!-- used for Characters (meta/skill type) -->
+        <div class="filter-pills" id="pickerFilterPills" style="display:none"></div>
+      </div>
 
-  <div class="steps" id="steps">
-    <div class="step" data-page="1"><span class="num">1</span><span class="label">Overall</span></div>
-    <div class="step" data-page="2"><span class="num">2</span><span class="label">Team + Players</span></div>
+      <div class="modal-grid" id="pickerGrid"></div>
+    </div>
   </div>
-  <div class="pager-nav">
-    <button class="btn secondary" id="prevBtn">← Prev</button>
-    <div class="steps-hint">Use ←/→ keys to navigate</div>
-    <button class="btn secondary" id="nextBtn">Next →</button>
-  </div>
 
-  <!-- PAGE 1 -->
-  <div class="page" id="page1" data-page="1">
-    <div class="section">
-      <h2>Filters</h2>
-      <div class="bar">
-        <label>Year
-          <select id="gYear" class="input" style="min-width:120px">
-            <option value="__all__">All years</option>
-          </select>
-        </label>
-        <label>Season
-          <select id="gSeason" class="input" style="min-width:180px">
-            <option value="__all__">All seasons</option>
-          </select>
-        </label>
-        <label>Tournament
-          <select id="gTournament" class="input" style="min-width:260px">
-            <option value="__all__">All tournaments</option>
-          </select>
-        </label>
-        <button class="btn secondary" id="gTournReset">Reset</button>
-      </div>
-      <div class="muted" id="filterHint">—</div>
-    </div>
-    
-    <!-- Overall Performance (All Teams) -->
-    <details class="accordion" id="overallSection">
-      <summary>Overall Performance (All Teams)</summary>
-      <div class="accordion-body">
-        <div class="bar">
-          <label for="overallSortKey">Sort by</label>
-          <select id="overallSortKey" class="input">
-            <option value="total_pm">Total / m</option>
-            <option value="total" selected>Total</option>
-            <option value="elims_pm">Elims / m</option>
-            <option value="elims">Elims</option>
-            <option value="placement_pm">Placement / m</option>
-            <option value="placement">Placement</option>
-            <option value="booyah_rate">Booyah %</option>
-            <option value="booyahs">Booyahs</option>
-            <option value="matches">Matches</option>
-            <option value="top3_rate">Top-3 %</option>
-            <option value="team">Team (A→Z)</option>
-          </select>
-          <button class="btn secondary" id="overallSortDir" data-dir="desc">Desc</button>
-          <button class="btn secondary" id="overallReset">Reset</button>
-        </div>
-        <div class="card" style="margin:0">
-          <div id="tblOverall">Loading…</div>
-        </div>
-      </div>
-    </details>
-    
-    <!-- All Teams — Per-Map Breakdown -->
-    <details class="accordion" id="perMapAllSection">
-      <summary>All Teams — Per-Map Breakdown</summary>
-      <div class="accordion-body">
-        <div class="bar">
-          <label for="mapFilter">Map</label>
-          <select id="mapFilter" class="input" style="min-width:220px">
-            <option value="__all__" selected>All maps</option>
-          </select>
-          <label for="perMapSortKey">Sort by</label>
-          <select id="perMapSortKey" class="input">
-            <option value="total_pm">Total / m</option>
-            <option value="total" selected>Total</option>
-            <option value="elims_pm">Elims / m</option>
-            <option value="elims">Elims</option>
-            <option value="placement_pm">Placement / m</option>
-            <option value="placement">Placement</option>
-            <option value="booyah_rate">Booyah %</option>
-            <option value="booyahs">Booyahs</option>
-            <option value="matches">Matches</option>
-            <option value="top3_rate">Top-3 %</option>
-            <option value="team">Team (A→Z)</option>
-          </select>
-          <button class="btn secondary" id="perMapSortDir" data-dir="desc">Desc</button>
-          <button class="btn secondary" id="perMapReset">Reset</button>
-        </div>
-        <div class="card" style="margin:0">
-          <div id="tblPerMapAllTeams">Loading…</div>
-        </div>
-      </div>
-    </details>
+  <script>
+    /***********************
+     * Supabase Auth
+     ***********************/
+    const client = supabase.createClient(
+      'https://gkugecflfddkpitlrmws.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
+    );
 
-    <details class="accordion" id="lopsTopKillersSection">
-      <summary>Top Players by Kills</summary>
-      <div class="accordion-body">
-        <div class="bar">
-          <label>Top</label>
-          <select id="lopsTopKillersTop" class="input">
-            <option>10</option><option>20</option><option>50</option><option>100</option>
-          </select>
-        </div>
-        <div class="card" style="margin:0"><div id="tblLopsTopKillers">Loading…</div></div>
-      </div>
-    </details>
+    async function ensureSession(){
+      const { data: { session } } = await client.auth.getSession();
+      if (!session) {
+        window.location.href = "index.html";
+        return null;
+      }
+      return session;
+    }
 
-    <details class="accordion" id="lopsUsageSection">
-      <summary>Active Skill & Pet Usage</summary>
-      <div class="accordion-body">
-        <div class="grid2">
-          <div class="card">
-            <h3>Active Skill Usage</h3>
-            <div class="bar">
-              <label>Top</label>
-              <select id="lopsActiveTop" class="input">
-                <option>10</option><option>20</option><option>50</option><option>100</option>
-              </select>
-            </div>
-            <div id="tblLopsActive">Loading…</div>
-          </div>
-          <div class="card">
-            <h3>Pet Usage</h3>
-            <div class="bar">
-              <label>Top</label>
-              <select id="lopsPetTop" class="input">
-                <option>10</option><option>20</option><option>50</option><option>100</option>
-              </select>
-            </div>
-            <div id="tblLopsPet">Loading…</div>
-          </div>
-        </div>
-      </div>
-    </details>
+    async function logout(){
+      await client.auth.signOut();
+      window.location.href = "index.html";
+    }
 
-    <!-- NEW: Eliminations — Summary (filters ignored) as accordion -->
-    <details class="accordion" id="elimSummarySection">
-      <summary>Eliminations — Summary (All Teams)</summary>
-      <div class="accordion-body">
-        <div class="grid2">
-          <div class="card">
-            <h3>Who Eliminated Each Team?</h3>
-            <div id="tblEliminatedBy">Loading…</div>
-          </div>
-          <div class="card">
-            <h3>Who Did Each Team Eliminate?</h3>
-            <div id="tblGiven">Loading…</div>
-          </div>
-        </div>
-      </div>
-    </details>
-  </div><!-- ✅ CLOSE PAGE 1 -->
+    /***********************
+     * Sidebar + Topbar UX
+     ***********************/
+    const sidebar = document.getElementById('sidebar');
+    const burger = document.getElementById('burger');
+    const backdrop = document.getElementById('backdrop');
 
-  <!-- PAGE 2 -->
-  <div class="page" id="page2" data-page="2">
-    <div class="section">
-      <h2>Team Selection</h2>
-      <div class="bar">
-        <input type="search" id="teamSearch" placeholder="Search team / region…" class="input" style="flex:1;max-width:420px">
-        <span class="chip">Scope: <span id="scopeChipTeam">—</span> • <a href="#" id="editFilters1" class="btn ghost" style="padding:4px 10px">Edit filters</a></span>
-      </div>
-      <div id="teamGrid" class="team-grid">Loading teams…</div>
-      <div id="teamGridErr"></div>
-    </div>
+    function openSidebar(){
+      sidebar.classList.add('open');
+      backdrop.classList.add('show');
+    }
+    function closeSidebar(){
+      sidebar.classList.remove('open');
+      backdrop.classList.remove('show');
+    }
 
-    <div class="section" id="teamHeader">
-      <h2 id="teamTitle">Overview</h2>
-      <div class="grid2">
-        <div class="card" id="teamIdentity">
-          <h3>Identity</h3>
-          <div id="identityBody">Select a team.</div>
-        </div>
-        <div class="card" id="teamKPIs">
-          <h3>Key KPIs</h3>
-          <div id="kpiBody">—</div>
-        </div>
-      </div>
-      <div class="grid3" style="margin-top:12px">
-        <div class="card"><h3>Totals</h3><div id="teamTotals" class="kpis">—</div></div>
-        <div class="card"><h3>Per Match Averages</h3><div id="teamAverages" class="kpis">—</div></div>
-        <div class="card"><h3>Signals</h3><div id="teamSignals" class="kpis">—</div></div>
-      </div>
-    </div>
-
-    <details class="accordion" id="playersSection">
-      <summary>Player Stats</summary>
-      <div class="accordion-body">
-        <div class="card" style="margin:0"><div id="tblPlayers">Loading…</div></div>
-      </div>
-    </details>
-
-    <details class="accordion" id="mapsDaysSection">
-      <summary>By Map & By Day Stats</summary>
-      <div class="accordion-body">
-        <div class="card" style="margin:0 0 12px 0">
-          <h3>By Map</h3>
-          <div id="tblMapTeam">—</div>
-        </div>
-        <div class="card" style="margin:0">
-          <h3>By Day (Pivot by Map)</h3>
-          <div id="tblByDay">—</div>
-        </div>
-      </div>
-    </details>
-
-    <details class="accordion" id="teamCharsUsageSection">
-      <summary>Character and Pet Usage</summary>
-      <div class="accordion-body">
-        <div class="grid2">
-          <div class="card">
-            <h3>Active Skill Usage</h3>
-            <div class="bar"><label>Top</label>
-              <select id="teamActiveTop" class="input"><option>10</option><option>20</option><option>50</option><option>100</option></select>
-            </div>
-            <div id="tblTeamActive">Loading…</div>
-          </div>
-          <div class="card">
-            <h3>Pet Usage</h3>
-            <div class="bar"><label>Top</label>
-              <select id="teamPetTop" class="input"><option>10</option><option>20</option><option>50</option><option>100</option></select>
-            </div>
-            <div id="tblTeamPet">Loading…</div>
-          </div>
-        </div>
-
-        <!-- SPLIT: Per-Player Character Usage — Active -->
-        <div class="card" style="margin-top:12px">
-          <h3>Per-Player Character Usage — Active</h3>
-          <div class="bar">
-            <label>Top players</label>
-            <select id="charUsageTop" class="input"><option>10</option><option>20</option><option>50</option><option>100</option></select>
-            <label>Map</label>
-            <select id="charUsageMapFilter" class="input" style="min-width:180px">
-              <option value="__all__" selected>All maps</option>
-            </select>
-          </div>
-          <div id="tblCharUsageAct">Loading…</div>
-        </div>
-
-        <!-- SPLIT: Per-Player Character Usage — Passive -->
-        <div class="card" style="margin-top:12px">
-          <h3>Per-Player Character Usage — Passive</h3>
-          <div id="tblCharUsagePas">Loading…</div>
-          <div class="muted" style="margin-top:6px" id="charMapHint">—</div>
-        </div>
-      </div>
-    </details>
-
-    <details class="accordion" id="teamInfoSection">
-      <summary>Team Info</summary>
-      <div class="accordion-body"><div class="card" style="margin:0"><div id="teamInfoBody" class="muted">—</div></div></div>
-    </details>
-
-    <details class="accordion" id="teamRosterSection">
-      <summary>Roster & Accolades</summary>
-      <div class="accordion-body"><div class="card" style="margin:0"><div id="teamRosterBody" class="muted">—</div></div></div>
-    </details>
-
-    <!-- NEW: Eliminations — Team Focus + Breakdowns as one accordion -->
-    <details class="accordion" id="elimTeamAccordion">
-      <summary>Eliminations — Team Focus & Breakdowns</summary>
-      <div class="accordion-body">
-        <div class="grid3">
-          <div class="card">
-            <h3>Top Eliminators of <span id="elimTeamCodeA">—</span></h3>
-            <div id="elimTopPredators" class="kpis">—</div>
-          </div>
-          <div class="card">
-            <h3>Top Victims of <span id="elimTeamCodeB">—</span></h3>
-            <div id="elimTopVictims" class="kpis">—</div>
-          </div>
-          <div class="card">
-            <h3>Signals</h3>
-            <div id="elimSignals" class="kpis">—</div>
-          </div>
-        </div>
-
-        <div class="grid2" style="margin-top:12px">
-          <div class="card">
-            <h3>Eliminated By — By Day</h3>
-            <div id="elimByDay">—</div>
-          </div>
-          <div class="card">
-            <h3>Eliminated By — By Map</h3>
-            <div id="elimByMap">—</div>
-          </div>
-        </div>
-      </div>
-    </details>
-  </div><!-- ✅ CLOSE PAGE 2 -->
-</div><!-- ✅ CLOSE SHELL -->
-
-<script>
-/* ============ Supabase init ============ */
-const client = supabase.createClient(
-  'https://gkugecflfddkpitlrmws.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
-);
-
-/* ============ Small utils ============ */
-const el = id => document.getElementById(id);
-const fmtPct = x => isFinite(x) ? (x*100).toFixed(1)+'%' : '—';
-const n = x => Number(x ?? 0) || 0;
-const norm = v => (v==null ? '' : String(v).trim());
-function sum(arr,k){ let t=0; for(const r of arr) t+= Number(r?.[k] ?? 0) || 0; return t; }
-function safeDiv(a,b){ a=Number(a??0)||0; b=Number(b??0)||0; return b? (a/b) : 0; }
-function groupBy(arr,fn){ const m=new Map(); for(const r of arr){ const k=fn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r);} return m; }
-function looksLikeURL(v){ return /^https?:\/\//i.test(String(v||'')); }
-const nameKey = s => String(s||'').toLowerCase().replace(/\s+/g,' ').trim();
-
-/* ============ Global error surface ============ */
-function gerr(msg){
-  const box=el('globalErr'); if(!box) return;
-  box.textContent = msg; box.classList.add('show');
-  console.error('[FFBR]', msg);
-}
-
-/* ============ Pager ============ */
-const PAGES=[1,2];
-function setActiveStep(p){ document.querySelectorAll('.step').forEach(s=> s.classList.toggle('active', String(s.dataset.page)===String(p))); }
-function showPage(p){
-  const target=document.querySelector(`.page[data-page="${p}"]`); if(!target) return;
-  document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active')); target.classList.add('active');
-  setActiveStep(p); localStorage.setItem('ffbr_page', String(p));
-  const url=new URL(window.location.href); url.searchParams.set('p', String(p)); history.replaceState(null,'',url.toString());
-}
-function currentPage(){ const url=new URL(window.location.href); const qp=Number(url.searchParams.get('p')); if(PAGES.includes(qp)) return qp; const ls=Number(localStorage.getItem('ffbr_page')); return PAGES.includes(ls)?ls:1; }
-function nextPage(){ const p=currentPage(); const idx=PAGES.indexOf(p); showPage(PAGES[Math.min(PAGES.length-1, idx+1)]); }
-function prevPage(){ const p=currentPage(); const idx=PAGES.indexOf(p); showPage(PAGES[Math.max(0, idx-1)]); }
-document.querySelectorAll('.step').forEach(s=> s.addEventListener('click', ()=> showPage(Number(s.dataset.page))));
-el('prevBtn').addEventListener('click', prevPage);
-el('nextBtn').addEventListener('click', nextPage);
-window.addEventListener('keydown', e=>{ if(e.key==='ArrowLeft') prevPage(); if(e.key==='ArrowRight') nextPage(); });
-
-/* Jump to filters */
-el('editFilters1').addEventListener('click', e=>{ e.preventDefault(); showPage(1); window.scrollTo({top:0,behavior:'smooth'}); });
-
-/* ============ Session chip ============ */
-(async () => {
-  const { data: { session } } = await client.auth.getSession();
-  el('user-info').textContent = session?.user?.email ? `Logged in: ${session.user.email}` : 'Anon access';
-})();
-el('logoutBtn').onclick = async () => { await client.auth.signOut(); location.reload(); };
-
-/* ============ State ============ */
-let TEAMS=[]; let TEAM_BY_CODE={}; let TEAM_BY_NAME={}; let ALLOWED_TAGS=new Set();
-let ALL=[]; let TEAM_ROWS=[]; let CURRENT_TEAM=null;
-let LOPS_ALL=[];           // normalized lops rows
-let LOPS_READY=false;      // ✅ render guards
-let MATCH_API_MAP = new Map(); // id -> name for characters (type=2)
-let ROLE_BY_IGN = new Map();   // normalized IGN -> role text
-
-/* ============ Helpers ============ */
-function buildTeamIndexes(){
-  TEAM_BY_CODE = Object.fromEntries(TEAMS.map(t=>[t.name.toLowerCase(), t]));
-  TEAM_BY_NAME = Object.fromEntries(TEAMS.map(t=>[t.fullname.toLowerCase(), t]));
-  ALLOWED_TAGS = new Set(TEAMS.map(t => t.name.toUpperCase()));
-}
-function deriveTeamsFromData(rows){
-  const codes=[...new Set(rows.map(r=> norm(r.tag||r.TAG||r._tag).toUpperCase()).filter(Boolean))].sort();
-  return codes.map(code=>({ name:code, fullname:code, logo:'', ew:'', region:'', alt:'' }));
-}
-function normalizeRow(r){
-  r._tag = norm(r.tag ?? r.TAG ?? '').toUpperCase();
-  if (r.elimination == null) r.elimination = r.elims ?? r.kills ?? 0;
-  if (r.placement   == null) r.placement   = r.place ?? 0;
-  if (r.top3        == null) r.top3        = r.top_3 ?? 0;
-  return r;
-}
-async function fetchAllRows(){
-  const CHUNK=1000; let from=0; const out=[];
-  for(;;){
-    const { data, error } = await client.from('ffbr_data').select('*').order('id',{ascending:true}).range(from, from+CHUNK-1);
-    if(error){ gerr('ffbr_data fetch failed. Check RLS / table name.\n\n'+(error.message||error)); break; }
-    const rows=data||[]; if(!rows.length) break;
-    out.push(...rows); from+=rows.length;
-  }
-  return out.map(normalizeRow);
-}
-async function fetchHelperTeams(){
-  const { data, error } = await client.from('helper_team').select('*').order('TAG');
-  if(error){ console.warn('helper_team error:', error.message||error); return []; }
-  const rows=data||[];
-  return rows.map(r=>{
-    const code = norm(r.TAG).toUpperCase();
-    return { name:code, fullname:norm(r.TEAM)||code, logo:norm(r.LOGO)||'', ew:norm(r['E/W'])||'', region:norm(r.REGION)||'', alt:norm(r['ALT NAME 1'])||'' };
-  });
-}
-
-/* Years */
-function yearsWithMaxId(rows){
-  const m=new Map();
-  for(const r of rows){
-    const y=n(r.year); if(!y) continue;
-    const id=n(r.id);
-    if(!m.has(y)) m.set(y,{year:y,maxId:id});
-    else m.get(y).maxId=Math.max(m.get(y).maxId,id);
-  }
-  return [...m.values()].sort((a,b)=> b.year - a.year);
-}
-function populateGlobalYear(){
-  const sel = el('gYear'); if(!sel) return;
-  const items = yearsWithMaxId(ALL);
-  sel.innerHTML = `<option value="__all__">All years</option>` +
-    items.map(o=>`<option value="${o.year}">${o.year}</option>`).join('');
-  // Prefer 2025 if present, else latest
-  const preferred='2025';
-  if(items.some(x=> String(x.year)===preferred)) sel.value=preferred;
-  else if(items.length) sel.value=String(items[0].year);
-  else sel.value='__all__';
-}
-function selectedYear(){ return (el('gYear')?.value || '__all__').trim(); }
-
-/* Seasons (dependent on year) */
-function seasonsWithMaxId(rows){
-  const m=new Map();
-  for(const r of rows){
-    const s = norm(r.season);
-    if(!s) continue;
-    const id = n(r.id);
-    const key = s.toLowerCase();
-    if(!m.has(key)) m.set(key, { name:s, maxId:id });
-    else m.get(key).maxId = Math.max(m.get(key).maxId, id);
-  }
-  return [...m.values()].sort((a,b)=> b.maxId - a.maxId || a.name.localeCompare(b.name));
-}
-function populateGlobalSeason(){
-  const sel = el('gSeason'); if(!sel) return;
-  const year = selectedYear();
-  const sourceRows = (year==='__all__') ? ALL : ALL.filter(r => n(r.year)===Number(year));
-  const items = seasonsWithMaxId(sourceRows);
-  sel.innerHTML = `<option value="__all__">All seasons</option>` +
-    items.map(o=>`<option value="${o.name.replaceAll('"','&quot;')}">${o.name}</option>`).join('');
-  // Prefer "Global Finals" if present, else first/latest, else All
-  const preferredSeason = 'Global Finals';
-  if(items.some(o=>o.name.toLowerCase()===preferredSeason.toLowerCase())) sel.value = preferredSeason;
-  else if(items.length) sel.value = items[0].name;
-  else sel.value = '__all__';
-}
-function selectedSeason(){ return (el('gSeason')?.value || '__all__').trim(); }
-
-/* Tournaments (dependent on year & season) */
-function tournamentsWithMaxId(rows){
-  const m=new Map();
-  for(const r of rows){
-    const t=norm(r.tournament); if(!t) continue;
-    const id=n(r.id);
-    const key=t.toLowerCase();
-    if(!m.has(key)) m.set(key, { name:t, maxId:id });
-    else m.get(key).maxId = Math.max(m.get(key).maxId, id);
-  }
-  return [...m.values()].sort((a,b)=> b.maxId - a.maxId || a.name.localeCompare(b.name));
-}
-function populateGlobalTournament(preservePrev=false){
-  const sel=el('gTournament'); if(!sel) return;
-  const prev = sel.value || '__all__';
-
-  const year = selectedYear();
-  const season = selectedSeason();
-  let sourceRows = (year==='__all__') ? ALL : ALL.filter(r => n(r.year)===Number(year));
-  if(season !== '__all__'){
-    const ls = season.toLowerCase();
-    sourceRows = sourceRows.filter(r => norm(r.season).toLowerCase() === ls);
-  }
-
-  const items=tournamentsWithMaxId(sourceRows);
-  sel.innerHTML=`<option value="__all__">All tournaments</option>` +
-    items.map(o=>`<option value="${o.name.replaceAll('"','&quot;')}">${o.name}</option>`).join('');
-
-  // Default to All tournaments; if preservePrev and valid, keep it
-  if(preservePrev && (prev==='__all__' || items.some(it=>it.name===prev))){
-    sel.value = prev;
-  }else{
-    sel.value = '__all__';
-  }
-  updateFilterHint();
-}
-function selectedTournament(){ return (el('gTournament')?.value || '__all__').trim(); }
-
-/* Filter base rows by Year/Season/Tournament */
-function baseRowsByTournament(rows){
-  const y = selectedYear();
-  const s = selectedSeason();
-  const t = selectedTournament();
-  let filtered = rows;
-
-  if(y !== '__all__'){
-    filtered = filtered.filter(r => n(r.year)===Number(y));
-  }
-  if(s !== '__all__'){
-    const ls = s.toLowerCase();
-    filtered = filtered.filter(r => norm(r.season).toLowerCase() === ls);
-  }
-  if(t !== '__all__'){
-    const lt = t.toLowerCase();
-    filtered = filtered.filter(r => norm(r.tournament).toLowerCase() === lt);
-  }
-  return filtered;
-}
-function updateFilterHint(){
-  const y = selectedYear();
-  const s = selectedSeason();
-  const t = selectedTournament();
-  const total = baseRowsByTournament(ALL).length;
-
-  let scopeText = 'Scope: ';
-  scopeText += (y==='__all__') ? 'All years' : `Year ${y}`;
-  scopeText += ' • ';
-  scopeText += (s==='__all__') ? 'All seasons' : s;
-  scopeText += ' • ';
-  scopeText += (t==='__all__') ? 'All tournaments' : t;
-  scopeText += ` • Rows: ${total}`;
-  el('filterHint').textContent = scopeText;
-
-  let chip = '';
-  chip += (y==='__all__') ? 'All years' : `Y:${y}`;
-  chip += ' • ';
-  chip += (s==='__all__') ? 'All seasons' : s;
-  chip += ' • ';
-  chip += (t==='__all__') ? 'All tourns' : t;
-
-  el('scopeChip').textContent = 'Scope: ' + chip;
-  el('scopeChipTeam').textContent = chip;
-}
-
-/* Tables + heat */
-function renderSimpleTable(list, cols){
-  if (!list.length) return '<div class="muted">No rows.</div>';
-  const head = `<thead><tr>${cols.map(c=>`<th data-key="${c.key}" class="${c.right?'right':''}">${c.label}</th>`).join('')}</tr></thead>`;
-  const body = `<tbody>${list.map((r,i)=>`<tr>${
-    cols.map(c=>{
-      let v; if (typeof c.html==='function'){ v=c.html(r,i); }
-      else { v=r[c.key];
-             if (c.format==='pct') v=isFinite(v)?(v*100).toFixed(1)+'%':'—';
-             else if (c.format==='1d') v=isFinite(v)?Number(v).toFixed(1):'—';
-             else if (c.format==='0d') v=isFinite(v)?Number(v).toFixed(0):'—';
-             if (c.link && v && looksLikeURL(v)) v=`<a href="${v}" target="_blank" rel="noopener">${v}</a>`; }
-      return `<td data-key="${c.key}" class="${c.right?'right':''}">${(v==null||v==='')?'—':v}</td>`;
-    }).join('')
-  }</tr>`).join('')}</tbody>`;
-  return `<table>${head}${body}</table>`;
-}
-function applyColumnHeatmap(containerId, keys){
-  const wrap=el(containerId); const table=wrap?.querySelector('table'); if(!table) return;
-  table.querySelectorAll('td[data-key]').forEach(td=>{ td.style.backgroundColor=''; td.classList.remove('heat-top'); });
-  const styles=getComputedStyle(document.documentElement);
-  const rgb=styles.getPropertyValue('--heat-rgb')||'255,189,89';
-  const minA=parseFloat(styles.getPropertyValue('--heat-min'))||.06;
-  const maxA=parseFloat(styles.getPropertyValue('--heat-max'))||.22;
-  const BANDS=5;
-  for(const key of keys){
-    const cells=[...table.querySelectorAll(`td[data-key="${key}"]`)];
-    if(!cells.length) continue;
-    const entries=cells.map((td,i)=>{ const raw=(td.textContent||'').trim().replace('%','').replace(/,/g,''); const v=parseFloat(raw); return {td,i,v:isFinite(v)?v:null}; }).filter(e=>e.v!=null);
-    if(!entries.length) continue;
-    const asc=entries.slice().sort((a,b)=>a.v-b.v); const n=asc.length; const bandByIndex=new Map();
-    asc.forEach((e,rank)=>{ const p=(n<=1)?1:(rank/(n-1)); const band=Math.min(BANDS-1,Math.floor(p*BANDS)); bandByIndex.set(e.i,band); });
-    const topVal=asc[n-1].v;
-    cells.forEach((td,i)=>{ const band=bandByIndex.get(i); if(band==null) return;
-      const alpha=minA + (band/(BANDS-1))*(maxA-minA);
-      td.style.backgroundColor=`rgba(${rgb}, ${alpha.toFixed(3)})`;
-      if(isFinite(parseFloat(td.textContent)) && parseFloat(td.textContent)===topVal) td.classList.add('heat-top');
+    burger?.addEventListener('click', () => {
+      if (sidebar.classList.contains('open')) closeSidebar();
+      else openSidebar();
     });
-  }
-}
+    backdrop?.addEventListener('click', closeSidebar);
 
-/* Aggregations (ffbr_data) */
-function codeFromRow(r){ const code=norm(r._tag).toUpperCase(); return ALLOWED_TAGS.has(code) ? code : null; }
-function metaFromCode(code){ return code ? TEAM_BY_CODE[code.toLowerCase()] : null; }
-function aggregateOverall(rows){
-  const grouped=new Map();
-  for(const r of rows){ const code=codeFromRow(r); if(!code) continue; if(!grouped.has(code)) grouped.set(code,[]); grouped.get(code).push(r); }
-  const out=[];
-  for(const [code,list] of grouped.entries()){
-    const meta=metaFromCode(code); const m=list.length; if(!m||!meta) continue;
-    const booyahs=sum(list,'booyah'), elims=sum(list,'elimination'), place=sum(list,'placement'), total=sum(list,'total');
-    out.push({ team:meta.fullname, code:meta.name, region:(meta.region||'—'), ew: meta.ew||'',
-      matches:m, booyahs, elims, placement:place, total,
-      booyah_rate:booyahs/m, elims_pm:elims/m, placement_pm:place/m, total_pm:total/m, top3_rate: sum(list,'top3')/m });
-  }
-  return out;
-}
-function aggregateTeamsForMap(rows,mapValue){
-  const perTeam=new Map();
-  for(const r of rows){
-    if(mapValue && mapValue!=='__all__'){ if((norm(r.map)||'').toLowerCase()!==mapValue.toLowerCase()) continue; }
-    const code=codeFromRow(r); if(!code) continue;
-    if(!perTeam.has(code)) perTeam.set(code,[]); perTeam.get(code).push(r);
-  }
-  const out=[];
-  for(const [code,list] of perTeam.entries()){
-    const meta=metaFromCode(code); const m=list.length; if(!m||!meta) continue;
-    const booyahs=sum(list,'booyah'), elims=sum(list,'elimination'), place=sum(list,'placement'), total=sum(list,'total');
-    out.push({ team:meta.fullname, code:meta.name, region:(meta.region||'—'), ew: meta.ew||'',
-      matches:m, booyahs, elims, placement:place, total,
-      booyah_rate:booyahs/m, elims_pm:elims/m, placement_pm:place/m, total_pm:total/m, top3_rate: sum(list,'top3')/m });
-  }
-  return out;
-}
-function uniqueMaps(rows){ const s=new Set(); for(const r of rows){ const m=norm(r.map); if(m) s.add(m); } return [...s].sort((a,b)=>a.localeCompare(b)); }
+    // desktop collapse toggle (in header)
+    (function initSidebarCollapse(){
+      const key = 'ff_sidebar_collapsed_v1';
+      const saved = localStorage.getItem(key);
+      if (saved === '1') sidebar.classList.add('collapsed');
 
-/* Team + roster info helpers */
-function asListHTML(val){
-  const items = splitToLines(val); if(!items.length) return '—';
-  return `<ul style="margin:0;padding-left:16px">${items.map(it=>`<li>${it}</li>`).join('')}</ul>`;
-}
-function splitToLines(val){
-  if (val == null) return [];
-  if (Array.isArray(val) ) return val.flat().map(x=>String(x).trim()).filter(Boolean);
-  let s=String(val).trim();
-  try{ if(/^\s*\[/.test(s)){ const arr=JSON.parse(s); if(Array.isArray(arr)) return arr.flat().map(x=>String(x).trim()).filter(Boolean); } }catch{}
-  s=s.replace(/[•\u2022\u00b7]/g,'\n');
-  let parts=s.split(/\r?\n|;|\|/); if(parts.length===1 && s.includes(',')) parts=s.split(',');
-  return parts.map(x=>x.trim()).filter(Boolean);
-}
-async function fetchTeamInfoBy(codeRaw){
-  const codeUp=norm(codeRaw).toUpperCase();
-  try{
-    let res=await client.from('br_team_info').select('*').eq('Team Initials', codeUp).limit(1);
-    if(res.error) throw res.error;
-    if(res.data?.length) return res.data[0];
-  }catch(e){ console.warn('br_team_info fetch error:', e.message||e); }
-  return null;
-}
-async function fetchPlayersBy(codeRaw){
-  const codeUp=norm(codeRaw).toUpperCase();
-  try{
-    const res=await client.from('br_player_info').select('*').eq('TAG', codeUp);
-    if(res.error) throw res.error;
-    return res.data||[];
-  }catch(e){ console.warn('br_player_info fetch error:', e.message||e); return []; }
-}
-function pickKey(keys, patterns){
-  for(const rx of patterns){
-    const k = keys.find(k => rx.test(k));
-    if(k) return k;
-  }
-  return null;
-}
-function setRoleMap(players){
-  ROLE_BY_IGN.clear();
-  if(!players?.length) return;
-  const keySet=new Set(); players.forEach(p=>Object.keys(p).forEach(k=>keySet.add(k)));
-  const keys=[...keySet];
-  const ignKey = pickKey(keys, [/^ign$/i,/\bplayer\s*ign\b/i,/\bin-?\s*game\s*name\b/i,/\bnick\s*name\b/i,/\bnickname\b/i,/\bhandle\b/i,/\balias\b/i,/\bplayer\s*name\b/i,/^name$/i]) || null;
-  const roleKey= pickKey(keys, [/^role$/i, /\bposition\b/i]) || 'Role';
-  for(const p of players){
-    const ign = String(
-      (ignKey && p[ignKey]) ?? p['IGN'] ?? p['In-game Name'] ?? p['Player IGN'] ?? p['Player Name'] ??
-      p['Nickname'] ?? p['Name'] ?? p['name'] ?? ''
-    ).trim();
-    const role = String(p[roleKey] ?? p['Role'] ?? p['Position'] ?? p['position'] ?? '').trim();
-    if(ign) ROLE_BY_IGN.set(nameKey(ign), role || '—');
-  }
-}
+      const btn = document.getElementById('sbToggle');
+      const path = document.getElementById('sbTogglePath');
 
-/* Roster render */
-function parseAgeValue(record, ageKey, dobKey){
-  if(ageKey){
-    const raw = record[ageKey];
-    if(raw!=null && String(raw).trim()!==''){
-      const m = String(raw).match(/(\d{1,3})/);
-      if(m){ const v = Number(m[1]); if(isFinite(v) && v>=0 && v<130) return v; }
-    }
-  }
-  if(dobKey){
-    const raw = String(record[dobKey] ?? '').trim();
-    if(raw){
-      const d = new Date(raw);
-      if(!isNaN(d.getTime())){
-        const today = new Date();
-        let age = today.getFullYear() - d.getFullYear();
-        const mo = today.getMonth() - d.getMonth();
-        if(mo < 0 || (mo === 0 && today.getDate() < d.getDate())) age--;
-        if(isFinite(age) && age>=0 && age<130) return age;
+      function syncIcon(){
+        if (!path) return;
+        path.setAttribute('d', sidebar.classList.contains('collapsed')
+          ? 'M10 7l5 5-5 5'
+          : 'M14 7l-5 5 5 5'
+        );
       }
-    }
-  }
-  return null;
-}
-function renderRoster(players){
-  const box=el('teamRosterBody');
-  if(!players?.length){ box.innerHTML='<div class="muted">No players found.</div>'; return; }
-  const keys=Object.keys(players[0]||{});
-  const avatarKey = pickKey(keys, [/photo|avatar|image|picture/i]);
-  const ignKey = pickKey(keys, [/^ign$/i,/\bplayer\s*ign\b/i,/\bin-?\s*game\s*name\b/i,/\bnick\s*name\b/i,/\bnickname\b/i,/\bhandle\b/i,/\balias\b/i,/\bplayer\s*name\b/i,/^name$/i]) || null;
-  const roleKey    = pickKey(keys, [/^role$/i, /\bposition\b/i]) || null;
-  const countryKey = pickKey(keys, [/^country$/i, /\bnation\b/i]) || null;
-  const ageKey = pickKey(keys, [/^age\b/i, /\bage\s*\(?(yrs|years)?\)?/i, /\byears?\s*old\b/i]) || null;
-  const dobKey = pickKey(keys, [/\b(dob|birth(date)?|date\s*of\s*birth)\b/i]) || null;
-  const accolKey = keys.includes('Accolades') ? 'Accolades' : pickKey(keys, [/accolade|achievement|title|award/i]) || null;
-  const formerKey = pickKey(keys, [/\b(former|previous|past|ex)[\s_]*teams?\b/i,/\bteam\s*history\b/i,/^Former Team(s)?$/i]) || 'Former Team';
 
-  const rows = players.slice().map(p=>{
-    const avatar = avatarKey && p[avatarKey]
-      ? `<img src="${p[avatarKey]}" alt="" style="width:38px;height:38px;object-fit:cover;border-radius:8px;border:1px solid #2a2a2a">`
-      : '';
-    const ign = (() => {
-      const tryKeys = ignKey ? [ignKey] : [];
-      tryKeys.push('IGN','In-game Name','Player IGN','Player Name','Nickname','Name','name');
-      for(const k of tryKeys){
-        if(k in p && String(p[k]).trim()!=='') return String(p[k]).trim();
-      }
-      return '—';
+      syncIcon();
+
+      btn?.addEventListener('click', () => {
+        sidebar.classList.toggle('collapsed');
+        localStorage.setItem(key, sidebar.classList.contains('collapsed') ? '1' : '0');
+        syncIcon();
+      });
     })();
-    const role    = roleKey    ? (p[roleKey]    ?? '—') : '—';
-    const country = countryKey ? (p[countryKey] ?? '—') : '—';
-    const ageNum = parseAgeValue(p, ageKey, dobKey);
-    const age    = (ageNum==null) ? (ageKey? String(p[ageKey]??'—'): '—') : ageNum;
-    const accHTML    = accolKey  ? asListHTML(p[accolKey])   : '—';
-    const formerHTML = formerKey ? asListHTML(p[formerKey])  : '—';
-    return { avatar, ign, role, country, age, formerHTML, accHTML };
-  });
-  rows.sort((a,b)=> String(a.role||'').localeCompare(String(b.role||'')) || String(a.ign||'').localeCompare(String(b.ign||'')));
-  box.innerHTML = renderSimpleTable(rows, [
-    { label:'', key:'avatar' },
-    { label:'IGN', key:'ign' },
-    { label:'Role', key:'role' },
-    { label:'Country', key:'country' },
-    { label:'Age', key:'age', right:true },
-    { label:'Former Team', key:'formerHTML' },
-    { label:'Accolades', key:'accHTML' },
-  ]);
-}
 
-/* Team KPIs / map performance */
-function kpiDataset(rows){
-  const matches=rows.length, booyahs=sum(rows,'booyah'), total=sum(rows,'total'), elims=sum(rows,'elimination'), place=sum(rows,'placement'), damage=sum(rows,'damage'), top3=sum(rows,'top3');
-  return {
-    matches, booyahs, elims, placement:place, total,
-    booyah_rate: matches? booyahs/matches : 0,
-    total_per_match: matches? total/matches : 0,
-    elims_per_match: matches? elims/matches : 0,
-    place_per_match: matches? place/matches : 0,
-    dmg_per_match: matches? damage/matches : 0,
-    top3_rate: matches? top3/matches : 0
-  };
-}
-function latestYwdm(rows){
-  let best=null;
-  for(const r of rows){
-    const y=n(r.year), w=n(r.week), d=n(r.day), m=n(r.match);
-    const key = (y*1e8) + (w*1e6) + (d*1e4) + (m||0);
-    if(!best || key>best.key) best={y,w,d,m,key};
-  }
-  return best;
-}
-function fmtYwdm(obj){
-  if(!obj) return '—';
-  const parts=[`Y${obj.y||'—'}`];
-  if(n(obj.w)) parts.push(`W${obj.w}`);
-  if(n(obj.d)) parts.push(`D${obj.d}`);
-  if(n(obj.m)) parts.push(`M${obj.m}`);
-  return parts.join(' ');
-}
-function teamMapPerf(rows){
-  const g = groupBy(rows, r=>r.map||'—');
-  const out=[];
-  for(const [map,list] of g.entries()){
-    const m=list.length, booyahs=sum(list,'booyah'), elims=sum(list,'elimination'), place=sum(list,'placement'), total=sum(list,'total');
-    out.push({ map, matches:m, booyahs, elims, placement:place, total,
-      booyah_rate:m?booyahs/m:0, elims_pm:m?elims/m:0, placement_pm:m?place/m:0, total_pm:m?total/m:0 });
-  }
-  return out.sort((a,b)=> b.total_pm - a.total_pm || b.matches - a.matches || a.map.localeCompare(b.map));
-}
+    // highlight active nav based on filename
+    (function setActiveNav(){
+      const here = (location.pathname.split('/').pop() || 'dashboard.html').toLowerCase();
+      document.querySelectorAll('.nav-item').forEach(a => {
+        const page = (a.getAttribute('data-page') || '').toLowerCase();
+        a.classList.toggle('active', page === here);
+      });
+    })();
 
-/* LOPS normalize (EXTENDED) */
-function normLopsRow(r){
-  const get=(k,alt=[])=> r[k]!=null ? r[k] : alt.find(a=>r[a]!=null)!=null ? r[alt.find(a=>r[a]!=null)] : null;
-  const toI = v => Number(v ?? 0) || 0;
-  const up = s => String(s==null?'':s).trim().toUpperCase();
-
-  const teamName = norm(get('TeamName') ?? get('Team') ?? '');
-  const player = norm(get('PLAYER NAME',['Player name','Player Name','Player','IGN']));
-  const map = norm(get('MAP',['Map','map']));
-  const day = toI(get('Day',['day','DAY']));
-
-  const nadeKills = toI(get('Grenade kill')) + toI(get('Ice Grenade kill')) + toI(get('Dragon Grenade Kill'));
-
-  // Be generous with possible headers for active & pet
-  const act1 = norm(get('SkillActive_1',[
-    'SkillActive','Active','Active Skill','ActiveSkill','Active Character','Active_Name','ActiveName','Active_Skill'
-  ])) || '';
-
-  const petName = norm(get('Pet Skill Name',[
-    'Pet','Pet Name','PetSkill','Pet Skill','Pet_Name','PetSkillName'
-  ])) || '';
-
-  return {
-    _team: up(teamName), _player: player, _map: map, day,
-    kills: toI(get('KILLS')), assists: toI(get('ASSISTS')),
-    shots: toI(get('SHOOTS')), hits: toI(get('HITS')),
-    headshots: toI(get('HEADSHOTRS')) || toI(get('Headshot Kill Times')),
-    damage: toI(get('DAMAGE')),
-    knockdowns: toI(get('Knock Down')),
-    vehicle: toI(get('Vehicle Kill')),
-    grenade: nadeKills,
-    gloo_used: toI(get('IcewallUse')),
-    gloo_break: toI(get('IcewallDestroyedTimes')) + toI(get('SkylerIceWallDestroy')),
-    medkits: toI(get('MedkitUse')),
-    moving_distance: toI(get('MovingDistance')),
-    vehicle_move_distance: toI(get('Vehicle Move Distance')),
-    revives: toI(get('ReviveTeammateTimes')) + toI(get('Revive Teammate Nums')),
-    revived: toI(get('RevivedTimes')),
-    survival_time: toI(get('Survival Time')),
-    active: act1,
-    pet: petName,
-    mvp: toI(get('MVP')) ? 1 : 0,
-    char1: norm(get('Character 1') ?? get('Char1') ?? get('Character1') ?? ''),
-    char2: norm(get('Character 2') ?? get('Char2') ?? get('Character2') ?? ''),
-    char3: norm(get('Character 3') ?? get('Char3') ?? get('Character3') ?? ''),
-    char4: norm(get('Character 4') ?? get('Char4') ?? get('Character4') ?? ''),
-    pair_victim: up(teamName),
-    pair_killer: up(norm(get('Eliminated Team Name', ['Eliminated By','Eliminator','Killer Team'])||'')),
-  };
-}
-async function fetchAllLopsRows(){
-  const CHUNK=1000; let from=0; const out=[];
-  for(;;){
-    const { data, error } = await client.from('ffbr_lopsdata').select('*').range(from, from+CHUNK-1);
-    if(error){ gerr('ffbr_lopsdata fetch failed. Check RLS / table name.\n\n'+(error.message||error)); break; }
-    const rows=data||[]; if(!rows.length) break;
-    out.push(...rows); from+=rows.length;
-  }
-  return out.map(normLopsRow).filter(r=>r._player && r._team);
-}
-function lopsRowsForTeam(all, teamObj){ if(!teamObj) return []; const code=(teamObj.name||'').toUpperCase(); return all.filter(r=> (r._team||'')===code); }
-function countByName(rows,key){
-  const m=new Map();
-  for(const r of rows){ const raw=norm(r[key]); if(!raw) continue; const k=raw.toLowerCase().replace(/\s+/g,' ').trim(); if(!m.has(k)) m.set(k,{name:raw,picks:0}); m.get(k).picks += 1; }
-  return [...m.values()];
-}
-function lopsTopPlayersByKills(rows){
-  const m=new Map();
-  for(const r of rows){
-    const p=r._player; if(!p) continue;
-    if(!m.has(p)) m.set(p,{player:p, team:r._team||'—', kills:0, assists:0, headshots:0, grenade:0, damage:0, rows:0});
-    const o=m.get(p); o.kills+=r.kills; o.assists+=r.assists; o.headshots+=r.headshots; o.grenade+=r.grenade; o.damage+=r.damage; o.rows++;
-  }
-  return [...m.values()];
-}
-
-/* Sorting helper */
-function sortRows(rows, key, dir, isText=false){
-  if(isText){
-    return rows.sort((a,b)=> dir==='desc'
-      ? (String(b[key]||'').localeCompare(String(a[key]||'')))
-      : (String(a[key]||'').localeCompare(String(b[key]||''))));
-  }
-  return rows.sort((a,b)=> dir==='desc'
-    ? ((b[key]??0) - (a[key]??0))
-    : ((a[key]??0) - (b[key]??0)));
-}
-
-/* match_api mapping (type=2 only) */
-async function fetchMatchApiMap(){
-  try{
-    const { data, error } = await client.from('match_api').select('id,name,type').limit(10000);
-    if(error) throw error;
-    MATCH_API_MAP.clear();
-    for(const r of (data||[])){
-      const t = (r.type===undefined||r.type===null) ? '' : String(r.type).trim();
-      const isChar = (t==='2' || Number(t)===2);
-      if(!isChar) continue;
-      const id = String(r.id ?? '').trim();
-      const nm = String(r.name ?? '').trim();
-      if(id && nm) MATCH_API_MAP.set(id, nm);
-    }
-    el('charMapHint').textContent = MATCH_API_MAP.size
-      ? `Character map loaded from match_api (type=2): ${MATCH_API_MAP.size} entries.`
-      : 'match_api had no rows with type=2. Using IDs/fallbacks.';
-  }catch(e){
-    console.warn('match_api load error:', e.message||e);
-    el('charMapHint').textContent = 'Could not load match_api (type=2). Using IDs/fallbacks.';
-  }
-}
-function mapCharName(id, fallback=''){
-  const key = String(id||'').trim();
-  if(!key) return fallback || '—';
-  if(MATCH_API_MAP.has(key)) return MATCH_API_MAP.get(key);
-  return fallback || `ID ${key}`;
-}
-
-/* Populate map dropdown for Per-Player Character Usage */
-function populateCharUsageMapFilter(){
-  const sel = el('charUsageMapFilter'); if(!sel) return;
-  if(!LOPS_READY || !CURRENT_TEAM){ sel.innerHTML = `<option value="__all__">All maps</option>`; sel.value='__all__'; return; }
-  const teamLops = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
-  const maps = [...new Set(teamLops.map(r=>norm(r._map)).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-  sel.innerHTML = `<option value="__all__">All maps</option>` + maps.map(m=>`<option>${m}</option>`).join('');
-  sel.value = '__all__';
-}
-
-/* ---------- Renders: Page 1 (Teams) ---------- */
-function renderOverall(){
-  const rows = aggregateOverall(baseRowsByTournament(ALL));
-  const sortKey = el('overallSortKey').value;
-  const dir = el('overallSortDir').dataset.dir;
-  if (sortKey==='team') sortRows(rows, 'team', dir, true);
-  else sortRows(rows, sortKey, dir, false);
-  el('tblOverall').innerHTML = renderSimpleTable(rows, [
-    {label:'Team',key:'team'},{label:'Code',key:'code'},{label:'E/W',key:'ew'},{label:'Region',key:'region'},
-    {label:'Matches',key:'matches',right:true},{label:'Booyahs',key:'booyahs',right:true},{label:'Elims',key:'elims',right:true},
-    {label:'Placement',key:'placement',right:true},{label:'Total',key:'total',right:true},
-    {label:'Booyah %',key:'booyah_rate',format:'pct',right:true},{label:'Elims/m',key:'elims_pm',format:'1d',right:true},
-    {label:'Place/m',key:'placement_pm',format:'1d',right:true},{label:'Total/m',key:'total_pm',format:'1d',right:true},
-    {label:'Top3%',key:'top3_rate',format:'pct',right:true},
-  ]);
-  applyColumnHeatmap('tblOverall', ['total_pm','elims_pm','placement_pm','booyah_rate','matches','booyahs','elims','placement','total']);
-}
-function renderPerMapAllTeams(){
-  const base=baseRowsByTournament(ALL);
-  const mapSel=el('mapFilter').value;
-  const rows = aggregateTeamsForMap(base, mapSel);
-  const sortKey = el('perMapSortKey').value;
-  const dir = el('perMapSortDir').dataset.dir;
-  if (sortKey==='team') sortRows(rows, 'team', dir, true);
-  else sortRows(rows, sortKey, dir, false);
-  el('tblPerMapAllTeams').innerHTML = renderSimpleTable(rows, [
-    {label:'Team',key:'team'},{label:'Code',key:'code'},{label:'E/W',key:'ew'},{label:'Region',key:'region'},
-    {label:'Matches',key:'matches',right:true},{label:'Booyahs',key:'booyahs',right:true},{label:'Elims',key:'elims',right:true},
-    {label:'Placement',key:'placement',right:true},{label:'Total',key:'total',right:true},
-    {label:'Booyah %',key:'booyah_rate',format:'pct',right:true},{label:'Elims/m',key:'elims_pm',format:'1d',right:true},
-    {label:'Place/m',key:'placement_pm',format:'1d',right:true},{label:'Total/m',key:'total_pm',format:'1d',right:true},
-    {label:'Top3%',key:'top3_rate',format:'pct',right:true},
-  ]);
-  applyColumnHeatmap('tblPerMapAllTeams', ['total_pm','elims_pm','placement_pm','booyah_rate','matches','booyahs','elims','placement','total']);
-}
-
-/* ---------- Renders: Page 2 (Team core) ---------- */
-function kpiAndByMap(){
-  if(!CURRENT_TEAM){
-    el('teamTitle').textContent='Selected Team — Overview';
-    el('identityBody').innerHTML='Select a team.'; el('kpiBody').innerHTML='—'; return;
-  }
-  el('teamTitle').textContent = `Selected Team — Overview`;
-  el('identityBody').innerHTML = `
-    <div style="display:flex;gap:12px;align-items:center">
-      <img src="${CURRENT_TEAM.logo}" alt="${CURRENT_TEAM.fullname} logo" style="width:72px;height:72px;object-fit:contain" onerror="this.style.visibility='hidden'">
-      <div><div style="font-size:1.1rem;font-weight:800">${CURRENT_TEAM.name}</div>
-      <div class="muted">${CURRENT_TEAM.fullname} • ${CURRENT_TEAM.region||'—'} ${CURRENT_TEAM.ew?('• '+CURRENT_TEAM.ew):''}</div></div>
-    </div>`;
-  const k=kpiDataset(TEAM_ROWS);
-  el('kpiBody').innerHTML = k.matches ? `
-    <div class="kpis">
-      <div class="kpi">Rows <strong>${k.matches}</strong></div>
-      <div class="kpi">Booyahs <strong>${k.booyahs}</strong> (<strong>${fmtPct(k.booyah_rate)}</strong>)</div>
-      <div class="kpi">Elims <strong>${k.elims}</strong> • <strong>${k.elims_per_match.toFixed(1)}</strong>/m</div>
-      <div class="kpi">Placement <strong>${k.placement}</strong> • <strong>${k.place_per_match.toFixed(1)}</strong>/m</div>
-      <div class="kpi">Damage <strong>${k.dmg_per_match.toFixed(0)}</strong>/m</div>
-      <div class="kpi">Total <strong>${k.total}</strong> • <strong>${k.total_per_match.toFixed(1)}</strong>/m</div>
-      <div class="kpi">Top3 <strong>${fmtPct(k.top3_rate)}</strong></div>
-    </div>` : '<div class="muted">No rows.</div>';
-
-  const rows=teamMapPerf(TEAM_ROWS);
-  const mapWrap = document.getElementById('tblMapTeam');
-  if(mapWrap){
-    mapWrap.innerHTML = renderSimpleTable(rows, [
-      {label:'Map',key:'map'},
-      {label:'Matches',key:'matches',right:true},
-      {label:'Booyahs',key:'booyahs',right:true},
-      {label:'Elims',key:'elims',right:true},
-      {label:'Placement',key:'placement',right:true},
-      {label:'Total',key:'total',right:true},
-      {label:'Booyah %',key:'booyah_rate',format:'pct',right:true},
-      {label:'Elims / m',key:'elims_pm',format:'1d',right:true},
-      {label:'Placement / m',key:'placement_pm',format:'1d',right:true},
-      {label:'Total / m',key:'total_pm',format:'1d',right:true}
-    ]);
-    applyColumnHeatmap('tblMapTeam', ['total_pm','elims_pm','placement_pm','booyah_rate','matches','booyahs','elims','placement','total']);
-  }
-}
-function renderTeamCombinedMetrics(){
-  const totalsEl = el('teamTotals'), avgsEl = el('teamAverages'), sigEl = el('teamSignals');
-  if(!CURRENT_TEAM){ totalsEl.innerHTML=avgsEl.innerHTML=sigEl.innerHTML='—'; return; }
-
-  // Totals & averages from LOPS
-  const teamLops=lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
-  const games=TEAM_ROWS.length||0;
-  const totals = {
-    kills:sum(teamLops,'kills'), dmg:sum(teamLops,'damage'), assists:sum(teamLops,'assists'), knock:sum(teamLops,'knockdowns'),
-    glooUsed:sum(teamLops,'gloo_used'), glooBreak:sum(teamLops,'gloo_break'),
-    revives:sum(teamLops,'revives'), nade:sum(teamLops,'grenade'), vehicle:sum(teamLops,'vehicle'), hs:sum(teamLops,'headshots'),
-    shots:sum(teamLops,'shots'), hits:sum(teamLops,'hits'), survival:sum(teamLops,'survival_time'), mvp:sum(teamLops,'mvp')
-  };
-  const acc=safeDiv(totals.hits, totals.shots);
-  const hsRate=safeDiv(totals.hs, totals.kills);
-
-  totalsEl.innerHTML = `
-    <div class="kpi">TOTAL ELIMS <strong>${totals.kills}</strong></div>
-    <div class="kpi">TOTAL DMG <strong>${totals.dmg}</strong></div>
-    <div class="kpi">TOTAL ASSISTS <strong>${totals.assists}</strong></div>
-    <div class="kpi">KNOCKDOWNS <strong>${totals.knock}</strong></div>
-    <div class="kpi">GLOO USED <strong>${totals.glooUsed}</strong></div>
-    <div class="kpi">GLOO DESTROYED <strong>${totals.glooBreak}</strong></div>
-    <div class="kpi">REVIVES <strong>${totals.revives}</strong></div>
-    <div class="kpi">NADE KILLS <strong>${totals.nade}</strong></div>
-    <div class="kpi">VEHICLE KILLS <strong>${totals.vehicle}</strong></div>
-    <div class="kpi">HEADSHOTS <strong>${totals.hs}</strong></div>
-    <div class="kpi">MVPs <strong>${totals.mvp}</strong></div>
-    <div class="kpi">GAMES PLAYED <strong>${games}</strong></div>`;
-  avgsEl.innerHTML = games ? `
-    <div class="kpi">AVG ELIMS <strong>${(totals.kills/games).toFixed(1)}</strong></div>
-    <div class="kpi">AVG DMG <strong>${(totals.dmg/games).toFixed(0)}</strong></div>
-    <div class="kpi">AVG ASSISTS <strong>${(totals.assists/games).toFixed(1)}</strong></div>
-    <div class="kpi">AVG HEADSHOTS <strong>${(totals.hs/games).toFixed(1)}</strong></div>` : '<div class="muted">No games found for averages.</div>';
-
-  // Signals — includes Last Played (from ffbr_data)
-  const lastPlayed = fmtYwdm(latestYwdm(TEAM_ROWS));
-  sigEl.innerHTML = `
-    <div class="kpi">LAST PLAYED <strong>${lastPlayed}</strong></div>
-    <div class="kpi">ACCURACY <strong>${fmtPct(acc)}</strong></div>
-    <div class="kpi">HS / KILL <strong>${isFinite(hsRate)?hsRate.toFixed(2):'—'}</strong></div>`;
-}
-function renderTeamActiveUsage(){
-  const limit=Number(el('teamActiveTop').value)||10;
-  const list=countByName(lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM),'active')
-    .sort((a,b)=> b.picks-a.picks || a.name.localeCompare(b.name))
-    .slice(0,limit).map((r,i)=>({...r,rank:i+1}));
-  el('tblTeamActive').innerHTML = renderSimpleTable(list, [
-    {label:'#',key:'rank',right:true},
-    {label:'Active Skill',key:'name'},
-    {label:'Picks',key:'picks',right:true},
-  ]);
-  applyColumnHeatmap('tblTeamActive', ['picks']);
-}
-function renderTeamPetUsage(){
-  const limit=Number(el('teamPetTop').value)||10;
-  const list=countByName(lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM),'pet')
-    .sort((a,b)=> b.picks-a.picks || a.name.localeCompare(b.name))
-    .slice(0,limit).map((r,i)=>({...r,rank:i+1}));
-  el('tblTeamPet').innerHTML = renderSimpleTable(list, [
-    {label:'#',key:'rank',right:true},
-    {label:'Pet',key:'name'},
-    {label:'Picks',key:'picks',right:true},
-  ]);
-  applyColumnHeatmap('tblTeamPet', ['picks']);
-}
-function renderPlayers(){
-  const base=lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
-  if(!base.length){ el('tblPlayers').innerHTML='<div class="muted">No lops rows for team.</div>'; return; }
-  const g = groupBy(base, r=>r._player||'—');
-  const rows=[];
-  for(const [player,list] of g.entries()){
-    const kills=sum(list,'kills'), assists=sum(list,'assists'), dmg=sum(list,'damage');
-    const hs=sum(list,'headshots'), nade=sum(list,'grenade'), veh=sum(list,'vehicle'), downs=sum(list,'knockdowns');
-    const shots=sum(list,'shots'), hits=sum(list,'hits'), acc=safeDiv(hits, shots), hsRate=safeDiv(hs, kills);
-    const mode=(arr)=>{const m=new Map(); arr.map(norm).forEach(v=>{if(!v) return; m.set(v,(m.get(v)||0)+1)}); let b='',c=0; for(const [k,v] of m){ if(v>c){b=k;c=v;} } return b||'—'; }
-    rows.push({ player, rows:list.length, kills, assists, dmg, hs, nade, veh, downs, acc, hsRate, active:mode(list.map(r=>r.active)), pet:mode(list.map(r=>r.pet)) });
-  }
-  rows.sort((a,b)=> b.kills-a.kills || a.player.localeCompare(b.player));
-  el('tblPlayers').innerHTML = renderSimpleTable(rows.map((r,i)=>({...r,rank:i+1})), [
-    {label:'#',key:'rank',right:true,html:(_,i)=>i+1},{label:'Player',key:'player'},{label:'Rows',key:'rows',right:true},
-    {label:'Kills',key:'kills',right:true},{label:'Assists',key:'assists',right:true},{label:'Damage',key:'dmg',right:true},
-    {label:'HS',key:'hs',right:true},{label:'Acc',key:'acc',right:true,html:r=>isFinite(r.acc)?fmtPct(r.acc):'—'},
-    {label:'HS/K',key:'hsRate',right:true,html:r=>isFinite(r.hsRate)?r.hsRate.toFixed(2):'—'},
-    {label:'Grenade',key:'nade',right:true},{label:'Vehicle',key:'veh',right:true},{label:'Knockdowns',key:'downs',right:true},
-    {label:'Most Active',key:'active'},{label:'Most Pet',key:'pet'},
-  ]);
-  applyColumnHeatmap('tblPlayers', ['kills','assists','dmg','hs','nade','veh','downs','rows']);
-}
-
-/* Team Performance by Day by Map — Pivot (from ffbr_data) */
-function renderByDay(){
-  if(!TEAM_ROWS.length){
-    el('tblByDay').innerHTML = '<div class="muted">No rows.</div>';
-    return;
-  }
-  const dayLabel = r => `Y${n(r.year)||'—'} W${n(r.week)||'—'} D${n(r.day)||'—'}`;
-
-  const daySet = new Set(), mapSet = new Set();
-  for(const r of TEAM_ROWS){ mapSet.add(norm(r.map) || '—'); daySet.add(dayLabel(r)); }
-  const days = [...daySet].sort((a,b)=> a.localeCompare(b));
-  const maps = [...mapSet].sort((a,b)=> a.localeCompare(b));
-
-  const totals = new Map();
-  for(const r of TEAM_ROWS){
-    const m = norm(r.map) || '—';
-    const d = dayLabel(r);
-    if(!totals.has(m)) totals.set(m, new Map());
-    const row = totals.get(m);
-    row.set(d, (row.get(d) || 0) + n(r.total));
-  }
-
-  let thead = `<thead><tr><th data-key="map">Map</th>${days.map(d=>`<th data-key="${d}" class="right">${d}</th>`).join('')}</tr></thead>`;
-  let tbody = '<tbody>';
-  for(const m of maps){
-    const row = totals.get(m) || new Map();
-    tbody += `<tr><td data-key="map">${m}</td>` +
-      days.map(d=>{
-        const v = row.get(d);
-        return `<td data-key="${d}" class="right">${(v!=null && isFinite(v)) ? Number(v).toFixed(0) : '—'}</td>`;
-      }).join('') +
-      `</tr>`;
-  }
-  tbody += '</tbody>';
-
-  el('tblByDay').innerHTML = `<table>${thead}${tbody}</table>`;
-  applyColumnHeatmap('tblByDay', days);
-}
-
-/* ---------- Per-Player Character Usage (split) ---------- */
-function renderCharUsageActive(){
-  const box = el('tblCharUsageAct');
-  if(!box) return;
-  if(!CURRENT_TEAM){ box.innerHTML = '<div class="muted">Select a team.</div>'; return; }
-  if(!LOPS_READY){ box.innerHTML = '<div class="muted">Loading player usage…</div>'; return; }
-
-  const topN  = Number(el('charUsageTop')?.value) || 10;
-  const mapSel = el('charUsageMapFilter')?.value || '__all__';
-
-  let rows = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
-  if (mapSel !== '__all__'){
-    const lf = mapSel.toLowerCase();
-    rows = rows.filter(r => (r._map || '').toLowerCase() === lf);
-  }
-  if (!rows.length){ box.innerHTML = '<div class="muted">No rows for this filter.</div>'; return; }
-
-  const counts = new Map();
-  for (const r of rows){
-    const player = r._player || '—';
-    const role   = ROLE_BY_IGN.get(nameKey(player)) || '—';
-    const active = (r.active || '').trim();
-    if (!active) continue;
-    const key = player + '||' + active;
-    if (!counts.has(key)) counts.set(key, { player, role, active, picks: 0 });
-    counts.get(key).picks += 1;
-  }
-  const list = [...counts.values()]
-    .sort((a,b)=> a.player.localeCompare(b.player) || (b.picks - a.picks) || a.active.localeCompare(b.active))
-    .slice(0, topN);
-
-  box.innerHTML = renderSimpleTable(list, [
-    { label:'Player', key:'player' },
-    { label:'Role',   key:'role' },
-    { label:'Active', key:'active' },
-    { label:'Picks',  key:'picks', right:true },
-  ]);
-  applyColumnHeatmap('tblCharUsageAct', ['picks']);
-}
-
-function renderCharUsagePassive(){
-  const box = el('tblCharUsagePas');
-  if(!box) return;
-  if(!CURRENT_TEAM){ box.innerHTML = '<div class="muted">Select a team.</div>'; return; }
-  if(!LOPS_READY){ box.innerHTML = '<div class="muted">Loading player usage…</div>'; return; }
-
-  const topN  = Number(el('charUsageTop')?.value) || 10;
-  const mapSel = el('charUsageMapFilter')?.value || '__all__';
-
-  let rows = lopsRowsForTeam(LOPS_ALL, CURRENT_TEAM);
-  if (mapSel !== '__all__'){
-    const lf = mapSel.toLowerCase();
-    rows = rows.filter(r => (r._map || '').toLowerCase() === lf);
-  }
-  if (!rows.length){ box.innerHTML = '<div class="muted">No rows for this filter.</div>'; return; }
-
-  const counts = new Map();
-  for (const r of rows){
-    const player = r._player || '—';
-    const role   = ROLE_BY_IGN.get(nameKey(player)) || '—';
-    const activeNm = (r.active||'').trim().toLowerCase().replace(/\s+/g,' ');
-    const chars = [r.char1, r.char2, r.char3, r.char4]
-      .map(c => mapCharName(c, c))
-      .map(c => String(c||''))
-      .filter(c => c && c.toLowerCase().replace(/\s+/g,' ') !== activeNm);
-
-    for(const ch of chars){
-      const key = player + '||' + ch;
-      if(!counts.has(key)) counts.set(key, { player, role, character: ch, picks: 0 });
-      counts.get(key).picks += 1;
-    }
-  }
-  const list = [...counts.values()]
-    .sort((a,b)=> a.player.localeCompare(b.player) || (b.picks - a.picks) || a.character.localeCompare(b.character))
-    .slice(0, topN);
-
-  box.innerHTML = renderSimpleTable(list, [
-    { label:'Player',    key:'player' },
-    { label:'Role',      key:'role' },
-    { label:'Character', key:'character' },
-    { label:'Picks',     key:'picks', right:true },
-  ]);
-  applyColumnHeatmap('tblCharUsagePas', ['picks']);
-}
-
-/* ---------- Eliminations (global + team) ---------- */
-function elimTeams(){ const s=new Set(); for(const r of LOPS_ALL){ if(r.pair_victim) s.add(r.pair_victim); if(r.pair_killer) s.add(r.pair_killer); } return [...s].sort((a,b)=>a.localeCompare(b)); }
-function summarizeElims(rows){
-  const matrix={}, suffered={}, given={};
-  for(const r of rows){
-    const v=r.pair_victim, k=r.pair_killer;
-    if(!v || !k) continue;
-    matrix[v] ||= {};
-    matrix[v][k] = (matrix[v][k]||0)+1;
-    suffered[v] = (suffered[v]||0)+1;
-    given[k]    = (given[k]||0)+1;
-  }
-  return {matrix, suffered, given};
-}
-function renderElimLeaderboardsUsingAll(){
-  if(!LOPS_ALL.length){ el('tblEliminatedBy').innerHTML='<div class="muted">No LOPS rows.</div>'; el('tblGiven').innerHTML='<div class="muted">No LOPS rows.</div>'; return; }
-  const teams = elimTeams();
-  const sumE = summarizeElims(LOPS_ALL);
-
-  // Eliminated By (suffered)
-  const rowsA = teams.map(t=>{
-    const row = sumE.matrix[t]||{};
-    const total = sumE.suffered[t]||0;
-    const top = Object.entries(row).sort((a,b)=>b[1]-a[1]).slice(0,3)
-      .map(([k,v])=>`${k} ${v} (${((v/Math.max(total,1))*100).toFixed(0)}%)`).join(' · ');
-    return { team:t, times: total, top };
-  }).sort((a,b)=>b.times-a.times || a.team.localeCompare(b.team));
-  el('tblEliminatedBy').innerHTML = renderSimpleTable(rowsA, [
-    {label:'Team',key:'team'},
-    {label:'Times Eliminated',key:'times',right:true},
-    {label:'Top Eliminators',key:'top'}
-  ]);
-  applyColumnHeatmap('tblEliminatedBy',['times']);
-
-  // Given (killer totals)
-  const inv={}; teams.forEach(v=>{
-    const row=sumE.matrix[v]||{};
-    Object.entries(row).forEach(([killer,cnt])=>{
-      inv[killer] ||= {};
-      inv[killer][v] = (inv[killer][v]||0)+cnt;
+    // sidebar search filters nav items
+    document.getElementById('searchInput')?.addEventListener('input', (e) => {
+      const q = (e.target.value || '').toLowerCase().trim();
+      document.querySelectorAll('#nav .nav-item').forEach(a => {
+        const txt = a.textContent.toLowerCase();
+        a.style.display = (!q || txt.includes(q)) ? '' : 'none';
+      });
     });
-  });
-  const rowsB = teams.map(t=>{
-    const ents = Object.entries(inv[t]||{}).sort((a,b)=>b[1]-a[1]);
-    const total = ents.reduce((a,b)=>a+b[1],0);
-    const top = ents.slice(0,3).map(([k,v])=>`${k} ${v}`).join(' · ');
-    return { eliminator:t, total, top };
-  }).sort((a,b)=>b.total-a.total || a.eliminator.localeCompare(b.eliminator));
-  el('tblGiven').innerHTML = renderSimpleTable(rowsB, [
-    {label:'Eliminator',key:'eliminator'},
-    {label:'Eliminations Given',key:'total',right:true},
-    {label:'Top Victims',key:'top'}
-  ]);
-  applyColumnHeatmap('tblGiven',['total']);
-}
-function renderElimTeamFocus(){
-  const boxA=el('elimTopPredators'), boxB=el('elimTopVictims'), boxS=el('elimSignals'), boxD=el('elimByDay'), boxM=el('elimByMap');
-  el('elimTeamCodeA').textContent = CURRENT_TEAM ? CURRENT_TEAM.name : '—';
-  el('elimTeamCodeB').textContent = CURRENT_TEAM ? CURRENT_TEAM.name : '—';
 
-  if(!CURRENT_TEAM || !LOPS_ALL.length){
-    boxA.innerHTML=boxB.innerHTML=boxS.innerHTML='—';
-    boxD.innerHTML=boxM.innerHTML='—';
-    return;
-  }
-  const code = CURRENT_TEAM.name.toUpperCase();
-  const rows = LOPS_ALL; // ignore tournament/season/year filters
+    /***********************
+     * Data
+     ***********************/
+    const DATA = {
+      character: { url:'https://neptuneg1.github.io/freefire-caster/character.json', items:[], selected:0 },
+      pet:       { url:'https://neptuneg1.github.io/freefire-caster/pet.json',       items:[], selected:0 },
+      weapon:    { url:'https://neptuneg1.github.io/freefire-caster/weapon.json',    items:[], selected:0 },
+    };
 
-  // victims of CUR_TEAM (they eliminated others)
-  const given = {};
-  rows.forEach(r=>{ if(r.pair_killer===code && r.pair_victim){ given[r.pair_victim]=(given[r.pair_victim]||0)+1; } });
-  const givenTop = Object.entries(given).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  boxB.innerHTML = givenTop.length
-    ? givenTop.map(([k,v])=>`<div class="kpi">${k}: <strong>${v}</strong></div>`).join('')
-    : '<div class="muted">No eliminations as killer in dataset.</div>';
+    // filter state per popup
+    const FILTER_STATE = {
+      character: 'all', // all | brmeta | csmeta | active | passive
+      pet: 'all',       // all | <category>
+      weapon: 'all'     // all | <category>
+    };
 
-  // predators of CUR_TEAM (who eliminated them)
-  const suffered = {};
-  rows.forEach(r=>{ if(r.pair_victim===code && r.pair_killer){ suffered[r.pair_killer]=(suffered[r.pair_killer]||0)+1; } });
-  const sufferedTop = Object.entries(suffered).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  boxA.innerHTML = sufferedTop.length
-    ? sufferedTop.map(([k,v])=>`<div class="kpi">${k}: <strong>${v}</strong></div>`).join('')
-    : '<div class="muted">No times eliminated in dataset.</div>';
+    // Build bar state
+    const BUILD = {
+      active: 0,
+      passives: [0,0,0],
+      pet: 0,
+      weapons: [0,0]
+    };
 
-  // signals
-  const totalGiven = Object.values(given).reduce((a,b)=>a+b,0);
-  const totalSuffer = Object.values(suffered).reduce((a,b)=>a+b,0);
-  boxS.innerHTML = `
-    <div class="kpi">NET Δ <strong>${(totalGiven - totalSuffer)}</strong></div>
-    <div class="kpi">GIVEN <strong>${totalGiven}</strong></div>
-    <div class="kpi">SUFFERED <strong>${totalSuffer}</strong></div>
-  `;
+    function safeText(v){ return (v ?? '').toString(); }
+    function norm(v){ return safeText(v).trim(); }
+    function normLower(v){ return norm(v).toLowerCase(); }
 
-  // By Day (predators)
-  const byDay = {};
-  rows.forEach(r=>{
-    if(r.pair_victim!==code || !r.pair_killer || !r.day) return;
-    const d = r.day;
-    byDay[d] ||= {};
-    byDay[d][r.pair_killer] = (byDay[d][r.pair_killer]||0)+1;
-  });
-  const dayRows = Object.entries(byDay).map(([d,obj])=>{
-    const top = Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>`${k} × ${v}`).join(' · ');
-    const total = Object.values(obj).reduce((a,b)=>a+b,0);
-    return { day:Number(d), total, top };
-  }).sort((a,b)=>a.day-b.day);
-  boxD.innerHTML = renderSimpleTable(dayRows, [
-    {label:'Day',key:'day'},
-    {label:'Times Eliminated',key:'total',right:true},
-    {label:'Top Eliminators',key:'top'}
-  ]);
-  applyColumnHeatmap('elimByDay',['total']);
-
-  // By Map (predators)
-  const byMap = {};
-  rows.forEach(r=>{
-    if(r.pair_victim!==code || !r.pair_killer) return;
-    const m = r._map || '—';
-    byMap[m] ||= {};
-    byMap[m][r.pair_killer] = (byMap[m][r.pair_killer]||0)+1;
-  });
-  const mapRows = Object.entries(byMap).map(([m,obj])=>{
-    const top = Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>`${k} × ${v}`).join(' · ');
-    const total = Object.values(obj).reduce((a,b)=>a+b,0);
-    return { map:m, total, top };
-  }).sort((a,b)=> b.total-a.total || a.map.localeCompare(b.map));
-  boxM.innerHTML = renderSimpleTable(mapRows, [
-    {label:'Map',key:'map'},
-    {label:'Times Eliminated',key:'total',right:true},
-    {label:'Top Eliminators',key:'top'}
-  ]);
-  applyColumnHeatmap('elimByMap',['total']);
-}
-
-/* ---------- Team grid & selection ---------- */
-function renderTeamGrid(filter=''){
-  const grid=el('teamGrid'); const q=(filter||'').trim().toLowerCase();
-  const items=TEAMS.filter(t=>[t.name,t.fullname,t.region,t.ew,t.alt].join(' ').toLowerCase().includes(q));
-  if(!items.length){ grid.innerHTML='<div class="muted">No matches.</div>'; return; }
-  grid.innerHTML = items.map(t=>`
-    <div class="team-tile" data-code="${t.name}" title="${t.fullname}">
-      <img class="team-logo" src="${t.logo}" alt="${t.fullname} logo" loading="lazy" onerror="this.style.visibility='hidden'">
-      <div class="team-code">${t.name}</div>
-    </div>`).join('');
-  grid.querySelectorAll('.team-tile').forEach(tile=>{
-    tile.onclick=()=>{ const code=tile.getAttribute('data-code').toLowerCase(); const info=TEAM_BY_CODE[code]; if(info){ selectTeam(info); tile.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'}); } };
-  });
-  highlightActiveTile();
-}
-function highlightActiveTile(){
-  const grid=el('teamGrid'); if(!grid) return;
-  [...grid.querySelectorAll('.team-tile')].forEach(div=>{
-    const code=div.getAttribute('data-code'); div.classList.toggle('active', !!CURRENT_TEAM && CURRENT_TEAM.name===code);
-  });
-}
-async function selectTeam(teamObj){
-  CURRENT_TEAM = teamObj;
-  const url=new URL(window.location.href); url.searchParams.set('team', CURRENT_TEAM.name); history.replaceState(null,'',url.toString());
-  TEAM_ROWS = baseRowsByTournament(ALL).filter(r => (norm(r._tag).toUpperCase()||'') === teamObj.name.toUpperCase());
-
-  // Core team renders
-  kpiAndByMap();
-  renderTeamCombinedMetrics();
-  renderTeamActiveUsage();
-  renderTeamPetUsage();
-  renderPlayers();
-  renderByDay();
-  highlightActiveTile();
-
-  // Roster + info, then char usage
-  const [info, roster] = await Promise.all([ fetchTeamInfoBy(teamObj.name), fetchPlayersBy(teamObj.name) ]);
-  setRoleMap(roster);
-  if(LOPS_READY){
-    populateCharUsageMapFilter();
-    renderCharUsageActive();
-    renderCharUsagePassive();
-  }else{
-    el('tblCharUsageAct').innerHTML = '<div class="muted">Loading player usage…</div>';
-    el('tblCharUsagePas').innerHTML = '<div class="muted">Loading player usage…</div>';
-  }
-  renderTeamInfo(info);
-  renderRoster(roster);
-
-  // Eliminations team focus
-  renderElimTeamFocus();
-}
-
-/* ---- Team Info (safe, schema-agnostic) ---- */
-function renderTeamInfo(info){
-  const box = el('teamInfoBody');
-  if (!box) return;
-
-  if (!info || !Object.keys(info).length){
-    box.innerHTML = '<div class="muted">No team info found.</div>';
-    return;
-  }
-
-  const pref = [
-    'Team Initials','Team','Full Name','Region','Country','Coach','Manager','Org','Organization',
-    'Owner','Founded','Sponsors','Twitter','Instagram','Facebook','YouTube','Twitch','Website'
-  ];
-  const keys = [...new Set([...pref, ...Object.keys(info)])]
-    .filter(k => info[k] != null && String(info[k]).trim() !== '');
-
-  const rows = keys.map(k => {
-    const val = String(info[k]);
-    const vHtml = /^https?:\/\//i.test(val) ? `<a href="${val}" target="_blank" rel="noopener">${val}</a>` : val;
-    return `<tr>
-      <th style="text-align:left;padding:4px 6px;color:#b9b9b9">${k}</th>
-      <td style="padding:4px 6px">${vHtml}</td>
-    </tr>`;
-  }).join('');
-
-  box.innerHTML = `<table style="width:100%;border-collapse:collapse">${rows}</table>`;
-}
-
-/* ---------- Controls ---------- */
-function populateMapFilter(){ el('mapFilter').innerHTML = `<option value="__all__">All maps</option>` + uniqueMaps(baseRowsByTournament(ALL)).map(m=>`<option>${m}</option>`).join(''); }
-function wireControls(){
-  el('gYear').addEventListener('change', ()=>{
-    // Year changed → re-populate seasons and tournaments for that year
-    const prevSeason = selectedSeason();
-    populateGlobalSeason();
-    // If previous season exists in new list, keep it; else prefer GF handled in populateGlobalSeason
-    if([...el('gSeason').options].some(o=>o.value===prevSeason)) el('gSeason').value = prevSeason;
-
-    populateGlobalTournament(false); // default to All tournaments after year change
-    el('gTournament').value='__all__';
-    updateFilterHint();
-    populateMapFilter();
-    renderOverall();
-    renderPerMapAllTeams();
-    if(CURRENT_TEAM){
-      TEAM_ROWS = baseRowsByTournament(ALL).filter(r => (norm(r._tag).toUpperCase()||'') === CURRENT_TEAM.name.toUpperCase());
-      kpiAndByMap(); renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDay();
-      fetchPlayersBy(CURRENT_TEAM.name).then(r=>{ setRoleMap(r); renderRoster(r); if(LOPS_READY){ renderCharUsageActive(); renderCharUsagePassive(); } }).catch(()=>{});
-      fetchTeamInfoBy(CURRENT_TEAM.name).then(renderTeamInfo).catch(()=>{});
-      populateCharUsageMapFilter();
+    function pickImg(item){
+      return item?.image_url || item?.icon || item?.img || 'https://i.imgur.com/qXFpizS.jpg';
     }
-    renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
-  });
 
-  el('gSeason').addEventListener('change', ()=>{
-    populateGlobalTournament(true); // try preserve prev if possible
-    populateMapFilter();
-    renderOverall();
-    renderPerMapAllTeams();
-    if(CURRENT_TEAM){
-      TEAM_ROWS = baseRowsByTournament(ALL).filter(r => (norm(r._tag).toUpperCase()||'') === CURRENT_TEAM.name.toUpperCase());
-      kpiAndByMap(); renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDay();
-      fetchPlayersBy(CURRENT_TEAM.name).then(r=>{ setRoleMap(r); renderRoster(r); if(LOPS_READY){ renderCharUsageActive(); renderCharUsagePassive(); } }).catch(()=>{});
-      fetchTeamInfoBy(CURRENT_TEAM.name).then(renderTeamInfo).catch(()=>{});
-      populateCharUsageMapFilter();
+    function getCategory(type, item){
+      if (!item) return 'Other';
+      if (type === 'pet'){
+        return norm(item.category || item.type || item.pet_type || item.group || item.role || 'Other') || 'Other';
+      }
+      return norm(item.category || item.type || item.weapon_type || item.class || item.group || 'Other') || 'Other';
     }
-  });
 
-  el('gTournament').addEventListener('change', ()=>{
-    updateFilterHint();
-    populateMapFilter();
-    renderOverall();
-    renderPerMapAllTeams();
-    if(CURRENT_TEAM){
-      TEAM_ROWS = baseRowsByTournament(ALL).filter(r => (norm(r._tag).toUpperCase()||'') === CURRENT_TEAM.name.toUpperCase());
-      kpiAndByMap(); renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDay();
-      fetchPlayersBy(CURRENT_TEAM.name).then(r=>{ setRoleMap(r); renderRoster(r); if(LOPS_READY){ renderCharUsageActive(); renderCharUsagePassive(); } }).catch(()=>{});
-      fetchTeamInfoBy(CURRENT_TEAM.name).then(renderTeamInfo).catch(()=>{});
-      populateCharUsageMapFilter();
+    function buildDesc(type, item){
+      if (!item) return '—';
+
+      if (type === 'character'){
+        const skill = safeText(item.skill || '');
+        const d = safeText(item.description || '');
+        return (skill ? skill : '—') + (d ? ` — ${d}` : '');
+      }
+      if (type === 'pet'){
+        const skill = safeText(item.skill || item.ability || '');
+        const d = safeText(item.description || '');
+        return (skill ? skill : '—') + (d ? ` — ${d}` : '');
+      }
+      const t = safeText(item.type || item.category || '');
+      const d = safeText(item.description || item.special || '');
+      return (t ? t : '—') + (d ? ` — ${d}` : '');
     }
-    renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
-    // Eliminations ignore tournament filters
-  });
 
-  el('gTournReset').addEventListener('click', ()=>{
-    // Reset Season to All, Tournament to All. Keep current Year.
-    el('gSeason').value = '__all__';
-    populateGlobalTournament(false);
-    el('gTournament').value = '__all__';
-    updateFilterHint();
-    populateMapFilter();
-    renderOverall();
-    renderPerMapAllTeams();
-    if(CURRENT_TEAM){
-      TEAM_ROWS = baseRowsByTournament(ALL).filter(r => (norm(r._tag).toUpperCase()||'') === CURRENT_TEAM.name.toUpperCase());
-      kpiAndByMap(); renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDay();
-      fetchPlayersBy(CURRENT_TEAM.name).then(r=>{ setRoleMap(r); renderRoster(r); if(LOPS_READY){ renderCharUsageActive(); renderCharUsagePassive(); } }).catch(()=>{});
-      fetchTeamInfoBy(CURRENT_TEAM.name).then(renderTeamInfo).catch(()=>{});
-      populateCharUsageMapFilter();
+    async function loadJson(url){
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error('Fetch failed: ' + url);
+      return await res.json();
     }
-    renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
-  });
 
-  el('overallSortKey').addEventListener('change', renderOverall);
-  el('overallSortDir').addEventListener('click', ()=>{
-    const b=el('overallSortDir'); const cur=b.dataset.dir==='desc'?'asc':'desc';
-    b.dataset.dir=cur; b.textContent=cur==='desc'?'Desc':'Asc'; renderOverall();
-  });
-  el('overallReset').addEventListener('click', ()=>{
-    el('overallSortKey').value='total';
-    el('overallSortDir').dataset.dir='desc'; el('overallSortDir').textContent='Desc';
-    renderOverall();
-  });
+    /***********************
+     * Quick View render
+     ***********************/
+    function applyQuickView(type){
+      const state = DATA[type];
+      const item = state.items[state.selected] || state.items[0];
+      if (!item) return;
 
-  el('mapFilter').addEventListener('change', renderPerMapAllTeams);
-  el('perMapSortKey').addEventListener('change', renderPerMapAllTeams);
-  el('perMapSortDir').addEventListener('click', ()=>{
-    const b=el('perMapSortDir'); const cur=b.dataset.dir==='desc'?'asc':'desc';
-    b.dataset.dir=cur; b.textContent=cur==='desc'?'Desc':'Asc'; renderPerMapAllTeams();
-  });
-  el('perMapReset').addEventListener('click', ()=>{
-    el('mapFilter').value='__all__'; el('perMapSortKey').value='total';
-    el('perMapSortDir').dataset.dir='desc'; el('perMapSortDir').textContent='Desc';
-    renderPerMapAllTeams();
-  });
+      const img = pickImg(item);
+      const name = safeText(item.name || '—');
+      const desc = buildDesc(type, item);
 
-  el('teamSearch').addEventListener('input', e=> renderTeamGrid(e.target.value||''));
-  el('teamActiveTop').addEventListener('change', renderTeamActiveUsage);
-  el('teamPetTop').addEventListener('change', renderTeamPetUsage);
-  el('lopsActiveTop').addEventListener('change', renderLopsActive);
-  el('lopsPetTop').addEventListener('change', renderLopsPet);
-  el('lopsTopKillersTop').addEventListener('change', renderLopsTopKillers);
+      if (type === 'character'){
+        document.getElementById('charThumb').src = img;
+        document.getElementById('charName').textContent = name;
+        document.getElementById('charDesc').textContent = desc || '—';
+      } else if (type === 'pet'){
+        document.getElementById('petThumb').src = img;
+        document.getElementById('petName').textContent = name;
+        document.getElementById('petDesc').textContent = desc || '—';
+      } else if (type === 'weapon'){
+        document.getElementById('weaponThumb').src = img;
+        document.getElementById('weaponName').textContent = name;
+        document.getElementById('weaponDesc').textContent = desc || '—';
+      }
+    }
 
-  // Char usage controls drive BOTH tables
-  el('charUsageTop').addEventListener('change', ()=>{ renderCharUsageActive(); renderCharUsagePassive(); });
-  el('charUsageMapFilter').addEventListener('change', ()=>{ renderCharUsageActive(); renderCharUsagePassive(); });
-}
+    function setCounts(){
+      document.getElementById('charCount').textContent = DATA.character.items.length ? DATA.character.items.length.toLocaleString() : '—';
+      document.getElementById('petCount').textContent = DATA.pet.items.length ? DATA.pet.items.length.toLocaleString() : '—';
+      document.getElementById('weaponCount').textContent = DATA.weapon.items.length ? DATA.weapon.items.length.toLocaleString() : '—';
+    }
 
-/* ---------- Init ---------- */
-async function initial(){
-  try{
-    el('scopeChip').textContent='Scope: —';
-    el('scopeChipTeam').textContent='—';
+    /***********************
+     * Build Bar render
+     ***********************/
+    function firstIndex(items, predicate){
+      const i = (items || []).findIndex(predicate);
+      return i >= 0 ? i : 0;
+    }
 
-    // Load ffbr_data + teams first
-    ALL = await fetchAllRows();
-    TEAMS = await fetchHelperTeams();
-    if(!TEAMS.length) TEAMS = deriveTeamsFromData(ALL);
-    buildTeamIndexes();
+    function initBuildDefaults(){
+      const chars = DATA.character.items || [];
+      const pets = DATA.pet.items || [];
+      const weapons = DATA.weapon.items || [];
 
-    // Populate Year → Season → Tournament (defaults: 2025 / Global Finals / All)
-    populateGlobalYear();
-    populateGlobalSeason();            // prefers "Global Finals" if available in selected year
-    populateGlobalTournament(false);   // default to All tournaments
-    el('gTournament').value='__all__';
-    updateFilterHint();
-    populateMapFilter();
+      // active = first non-passive
+      BUILD.active = firstIndex(chars, c => normLower(c?.skill_type || '') !== 'passive');
 
-    el('overallSortDir').dataset.dir='desc'; el('overallSortDir').textContent='Desc';
-    el('perMapSortDir').dataset.dir='desc'; el('perMapSortDir').textContent='Desc';
-    renderOverall();
-    renderPerMapAllTeams();
+      // passives = first 3 passives
+      const passiveIdx = chars
+        .map((c, idx) => ({c, idx}))
+        .filter(x => normLower(x.c?.skill_type || '') === 'passive')
+        .map(x => x.idx);
 
-    renderTeamGrid('');
-    const url=new URL(window.location.href);
-    const qTeam=(url.searchParams.get('team')||'').trim().toLowerCase();
-    if(qTeam && TEAM_BY_CODE[qTeam]) await selectTeam(TEAM_BY_CODE[qTeam]);
-    else if(TEAMS.length) await selectTeam(TEAMS[0]);
+      BUILD.passives = [
+        passiveIdx[0] ?? 0,
+        passiveIdx[1] ?? passiveIdx[0] ?? 0,
+        passiveIdx[2] ?? passiveIdx[1] ?? passiveIdx[0] ?? 0
+      ];
 
-    // Load LOPS AFTER core layout is ready
-    LOPS_ALL = await fetchAllLopsRows();
-    LOPS_READY = true;
+      // pet = first
+      BUILD.pet = pets.length ? 0 : 0;
 
-    await fetchMatchApiMap(); // character id->name map
-    populateCharUsageMapFilter();
-    renderCharUsageActive();
-    renderCharUsagePassive();
+      // weapons = first 2
+      BUILD.weapons = [
+        weapons.length ? 0 : 0,
+        weapons.length > 1 ? 1 : (weapons.length ? 0 : 0)
+      ];
 
-    // Renders that depend on LOPS
-    renderTeamCombinedMetrics(); renderTeamActiveUsage(); renderTeamPetUsage(); renderPlayers(); renderByDay();
-    renderLopsActive(); renderLopsPet(); renderLopsTopKillers();
+      applyBuildSlots();
+    }
 
-    // Eliminations (global + team)
-    renderElimLeaderboardsUsingAll();
-    renderElimTeamFocus();
+    function applyBuildSlots(){
+      const chars = DATA.character.items || [];
+      const pets = DATA.pet.items || [];
+      const weapons = DATA.weapon.items || [];
 
-    wireControls();
+      const active = chars[BUILD.active] || chars[0];
+      const p1 = chars[BUILD.passives[0]] || chars[0];
+      const p2 = chars[BUILD.passives[1]] || chars[0];
+      const p3 = chars[BUILD.passives[2]] || chars[0];
+      const pet = pets[BUILD.pet] || pets[0];
+      const w1 = weapons[BUILD.weapons[0]] || weapons[0];
+      const w2 = weapons[BUILD.weapons[1]] || weapons[0];
 
-    // Collapse all accordions by default
-    document.querySelectorAll('details.accordion').forEach(d=> d.open=false);
+      document.getElementById('buildActiveImg').src = active ? pickImg(active) : '';
+      document.getElementById('buildPassive1Img').src = p1 ? pickImg(p1) : '';
+      document.getElementById('buildPassive2Img').src = p2 ? pickImg(p2) : '';
+      document.getElementById('buildPassive3Img').src = p3 ? pickImg(p3) : '';
+      document.getElementById('buildPetImg').src = pet ? pickImg(pet) : '';
+      document.getElementById('buildWeapon1Img').src = w1 ? pickImg(w1) : '';
+      document.getElementById('buildWeapon2Img').src = w2 ? pickImg(w2) : '';
+    }
 
-    showPage(currentPage());
-    el('veil').classList.add('hide');
-  }catch(e){
-    gerr('Fatal error initializing page:\n\n'+(e.stack||e.message||e));
-    el('veil').classList.add('hide');
-  }
-}
+    /***********************
+     * Picker Modal
+     ***********************/
+    const modal = document.getElementById('pickerModal');
+    const pickerTitle = document.getElementById('pickerTitle');
+    const pickerSub = document.getElementById('pickerSub');
+    const pickerSearch = document.getElementById('pickerSearch');
+    const pickerCount = document.getElementById('pickerCount');
+    const pickerGrid = document.getElementById('pickerGrid');
+    const pickerClose = document.getElementById('pickerClose');
+    const pickerFilterSelect = document.getElementById('pickerFilterSelect');
+    const pickerFilterPills = document.getElementById('pickerFilterPills');
 
-/* LOPS global renders */
-function renderLopsActive(){ const limit=Number(el('lopsActiveTop').value)||10; const list=countByName(LOPS_ALL,'active').sort((a,b)=> b.picks-a.picks || a.name.localeCompare(b.name)).slice(0,limit); el('tblLopsActive').innerHTML = renderSimpleTable(list.map((r,i)=>({...r,rank:i+1})), [{label:'#',key:'rank',right:true,html:(_,i)=>i+1},{label:'Active Skill',key:'name'},{label:'Picks',key:'picks',right:true}]); applyColumnHeatmap('tblLopsActive', ['picks']); }
-function renderLopsPet(){ const limit=Number(el('lopsPetTop').value)||10; const list=countByName(LOPS_ALL,'pet').sort((a,b)=> b.picks-a.picks || a.name.localeCompare(b.name)).slice(0,limit); el('tblLopsPet').innerHTML = renderSimpleTable(list.map((r,i)=>({...r,rank:i+1})), [{label:'#',key:'rank',right:true,html:(_,i)=>i+1},{label:'Pet',key:'name'},{label:'Picks',key:'picks',right:true}]); applyColumnHeatmap('tblLopsPet', ['picks']); }
-function renderLopsTopKillers(){ const limit=Number(el('lopsTopKillersTop').value)||10; const list=lopsTopPlayersByKills(LOPS_ALL).sort((a,b)=> b.kills-a.kills || a.player.localeCompare(b.player)).slice(0,limit); el('tblLopsTopKillers').innerHTML = renderSimpleTable(list.map((r,i)=>({...r,rank:i+1})), [{label:'#',key:'rank',right:true,html:(_,i)=>i+1},{label:'Player',key:'player'},{label:'Team',key:'team'},{label:'Rows',key:'rows',right:true},{label:'Kills',key:'kills',right:true},{label:'Assists',key:'assists',right:true},{label:'HS',key:'headshots',right:true},{label:'Grenade',key:'grenade',right:true},{label:'Damage',key:'damage',right:true}]); applyColumnHeatmap('tblLopsTopKillers', ['rows','kills','assists','headshots','grenade','damage']); }
+    let currentPickerType = 'character';
 
-initial();
-</script>
+    // where to apply selection
+    let PICK_TARGET = { kind:'quickview', type:'character', slot:null };
+
+    function openPicker(type, target){
+      currentPickerType = type;
+
+      PICK_TARGET = target || { kind:'quickview', type, slot:null };
+
+      // force defaults for build slots
+      if (PICK_TARGET.kind === 'build' && type === 'character'){
+        if (PICK_TARGET.slot === 'active') FILTER_STATE.character = 'active';
+        if (String(PICK_TARGET.slot || '').startsWith('passive')) FILTER_STATE.character = 'passive';
+      }
+
+      const label = type === 'character' ? 'Character' : type === 'pet' ? 'Pet' : 'Weapon';
+
+      let titleLabel = `Select ${label}`;
+      if (PICK_TARGET.kind === 'build'){
+        if (PICK_TARGET.slot === 'active') titleLabel = 'Select Active Character';
+        if (String(PICK_TARGET.slot || '').startsWith('passive')) titleLabel = 'Select Passive Character';
+        if (PICK_TARGET.slot === 'pet') titleLabel = 'Select Pet';
+        if (String(PICK_TARGET.slot || '').startsWith('weapon')) titleLabel = 'Select Weapon';
+      }
+
+      pickerTitle.textContent = titleLabel;
+      pickerSub.textContent = `Click an item to apply it.`;
+      pickerSearch.value = '';
+
+      setupPickerFilters();
+      renderPickerGrid();
+
+      modal.classList.add('show');
+      modal.setAttribute('aria-hidden','false');
+      setTimeout(() => pickerSearch.focus(), 0);
+    }
+
+    function closePicker(){
+      modal.classList.remove('show');
+      modal.setAttribute('aria-hidden','true');
+    }
+
+    function setupPickerFilters(){
+      pickerFilterSelect.onchange = null;
+
+      if (currentPickerType === 'character'){
+        pickerFilterSelect.style.display = 'none';
+        pickerFilterPills.style.display = 'flex';
+
+        const options = [
+          { id:'all', label:'All' },
+          { id:'brmeta', label:'BR Meta' },
+          { id:'csmeta', label:'CS Meta' },
+          { id:'active', label:'Active' },
+          { id:'passive', label:'Passive' },
+        ];
+
+        pickerFilterPills.innerHTML = options.map(opt => `
+          <button class="pill-btn ${FILTER_STATE.character === opt.id ? 'active' : ''}" data-f="${opt.id}">
+            ${opt.label}
+          </button>
+        `).join('');
+
+        pickerFilterPills.querySelectorAll('button').forEach(btn => {
+          btn.addEventListener('click', () => {
+            FILTER_STATE.character = btn.getAttribute('data-f') || 'all';
+            pickerFilterPills.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+            renderPickerGrid();
+          });
+        });
+
+      } else {
+        pickerFilterPills.style.display = 'none';
+        pickerFilterSelect.style.display = 'inline-flex';
+
+        const items = DATA[currentPickerType].items || [];
+        const cats = Array.from(new Set(items.map(it => getCategory(currentPickerType, it)).filter(Boolean)))
+          .sort((a,b) => a.localeCompare(b));
+
+        const stateKey = currentPickerType; // 'pet' or 'weapon'
+        const current = FILTER_STATE[stateKey] || 'all';
+
+        pickerFilterSelect.innerHTML = [
+          `<option value="all">All</option>`,
+          ...cats.map(c => `<option value="${c}">${c}</option>`)
+        ].join('');
+
+        pickerFilterSelect.value = cats.includes(current) ? current : 'all';
+        FILTER_STATE[stateKey] = pickerFilterSelect.value;
+
+        pickerFilterSelect.onchange = () => {
+          FILTER_STATE[stateKey] = pickerFilterSelect.value || 'all';
+          renderPickerGrid();
+        };
+      }
+    }
+
+    function passesTypeFilter(it){
+      if (!it) return false;
+
+      if (currentPickerType === 'character'){
+        const f = FILTER_STATE.character || 'all';
+        if (f === 'all') return true;
+
+        if (f === 'brmeta') return normLower(it.meta || 'no') === 'yes';
+        if (f === 'csmeta') return normLower(it.cs_meta || 'no') === 'yes';
+        if (f === 'active') return normLower(it.skill_type || '') !== 'passive';
+        if (f === 'passive') return normLower(it.skill_type || '') === 'passive';
+        return true;
+      }
+
+      if (currentPickerType === 'pet'){
+        const f = FILTER_STATE.pet || 'all';
+        if (f === 'all') return true;
+        return getCategory('pet', it) === f;
+      }
+
+      const fw = FILTER_STATE.weapon || 'all';
+      if (fw === 'all') return true;
+      return getCategory('weapon', it) === fw;
+    }
+
+    function renderPickerGrid(){
+      const state = DATA[currentPickerType];
+      const q = (pickerSearch.value || '').toLowerCase().trim();
+      const all = state.items || [];
+
+      const filtered = all.filter(it => {
+        if (!passesTypeFilter(it)) return false;
+        if (!q) return true;
+
+        const name = safeText(it?.name).toLowerCase();
+        const skill = safeText(it?.skill || it?.type || it?.ability || it?.category || '').toLowerCase();
+        const desc = safeText(it?.description || it?.special || '').toLowerCase();
+        return name.includes(q) || skill.includes(q) || desc.includes(q);
+      });
+
+      pickerCount.textContent = `${filtered.length.toLocaleString()} item${filtered.length===1?'':'s'}`;
+
+      pickerGrid.innerHTML = filtered.map(it => {
+        const idx = all.indexOf(it);
+        const img = pickImg(it);
+        const name = safeText(it?.name || '—');
+        const tip = buildDesc(currentPickerType, it);
+        return `
+          <div class="pick-card" data-idx="${idx}" title="${name}${tip ? ' — ' + tip : ''}">
+            <div class="pick-thumb"><img src="${img}" alt="${name}" /></div>
+            <div class="pick-name">${name}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    pickerClose?.addEventListener('click', closePicker);
+    modal?.addEventListener('click', (e) => { if (e.target === modal) closePicker(); });
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modal.classList.contains('show')) closePicker(); });
+    pickerSearch?.addEventListener('input', renderPickerGrid);
+
+    pickerGrid?.addEventListener('click', (e) => {
+      const card = e.target.closest('.pick-card');
+      if (!card) return;
+      const idx = Number(card.getAttribute('data-idx'));
+      if (Number.isNaN(idx)) return;
+
+      if (PICK_TARGET.kind === 'quickview'){
+        DATA[currentPickerType].selected = idx;
+        applyQuickView(currentPickerType);
+      } else if (PICK_TARGET.kind === 'build'){
+        if (currentPickerType === 'character'){
+          if (PICK_TARGET.slot === 'active'){
+            BUILD.active = idx;
+          } else if (String(PICK_TARGET.slot || '').startsWith('passive')){
+            const n = Number(String(PICK_TARGET.slot).replace('passive',''));
+            if (!Number.isNaN(n) && n >= 0 && n < 3) BUILD.passives[n] = idx;
+          }
+        } else if (currentPickerType === 'pet' && PICK_TARGET.slot === 'pet'){
+          BUILD.pet = idx;
+        } else if (currentPickerType === 'weapon' && String(PICK_TARGET.slot || '').startsWith('weapon')){
+          const n = Number(String(PICK_TARGET.slot).replace('weapon',''));
+          if (!Number.isNaN(n) && n >= 0 && n < 2) BUILD.weapons[n] = idx;
+        }
+        applyBuildSlots();
+      }
+
+      closePicker();
+    });
+
+    // Quick View openers (whole cards)
+    document.querySelectorAll('.qv-item[data-open]').forEach(el => {
+      const type = el.getAttribute('data-open');
+      el.addEventListener('click', () => openPicker(type, { kind:'quickview', type, slot:null }));
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openPicker(type, { kind:'quickview', type, slot:null });
+        }
+      });
+    });
+
+    // Build bar openers (except loadout placeholder)
+    document.getElementById('buildRow')?.addEventListener('click', (e) => {
+      const slotEl = e.target.closest('.build-slot');
+      if (!slotEl || slotEl.classList.contains('disabled')) return;
+
+      const slot = slotEl.getAttribute('data-build-slot');
+      const dtype = slotEl.getAttribute('data-type');
+
+      if (dtype === 'character'){
+        openPicker('character', { kind:'build', type:'character', slot });
+      } else if (dtype === 'pet'){
+        openPicker('pet', { kind:'build', type:'pet', slot:'pet' });
+      } else if (dtype === 'weapon'){
+        openPicker('weapon', { kind:'build', type:'weapon', slot });
+      }
+    });
+
+    /***********************
+     * Init
+     ***********************/
+    window.addEventListener('DOMContentLoaded', async () => {
+      const session = await ensureSession();
+      if (!session) return;
+
+      const email = session.user?.email || '';
+      document.getElementById('userEmail').textContent = email || 'signed in';
+      const username = email ? email.split('@')[0] : 'PlayerOne';
+      document.getElementById('gamertag').textContent = username;
+
+      document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        logout();
+      });
+
+      try{
+        const [chars, pets, weapons] = await Promise.all([
+          loadJson(DATA.character.url),
+          loadJson(DATA.pet.url),
+          loadJson(DATA.weapon.url),
+        ]);
+
+        DATA.character.items = Array.isArray(chars) ? chars : [];
+        DATA.pet.items = Array.isArray(pets) ? pets : [];
+        DATA.weapon.items = Array.isArray(weapons) ? weapons : [];
+
+        setCounts();
+
+        DATA.character.selected = 0;
+        DATA.pet.selected = 0;
+        DATA.weapon.selected = 0;
+
+        applyQuickView('character');
+        applyQuickView('pet');
+        applyQuickView('weapon');
+
+        initBuildDefaults();
+      }catch(err){
+        console.error(err);
+        setCounts();
+      }
+    });
+  </script>
 </body>
 </html>
