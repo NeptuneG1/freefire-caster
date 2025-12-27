@@ -78,7 +78,6 @@
       box-shadow: 0 0 0 3px rgba(77,211,255,.12);
       border-color: rgba(77,211,255,.22) !important;
     }
-    /* Option styling works in most desktop browsers */
     select option{
       background: #0b1020;
       color: var(--ink);
@@ -378,48 +377,61 @@
       text-overflow: ellipsis;
     }
 
-    /* ===== Hero Character Carousel Overlay (Aesthetic Only) ===== */
+    /* ===== Hero Character Carousel Overlay (Aesthetic Only) =====
+       UPDATED:
+       - bigger chips
+       - shows 3 at a time
+       - pauses 3s, then moves ONE chip (replacing the 3rd) */
     .hero-carousel{
       position:absolute;
       left:16px; right:16px;
-      top:12px;
-      height:64px;
+      top:10px;
+      height:78px;
       z-index: 2;
       display:flex;
       align-items:center;
+      justify-content:center;
 
       /* Aesthetic only */
       pointer-events: none;
-
-      /* soft fade edges */
-      -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
-      mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
     }
 
     .hero-carousel-track{
-      --duration: 26s;
-      width:100%;
+      /* size controls */
+      --chip: 100px;     /* slightly bigger */
+      --gap: 12px;
+      --visible: 3;
+      width: calc(var(--visible) * var(--chip) + (var(--visible) - 1) * var(--gap));
+      height: var(--chip);
       overflow:hidden;
-    }
 
-    .hero-carousel-track > .hero-carousel-strip{
+      border-radius: 18px;
+      background: rgba(0,0,0,.12);
+      border: 1px solid rgba(255,255,255,.08);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+
+      /* soft fade edges */
+      -webkit-mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent);
+      mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent);
+
       display:flex;
-      width: max-content;
-      gap:10px;
       align-items:center;
-      animation: heroScroll var(--duration) linear infinite;
-      will-change: transform;
+      padding: 6px;
     }
 
-    @keyframes heroScroll{
-      from{ transform: translateX(0); }
-      to{ transform: translateX(-50%); }
+    .hero-carousel-strip{
+      display:flex;
+      gap: var(--gap);
+      align-items:center;
+      will-change: transform;
+      transform: translateX(0);
     }
 
     .hero-chip{
-      width:56px;
-      height:56px;
-      border-radius: 16px;
+      width: var(--chip);
+      height: var(--chip);
+      border-radius: 18px;
       border:1px solid rgba(255,255,255,.12);
       background: rgba(0,0,0,.22);
       box-shadow: 0 10px 30px rgba(0,0,0,.35);
@@ -438,8 +450,13 @@
     }
 
     @media (max-width: 520px){
-      .hero-carousel{ height:56px; }
-      .hero-chip{ width:48px; height:48px; border-radius: 14px; }
+      .hero-carousel{ height:70px; }
+      .hero-carousel-track{
+        --chip: 60px;
+        --gap: 10px;
+        border-radius: 16px;
+      }
+      .hero-chip{ border-radius: 16px; }
     }
 
     /* Horizontal Quick View */
@@ -1467,8 +1484,12 @@
 
     /***********************
      * Hero Carousel (Aesthetic Only)
+     * - shows 3
+     * - pauses 3 seconds
+     * - advances ONE item (replaces the 3rd) each tick
      ***********************/
     const heroCarouselTrack = document.getElementById('heroCarouselTrack');
+    let heroCarouselTimer = null;
 
     function shuffleCopy(arr){
       const a = arr.slice();
@@ -1479,8 +1500,17 @@
       return a;
     }
 
+    function stopHeroCarousel(){
+      if (heroCarouselTimer) {
+        clearInterval(heroCarouselTimer);
+        heroCarouselTimer = null;
+      }
+    }
+
     function buildHeroCarousel(){
       if (!heroCarouselTrack) return;
+
+      stopHeroCarousel();
 
       const items = DATA.character.items || [];
       if (!items.length){
@@ -1488,31 +1518,61 @@
         return;
       }
 
-      // show up to 20 portraits (duplicated for seamless loop)
+      // Build a longer queue so we can "cycle" seamlessly.
       const indices = items.map((_, i) => i);
-      const take = shuffleCopy(indices).slice(0, Math.min(20, indices.length));
+      const shuffled = shuffleCopy(indices);
 
-      const mk = (idxList) => idxList.map(idx => {
-        const it = items[idx];
-        const name = safeText(it?.name || '—');
-        const img = pickImg(it);
-        return `
-          <div class="hero-chip" title="${name}">
-            <img src="${img}" alt="" loading="lazy" referrerpolicy="no-referrer" />
-          </div>
-        `;
-      }).join('');
+      // take up to 24 unique, then repeat the same order again
+      const takeN = Math.min(24, shuffled.length);
+      const seq = shuffled.slice(0, takeN);
+      const seq2 = seq.slice(); // duplicate list for cycling
+      const finalSeq = seq.concat(seq2);
 
       heroCarouselTrack.innerHTML = `
-        <div class="hero-carousel-strip">
-          ${mk(take)}
-          ${mk(take)}
+        <div class="hero-carousel-strip" id="heroCarouselStrip">
+          ${finalSeq.map(idx => {
+            const it = items[idx];
+            const name = safeText(it?.name || '—');
+            const img = pickImg(it);
+            return `
+              <div class="hero-chip" title="${name}">
+                <img src="${img}" alt="" loading="lazy" referrerpolicy="no-referrer" />
+              </div>
+            `;
+          }).join('')}
         </div>
       `;
 
-      // duration scales with amount (more chips = longer loop)
-      const duration = Math.max(18, take.length * 1.5);
-      heroCarouselTrack.style.setProperty('--duration', duration + 's');
+      const strip = document.getElementById('heroCarouselStrip');
+      if (!strip) return;
+
+      // Figure out step size from CSS variables (chip + gap)
+      const styles = getComputedStyle(heroCarouselTrack);
+      const chip = parseFloat(styles.getPropertyValue('--chip')) || 66;
+      const gap = parseFloat(styles.getPropertyValue('--gap')) || 12;
+      const step = chip + gap;
+
+      // One-at-a-time: every 3 seconds, slide left by 1 chip, then recycle the first chip to the end.
+      const TICK_MS = 3000;      // pause duration
+      const SLIDE_MS = 520;      // movement duration
+
+      heroCarouselTimer = setInterval(() => {
+        // animate one step
+        strip.style.transition = `transform ${SLIDE_MS}ms cubic-bezier(.22,.75,.2,1)`;
+        strip.style.transform = `translateX(-${step}px)`;
+
+        // after movement finishes: move first child to end, reset transform instantly
+        window.setTimeout(() => {
+          const first = strip.firstElementChild;
+          if (first) strip.appendChild(first);
+
+          strip.style.transition = 'none';
+          strip.style.transform = 'translateX(0)';
+
+          // force reflow so transition re-applies cleanly next tick
+          void strip.offsetHeight;
+        }, SLIDE_MS + 20);
+      }, TICK_MS);
     }
 
     /***********************
@@ -1844,8 +1904,6 @@
       const vw = mapViewport.clientWidth || 1;
       const vh = mapViewport.clientHeight || 1;
 
-      // If modal is hidden, viewport can be 0-ish; don't "fit" yet.
-      // We'll fit when the modal opens.
       if (!mapModal.classList.contains('show') || vw < 5 || vh < 5) return;
 
       const sx = vw / view.imgW;
@@ -1872,7 +1930,6 @@
       mapImg.src = url;
     }
 
-    // Build select
     (function initMapSelect(){
       mapImgSelect.innerHTML = MAPS.map(m => `<option value="${m.url}">${m.name}</option>`).join('');
       mapImgSelect.value = MAPS[0].url;
@@ -1882,13 +1939,11 @@
       view.imgW = mapImg.naturalWidth || 1;
       view.imgH = mapImg.naturalHeight || 1;
 
-      // IMPORTANT: set explicit pixel size so transforms are stable
       mapImg.style.width = view.imgW + 'px';
       mapImg.style.height = view.imgH + 'px';
 
       view.isLoaded = true;
 
-      // Only fit immediately if modal is visible (otherwise viewport may be 0)
       if (mapModal.classList.contains('show')) {
         fitToViewport();
         setStatus('Drag to pan • Wheel/pinch to zoom');
@@ -1906,7 +1961,6 @@
       setMapByUrl(mapImgSelect.value);
     });
 
-    // Wheel zoom
     mapViewport.addEventListener('wheel', (e) => {
       e.preventDefault();
       if (!view.isLoaded) return;
@@ -1914,7 +1968,6 @@
       zoomAt(e.clientX, e.clientY, factor);
     }, { passive: false });
 
-    // Pointer events for pan + pinch
     function getClientPos(e){ return { x: e.clientX, y: e.clientY }; }
 
     mapViewport.addEventListener('pointerdown', (e) => {
@@ -1998,7 +2051,6 @@
       if (!mapViewport.hasPointerCapture(e.pointerId)) endPointer(e);
     });
 
-    // Buttons
     zoomInBtn.addEventListener('click', () => {
       if (!view.isLoaded) return;
       const r = mapViewport.getBoundingClientRect();
@@ -2012,7 +2064,6 @@
     fitBtn.addEventListener('click', fitToViewport);
     resetBtn.addEventListener('click', resetView);
 
-    // Resize: clamp (do not reset zoom), but if image was fitted before open, fit again once on open.
     const ro = new ResizeObserver(() => {
       if (!mapModal.classList.contains('show')) return;
       if (!view.isLoaded) return;
@@ -2025,13 +2076,9 @@
       mapModal.classList.add('show');
       mapModal.setAttribute('aria-hidden','false');
 
-      // Ensure we have a map selected
       if (!mapImgSelect.value) mapImgSelect.value = MAPS[0].url;
-
-      // If src is empty, set it
       if (!mapImg.src) setMapByUrl(mapImgSelect.value);
 
-      // ALWAYS fit when opening (this fixes "preloaded while hidden" issue)
       requestAnimationFrame(() => {
         if (view.isLoaded) {
           fitToViewport();
@@ -2073,7 +2120,6 @@
         logout();
       });
 
-      // Preload first map (it loads while modal hidden; FIT will occur on open)
       setMapByUrl(MAPS[0].url);
 
       try{
@@ -2089,7 +2135,7 @@
         DATA.weapon.items = Array.isArray(weapons) ? weapons : [];
         DATA.loadout.items = Array.isArray(loadouts) ? loadouts : [];
 
-        // Build the aesthetic banner carousel from characters
+        // Build the new 3-slot step carousel
         buildHeroCarousel();
 
         setCounts();
@@ -2108,6 +2154,9 @@
         setCounts();
       }
     });
+
+    // Clean up carousel timer on page unload
+    window.addEventListener('beforeunload', stopHeroCarousel);
   </script>
 </body>
 </html>
