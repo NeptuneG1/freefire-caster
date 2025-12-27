@@ -47,7 +47,6 @@
       overflow-x:hidden;
     }
 
-    /* subtle “arc” accents */
     body::before, body::after{
       content:"";
       position:fixed;
@@ -68,7 +67,6 @@
 
     a{color:inherit}
 
-    /* App Layout */
     .app{
       height:100%;
       display:flex;
@@ -184,7 +182,6 @@
       min-width:0;
     }
 
-    /* collapsed behavior */
     .sidebar.collapsed .brand h1,
     .sidebar.collapsed .brand small,
     .sidebar.collapsed .nav-label{display:none;}
@@ -217,15 +214,6 @@
       display:flex;
       align-items:center;
       gap:12px;
-    }
-
-    .burger{
-      display:none;
-      width:42px;height:42px;border-radius:14px;
-      background: rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.10);
-      color:var(--ink);
-      cursor:pointer;
     }
 
     .search{
@@ -496,6 +484,15 @@
       line-height:1.22rem;
     }
 
+    /* make loadout desc feel clickable for details */
+    .tap-more{
+      cursor:pointer;
+      position:relative;
+    }
+    .tap-more:hover{
+      color: rgba(244,246,255,.92);
+    }
+
     /* Modal Picker */
     .modal{
       position: fixed;
@@ -671,38 +668,93 @@
       text-align:center;
     }
 
+    /* Loadout Details Modal content */
+    .ld-wrap{
+      padding: 14px;
+      overflow:auto;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .ld-head{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      padding: 12px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.10);
+    }
+    .ld-img{
+      width:64px;height:64px;border-radius: 16px;
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+      flex: 0 0 auto;
+    }
+    .ld-img img{width:100%;height:100%;object-fit:contain;display:block;}
+    .ld-title{
+      min-width:0;
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+    }
+    .ld-title b{
+      font-family: Orbitron, sans-serif;
+      color: var(--brand);
+      letter-spacing:.4px;
+      font-size: 1.02rem;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 720px;
+    }
+    .ld-title span{
+      color: var(--muted);
+      font-size:.85rem;
+    }
+
+    details.ld-block{
+      border-radius: 18px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+    }
+    details.ld-block > summary{
+      list-style:none;
+      cursor:pointer;
+      padding: 12px 12px;
+      font-weight:900;
+      color: rgba(244,246,255,.92);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    details.ld-block > summary::-webkit-details-marker{display:none;}
+    .ld-pill{
+      font-size:.72rem;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      color: rgba(244,246,255,.78);
+      flex:0 0 auto;
+    }
+    .ld-text{
+      padding: 0 12px 12px 12px;
+      color: rgba(244,246,255,.86);
+      line-height: 1.35rem;
+      white-space: pre-wrap; /* preserve newlines */
+      word-break: break-word;
+      font-size: .92rem;
+    }
+
     @media (max-width: 1200px){
       .quickbar{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 980px){
       .quickbar{ grid-template-columns: 1fr; }
-    }
-
-    /* Mobile / Responsive */
-    @media (max-width: 980px){
-      .burger{display:grid; place-items:center}
-      .sidebar{
-        position: fixed;
-        top: 18px; bottom: 18px; left: 18px;
-        transform: translateX(-110%);
-        transition: .22s ease;
-        z-index: 30;
-      }
-      .sidebar.open{transform: translateX(0)}
-      .backdrop{
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,.55);
-        backdrop-filter: blur(2px);
-        -webkit-backdrop-filter: blur(2px);
-        opacity:0;
-        pointer-events:none;
-        transition:.22s ease;
-        z-index: 25;
-      }
-      .backdrop.show{opacity:1; pointer-events:auto;}
-      .app{padding: 14px;}
-      .quickbar{grid-template-columns: 1fr;}
       .modal-controls input{min-width: 0; width:100%;}
       .modal-controls select{min-width: 0; width:100%;}
     }
@@ -798,7 +850,6 @@
     <!-- MAIN -->
     <main class="main">
       <header class="topbar">
-        <!-- collapse button moved here (next to search) -->
         <button class="icon-btn" id="sbToggle" aria-label="Collapse sidebar" title="Collapse sidebar">
           <svg viewBox="0 0 24 24" fill="none">
             <path id="sbTogglePath" d="M14 7l-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -906,13 +957,14 @@
                   </div>
                   <div class="qv-actions">
                     <button class="qv-btn" data-open="loadout">Choose</button>
+                    <button class="qv-btn" id="loadoutDetailsBtn" title="View full BR/CS details">Details</button>
                   </div>
                 </div>
                 <div class="qv-body">
                   <div class="qv-thumb"><img id="loadoutThumb" alt="Loadout" /></div>
                   <div class="qv-meta">
                     <b id="loadoutName">—</b>
-                    <span id="loadoutDesc">—</span>
+                    <span id="loadoutDesc" class="tap-more" title="Click to view full details">—</span>
                   </div>
                 </div>
               </div>
@@ -940,19 +992,57 @@
         </button>
       </div>
 
-      <!-- Search + Filters -->
       <div class="modal-controls">
         <div class="modal-row">
           <input id="pickerSearch" placeholder="Search..." />
-          <!-- used for Pets/Weapons (category) -->
           <select id="pickerFilterSelect" style="display:none"></select>
           <div class="modal-count" id="pickerCount">—</div>
         </div>
-        <!-- used for Characters (meta/skill type) -->
         <div class="filter-pills" id="pickerFilterPills" style="display:none"></div>
       </div>
 
       <div class="modal-grid" id="pickerGrid"></div>
+    </div>
+  </div>
+
+  <!-- Loadout Details Modal -->
+  <div class="modal" id="loadoutModal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="Loadout Details">
+      <div class="modal-top">
+        <div>
+          <h3 id="loadoutModalTitle">Loadout Details</h3>
+          <p id="loadoutModalSub">Full BR / CS details for your selected loadout.</p>
+        </div>
+        <button class="icon-btn" id="loadoutClose" aria-label="Close loadout details" title="Close">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <div class="ld-wrap">
+        <div class="ld-head">
+          <div class="ld-img"><img id="ldImg" alt="Loadout" /></div>
+          <div class="ld-title">
+            <b id="ldName">—</b>
+            <span id="ldHint">BR and CS effects (full text)</span>
+          </div>
+        </div>
+
+        <details class="ld-block" open>
+          <summary>
+            BR
+            <span class="ld-pill">Battle Royale</span>
+          </summary>
+          <div class="ld-text" id="ldBR">—</div>
+        </details>
+
+        <details class="ld-block" open>
+          <summary>
+            CS
+            <span class="ld-pill">Clash Squad</span>
+          </summary>
+          <div class="ld-text" id="ldCS">—</div>
+        </details>
+      </div>
     </div>
   </div>
 
@@ -980,28 +1070,10 @@
     }
 
     /***********************
-     * Sidebar + Topbar UX
+     * Sidebar
      ***********************/
     const sidebar = document.getElementById('sidebar');
-    const burger = document.getElementById('burger');
-    const backdrop = document.getElementById('backdrop');
 
-    function openSidebar(){
-      sidebar.classList.add('open');
-      backdrop.classList.add('show');
-    }
-    function closeSidebar(){
-      sidebar.classList.remove('open');
-      backdrop.classList.remove('show');
-    }
-
-    burger?.addEventListener('click', () => {
-      if (sidebar.classList.contains('open')) closeSidebar();
-      else openSidebar();
-    });
-    backdrop?.addEventListener('click', closeSidebar);
-
-    // desktop collapse toggle (in header)
     (function initSidebarCollapse(){
       const key = 'ff_sidebar_collapsed_v1';
       const saved = localStorage.getItem(key);
@@ -1027,7 +1099,6 @@
       });
     })();
 
-    // highlight active nav based on filename
     (function setActiveNav(){
       const here = (location.pathname.split('/').pop() || 'dashboard.html').toLowerCase();
       document.querySelectorAll('.nav-item').forEach(a => {
@@ -1036,7 +1107,6 @@
       });
     })();
 
-    // sidebar search filters nav items
     document.getElementById('searchInput')?.addEventListener('input', (e) => {
       const q = (e.target.value || '').toLowerCase().trim();
       document.querySelectorAll('#nav .nav-item').forEach(a => {
@@ -1052,15 +1122,13 @@
       character: { url:'https://neptuneg1.github.io/freefire-caster/character.json', items:[], selected:0 },
       pet:       { url:'https://neptuneg1.github.io/freefire-caster/pet.json',       items:[], selected:0 },
       weapon:    { url:'https://neptuneg1.github.io/freefire-caster/weapon.json',    items:[], selected:0 },
-      // UPDATED: new loadout.json format (details.br/details.cs are strings)
       loadout:   { url:'https://neptuneg1.github.io/freefire-caster/loadout.json',   items:[], selected:0 },
     };
 
-    // filter state per popup
     const FILTER_STATE = {
-      character: 'all', // all | brmeta | csmeta | active | passive
-      pet: 'all',       // all | <category>
-      weapon: 'all',    // all | <category>
+      character: 'all',
+      pet: 'all',
+      weapon: 'all',
       loadout: 'all'
     };
 
@@ -1077,7 +1145,6 @@
       if (type === 'pet'){
         return norm(item.category || item.type || item.pet_type || item.group || item.role || 'Other') || 'Other';
       }
-      // weapon
       return norm(item.category || item.type || item.weapon_type || item.class || item.group || 'Other') || 'Other';
     }
 
@@ -1102,8 +1169,7 @@
         return (t ? t : '—') + (d ? ` — ${d}` : '');
       }
 
-      // ✅ UPDATED for new loadout.json:
-      // loadout.details.br and loadout.details.cs are already formatted strings
+      // loadout: show only headline (quick view), full in modal
       if (type === 'loadout'){
         const details = item.details || {};
         const br = safeText(details.br || '');
@@ -1266,7 +1332,6 @@
           renderPickerGrid();
         };
       } else {
-        // loadout: no category filter/pills
         pickerFilterPills.style.display = 'none';
         pickerFilterSelect.style.display = 'none';
       }
@@ -1278,7 +1343,6 @@
       if (currentPickerType === 'character'){
         const f = FILTER_STATE.character || 'all';
         if (f === 'all') return true;
-
         if (f === 'brmeta') return normLower(it.meta || 'no') === 'yes';
         if (f === 'csmeta') return normLower(it.cs_meta || 'no') === 'yes';
         if (f === 'active') return normLower(it.skill_type || '') !== 'passive';
@@ -1298,7 +1362,6 @@
         return getCategory('weapon', it) === fw;
       }
 
-      // loadout
       return true;
     }
 
@@ -1312,8 +1375,6 @@
         if (!q) return true;
 
         const name = safeText(it?.name).toLowerCase();
-
-        // UPDATED: include loadout.details text in searching
         const dbr = safeText(it?.details?.br || '');
         const dcs = safeText(it?.details?.cs || '');
 
@@ -1358,6 +1419,51 @@
 
     document.querySelectorAll('[data-open]').forEach(btn => {
       btn.addEventListener('click', () => openPicker(btn.getAttribute('data-open')));
+    });
+
+    /***********************
+     * Loadout Details Modal
+     ***********************/
+    const loadoutModal = document.getElementById('loadoutModal');
+    const loadoutClose = document.getElementById('loadoutClose');
+    const loadoutDetailsBtn = document.getElementById('loadoutDetailsBtn');
+    const loadoutDescEl = document.getElementById('loadoutDesc');
+
+    function getSelectedLoadout(){
+      const list = DATA.loadout.items || [];
+      const idx = Number(DATA.loadout.selected || 0);
+      return list[idx] || list[0] || null;
+    }
+
+    function openLoadoutDetails(){
+      const it = getSelectedLoadout();
+      if (!it) return;
+
+      document.getElementById('ldImg').src = pickImg(it);
+      document.getElementById('ldName').textContent = safeText(it.name || '—');
+
+      const br = safeText(it?.details?.br || '—').trim() || '—';
+      const cs = safeText(it?.details?.cs || '—').trim() || '—';
+
+      document.getElementById('ldBR').textContent = br;
+      document.getElementById('ldCS').textContent = cs;
+
+      loadoutModal.classList.add('show');
+      loadoutModal.setAttribute('aria-hidden','false');
+    }
+
+    function closeLoadoutDetails(){
+      loadoutModal.classList.remove('show');
+      loadoutModal.setAttribute('aria-hidden','true');
+    }
+
+    loadoutDetailsBtn?.addEventListener('click', openLoadoutDetails);
+    loadoutDescEl?.addEventListener('click', openLoadoutDetails);
+    loadoutClose?.addEventListener('click', closeLoadoutDetails);
+    loadoutModal?.addEventListener('click', (e) => { if (e.target === loadoutModal) closeLoadoutDetails(); });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && loadoutModal.classList.contains('show')) closeLoadoutDetails();
     });
 
     /***********************
