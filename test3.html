@@ -790,8 +790,7 @@
 
     /* ===== Map Image Viewer Modal ===== */
     .modal-card.map-card{
-      width: min(1320px, 100%);
-      max-height: min(88vh, 920px);
+      height: min(88vh, 920px);
     }
     .map-toolbar{
       padding: 12px 14px;
@@ -835,6 +834,7 @@
       overflow:hidden;
       touch-action: none; /* required for pointer/touch pan+pinch */
       border-top: 1px solid rgba(255,255,255,.08);
+      min-height: 520px;
     }
     .map-viewport::after{
       content:"";
@@ -852,6 +852,9 @@
       pointer-events:none; /* let viewport receive pointer events */
       will-change: transform;
       filter: saturate(1.02) contrast(1.02);
+      display:block;
+      max-width:none;
+      max-height:none;
     }
   </style>
 </head>
@@ -1182,7 +1185,7 @@
       </div>
 
       <div class="map-viewport" id="mapViewport">
-        <img id="mapImg" class="map-img" alt="Map" />
+        <img id="mapImg" class="map-img" alt="Map" referrerpolicy="no-referrer" crossorigin="anonymous" />
       </div>
     </div>
   </div>
@@ -1747,7 +1750,8 @@
     });
 
     mapImg.addEventListener('error', () => {
-      setStatus('Failed to load map image.');
+      setStatus('Failed to load map image (blocked/404). Try referrerpolicy or self-host images.');
+      console.error('Map image failed:', mapImg.src);
     });
 
     mapImgSelect.addEventListener('change', () => {
