@@ -18,7 +18,6 @@
       --panel: rgba(20, 26, 38, .72);
       --panel2: rgba(14, 18, 28, .70);
       --line: rgba(255,255,255,.08);
-      --line2: rgba(255,255,255,.12);
       --ink:#f4f6ff;
       --muted:#aab1c5;
 
@@ -48,8 +47,9 @@
         linear-gradient(180deg, var(--bg), var(--bg2));
       overflow-x:hidden;
     }
+    body.modal-open{ overflow:hidden; }
 
-    /* subtle “arc” accents */
+    /* subtle arcs */
     body::before, body::after{
       content:"";
       position:fixed;
@@ -245,7 +245,7 @@
     .icon-btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.08)}
     .icon-btn svg{width:18px;height:18px;opacity:.92}
 
-    /* Mobile burger (opens overlay sidebar) */
+    /* Mobile burger */
     .burger{display:none;}
 
     .search{
@@ -322,7 +322,7 @@
       box-shadow: 0 0 0 3px rgba(255,77,77,.10);
     }
 
-    /* Content Grid (Center + Right) */
+    /* Content Grid */
     .content{
       display:grid;
       grid-template-columns: 1fr var(--right-w);
@@ -442,7 +442,7 @@
     .cta:hover{transform: translateY(-1px); box-shadow: 0 0 0 3px rgba(255,189,89,.10)}
     .cta svg{width:16px;height:16px}
 
-    /* Stat Tiles Row */
+    /* Tiles Row */
     .tiles{
       display:grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -486,7 +486,7 @@
       white-space:nowrap;
     }
 
-    /* Quick View (right) */
+    /* Quick View */
     .qv{
       padding: 12px 14px 14px 14px;
       display:flex;
@@ -528,6 +528,57 @@
       outline:none;
     }
 
+    /* NEW: Character picker button (replaces dropdown) */
+    .picker-btn{
+      width:100%;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(0,0,0,.22);
+      color: var(--ink);
+      border: 1px solid rgba(255,255,255,.12);
+      cursor:pointer;
+      transition:.2s ease;
+    }
+    .picker-btn:hover{
+      background: rgba(255,255,255,.06);
+      border-color: rgba(255,189,89,.22);
+      box-shadow: 0 0 0 3px rgba(255,189,89,.08);
+    }
+    .picker-btn .left{
+      min-width:0;
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .picker-btn .mini{
+      width:28px;height:28px;border-radius:10px;
+      background: linear-gradient(135deg, rgba(255,189,89,.22), rgba(77,211,255,.14));
+      border:1px solid rgba(255,255,255,.10);
+      flex:0 0 auto;
+      overflow:hidden;
+      display:grid;place-items:center;
+      font-family: Orbitron, sans-serif;
+      color: var(--brand);
+      font-size:.8rem;
+    }
+    .picker-btn .name{
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 210px;
+      font-weight:700;
+    }
+    .picker-btn .hint{
+      color: var(--muted);
+      font-weight:700;
+      font-size:.8rem;
+      white-space:nowrap;
+    }
+
     .preview{
       margin-top:10px;
       border-radius: 16px;
@@ -535,14 +586,13 @@
       border: 1px solid rgba(255,255,255,.08);
       overflow:hidden;
     }
-    /* FIX: fit image instead of cropping */
     .preview img{
       width:100%;
       height: 150px;
-      object-fit: contain;     /* <= changed from cover */
+      object-fit: contain;
       display:block;
       background: rgba(255,255,255,.04);
-      padding: 8px;            /* helps look nicer when letterboxed */
+      padding: 8px;
     }
     .preview .info{ padding: 10px; }
     .preview .info b{
@@ -576,17 +626,272 @@
     }
     .backdrop.show{ opacity:1; pointer-events:auto; }
 
-    /* Responsive */
-    @media (max-width: 1180px){
-      :root{ --right-w: 320px; }
-      .tiles{grid-template-columns: repeat(2, minmax(0, 1fr));}
+    /* ===== NEW: Character Modal Picker ===== */
+    .modal-backdrop{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.65);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index: 80;
+      padding: 16px;
     }
+    .modal-backdrop.show{ display:flex; }
+
+    .modal{
+      width: min(980px, 96vw);
+      max-height: 88vh;
+      background: rgba(14, 18, 28, .86);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 28px 90px rgba(0,0,0,.65);
+      overflow:hidden;
+    }
+    .modal-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.18);
+    }
+    .modal-head .ttl{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      min-width:0;
+    }
+    .modal-head .ttl b{
+      font-family: Orbitron, sans-serif;
+      letter-spacing:.6px;
+      color: var(--brand);
+      font-size: 1.02rem;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .modal-head .ttl span{
+      color: var(--muted);
+      font-size:.82rem;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .modal-close{
+      width:42px;height:42px;border-radius:14px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      color: var(--ink);
+      cursor:pointer;
+      display:grid;place-items:center;
+      transition:.2s ease;
+    }
+    .modal-close:hover{
+      background: rgba(255,255,255,.08);
+      border-color: rgba(255,189,89,.20);
+      box-shadow: 0 0 0 3px rgba(255,189,89,.08);
+    }
+    .modal-close svg{width:18px;height:18px;opacity:.95}
+
+    .modal-body{
+      padding: 12px;
+      overflow:auto;
+      max-height: calc(88vh - 66px);
+    }
+
+    .modal-cols{
+      display:grid;
+      grid-template-columns: 1fr 300px;
+      gap: 12px;
+      align-items:start;
+    }
+
+    .modal-controls{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom: 10px;
+    }
+
+    .modal-search{
+      flex:1;
+      min-width: 240px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 10px 12px;
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 14px;
+    }
+    .modal-search input{
+      width:100%;
+      background: transparent;
+      border:0;
+      outline:none;
+      color: var(--ink);
+      font-size:.95rem;
+    }
+    .modal-search input::placeholder{color: rgba(170,177,197,.75)}
+
+    .filter-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+    }
+    .fchip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.10);
+      color: rgba(244,246,255,.88);
+      font-size: .82rem;
+      cursor:pointer;
+      user-select:none;
+      transition:.18s ease;
+      white-space:nowrap;
+    }
+    .fchip:hover{background: rgba(255,255,255,.07)}
+    .fchip.active{
+      border-color: rgba(255,189,89,.28);
+      box-shadow: 0 0 0 3px rgba(255,189,89,.08);
+      background: linear-gradient(135deg, rgba(255,189,89,.16), rgba(77,211,255,.08));
+    }
+    .fchip .dot{
+      width:8px;height:8px;border-radius:999px;
+      background: var(--accent);
+      box-shadow: 0 0 14px rgba(77,211,255,.22);
+    }
+
+    .char-grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+      gap: 10px;
+    }
+    .char-card{
+      border-radius: 14px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+      padding: 8px;
+      cursor:pointer;
+      transition: .16s ease;
+      outline:none;
+      position:relative;
+    }
+    .char-card:hover{transform: translateY(-1px); background: rgba(255,255,255,.06)}
+    .char-card.selected{
+      border-color: rgba(255,189,89,.30);
+      box-shadow: 0 0 0 3px rgba(255,189,89,.10);
+    }
+    .char-card img{
+      width:100%;
+      aspect-ratio: 3/4;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 2px solid transparent;
+      background: rgba(0,0,0,.15);
+      display:block;
+    }
+    .char-card img.active{ border-color: #00d2ff; }
+    .char-card img.passive{ border-color: #ff59c7; }
+
+    .char-card .nm{
+      margin-top: 6px;
+      font-size: .78rem;
+      color: rgba(244,246,255,.92);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      text-align:center;
+    }
+
+    .detail{
+      border-radius: 16px;
+      background: rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+      position: sticky;
+      top: 8px;
+    }
+    .detail .ph{
+      padding: 12px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      background: rgba(255,255,255,.04);
+    }
+    .detail .ph b{
+      font-family: Orbitron, sans-serif;
+      color: var(--brand);
+      letter-spacing:.6px;
+      font-size: .95rem;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 220px;
+    }
+    .detail .ph span{
+      color: var(--muted);
+      font-size:.78rem;
+      white-space:nowrap;
+    }
+    .detail .body{ padding: 12px; }
+    .detail img{
+      width:100%;
+      height: 220px;
+      object-fit: contain;
+      background: rgba(255,255,255,.04);
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.08);
+      padding: 8px;
+      display:block;
+      margin-bottom: 10px;
+    }
+    .detail p{
+      margin: 0 0 8px 0;
+      color: rgba(244,246,255,.90);
+      font-size: .86rem;
+      line-height: 1.25rem;
+    }
+    .detail p small{ color: var(--muted); }
+
+    .detail .pick{
+      margin-top:10px;
+      width:100%;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,189,89,.25);
+      background: linear-gradient(135deg, rgba(255,189,89,.18), rgba(255,119,51,.10));
+      cursor:pointer;
+      transition:.2s ease;
+      text-decoration:none;
+      font-weight:800;
+      color: var(--ink);
+      font-size: .92rem;
+    }
+    .detail .pick:hover{transform: translateY(-1px); box-shadow: 0 0 0 3px rgba(255,189,89,.10)}
+
     @media (max-width: 980px){
       .content{grid-template-columns: 1fr;}
       .right{order: 2}
       .center{order: 1}
 
-      /* mobile shows burger */
       .burger{display:grid;}
       .sidebar{
         position: fixed;
@@ -597,17 +902,75 @@
         z-index: 30;
       }
       .sidebar.open{transform: translateX(0)}
-
-      /* ignore desktop collapsed on mobile */
       body.sb-collapsed .sidebar{ width: var(--sb-w); }
-
       .app{padding: 14px;}
+
+      .modal-cols{ grid-template-columns: 1fr; }
+      .detail{ position: static; }
+    }
+
+    @media (max-width: 1180px){
+      :root{ --right-w: 320px; }
+      .tiles{grid-template-columns: repeat(2, minmax(0, 1fr));}
     }
   </style>
 </head>
 
 <body>
   <div class="backdrop" id="backdrop"></div>
+
+  <!-- NEW: Character Picker Modal -->
+  <div class="modal-backdrop" id="charModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="charModalTitle">
+      <div class="modal-head">
+        <div class="ttl">
+          <b id="charModalTitle">Quick View — Pick a Character</b>
+          <span class="muted">Search + filter, then click to preview/select</span>
+        </div>
+        <button class="modal-close" id="charModalClose" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-cols">
+          <div>
+            <div class="modal-controls">
+              <div class="modal-search">
+                <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;opacity:.85">
+                  <path d="M21 21l-4.3-4.3m1.3-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <input id="charModalSearch" placeholder="Search character name..." autocomplete="off" />
+              </div>
+
+              <div class="filter-row" aria-label="Filters">
+                <span class="fchip active" data-meta="all"><span class="dot"></span>All</span>
+                <span class="fchip" data-meta="meta"><span class="dot" style="background:var(--brand)"></span>Meta (BR)</span>
+                <span class="fchip" data-meta="cs_meta"><span class="dot" style="background:var(--brand2)"></span>Meta (CS)</span>
+                <span class="fchip" data-skill="all"><span class="dot" style="background:var(--accent)"></span>Any</span>
+                <span class="fchip" data-skill="Active"><span class="dot" style="background:#00d2ff"></span>Active</span>
+                <span class="fchip" data-skill="Passive"><span class="dot" style="background:#ff59c7"></span>Passive</span>
+              </div>
+            </div>
+
+            <div class="char-grid" id="charModalGrid"></div>
+          </div>
+
+          <aside class="detail" id="charModalDetail">
+            <div class="ph">
+              <b id="charDetailName">—</b>
+              <span id="charDetailTag">—</span>
+            </div>
+            <div class="body" id="charDetailBody">
+              <img id="charDetailImg" src="https://i.imgur.com/qXFpizS.jpg" alt="preview"/>
+              <p><small>Hover / tap a card to see details here.</small></p>
+            </div>
+            <button class="pick" id="charDetailPickBtn" type="button">Use this character</button>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div class="app">
     <!-- SIDEBAR -->
@@ -792,7 +1155,16 @@
                   <span>Character</span>
                   <span class="muted" id="charTag">—</span>
                 </label>
-                <select id="characterSelect"></select>
+
+                <!-- REPLACED dropdown with modal picker button -->
+                <button class="picker-btn" id="openCharPicker" type="button">
+                  <span class="left">
+                    <span class="mini" id="charMini">FF</span>
+                    <span class="name" id="charPickName">Select a character</span>
+                  </span>
+                  <span class="hint">Browse</span>
+                </button>
+
                 <div class="preview" id="characterPreview"></div>
               </div>
 
@@ -855,18 +1227,10 @@
     const backdrop = document.getElementById('backdrop');
     const collapseBtn = document.getElementById('collapseBtn');
 
-    function isMobile(){
-      return window.matchMedia('(max-width: 980px)').matches;
-    }
+    function isMobile(){ return window.matchMedia('(max-width: 980px)').matches; }
 
-    function openSidebar(){
-      sidebar.classList.add('open');
-      backdrop.classList.add('show');
-    }
-    function closeSidebar(){
-      sidebar.classList.remove('open');
-      backdrop.classList.remove('show');
-    }
+    function openSidebar(){ sidebar.classList.add('open'); backdrop.classList.add('show'); }
+    function closeSidebar(){ sidebar.classList.remove('open'); backdrop.classList.remove('show'); }
 
     burger?.addEventListener('click', () => {
       if (sidebar.classList.contains('open')) closeSidebar();
@@ -876,26 +1240,18 @@
 
     function applyCollapsedFromStorage(){
       const v = localStorage.getItem('ff_sb_collapsed');
-      if (v === '1') document.body.classList.add('sb-collapsed');
-      else document.body.classList.remove('sb-collapsed');
+      document.body.classList.toggle('sb-collapsed', v === '1');
     }
-
     function toggleCollapsed(){
-      // only for desktop
       if (isMobile()) return;
       document.body.classList.toggle('sb-collapsed');
       localStorage.setItem('ff_sb_collapsed', document.body.classList.contains('sb-collapsed') ? '1' : '0');
     }
-
     collapseBtn?.addEventListener('click', toggleCollapsed);
-    window.addEventListener('resize', () => {
-      // If switching to mobile, ensure overlay closed
-      if (isMobile()) closeSidebar();
-    });
-
+    window.addEventListener('resize', () => { if (isMobile()) closeSidebar(); });
     applyCollapsedFromStorage();
 
-    // highlight active nav based on filename
+    // active nav
     (function setActiveNav(){
       const here = (location.pathname.split('/').pop() || 'dashboard.html').toLowerCase();
       document.querySelectorAll('.nav-item').forEach(a => {
@@ -904,7 +1260,7 @@
       });
     })();
 
-    // sidebar search filters nav items
+    // top search filters nav
     document.getElementById('searchInput')?.addEventListener('input', (e) => {
       const q = (e.target.value || '').toLowerCase().trim();
       document.querySelectorAll('#nav .nav-item').forEach(a => {
@@ -914,7 +1270,7 @@
     });
 
     /***********************
-     * Quick View: Data + UI
+     * Quick View helpers
      ***********************/
     const characterData = [];
     const petData = [];
@@ -939,7 +1295,6 @@
       const sel = document.getElementById(selectId);
       const prev = document.getElementById(previewId);
       const tag = document.getElementById(tagId);
-
       if (!sel || !prev) return;
 
       sel.innerHTML = data.map((it, i) => `<option value="${i}">${safeText(it.name || '—')}</option>`).join('');
@@ -962,6 +1317,230 @@
       if (!res.ok) throw new Error('Fetch failed: ' + url);
       return await res.json();
     }
+
+    /***********************
+     * NEW: Character Modal Picker Logic
+     ***********************/
+    const charModal = document.getElementById('charModal');
+    const charModalClose = document.getElementById('charModalClose');
+    const openCharPicker = document.getElementById('openCharPicker');
+
+    const charModalGrid = document.getElementById('charModalGrid');
+    const charModalSearch = document.getElementById('charModalSearch');
+
+    const charDetailName = document.getElementById('charDetailName');
+    const charDetailTag = document.getElementById('charDetailTag');
+    const charDetailImg = document.getElementById('charDetailImg');
+    const charDetailBody = document.getElementById('charDetailBody');
+    const charDetailPickBtn = document.getElementById('charDetailPickBtn');
+
+    const characterPreview = document.getElementById('characterPreview');
+    const charTag = document.getElementById('charTag');
+
+    const charPickName = document.getElementById('charPickName');
+    const charMini = document.getElementById('charMini');
+
+    let selectedCharIndex = -1;         // in characterData
+    let hoveredCharIndex = -1;          // in characterData
+    const charFilter = { meta: 'all', skill: 'all', q: '' };
+
+    function isMetaYes(v){ return (v || 'no') === 'yes'; }
+
+    function getCharTagText(c){
+      // show useful tag in the dashboard chip
+      if (!c) return '—';
+      if (c.meta !== undefined || c.cs_meta !== undefined){
+        if (isMetaYes(c.meta)) return 'meta';
+        if (isMetaYes(c.cs_meta)) return 'cs_meta';
+      }
+      return c.role || c.skill_type || '—';
+    }
+
+    function showCharDetail(idx){
+      const c = characterData[idx];
+      if (!c) return;
+
+      hoveredCharIndex = idx;
+
+      charDetailName.textContent = safeText(c.name || '—');
+      charDetailTag.textContent = getCharTagText(c);
+      charDetailImg.src = c.image_url || 'https://i.imgur.com/qXFpizS.jpg';
+      charDetailImg.alt = safeText(c.name || 'preview');
+
+      const skillType = safeText(c.skill_type || '—');
+      const skill = safeText(c.skill || '');
+      const desc = safeText(c.description || '');
+      const role = safeText(c.role || 'N/A');
+
+      charDetailBody.innerHTML = `
+        <img id="charDetailImg" src="${c.image_url || 'https://i.imgur.com/qXFpizS.jpg'}" alt="${safeText(c.name || 'preview')}" />
+        <p><small>${skillType} Skill</small><br><b>${skill || '—'}</b></p>
+        <p>${desc || '<small>No description available.</small>'}</p>
+        <p><small>Role:</small> ${role}</p>
+      `;
+      // re-bind img reference (since we replaced body HTML)
+      // (safe enough in this small scope)
+    }
+
+    function applyCharacterSelection(idx){
+      const c = characterData[idx];
+      if (!c) return;
+      selectedCharIndex = idx;
+
+      // Update dashboard preview + tag
+      characterPreview.innerHTML = makePreview(c);
+      if (charTag) charTag.textContent = getCharTagText(c);
+
+      // Update button label
+      charPickName.textContent = safeText(c.name || 'Selected');
+      charMini.textContent = (safeText(c.name || 'FF').slice(0,2) || 'FF').toUpperCase();
+
+      // highlight selected in modal
+      renderCharGrid();
+    }
+
+    function openCharModal(){
+      if (!charModal) return;
+      charModal.classList.add('show');
+      charModal.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('modal-open');
+      // default detail to selected
+      const idx = selectedCharIndex >= 0 ? selectedCharIndex : 0;
+      showCharDetail(idx);
+      // focus search for speed
+      setTimeout(() => charModalSearch?.focus(), 0);
+    }
+
+    function closeCharModal(){
+      if (!charModal) return;
+      charModal.classList.remove('show');
+      charModal.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('modal-open');
+    }
+
+    // click outside modal closes
+    charModal?.addEventListener('click', (e) => {
+      if (e.target === charModal) closeCharModal();
+    });
+    charModalClose?.addEventListener('click', closeCharModal);
+    openCharPicker?.addEventListener('click', openCharModal);
+
+    // ESC closes
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && charModal?.classList.contains('show')) closeCharModal();
+    });
+
+    // Filters click
+    function setFilterActive(chips, predicate){
+      chips.forEach(c => c.classList.toggle('active', predicate(c)));
+    }
+
+    function renderCharGrid(){
+      if (!charModalGrid) return;
+      const q = (charFilter.q || '').toLowerCase().trim();
+
+      const filteredIdx = characterData
+        .map((c, idx) => ({ c, idx }))
+        .filter(({c}) => {
+          if (!c) return false;
+
+          // search
+          if (q && !safeText(c.name).toLowerCase().includes(q)) return false;
+
+          // meta filter
+          if (charFilter.meta === 'meta' && !isMetaYes(c.meta)) return false;
+          if (charFilter.meta === 'cs_meta' && !isMetaYes(c.cs_meta)) return false;
+
+          // skill filter
+          if (charFilter.skill !== 'all' && safeText(c.skill_type) !== charFilter.skill) return false;
+
+          return true;
+        });
+
+      charModalGrid.innerHTML = filteredIdx.map(({c, idx}) => {
+        const st = safeText(c.skill_type);
+        const imgClass = (st === 'Passive') ? 'passive' : 'active';
+        const sel = (idx === selectedCharIndex) ? 'selected' : '';
+        return `
+          <div class="char-card ${sel}" tabindex="0" data-idx="${idx}" title="${safeText(c.name)}">
+            <img src="${c.image_url || 'https://i.imgur.com/qXFpizS.jpg'}" alt="${safeText(c.name)}" class="${imgClass}" />
+            <div class="nm">${safeText(c.name)}</div>
+          </div>
+        `;
+      }).join('');
+
+      // bind events once per render
+      charModalGrid.querySelectorAll('.char-card').forEach(card => {
+        const idx = Number(card.getAttribute('data-idx'));
+
+        card.addEventListener('mouseenter', () => showCharDetail(idx));
+        card.addEventListener('focus', () => showCharDetail(idx));
+
+        // single click selects + closes (fast workflow)
+        card.addEventListener('click', () => {
+          applyCharacterSelection(idx);
+          closeCharModal();
+        });
+
+        // keyboard select
+        card.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            applyCharacterSelection(idx);
+            closeCharModal();
+          }
+        });
+      });
+
+      // if list is empty
+      if (!filteredIdx.length){
+        charModalGrid.innerHTML = `<div class="muted" style="padding:10px 4px;">No matches found.</div>`;
+      }
+    }
+
+    // filter chip handlers
+    (function bindCharFilterChips(){
+      const chips = Array.from(document.querySelectorAll('.fchip'));
+      if (!chips.length) return;
+
+      chips.forEach(ch => {
+        ch.addEventListener('click', () => {
+          const meta = ch.getAttribute('data-meta');
+          const skill = ch.getAttribute('data-skill');
+
+          if (meta){
+            charFilter.meta = meta;
+            // update active state for meta chips
+            setFilterActive(chips.filter(x => x.getAttribute('data-meta')), (x) => x.getAttribute('data-meta') === meta);
+          }
+          if (skill){
+            charFilter.skill = skill;
+            // update active state for skill chips
+            // if skill == all, still a chip; keep it active
+            setFilterActive(chips.filter(x => x.getAttribute('data-skill')), (x) => x.getAttribute('data-skill') === skill);
+          }
+
+          renderCharGrid();
+        });
+      });
+
+      // set initial active for skill group
+      const skillChips = chips.filter(x => x.getAttribute('data-skill'));
+      setFilterActive(skillChips, (x) => x.getAttribute('data-skill') === 'all');
+    })();
+
+    // search input handler
+    charModalSearch?.addEventListener('input', (e) => {
+      charFilter.q = e.target.value || '';
+      renderCharGrid();
+    });
+
+    // “Use this character” button (uses whatever is in detail, or selected)
+    charDetailPickBtn?.addEventListener('click', () => {
+      const idx = (hoveredCharIndex >= 0) ? hoveredCharIndex : (selectedCharIndex >= 0 ? selectedCharIndex : 0);
+      applyCharacterSelection(idx);
+      closeCharModal();
+    });
 
     /***********************
      * Init
@@ -1006,10 +1585,19 @@
         const hasMeta = characterData.some(x => x && (x.meta !== undefined || x.cs_meta !== undefined));
         document.getElementById('charMeta').textContent = hasMeta ? 'meta/cs_meta' : 'library';
 
-        // quick view wiring
-        wireSelect(characterData, 'characterSelect', 'characterPreview', 'charTag');
+        // Pet/Weapon keep dropdowns
         wireSelect(petData, 'petSelect', 'petPreview', 'petTag');
         wireSelect(weaponData, 'weaponSelect', 'weaponPreview', 'weaponTag');
+
+        // Character: default selection + modal grid
+        if (characterData.length){
+          applyCharacterSelection(0);
+          renderCharGrid();
+        } else {
+          // fallback UI
+          characterPreview.innerHTML = makePreview(null);
+          charPickName.textContent = 'No characters loaded';
+        }
 
       }catch(err){
         console.error(err);
