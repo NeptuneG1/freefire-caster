@@ -17,8 +17,6 @@
       --bg2:#0b1020;
       --panel: rgba(20, 26, 38, .72);
       --panel2: rgba(14, 18, 28, .70);
-      --card: rgba(255,255,255,.05);
-      --card2: rgba(255,255,255,.07);
       --line: rgba(255,255,255,.08);
       --line2: rgba(255,255,255,.12);
       --ink:#f4f6ff;
@@ -33,6 +31,7 @@
       --shadow: 0 22px 70px rgba(0,0,0,.55);
 
       --sb-w: 260px;
+      --sb-collapsed: 78px;
       --right-w: 350px;
     }
 
@@ -50,7 +49,7 @@
       overflow-x:hidden;
     }
 
-    /* subtle “arc” accents like the reference UI */
+    /* subtle “arc” accents */
     body::before, body::after{
       content:"";
       position:fixed;
@@ -94,6 +93,7 @@
       display:flex;
       flex-direction:column;
       position:relative;
+      transition: width .18s ease;
     }
 
     .brand{
@@ -102,6 +102,7 @@
       gap:10px;
       padding:16px 16px 10px 16px;
       border-bottom: 1px solid var(--line);
+      min-height: 64px;
     }
     .logo{
       width:36px;height:36px;border-radius:12px;
@@ -112,6 +113,7 @@
       letter-spacing:.5px;
       color:var(--brand);
       box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      flex: 0 0 auto;
     }
     .brand h1{
       margin:0;
@@ -148,6 +150,7 @@
       text-decoration:none;
       transition: .2s ease;
       cursor:pointer;
+      min-height: 44px;
     }
     .nav-item:hover{
       background: rgba(255,255,255,.05);
@@ -167,6 +170,11 @@
       flex: 0 0 auto;
     }
     .nav-ico svg{width:14px;height:14px;opacity:.9}
+    .nav-label{
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
 
     .sidebar-foot{
       margin-top:auto;
@@ -187,6 +195,19 @@
     .dot{
       width:8px;height:8px;border-radius:999px;background: var(--brand);
       box-shadow: 0 0 18px rgba(255,189,89,.35);
+    }
+
+    /* Desktop collapsed sidebar */
+    @media (min-width: 981px){
+      body.sb-collapsed .sidebar{ width: var(--sb-collapsed); }
+      body.sb-collapsed .brand{ padding:16px 10px 10px 10px; justify-content:center; }
+      body.sb-collapsed .brand > div:last-child{ display:none; }
+      body.sb-collapsed .nav{ padding:12px 10px; }
+      body.sb-collapsed .nav-item{ justify-content:center; padding:10px; }
+      body.sb-collapsed .nav-label{ display:none; }
+      body.sb-collapsed .sidebar-foot{ padding:12px 10px 14px 10px; text-align:center; }
+      body.sb-collapsed .sidebar-foot .pill{ justify-content:center; width:100%; padding:8px 0; }
+      body.sb-collapsed .sidebar-foot .pill span:last-child{ display:none; }
     }
 
     /* Main */
@@ -212,14 +233,20 @@
       gap:12px;
     }
 
-    .burger{
-      display:none;
+    .icon-btn{
       width:42px;height:42px;border-radius:14px;
       background: rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.10);
-      color:var(--ink);
+      display:grid;place-items:center;
       cursor:pointer;
+      transition:.2s ease;
+      color: var(--ink);
     }
+    .icon-btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.08)}
+    .icon-btn svg{width:18px;height:18px;opacity:.92}
+
+    /* Mobile burger (opens overlay sidebar) */
+    .burger{display:none;}
 
     .search{
       flex:1;
@@ -248,17 +275,6 @@
       gap:10px;
       flex:0 0 auto;
     }
-
-    .icon-btn{
-      width:42px;height:42px;border-radius:14px;
-      background: rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.10);
-      display:grid;place-items:center;
-      cursor:pointer;
-      transition:.2s ease;
-    }
-    .icon-btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.08)}
-    .icon-btn svg{width:18px;height:18px;opacity:.92}
 
     .userchip{
       display:flex;
@@ -338,7 +354,6 @@
       overflow:hidden;
     }
     .card-inner{padding:14px}
-    .card h2, .card h3, .card h4{margin:0}
     .muted{color: var(--muted)}
     .title{
       font-family: Orbitron, sans-serif;
@@ -384,10 +399,7 @@
       overflow:hidden;
       text-overflow: ellipsis;
     }
-    .chips{
-      display:flex; flex-wrap:wrap;
-      gap:8px;
-    }
+    .chips{ display:flex; flex-wrap:wrap; gap:8px; }
     .chip{
       display:inline-flex;
       align-items:center;
@@ -474,159 +486,20 @@
       white-space:nowrap;
     }
 
-    /* Chart */
-    .chart-wrap{padding:14px}
-    .row-head{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      margin-bottom:12px;
-      flex-wrap:wrap;
-    }
-    .row-head h3{
-      font-family: Orbitron, sans-serif;
-      font-size: 1.05rem;
-      letter-spacing:.6px;
-    }
-    .mini-select{
-      display:flex; align-items:center; gap:8px;
-      color: var(--muted);
-      font-size:.85rem;
-    }
-    .mini-select select{
-      background: rgba(0,0,0,.22);
-      border:1px solid rgba(255,255,255,.12);
-      border-radius: 12px;
-      color: var(--ink);
-      padding: 8px 10px;
-      outline:none;
-    }
-
-    /* SVG chart styling */
-    .svg-chart{
-      width:100%;
-      height: 120px;
-      display:block;
-      border-radius: 16px;
-      background: rgba(0,0,0,.18);
-      border: 1px solid rgba(255,255,255,.08);
-    }
-    .chart-note{
-      margin-top:10px;
-      color: var(--muted);
-      font-size:.82rem;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-
-    /* Table */
-    table{
-      width:100%;
-      border-collapse: collapse;
-      font-size:.9rem;
-    }
-    thead th{
-      text-align:left;
-      font-size:.78rem;
-      color: var(--muted);
-      font-weight:700;
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--line);
-    }
-    tbody td{
-      padding: 10px 12px;
-      border-bottom: 1px solid rgba(255,255,255,.06);
-      color: rgba(244,246,255,.90);
-    }
-    tbody tr:hover{background: rgba(255,255,255,.04)}
-    .pos{color: #71d083}
-    .neg{color: #ff6b6b}
-
-    /* Right column cards */
-    .kpi-title{
-      padding: 14px 14px 0 14px;
-    }
-    .kpi-title h3{
-      font-family: Orbitron, sans-serif;
-      letter-spacing:.6px;
-      font-size: 1.1rem;
-      margin:0;
-    }
-    .kpis{
-      display:grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap:10px;
-      padding: 12px 14px 14px 14px;
-    }
-    .kpi{
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.18);
-      padding: 12px;
-      min-width:0;
-    }
-    .kpi b{
-      display:block;
-      font-family: Orbitron, sans-serif;
-      color: var(--brand);
-      font-size: 1.05rem;
-      letter-spacing:.6px;
-      margin-bottom:6px;
-    }
-    .kpi span{
-      color: var(--muted);
-      font-size:.78rem;
-    }
-
-    .feed{
-      padding: 12px 14px 14px 14px;
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-    }
-    .msg{
-      display:flex;
-      gap:10px;
-      padding: 10px;
-      border-radius: 16px;
-      background: rgba(255,255,255,.05);
-      border: 1px solid rgba(255,255,255,.09);
-      align-items:flex-start;
-    }
-    .msg .pic{
-      width:34px;height:34px;border-radius: 14px;
-      background: rgba(255,255,255,.08);
-      border:1px solid rgba(255,255,255,.10);
-      flex:0 0 auto;
-    }
-    .msg .t{
-      min-width:0;
-    }
-    .msg .t b{
-      display:block;
-      font-size:.92rem;
-      margin-bottom:4px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow: ellipsis;
-    }
-    .msg .t p{
-      margin:0;
-      color: var(--muted);
-      font-size:.82rem;
-      line-height:1.25rem;
-    }
-
     /* Quick View (right) */
     .qv{
       padding: 12px 14px 14px 14px;
       display:flex;
       flex-direction:column;
       gap:10px;
+    }
+    .row-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:10px;
+      flex-wrap:wrap;
     }
     .qv .box{
       padding: 10px;
@@ -662,16 +535,16 @@
       border: 1px solid rgba(255,255,255,.08);
       overflow:hidden;
     }
+    /* FIX: fit image instead of cropping */
     .preview img{
       width:100%;
-      height: 140px;
-      object-fit: cover;
+      height: 150px;
+      object-fit: contain;     /* <= changed from cover */
       display:block;
       background: rgba(255,255,255,.04);
+      padding: 8px;            /* helps look nicer when letterboxed */
     }
-    .preview .info{
-      padding: 10px;
-    }
+    .preview .info{ padding: 10px; }
     .preview .info b{
       display:block;
       font-size: .95rem;
@@ -689,7 +562,21 @@
       overflow:hidden;
     }
 
-    /* Mobile / Responsive */
+    /* Backdrop + Mobile sidebar overlay */
+    .backdrop{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      opacity:0;
+      pointer-events:none;
+      transition:.22s ease;
+      z-index: 25;
+    }
+    .backdrop.show{ opacity:1; pointer-events:auto; }
+
+    /* Responsive */
     @media (max-width: 1180px){
       :root{ --right-w: 320px; }
       .tiles{grid-template-columns: repeat(2, minmax(0, 1fr));}
@@ -698,31 +585,22 @@
       .content{grid-template-columns: 1fr;}
       .right{order: 2}
       .center{order: 1}
-      :root{ --sb-w: 260px; }
-      .burger{display:grid; place-items:center}
+
+      /* mobile shows burger */
+      .burger{display:grid;}
       .sidebar{
         position: fixed;
         top: 18px; bottom: 18px; left: 18px;
+        width: var(--sb-w);
         transform: translateX(-110%);
         transition: .22s ease;
         z-index: 30;
       }
       .sidebar.open{transform: translateX(0)}
-      .backdrop{
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,.55);
-        backdrop-filter: blur(2px);
-        -webkit-backdrop-filter: blur(2px);
-        opacity:0;
-        pointer-events:none;
-        transition:.22s ease;
-        z-index: 25;
-      }
-      .backdrop.show{
-        opacity:1;
-        pointer-events:auto;
-      }
+
+      /* ignore desktop collapsed on mobile */
+      body.sb-collapsed .sidebar{ width: var(--sb-w); }
+
       .app{padding: 14px;}
     }
   </style>
@@ -743,83 +621,91 @@
       </div>
 
       <nav class="nav" id="nav">
-        <a class="nav-item active" href="dashboard.html" data-page="dashboard.html">
+        <a class="nav-item active" href="dashboard.html" data-page="dashboard.html" title="Dashboard">
           <span class="nav-ico">
             <svg viewBox="0 0 24 24" fill="none"><path d="M4 13h7V4H4v9Zm9 7h7V4h-7v16ZM4 20h7v-5H4v5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           </span>
-          Dashboard
+          <span class="nav-label">Dashboard</span>
         </a>
 
-        <a class="nav-item" href="char.html" data-page="char.html">
+        <a class="nav-item" href="char.html" data-page="char.html" title="Character Skills">
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4 0-7 2-7 4v2h14v-2c0-2-3-4-7-4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          Character Skills
+          <span class="nav-label">Character Skills</span>
         </a>
 
-        <a class="nav-item" href="pet.html" data-page="pet.html">
+        <a class="nav-item" href="pet.html" data-page="pet.html" title="Pets">
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M7 14c-1.7 0-3-1.3-3-3S5.3 8 7 8s3 1.3 3 3-1.3 3-3 3Zm10 0c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3ZM7 20c-2.8 0-5-1.8-5-4v-1h6v1c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2v-1h6v1c0 2.2-2.2 4-5 4H7Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          Pets
+          <span class="nav-label">Pets</span>
         </a>
 
-        <a class="nav-item" href="weapon.html" data-page="weapon.html">
+        <a class="nav-item" href="weapon.html" data-page="weapon.html" title="Weapons">
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M3 21l6-6m0 0 2 2 8-8-2-2-8 8Zm0 0-2-2 4-4 2 2-4 4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          Weapons
+          <span class="nav-label">Weapons</span>
         </a>
 
-        <a class="nav-item" href="map.html" data-page="map.html">
+        <a class="nav-item" href="map.html" data-page="map.html" title="Map">
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M10 6 4 8v14l6-2 4 2 6-2V6l-6 2-4-2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          Map
+          <span class="nav-label">Map</span>
         </a>
 
-        <a class="nav-item" href="split-view.html" data-page="split-view.html">
+        <a class="nav-item" href="split-view.html" data-page="split-view.html" title="Split View">
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16M4 12h16M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          Split View
+          <span class="nav-label">Split View</span>
         </a>
 
-        <a class="nav-item" href="clash-draft.html" data-page="clash-draft.html">
+        <a class="nav-item" href="clash-draft.html" data-page="clash-draft.html" title="Clash Squad Draft">
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h10M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          Clash Squad Draft
+          <span class="nav-label">Clash Squad Draft</span>
         </a>
 
-        <a class="nav-item" href="clash-data.html" data-page="clash-data.html">
+        <a class="nav-item" href="clash-data.html" data-page="clash-data.html" title="Clash Squad Data">
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19V5m0 14h16M8 17v-6m4 6V7m4 10v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          Clash Squad Data
+          <span class="nav-label">Clash Squad Data</span>
         </a>
 
-        <a class="nav-item" href="clash-compare.html" data-page="clash-compare.html">
+        <a class="nav-item" href="clash-compare.html" data-page="clash-compare.html" title="Clash Squad Comparison">
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M10 3v18M14 3v18M4 7h6M14 17h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          Clash Squad Comparison
+          <span class="nav-label">Clash Squad Comparison</span>
         </a>
 
-        <a class="nav-item" href="clash-report.html" data-page="clash-report.html">
+        <a class="nav-item" href="clash-report.html" data-page="clash-report.html" title="Clash Squad Team Report">
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          Clash Squad Team Report
+          <span class="nav-label">Clash Squad Team Report</span>
         </a>
 
-        <a class="nav-item" href="clash-store.html" data-page="clash-store.html">
+        <a class="nav-item" href="clash-store.html" data-page="clash-store.html" title="Clash Squad Store">
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16l-1 14H5L4 7Zm3 0 1-3h8l1 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          Clash Squad Store
+          <span class="nav-label">Clash Squad Store</span>
         </a>
 
-        <a class="nav-item" href="br_team2.html" data-page="br_team2.html">
+        <a class="nav-item" href="br_team2.html" data-page="br_team2.html" title="BR Data">
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M6 20V10m6 10V4m6 16v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          BR Data
+          <span class="nav-label">BR Data</span>
         </a>
 
-        <a class="nav-item" href="ff-update.html" data-page="ff-update.html">
+        <a class="nav-item" href="ff-update.html" data-page="ff-update.html" title="Free Fire Update">
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2v6m0 14v-6M4.9 4.9l4.2 4.2m10.8 10.8-4.2-4.2M2 12h6m14 0h-6M4.9 19.1l4.2-4.2m10.8-10.8-4.2 4.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          Free Fire Update
+          <span class="nav-label">Free Fire Update</span>
         </a>
       </nav>
 
       <div class="sidebar-foot">
-        <span class="pill"><span class="dot"></span> Neptune UI • V2</span>
+        <span class="pill"><span class="dot"></span><span>Neptune UI • V2</span></span>
       </div>
     </aside>
 
     <!-- MAIN -->
     <main class="main">
       <header class="topbar">
-        <button class="burger icon-btn" id="burger" aria-label="Open menu">
+        <!-- Desktop collapse toggle -->
+        <button class="icon-btn" id="collapseBtn" aria-label="Toggle sidebar (desktop)" title="Collapse sidebar">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M10 6 4 12l6 6M20 6v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <!-- Mobile menu toggle -->
+        <button class="icon-btn burger" id="burger" aria-label="Open menu" title="Open menu">
           <svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         </button>
 
@@ -827,18 +713,10 @@
           <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;opacity:.85">
             <path d="M21 21l-4.3-4.3m1.3-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
-          <input id="searchInput" placeholder="Search pages, tools, data..." />
+          <input id="searchInput" placeholder="Search pages..." />
         </div>
 
         <div class="top-actions">
-          <div class="icon-btn" title="Pinned">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M15 4 9 10v7l3-3h5l1-1-3-3V4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-          </div>
-
-          <div class="icon-btn" title="Notifications">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 7h18s-3 0-3-7Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10 19a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-          </div>
-
           <div class="userchip">
             <div class="avatar"></div>
             <div class="usertext">
@@ -896,131 +774,10 @@
               </div>
             </div>
           </div>
-
-          <div class="card">
-            <div class="chart-wrap">
-              <div class="row-head">
-                <h3 class="title">Activity Timeline</h3>
-                <div class="mini-select">
-                  <span class="muted">view</span>
-                  <select id="timelineMode">
-                    <option value="visits">Recent Visits</option>
-                    <option value="random">Demo Pattern</option>
-                  </select>
-                </div>
-              </div>
-
-              <svg class="svg-chart" id="timelineChart" viewBox="0 0 600 120" preserveAspectRatio="none" aria-label="Timeline chart"></svg>
-
-              <div class="chart-note">
-                <span>Tip: your latest page opens show up here (stored locally).</span>
-                <span class="muted" id="lastVisit">Last visit: —</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-inner">
-              <div class="row-head">
-                <h3 class="title">Quick Links</h3>
-                <span class="muted">Most-used pages</span>
-              </div>
-
-              <table>
-                <thead>
-                  <tr>
-                    <th>Tool</th>
-                    <th>Type</th>
-                    <th>Status</th>
-                    <th style="text-align:right">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>Clash Squad Draft</td>
-                    <td class="muted">Live tool</td>
-                    <td><span class="pos">Ready</span></td>
-                    <td style="text-align:right"><a class="cta" style="padding:8px 10px; border-radius:12px" href="clash-draft.html">Open</a></td>
-                  </tr>
-                  <tr>
-                    <td>Clash Squad Report</td>
-                    <td class="muted">Analytics</td>
-                    <td><span class="pos">Ready</span></td>
-                    <td style="text-align:right"><a class="cta" style="padding:8px 10px; border-radius:12px" href="clash-report.html">Open</a></td>
-                  </tr>
-                  <tr>
-                    <td>Weapons</td>
-                    <td class="muted">Reference</td>
-                    <td><span class="pos">Ready</span></td>
-                    <td style="text-align:right"><a class="cta" style="padding:8px 10px; border-radius:12px" href="weapon.html">Open</a></td>
-                  </tr>
-                  <tr>
-                    <td>Updates</td>
-                    <td class="muted">Patch info</td>
-                    <td><span class="muted">—</span></td>
-                    <td style="text-align:right"><a class="cta" style="padding:8px 10px; border-radius:12px" href="ff-update.html">Open</a></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
         </div>
 
         <!-- RIGHT -->
         <aside class="right">
-          <div class="card">
-            <div class="kpi-title">
-              <h3>Total Library</h3>
-              <p class="muted" style="margin:8px 0 0 0; font-size:.86rem;">Counts pulled from your JSON endpoints</p>
-            </div>
-            <div class="kpis">
-              <div class="kpi">
-                <b id="kpiChars">—</b>
-                <span>Characters</span>
-              </div>
-              <div class="kpi">
-                <b id="kpiPets">—</b>
-                <span>Pets</span>
-              </div>
-              <div class="kpi">
-                <b id="kpiWeapons">—</b>
-                <span>Weapons</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-inner" style="padding-bottom:0">
-              <div class="row-head">
-                <h3 class="title">Notes</h3>
-                <span class="muted">Dashboard feed</span>
-              </div>
-            </div>
-            <div class="feed">
-              <div class="msg">
-                <div class="pic"></div>
-                <div class="t">
-                  <b>Neptune Tip</b>
-                  <p>Use the sidebar search to jump fast during broadcast prep.</p>
-                </div>
-              </div>
-              <div class="msg">
-                <div class="pic"></div>
-                <div class="t">
-                  <b>Quick View</b>
-                  <p>Preview a character, pet, or weapon without leaving the dashboard.</p>
-                </div>
-              </div>
-              <div class="msg">
-                <div class="pic"></div>
-                <div class="t">
-                  <b>Style System</b>
-                  <p>This layout is reusable — we’ll wrap your other pages with the same shell next.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <div class="card">
             <div class="card-inner" style="padding-bottom:0">
               <div class="row-head">
@@ -1091,11 +848,16 @@
     }
 
     /***********************
-     * Sidebar + Topbar UX
+     * Sidebar Collapsible + Mobile Overlay
      ***********************/
     const sidebar = document.getElementById('sidebar');
     const burger = document.getElementById('burger');
     const backdrop = document.getElementById('backdrop');
+    const collapseBtn = document.getElementById('collapseBtn');
+
+    function isMobile(){
+      return window.matchMedia('(max-width: 980px)').matches;
+    }
 
     function openSidebar(){
       sidebar.classList.add('open');
@@ -1111,6 +873,27 @@
       else openSidebar();
     });
     backdrop?.addEventListener('click', closeSidebar);
+
+    function applyCollapsedFromStorage(){
+      const v = localStorage.getItem('ff_sb_collapsed');
+      if (v === '1') document.body.classList.add('sb-collapsed');
+      else document.body.classList.remove('sb-collapsed');
+    }
+
+    function toggleCollapsed(){
+      // only for desktop
+      if (isMobile()) return;
+      document.body.classList.toggle('sb-collapsed');
+      localStorage.setItem('ff_sb_collapsed', document.body.classList.contains('sb-collapsed') ? '1' : '0');
+    }
+
+    collapseBtn?.addEventListener('click', toggleCollapsed);
+    window.addEventListener('resize', () => {
+      // If switching to mobile, ensure overlay closed
+      if (isMobile()) closeSidebar();
+    });
+
+    applyCollapsedFromStorage();
 
     // highlight active nav based on filename
     (function setActiveNav(){
@@ -1128,101 +911,6 @@
         const txt = a.textContent.toLowerCase();
         a.style.display = (!q || txt.includes(q)) ? '' : 'none';
       });
-    });
-
-    // track visits locally for the timeline
-    function pushVisit(name){
-      const key = 'ff_visits_v1';
-      const now = Date.now();
-      const item = { name, ts: now };
-      let arr = [];
-      try { arr = JSON.parse(localStorage.getItem(key) || '[]'); } catch(e){}
-      arr.unshift(item);
-      arr = arr.slice(0, 18);
-      localStorage.setItem(key, JSON.stringify(arr));
-      localStorage.setItem('ff_last_visit', JSON.stringify(item));
-    }
-
-    // record “dashboard” visit
-    pushVisit('Dashboard');
-
-    // record clicks
-    document.querySelectorAll('.nav-item, .tile, .cta').forEach(el => {
-      el.addEventListener('click', () => {
-        const label = (el.textContent || '').trim().slice(0, 40) || 'Open';
-        pushVisit(label);
-      }, {capture:true});
-    });
-
-    /***********************
-     * Timeline SVG Chart
-     ***********************/
-    function renderTimeline(mode='visits'){
-      const svg = document.getElementById('timelineChart');
-      if (!svg) return;
-
-      let points = [];
-      if (mode === 'visits'){
-        let visits = [];
-        try { visits = JSON.parse(localStorage.getItem('ff_visits_v1') || '[]'); } catch(e){}
-        // Create a simple series from visit timestamps (recency -> higher)
-        const n = Math.max(12, Math.min(18, visits.length || 12));
-        const base = Date.now();
-        for (let i=0;i<n;i++){
-          const v = visits[i];
-          const age = v ? Math.min(1, (base - v.ts) / (1000*60*60*24*2)) : (i/n);
-          const y = 0.25 + (1-age) * 0.65; // newer -> higher
-          points.push(y);
-        }
-        if (!visits.length){
-          // fallback
-          points = [0.3,0.35,0.5,0.42,0.6,0.55,0.48,0.62,0.7,0.58,0.66,0.6];
-        }
-      } else {
-        points = [0.28,0.38,0.44,0.36,0.58,0.52,0.40,0.62,0.48,0.70,0.56,0.66,0.50,0.72,0.60,0.68];
-      }
-
-      const W = 600, H = 120;
-      const padX = 18, padY = 16;
-      const innerW = W - padX*2;
-      const innerH = H - padY*2;
-
-      const xs = points.map((_,i)=> padX + (innerW * (i/(points.length-1 || 1))));
-      const ys = points.map(v => padY + (innerH * (1 - v)));
-
-      // build path
-      const d = xs.map((x,i)=> `${i===0?'M':'L'} ${x.toFixed(1)} ${ys[i].toFixed(1)}`).join(' ');
-
-      // area path for glow
-      const area = `${d} L ${xs[xs.length-1].toFixed(1)} ${(H-padY).toFixed(1)} L ${xs[0].toFixed(1)} ${(H-padY).toFixed(1)} Z`;
-
-      svg.innerHTML = `
-        <defs>
-          <linearGradient id="g1" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stop-color="rgba(77,211,255,.9)"/>
-            <stop offset="55%" stop-color="rgba(255,189,89,.9)"/>
-            <stop offset="100%" stop-color="rgba(255,119,51,.9)"/>
-          </linearGradient>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="2.4" result="b"/>
-            <feMerge>
-              <feMergeNode in="b"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
-        </defs>
-
-        <path d="${area}" fill="rgba(77,211,255,.08)"></path>
-        <path d="${d}" fill="none" stroke="url(#g1)" stroke-width="2.6" filter="url(#glow)" stroke-linecap="round"></path>
-        ${xs.map((x,i)=>`
-          <circle cx="${x.toFixed(1)}" cy="${ys[i].toFixed(1)}" r="4.2" fill="rgba(0,0,0,.30)" stroke="rgba(255,255,255,.20)" stroke-width="1"></circle>
-          <circle cx="${x.toFixed(1)}" cy="${ys[i].toFixed(1)}" r="2.6" fill="rgba(255,189,89,.85)"></circle>
-        `).join('')}
-      `;
-    }
-
-    document.getElementById('timelineMode')?.addEventListener('change', (e) => {
-      renderTimeline(e.target.value);
     });
 
     /***********************
@@ -1260,7 +948,6 @@
         const item = data[idx] || data[0];
         prev.innerHTML = makePreview(item);
         if (tag){
-          // show meta/cs_meta if available, otherwise show role/type
           const meta = item?.meta ?? item?.cs_meta ?? item?.role ?? item?.type ?? '—';
           tag.textContent = safeText(meta);
         }
@@ -1294,18 +981,6 @@
         logout();
       });
 
-      // last visit label
-      try{
-        const lv = JSON.parse(localStorage.getItem('ff_last_visit') || 'null');
-        if (lv?.ts){
-          const d = new Date(lv.ts);
-          document.getElementById('lastVisit').textContent = 'Last visit: ' + d.toLocaleString();
-        }
-      }catch(e){}
-
-      // chart
-      renderTimeline(document.getElementById('timelineMode')?.value || 'visits');
-
       // data loads
       try{
         const [chars, pets, weapons] = await Promise.all([
@@ -1327,11 +1002,7 @@
         document.getElementById('petCount').textContent = p.toLocaleString();
         document.getElementById('weaponCount').textContent = w.toLocaleString();
 
-        document.getElementById('kpiChars').textContent = c.toLocaleString();
-        document.getElementById('kpiPets').textContent = p.toLocaleString();
-        document.getElementById('kpiWeapons').textContent = w.toLocaleString();
-
-        // meta badge if available (just detect field)
+        // meta badge detection
         const hasMeta = characterData.some(x => x && (x.meta !== undefined || x.cs_meta !== undefined));
         document.getElementById('charMeta').textContent = hasMeta ? 'meta/cs_meta' : 'library';
 
@@ -1342,7 +1013,6 @@
 
       }catch(err){
         console.error(err);
-        // graceful UI fail
         document.getElementById('charCount').textContent = '—';
         document.getElementById('petCount').textContent = '—';
         document.getElementById('weaponCount').textContent = '—';
