@@ -1,1352 +1,1353 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Clash Squad — Team Compare</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Free Fire Dashboard</title>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <!-- Supabase JS v2 (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
     :root{
-      --bg:#0e0e0e; --panel:#1b1b1b; --panel2:#141414;
-      --ink:#f5f5f5; --muted:#b9b9b9; --brand:#ffbd59; --brand2:#ff7733;
-      --line:#313131; --good:#71d083; --bad:#ff6b6b;
+      --bg:#07090f;
+      --bg2:#0b1020;
+      --panel: rgba(20, 26, 38, .72);
+      --panel2: rgba(14, 18, 28, .70);
+      --card: rgba(255,255,255,.05);
+      --card2: rgba(255,255,255,.07);
+      --line: rgba(255,255,255,.08);
+      --line2: rgba(255,255,255,.12);
+      --ink:#f4f6ff;
+      --muted:#aab1c5;
+
+      --brand:#ffbd59;
+      --brand2:#ff7733;
+      --accent:#4dd3ff;
+
+      --radius:16px;
+      --radius-lg:22px;
+      --shadow: 0 22px 70px rgba(0,0,0,.55);
+
+      --sb-w: 260px;
+      --right-w: 350px;
     }
+
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif}
-    header{position:sticky;top:0;z-index:5;background:#1f1f1f;border-bottom:3px solid var(--brand);padding:14px 16px}
-    h1{margin:0;font-size:1.1rem;letter-spacing:.3px;color:var(--brand)}
-    .user-controls{position:absolute;right:16px;top:12px;display:flex;gap:10px;align-items:center}
-    .chip{font-size:.85rem;color:#ddd}
-    .btn{background:var(--brand);color:var(--panel);border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
-    .btn:hover{background:#e6a74f}
-    .shell{max-width:1200px;margin:22px auto;padding:0 12px}
-
-    .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
-    .controls{display:flex;flex-wrap:wrap;gap:8px}
-    .controls label{display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);padding:6px 8px;border-radius:8px}
-    .controls select,.controls input[type="date"],.controls input[type="number"]{background:#212121;color:var(--brand);border:1px solid #3a3a3a;border-radius:6px;padding:6px 8px}
-    .muted{color:var(--muted);font-size:.9rem}
-
-    /* Regular section (kept for Overview KPIs only) */
-    .section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
-    .section h2{margin:0 0 10px;color:var(--brand)}
-
-    .grid2{display:grid;grid-template-columns:repeat(2,minmax(320px,1fr));gap:12px}
-    .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px}
-    .card h3{margin:0 0 6px;color:var(--brand2);font-size:1.0rem}
-    .kpis{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
-    .kpi{background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:5px 8px;font-size:.9rem}
-
-    table{width:100%;border-collapse:collapse;font-size:.92rem}
-    th,td{border-bottom:1px solid #2a2a2a;padding:6px 6px;vertical-align:top}
-    thead th{background:#191919;text-align:left;position:sticky;top:0}
-    .right{text-align:right}
-    .mono{font-variant-numeric:tabular-nums}
-    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#111;border:1px solid #2a2a2a;margin:2px;font-size:.85rem;color:#ddd}
-    .pill small{opacity:.8;font-size:.8em;margin-left:4px}
-    .icons{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-    .icons img{width:24px;height:24px;border-radius:6px;border:1px solid #333;background:#111;object-fit:cover}
-    .wl{font-weight:700;padding:2px 8px;border-radius:999px;display:inline-block}
-    .wl.W{background:#193e2b;color:var(--good);border:1px solid #245b3e}
-    .wl.L{background:#401e1e;color:var(--bad);border:1px solid #6b2c2c}
-    .caption{margin:4px 0 8px}
-    .tight{line-height:1.25}
-
-    /* Active Skill Impact deltas + loss logos */
-    .delta-pos{color:var(--good);font-weight:700}
-    .delta-neg{color:var(--bad);font-weight:700}
-    .opp-logos{display:inline-flex;gap:4px;align-items:center;margin-left:6px;vertical-align:middle}
-    .opp-logos img{width:18px;height:18px;border-radius:4px;border:1px solid #333;background:#111;object-fit:cover}
-    .opp-logos .logo-wrap{position:relative;display:inline-block}
-    .opp-logos .cnt{
-      position:absolute;right:-6px;bottom:-6px;background:#171717;border:1px solid #333;
-      border-radius:6px;padding:0 3px;font-size:10px;line-height:1.2;color:#ccc;
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: Roboto, system-ui, -apple-system, Segoe UI, Arial;
+      color:var(--ink);
+      background:
+        radial-gradient(900px 500px at 18% 12%, rgba(77,211,255,.15), transparent 60%),
+        radial-gradient(700px 420px at 85% 18%, rgba(255,189,89,.12), transparent 60%),
+        radial-gradient(900px 620px at 50% 110%, rgba(255,119,51,.10), transparent 60%),
+        linear-gradient(180deg, var(--bg), var(--bg2));
+      overflow-x:hidden;
     }
 
-    /* AI Prompt box */
-    .ai-actions{display:flex;gap:8px;align-items:center;margin-bottom:8px}
-    .ai-text{width:100%;min-height:220px;background:#121212;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:10px;font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;font-size:.85rem;white-space:pre-wrap}
+    /* subtle “arc” accents like the reference UI */
+    body::before, body::after{
+      content:"";
+      position:fixed;
+      inset:auto auto 0 0;
+      width:520px; height:520px;
+      border-radius:50%;
+      border:10px solid rgba(77,211,255,.14);
+      transform: translate(-45%, -35%);
+      filter: blur(.2px);
+      pointer-events:none;
+    }
+    body::after{
+      inset: -120px 0 auto auto;
+      width:420px; height:420px;
+      border:10px solid rgba(77,211,255,.10);
+      transform: translate(38%, 0%);
+    }
 
-    /* Accordions */
-    details.accordion{
-      background:var(--panel);
-      border:1px solid var(--line);
-      border-radius:12px;
-      margin-bottom:14px;
+    a{color:inherit}
+
+    /* App Layout */
+    .app{
+      height:100%;
+      display:flex;
+      gap:18px;
+      padding:18px;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+
+    /* Sidebar */
+    .sidebar{
+      width: var(--sb-w);
+      background: var(--panel2);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      position:relative;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:16px 16px 10px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .logo{
+      width:36px;height:36px;border-radius:12px;
+      background: linear-gradient(135deg, rgba(255,189,89,.25), rgba(77,211,255,.18));
+      border:1px solid rgba(255,255,255,.10);
+      display:grid;place-items:center;
+      font-family: Orbitron, sans-serif;
+      letter-spacing:.5px;
+      color:var(--brand);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    .brand h1{
+      margin:0;
+      font-family: Orbitron, sans-serif;
+      font-size: 1.05rem;
+      letter-spacing:.6px;
+    }
+    .brand small{
+      display:block;
+      color: var(--muted);
+      font-size:.78rem;
+      margin-top:2px;
+    }
+
+    .nav{
+      padding: 12px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      overflow:auto;
+    }
+    .nav::-webkit-scrollbar{width:10px}
+    .nav::-webkit-scrollbar-thumb{background: rgba(255,255,255,.08); border-radius:10px}
+    .nav::-webkit-scrollbar-track{background: transparent}
+
+    .nav-item{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 10px;
+      border-radius: 12px;
+      border:1px solid transparent;
+      color: var(--muted);
+      text-decoration:none;
+      transition: .2s ease;
+      cursor:pointer;
+    }
+    .nav-item:hover{
+      background: rgba(255,255,255,.05);
+      border-color: rgba(255,255,255,.08);
+      color: var(--ink);
+    }
+    .nav-item.active{
+      background: linear-gradient(135deg, rgba(255,189,89,.14), rgba(77,211,255,.09));
+      border-color: rgba(255,189,89,.22);
+      color: var(--ink);
+    }
+    .nav-ico{
+      width:26px;height:26px;border-radius:10px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.08);
+      display:grid;place-items:center;
+      flex: 0 0 auto;
+    }
+    .nav-ico svg{width:14px;height:14px;opacity:.9}
+
+    .sidebar-foot{
+      margin-top:auto;
+      padding:12px 14px 14px 14px;
+      border-top:1px solid var(--line);
+      color: var(--muted);
+      font-size:.82rem;
+    }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.09);
+    }
+    .dot{
+      width:8px;height:8px;border-radius:999px;background: var(--brand);
+      box-shadow: 0 0 18px rgba(255,189,89,.35);
+    }
+
+    /* Main */
+    .main{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      min-width: 0;
+      gap: 14px;
+    }
+
+    /* Topbar */
+    .topbar{
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      padding: 12px 14px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+
+    .burger{
+      display:none;
+      width:42px;height:42px;border-radius:14px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      color:var(--ink);
+      cursor:pointer;
+    }
+
+    .search{
+      flex:1;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 10px 12px;
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 14px;
+      min-width: 0;
+    }
+    .search input{
+      width:100%;
+      background: transparent;
+      border:0;
+      outline:none;
+      color: var(--ink);
+      font-size: .95rem;
+    }
+    .search input::placeholder{color: rgba(170,177,197,.75)}
+
+    .top-actions{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex:0 0 auto;
+    }
+
+    .icon-btn{
+      width:42px;height:42px;border-radius:14px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      display:grid;place-items:center;
+      cursor:pointer;
+      transition:.2s ease;
+    }
+    .icon-btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.08)}
+    .icon-btn svg{width:18px;height:18px;opacity:.92}
+
+    .userchip{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      max-width: 240px;
+    }
+    .avatar{
+      width:28px;height:28px;border-radius:10px;
+      background: linear-gradient(135deg, rgba(255,189,89,.30), rgba(77,211,255,.18));
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .usertext{min-width:0}
+    .usertext b{
+      display:block;
+      font-size:.92rem;
+      font-family: Orbitron, sans-serif;
+      color: var(--brand);
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      max-width: 170px;
+    }
+    .usertext span{display:block; font-size:.78rem; color: var(--muted)}
+
+    .logout{
+      color: rgba(255,255,255,.70);
+      text-decoration:none;
+      font-size:.85rem;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.04);
+      transition:.2s ease;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .logout:hover{
+      border-color: rgba(255,77,77,.35);
+      color: #ff8d8d;
+      box-shadow: 0 0 0 3px rgba(255,77,77,.10);
+    }
+
+    /* Content Grid (Center + Right) */
+    .content{
+      display:grid;
+      grid-template-columns: 1fr var(--right-w);
+      gap: 14px;
+      min-height: 0;
+      flex:1;
+    }
+    .center{
+      min-width:0;
+      display:flex;
+      flex-direction:column;
+      gap: 14px;
+    }
+    .right{
+      min-width:0;
+      display:flex;
+      flex-direction:column;
+      gap: 14px;
+    }
+
+    /* Cards */
+    .card{
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
       overflow:hidden;
     }
-    details.accordion > summary{
-      list-style:none;
-      cursor:pointer;
-      padding:12px 14px;
-      color:var(--brand);
-      font-weight:800;
-      background:linear-gradient(180deg,#1b1b1b 0%, #171717 100%);
-      user-select:none;
-      outline:none;
-      display:flex; align-items:center; gap:8px;
-      border-bottom:1px solid var(--line);
-    }
-    details.accordion > summary::-webkit-details-marker{display:none}
-    details.accordion > summary::after{
-      content:'▾';
-      margin-left:auto;
-      transition:transform .18s ease;
-      opacity:.9;
-    }
-    details.accordion[open] > summary::after{ transform:rotate(-180deg); }
-    details.accordion .accordion-body{ padding:12px; }
-
-    @media (max-width: 860px){
-      .grid2{grid-template-columns:1fr}
+    .card-inner{padding:14px}
+    .card h2, .card h3, .card h4{margin:0}
+    .muted{color: var(--muted)}
+    .title{
+      font-family: Orbitron, sans-serif;
+      letter-spacing: .6px;
     }
 
-    /* ===== New: Match card (vertical details + stacked player cards) ===== */
-    .matchCard{
-      display:grid;
-      grid-template-columns: 280px 1fr;
-      gap:12px;
-      background:#121212;
-      border:1px solid #272727;
-      border-radius:12px;
-      padding:10px;
+    /* Hero */
+    .hero{
+      position:relative;
+      height: 160px;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(90deg, rgba(0,0,0,.55), rgba(0,0,0,.10)),
+        url('https://i.imgur.com/qXFpizS.jpg') center/cover no-repeat;
     }
-    @media (max-width:980px){ .matchCard{grid-template-columns:1fr} }
+    .hero::after{
+      content:"";
+      position:absolute; inset:0;
+      background: radial-gradient(420px 220px at 55% 45%, rgba(255,189,89,.16), transparent 60%);
+      pointer-events:none;
+    }
+    .hero-content{
+      position:absolute;
+      left:16px; right:16px; bottom:14px;
+      display:flex;
+      align-items:flex-end;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .hero-title{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      min-width:0;
+    }
+    .hero-title h2{
+      font-family: Orbitron, sans-serif;
+      font-size: 1.55rem;
+      color: var(--brand);
+      text-shadow: 0 0 18px rgba(255,189,89,.20);
+      margin:0;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+    }
+    .chips{
+      display:flex; flex-wrap:wrap;
+      gap:8px;
+    }
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.28);
+      border: 1px solid rgba(255,255,255,.12);
+      color: rgba(244,246,255,.88);
+      font-size: .82rem;
+      white-space:nowrap;
+    }
+    .chip .mini-dot{
+      width:8px;height:8px;border-radius:999px;
+      background: var(--accent);
+      box-shadow: 0 0 16px rgba(77,211,255,.25);
+    }
 
-    .mInfo{display:flex;flex-direction:column;gap:6px}
-    .mRow{display:flex;gap:10px;align-items:center}
-    .mKey{width:86px;color:var(--muted);font-size:.88rem}
-    .mVal{font-size:.95rem;line-height:1.1}
-    .banBox{display:flex;gap:8px;align-items:center}
-    .banBox img{width:22px;height:22px;border-radius:5px;border:1px solid #333;background:#111;object-fit:cover}
-
-    .mPlayers{display:flex;flex-direction:column;gap:8px;align-content:start}
-
-    .pBadge{
-      display:grid;
-      grid-template-columns:44px 1fr auto;
+    .hero-actions{
+      display:flex;
       gap:10px;
       align-items:center;
-      background:#0f0f0f;
-      border:1px solid #2a2a2a;
-      border-radius:10px;
-      padding:6px 8px;
-      min-height:52px;
+      flex:0 0 auto;
     }
-    .pAct{width:44px;height:44px;border-radius:8px;border:1px solid #333;object-fit:cover;background:#0b0b0b}
-    .pMeta{min-width:0}
-    .pName{font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .pHero{font-size:11px;color:#cfcfcf;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .pPass{display:flex;gap:6px;align-items:center}
-    .pPass img{width:16px;height:16px;border-radius:3px;border:1px solid #333;background:#0b0b0b;object-fit:cover}
+    .cta{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,189,89,.25);
+      background: linear-gradient(135deg, rgba(255,189,89,.18), rgba(255,119,51,.10));
+      cursor:pointer;
+      transition:.2s ease;
+      text-decoration:none;
+      font-weight:700;
+      color: var(--ink);
+      font-size: .92rem;
+    }
+    .cta:hover{transform: translateY(-1px); box-shadow: 0 0 0 3px rgba(255,189,89,.10)}
+    .cta svg{width:16px;height:16px}
 
-    /* ===== New: Quick pick & pair buttons ===== */
-    .quickbar, .pairbar{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
-    .chipbtn, .pairbtn{
-      background:#111;border:1px solid #2a2a2a;color:#ddd;
-      border-radius:999px;padding:6px 10px;cursor:pointer;font-weight:700
+    /* Stat Tiles Row */
+    .tiles{
+      display:grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
     }
-    .chipbtn:hover, .pairbtn:hover{border-color:#555}
-    .pairbtn{background:#171717}
-    .pairbtn strong{color:var(--brand2)}
+    .tile{
+      padding: 12px;
+      border-radius: var(--radius);
+      background: rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.09);
+      cursor:pointer;
+      transition:.2s ease;
+      min-width:0;
+    }
+    .tile:hover{transform: translateY(-1px); background: rgba(255,255,255,.07)}
+    .tile .k{
+      color: var(--muted);
+      font-size:.82rem;
+      margin-bottom:8px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .tile .v{
+      font-family: Orbitron, sans-serif;
+      font-size: 1.25rem;
+      letter-spacing:.6px;
+      color: var(--brand);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+    }
+    .badge{
+      font-size:.75rem;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      color: rgba(244,246,255,.80);
+      white-space:nowrap;
+    }
+
+    /* Chart */
+    .chart-wrap{padding:14px}
+    .row-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:12px;
+      flex-wrap:wrap;
+    }
+    .row-head h3{
+      font-family: Orbitron, sans-serif;
+      font-size: 1.05rem;
+      letter-spacing:.6px;
+    }
+    .mini-select{
+      display:flex; align-items:center; gap:8px;
+      color: var(--muted);
+      font-size:.85rem;
+    }
+    .mini-select select{
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius: 12px;
+      color: var(--ink);
+      padding: 8px 10px;
+      outline:none;
+    }
+
+    /* SVG chart styling */
+    .svg-chart{
+      width:100%;
+      height: 120px;
+      display:block;
+      border-radius: 16px;
+      background: rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .chart-note{
+      margin-top:10px;
+      color: var(--muted);
+      font-size:.82rem;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    /* Table */
+    table{
+      width:100%;
+      border-collapse: collapse;
+      font-size:.9rem;
+    }
+    thead th{
+      text-align:left;
+      font-size:.78rem;
+      color: var(--muted);
+      font-weight:700;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    tbody td{
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      color: rgba(244,246,255,.90);
+    }
+    tbody tr:hover{background: rgba(255,255,255,.04)}
+    .pos{color: #71d083}
+    .neg{color: #ff6b6b}
+
+    /* Right column cards */
+    .kpi-title{
+      padding: 14px 14px 0 14px;
+    }
+    .kpi-title h3{
+      font-family: Orbitron, sans-serif;
+      letter-spacing:.6px;
+      font-size: 1.1rem;
+      margin:0;
+    }
+    .kpis{
+      display:grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap:10px;
+      padding: 12px 14px 14px 14px;
+    }
+    .kpi{
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      padding: 12px;
+      min-width:0;
+    }
+    .kpi b{
+      display:block;
+      font-family: Orbitron, sans-serif;
+      color: var(--brand);
+      font-size: 1.05rem;
+      letter-spacing:.6px;
+      margin-bottom:6px;
+    }
+    .kpi span{
+      color: var(--muted);
+      font-size:.78rem;
+    }
+
+    .feed{
+      padding: 12px 14px 14px 14px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .msg{
+      display:flex;
+      gap:10px;
+      padding: 10px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.09);
+      align-items:flex-start;
+    }
+    .msg .pic{
+      width:34px;height:34px;border-radius: 14px;
+      background: rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.10);
+      flex:0 0 auto;
+    }
+    .msg .t{
+      min-width:0;
+    }
+    .msg .t b{
+      display:block;
+      font-size:.92rem;
+      margin-bottom:4px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+    }
+    .msg .t p{
+      margin:0;
+      color: var(--muted);
+      font-size:.82rem;
+      line-height:1.25rem;
+    }
+
+    /* Quick View (right) */
+    .qv{
+      padding: 12px 14px 14px 14px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .qv .box{
+      padding: 10px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.09);
+    }
+    .qv label{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      color: var(--muted);
+      font-size:.8rem;
+      font-weight:700;
+      margin-bottom:8px;
+      letter-spacing:.2px;
+    }
+    .qv select{
+      width:100%;
+      padding: 10px;
+      border-radius: 12px;
+      background: rgba(0,0,0,.22);
+      color: var(--ink);
+      border: 1px solid rgba(255,255,255,.12);
+      outline:none;
+    }
+
+    .preview{
+      margin-top:10px;
+      border-radius: 16px;
+      background: rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.08);
+      overflow:hidden;
+    }
+    .preview img{
+      width:100%;
+      height: 140px;
+      object-fit: cover;
+      display:block;
+      background: rgba(255,255,255,.04);
+    }
+    .preview .info{
+      padding: 10px;
+    }
+    .preview .info b{
+      display:block;
+      font-size: .95rem;
+      margin-bottom:6px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+    }
+    .preview .info p{
+      margin:0;
+      color: var(--muted);
+      font-size:.82rem;
+      line-height:1.25rem;
+      max-height: 2.5rem;
+      overflow:hidden;
+    }
+
+    /* Mobile / Responsive */
+    @media (max-width: 1180px){
+      :root{ --right-w: 320px; }
+      .tiles{grid-template-columns: repeat(2, minmax(0, 1fr));}
+    }
+    @media (max-width: 980px){
+      .content{grid-template-columns: 1fr;}
+      .right{order: 2}
+      .center{order: 1}
+      :root{ --sb-w: 260px; }
+      .burger{display:grid; place-items:center}
+      .sidebar{
+        position: fixed;
+        top: 18px; bottom: 18px; left: 18px;
+        transform: translateX(-110%);
+        transition: .22s ease;
+        z-index: 30;
+      }
+      .sidebar.open{transform: translateX(0)}
+      .backdrop{
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.55);
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+        opacity:0;
+        pointer-events:none;
+        transition:.22s ease;
+        z-index: 25;
+      }
+      .backdrop.show{
+        opacity:1;
+        pointer-events:auto;
+      }
+      .app{padding: 14px;}
+    }
   </style>
 </head>
+
 <body>
-<header>
-  <h1>Clash Squad — Team Compare</h1>
-  <div class="user-controls">
-    <span class="chip" id="user-info">Checking login…</span>
-    <button class="btn" id="logoutBtn">Logout</button>
-  </div>
-</header>
+  <div class="backdrop" id="backdrop"></div>
 
-<div class="shell">
-
-  <div class="bar">
-    <a class="btn" href="dashboard.html">← Back to Dashboard</a>
-    <div class="controls" style="margin-left:auto">
-      <label>From <input type="date" id="fFrom"></label>
-      <label>To <input type="date" id="fTo"></label>
-      <label>Map
-        <select id="fMap">
-          <option value="__ALL__">All maps</option>
-          <option value="Bermuda">Bermuda</option><option value="Kalahari">Kalahari</option>
-          <option value="Purgatory">Purgatory</option><option value="Alpine">Alpine</option>
-          <option value="Nexterra">Nexterra</option><option value="Solara">Solara</option>
-        </select>
-      </label>
-      <label>Tournament <select id="fTourn"></select></label>
-      <label>Outcome
-        <select id="fWL">
-          <option value="__ALL__">All</option>
-          <option value="W">Wins only</option>
-          <option value="L">Losses only</option>
-        </select>
-      </label>
-      <button class="btn" id="applyBtn">Apply</button>
-    </div>
-  </div>
-
-  <!-- PICK TEAMS (accordion) -->
-  <details class="accordion" open>
-    <summary>Pick two teams</summary>
-    <div class="accordion-body">
-      <div class="controls">
-        <label>Team A <select id="cmpTeamA"></select></label>
-        <label>Team B <select id="cmpTeamB"></select></label>
-        <button class="btn" id="cmpSwap" title="Swap A/B">Swap</button>
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="logo">FF</div>
+        <div>
+          <h1>Free Fire</h1>
+          <small class="muted">Caster Dashboard</small>
+        </div>
       </div>
 
-      <!-- ===== New: Pair buttons (set A & B together) ===== -->
-      <div class="pairbar">
-        <span class="muted">Quick pairs:</span>
-        <button class="pairbtn" data-pair="AG|Heavy"><strong>AG</strong> vs <strong>Heavy</strong></button>
-        <button class="pairbtn" data-pair="Movistar R7|Fluxo"><strong>R7</strong> vs <strong>Fluxo</strong></button>
-        <button class="pairbtn" data-pair="AG|Movistar R7"><strong>AG</strong> vs <strong>R7</strong></button>
-        <button class="pairbtn" data-pair="AG|Fluxo"><strong>AG</strong> vs <strong>Fluxo</strong></button>
-        <button class="pairbtn" data-pair="Heavy|Movistar R7"><strong>Heavy</strong> vs <strong>R7</strong></button>
-        <button class="pairbtn" data-pair="Heavy|Fluxo"><strong>Heavy</strong> vs <strong>Fluxo</strong></button>
+      <nav class="nav" id="nav">
+        <a class="nav-item active" href="dashboard.html" data-page="dashboard.html">
+          <span class="nav-ico">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M4 13h7V4H4v9Zm9 7h7V4h-7v16ZM4 20h7v-5H4v5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </span>
+          Dashboard
+        </a>
+
+        <a class="nav-item" href="char.html" data-page="char.html">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4 0-7 2-7 4v2h14v-2c0-2-3-4-7-4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          Character Skills
+        </a>
+
+        <a class="nav-item" href="pet.html" data-page="pet.html">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M7 14c-1.7 0-3-1.3-3-3S5.3 8 7 8s3 1.3 3 3-1.3 3-3 3Zm10 0c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3ZM7 20c-2.8 0-5-1.8-5-4v-1h6v1c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2v-1h6v1c0 2.2-2.2 4-5 4H7Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          Pets
+        </a>
+
+        <a class="nav-item" href="weapon.html" data-page="weapon.html">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M3 21l6-6m0 0 2 2 8-8-2-2-8 8Zm0 0-2-2 4-4 2 2-4 4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          Weapons
+        </a>
+
+        <a class="nav-item" href="map.html" data-page="map.html">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M10 6 4 8v14l6-2 4 2 6-2V6l-6 2-4-2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          Map
+        </a>
+
+        <a class="nav-item" href="split-view.html" data-page="split-view.html">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16M4 12h16M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          Split View
+        </a>
+
+        <a class="nav-item" href="clash-draft.html" data-page="clash-draft.html">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h10M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          Clash Squad Draft
+        </a>
+
+        <a class="nav-item" href="clash-data.html" data-page="clash-data.html">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19V5m0 14h16M8 17v-6m4 6V7m4 10v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          Clash Squad Data
+        </a>
+
+        <a class="nav-item" href="clash-compare.html" data-page="clash-compare.html">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M10 3v18M14 3v18M4 7h6M14 17h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          Clash Squad Comparison
+        </a>
+
+        <a class="nav-item" href="clash-report.html" data-page="clash-report.html">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          Clash Squad Team Report
+        </a>
+
+        <a class="nav-item" href="clash-store.html" data-page="clash-store.html">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16l-1 14H5L4 7Zm3 0 1-3h8l1 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          Clash Squad Store
+        </a>
+
+        <a class="nav-item" href="br_team2.html" data-page="br_team2.html">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M6 20V10m6 10V4m6 16v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          BR Data
+        </a>
+
+        <a class="nav-item" href="ff-update.html" data-page="ff-update.html">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2v6m0 14v-6M4.9 4.9l4.2 4.2m10.8 10.8-4.2-4.2M2 12h6m14 0h-6M4.9 19.1l4.2-4.2m10.8-10.8-4.2 4.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          Free Fire Update
+        </a>
+      </nav>
+
+      <div class="sidebar-foot">
+        <span class="pill"><span class="dot"></span> Neptune UI • V2</span>
       </div>
+    </aside>
 
-      <div class="caption muted" id="meta">—</div>
-    </div>
-  </details>
+    <!-- MAIN -->
+    <main class="main">
+      <header class="topbar">
+        <button class="burger icon-btn" id="burger" aria-label="Open menu">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
 
-  <!-- OVERVIEW (kept as section) -->
-  <div class="section">
-    <h2>Overview KPIs</h2>
-    <div class="grid2">
-      <div class="card" id="kpiA"><h3>A</h3>Loading…</div>
-      <div class="card" id="kpiB"><h3>B</h3>Loading…</div>
-    </div>
-  </div>
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;opacity:.85">
+            <path d="M21 21l-4.3-4.3m1.3-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <input id="searchInput" placeholder="Search pages, tools, data..." />
+        </div>
 
-  <!-- NEW: MATCHES (stacked player cards) -->
-  <details class="accordion">
-    <summary>Matches (Active + 3×Passive per player)</summary>
-    <div class="accordion-body">
-      <div class="grid2">
-        <div class="card"><h3 id="labelMatchesA">Team A</h3><div id="matchesA">Loading…</div></div>
-        <div class="card"><h3 id="labelMatchesB">Team B</h3><div id="matchesB">Loading…</div></div>
-      </div>
-    </div>
-  </details>
+        <div class="top-actions">
+          <div class="icon-btn" title="Pinned">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M15 4 9 10v7l3-3h5l1-1-3-3V4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
 
-  <!-- SKILLS (accordion) -->
-  <details class="accordion">
-    <summary>Skills (Top 10 by Rate)</summary>
-    <div class="accordion-body">
-      <div class="grid2">
-        <div class="card"><h3 id="labelBansA">Team A — Bans</h3><div id="bansA">Loading…</div></div>
-        <div class="card"><h3 id="labelBansB">Team B — Bans</h3><div id="bansB">Loading…</div></div>
-        <div class="card"><h3 id="labelActiveA">Team A — Active</h3><div id="activeA">Loading…</div></div>
-        <div class="card"><h3 id="labelActiveB">Team B — Active</h3><div id="activeB">Loading…</div></div>
-        <div class="card"><h3 id="labelPassiveA">Team A — Passive</h3><div id="passiveA">Loading…</div></div>
-        <div class="card"><h3 id="labelPassiveB">Team B — Passive</h3><div id="passiveB">Loading…</div></div>
-      </div>
-    </div>
-  </details>
+          <div class="icon-btn" title="Notifications">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 7h18s-3 0-3-7Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10 19a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
 
-  <!-- TEAM × MAP (accordion) -->
-  <details class="accordion">
-    <summary>Team × Map Win Rate</summary>
-    <div class="accordion-body">
-      <div class="grid2">
-        <div class="card"><h3 id="labelTMA">Team A</h3><div id="tmA">Loading…</div></div>
-        <div class="card"><h3 id="labelTMB">Team B</h3><div id="tmB">Loading…</div></div>
-      </div>
-    </div>
-  </details>
+          <div class="userchip">
+            <div class="avatar"></div>
+            <div class="usertext">
+              <b id="gamertag">PlayerOne</b>
+              <span id="userEmail" class="muted">loading…</span>
+            </div>
+          </div>
 
-  <!-- PER-SKILL — ACTIVE (accordion) -->
-  <details class="accordion">
-    <summary>Per-Skill — Active</summary>
-    <div class="accordion-body">
-      <div class="grid2">
-        <div class="card"><h3 id="labelPSA_Act">Team A</h3><div id="psAAct">Loading…</div></div>
-        <div class="card"><h3 id="labelPSB_Act">Team B</h3><div id="psBAct">Loading…</div></div>
-      </div>
-    </div>
-  </details>
+          <a class="logout" href="#" id="logoutBtn">Logout</a>
+        </div>
+      </header>
 
-  <!-- ACTIVE SKILL IMPACT (accordion) -->
-  <details class="accordion">
-    <summary>Active Skill Impact (Win/Loss)</summary>
-    <div class="accordion-body">
-      <div class="grid2">
-        <div class="card"><h3 id="labelImpactA">Team A</h3><div id="impactA">Loading…</div></div>
-        <div class="card"><h3 id="labelImpactB">Team B</h3><div id="impactB">Loading…</div></div>
-      </div>
-      <div class="caption muted tight">
-        Δ vs team baseline win% shows how much the skill raises (green) or lowers (red) win chance when picked.
-      </div>
-    </div>
-  </details>
+      <section class="content">
+        <!-- CENTER -->
+        <div class="center">
+          <div class="card">
+            <div class="hero">
+              <div class="hero-content">
+                <div class="hero-title">
+                  <h2>Free Fire Dashboard</h2>
+                  <div class="chips">
+                    <span class="chip"><span class="mini-dot"></span> Live-ready tools</span>
+                    <span class="chip"><span class="mini-dot" style="background:var(--brand)"></span> Brand: #ffbd59</span>
+                    <span class="chip"><span class="mini-dot" style="background:var(--brand2)"></span> Neptune Build</span>
+                  </div>
+                </div>
 
-  <!-- PER-SKILL — PASSIVE (accordion) -->
-  <details class="accordion">
-    <summary>Per-Skill — Passive</summary>
-    <div class="accordion-body">
-      <div class="grid2">
-        <div class="card"><h3 id="labelPSA_Pas">Team A</h3><div id="psAPas">Loading…</div></div>
-        <div class="card"><h3 id="labelPSB_Pas">Team B</h3><div id="psBPas">Loading…</div></div>
-      </div>
-    </div>
-  </details>
-
-  <!-- COMBOS & PAIRS (accordion) -->
-  <details class="accordion">
-    <summary>Combos & Pairs (Top 5)</summary>
-    <div class="accordion-body">
-      <div class="grid2">
-        <div class="card"><h3 id="labelCombosA">Team A — 4× Active</h3><div id="combosA">Loading…</div></div>
-        <div class="card"><h3 id="labelCombosB">Team B — 4× Active</h3><div id="combosB">Loading…</div></div>
-        <div class="card"><h3 id="labelPairsA">Team A — 2× Active</h3><div id="pairsA">Loading…</div></div>
-        <div class="card"><h3 id="labelPairsB">Team B — 2× Active</h3><div id="pairsB">Loading…</div></div>
-      </div>
-    </div>
-  </details>
-
-  <!-- PASSIVE TRIOS (accordion) -->
-  <details class="accordion">
-    <summary>Passive Trios (Top 5 overall)</summary>
-    <div class="accordion-body">
-      <div class="grid2">
-        <div class="card"><h3 id="labelTriosA">Team A</h3><div id="triosA">Loading…</div></div>
-        <div class="card"><h3 id="labelTriosB">Team B</h3><div id="triosB">Loading…</div></div>
-      </div>
-    </div>
-  </details>
-
-  <!-- BAN IMPACT (accordion) -->
-  <details class="accordion">
-    <summary>Ban Impact (Top 10 by Δ Win %)</summary>
-    <div class="accordion-body">
-      <div class="grid2">
-        <div class="card"><h3 id="labelBIA">Team A</h3><div id="biA">Loading…</div></div>
-        <div class="card"><h3 id="labelBIB">Team B</h3><div id="biB">Loading…</div></div>
-      </div>
-      <div class="caption muted">Outcome is forced to All for Ban Impact to avoid bias.</div>
-    </div>
-  </details>
-
-  <!-- OPPONENT SERIES (accordion) -->
-  <details class="accordion">
-    <summary>Performance by Opponent</summary>
-    <div class="accordion-body">
-      <div class="grid2">
-        <div class="card"><h3 id="labelOppSeriesA">Team A</h3><div id="oppSeriesA">Loading…</div></div>
-        <div class="card"><h3 id="labelOppSeriesB">Team B</h3><div id="oppSeriesB">Loading…</div></div>
-      </div>
-    </div>
-  </details>
-
-  <!-- AI ANALYSIS PROMPT (accordion) -->
-  <details class="accordion">
-    <summary>AI Analysis Prompt</summary>
-    <div class="accordion-body">
-      <div class="ai-actions">
-        <button class="btn" id="copyPromptBtn">Copy prompt</button>
-        <span class="muted">Copies a structured prompt + current data snapshot for ChatGPT.</span>
-      </div>
-      <textarea id="aiPrompt" class="ai-text" readonly>Loading…</textarea>
-    </div>
-  </details>
-
-</div>
-
-<script>
-/* ========= Supabase init + auth ========= */
-const client = supabase.createClient(
-  'https://gkugecflfddkpitlrmws.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
-);
-
-(async () => {
-  const { data: { session } } = await client.auth.getSession();
-  if (!session) { window.location.href = "index.html"; return; }
-  const ui = document.getElementById('user-info');
-  if (ui && session.user?.email) ui.textContent = `Logged in as: ${session.user.email}`;
-})();
-document.getElementById('logoutBtn').onclick = async () => {
-  await client.auth.signOut();
-  window.location.href = "index.html";
-};
-
-/* ========= Utilities ========= */
-const PLACEHOLDER = 'https://imgur.com/AdvPwAO.png';
-const el = (id) => document.getElementById(id);
-const fmtPct = (x) => isFinite(x) ? (x*100).toFixed(1)+'%' : '—';
-const pct = (num, den) => den ? fmtPct(num/den) : '—';
-const uniq = (arr) => [...new Set(arr)];
-function ymd(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
-function parseState(val){ if (!val) return {}; if (typeof val==='object') return val; try { return JSON.parse(val); } catch(e){ return {}; } }
-function safe(s){ return String(s??'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
-
-/* ========= Filters init ========= */
-function initFilters(){
-  const today = new Date(); const from = new Date(today); from.setDate(from.getDate()-30);
-  el('fFrom').value = ymd(from); el('fTo').value = ymd(today);
-  el('fMap').value='__ALL__'; el('fWL').value='__ALL__';
-  el('fTourn').innerHTML = `<option value="__ALL__">All tournaments</option>`;
-}
-initFilters();
-
-/* ========= State ========= */
-let RAW_RECORDS = [];
-let FIRST_LOAD_TOURN = true;
-let TEAM_LOGO = {}; // name -> url
-let LATEST_EXPORT = null;
-
-/* ========= Fetch ========= */
-async function fetchRecords(){
-  const from  = el('fFrom').value;
-  const toRaw = el('fTo').value;
-  const map   = el('fMap').value;
-  const tourn = el('fTourn').value || '__ALL__';
-
-  let q = client
-    .from('draft_records')
-    .select('id, match_date, game_number, team_left, team_right, team_left_score, team_right_score, map, tournament_name, state')
-    .gte('match_date', from);
-
-  if (toRaw){
-    const d = new Date(toRaw); d.setDate(d.getDate()+1);
-    q = q.lt('match_date', ymd(d));
-  }
-  if (map!=='__ALL__') q = q.eq('map', map);
-  if (tourn!=='__ALL__') q = q.eq('tournament_name', tourn);
-
-  q = q.order('match_date', { ascending:false }).order('id', { ascending:false });
-
-  const { data, error } = await q;
-  if (error){ console.error(error); alert('Failed to load records: '+error.message); return []; }
-  return data || [];
-}
-
-async function fetchTeamLogos(){
-  const { data, error } = await client.from('team_logos').select('*');
-  if (error){ console.warn('team_logos fetch error:', error.message); TEAM_LOGO={}; return; }
-  const map = {};
-  (data||[]).forEach(r=>{
-    const name = r.team || r.team_name || r.TEAM || r.name || '';
-    const url  = r.image_url || r.image_link || r['Image Link'] || r.link || '';
-    if (name && url) map[String(name).trim()] = url;
-  });
-  TEAM_LOGO = map;
-}
-
-function populateTeamDropdowns(records){
-  const teams = [...new Set(records.flatMap(r=>[r.team_left, r.team_right]).filter(Boolean))].sort();
-  const A = el('cmpTeamA'), B = el('cmpTeamB');
-  const prevA = A.value, prevB = B.value;
-  const opts = teams.map(t=>`<option value="${t}">${t}</option>`).join('');
-  A.innerHTML = opts; B.innerHTML = opts;
-  A.value = teams.includes(prevA) ? prevA : (teams[0] || '');
-  B.value = teams.includes(prevB) ? prevB : (teams[1] || teams[0] || '');
-}
-
-async function populateTournamentDropdown(records){
-  const dd = el('fTourn'); const prior = dd.value || '__ALL__';
-  const tourns = new Set(); let latest=null;
-  records.forEach(r => {
-    const tn = r.tournament_name; if (!tn) return;
-    tourns.add(tn);
-    if (!latest || (String(r.match_date) > String(latest?.date))) latest = { name: tn, date: r.match_date };
-  });
-  dd.innerHTML = `<option value="__ALL__">All tournaments</option>` + [...tourns].sort().map(t=>`<option value="${t}">${t}</option>`).join('');
-  if (FIRST_LOAD_TOURN && latest && (prior==='__ALL__' || !prior)){ dd.value = latest.name; FIRST_LOAD_TOURN=false; } else { dd.value = prior; }
-}
-
-/* ========= Transform ========= */
-function explodeRecordToRows(rec){
-  const s = parseState(rec.state);
-  const picks    = Array.isArray(s.picks)       ? s.picks       : [];
-  const passives = Array.isArray(s.passives)    ? s.passives    : [];
-  const bans     = Array.isArray(s.bans)        ? s.bans        : [];
-  const names    = Array.isArray(s.playerCards) ? s.playerCards : [];
-
-  const leftWin  = (rec.team_left_score ?? 0) > (rec.team_right_score ?? 0);
-  const rightWin = (rec.team_right_score ?? 0) > (rec.team_left_score ?? 0);
-
-  function sideRow(side){
-    const isL = side==='L';
-    const team = isL ? rec.team_left : rec.team_right;
-    const opp  = isL ? rec.team_right : rec.team_left;
-    const ts   = isL ? (rec.team_left_score ?? 0) : (rec.team_right_score ?? 0);
-    const os   = isL ? (rec.team_right_score ?? 0) : (rec.team_left_score ?? 0);
-    const res  = (isL ? leftWin : rightWin) ? 'W' : 'L';
-    const banObj = bans[ isL ? 0 : 1 ] || {};
-    const ban    = banObj?.name || '';
-    const banImg = banObj?.image_url || PLACEHOLDER;
-
-    const idx = isL ? [0,1,2,3] : [7,6,5,4];
-    const actives = idx.map((i,k)=>{
-      const player = (names[i] && String(names[i]).trim()) ? names[i].trim() : `P${k+1}`;
-      const heroObj = (picks[i] && typeof picks[i]==='object') ? picks[i] : null;
-      return { player, hero: heroObj?.name || '', heroImg: heroObj?.image_url || PLACEHOLDER };
-    });
-    const passiveLines = idx.map((i,k)=>{
-      const player = (names[i] && String(names[i]).trim()) ? names[i].trim() : `P${k+1}`;
-      const trioRaw = Array.isArray(passives[i]) ? passives[i] : [];
-      const trioObjs = trioRaw.filter(Boolean).map(ps=>({name: ps?.name || '', img: ps?.image_url || PLACEHOLDER}));
-      while (trioObjs.length<3) trioObjs.push({name:'', img: PLACEHOLDER});
-      return { player, trio: trioObjs.slice(0,3) };
-    });
-
-    return {
-      rec_id:rec.id,
-      tournament: rec.tournament_name || '—',
-      match_date:rec.match_date,
-      game_number:rec.game_number ?? 0,
-      map:rec.map,
-      team, opponent:opp, team_score:ts, opp_score:os, result:res,
-      banName:ban, banImg,
-      actives, passives:passiveLines
-    };
-  }
-  return [sideRow('L'), sideRow('R')];
-}
-
-function applyWL(rows){
-  const wl = el('fWL').value;
-  if (wl==='__ALL__') return rows;
-  return rows.filter(r => r.result === wl);
-}
-
-function rowsForTeam(team){
-  const rows = RAW_RECORDS.flatMap(explodeRecordToRows).filter(r=>r.team===team);
-  return applyWL(rows);
-}
-
-/* ========= Aggregations / Data helpers ========= */
-function buildTeamBucket(rows, teamName, kind){
-  const B = { name: teamName, matches:0, wins:0, skills:new Map() };
-  rows.forEach(r=>{
-    B.matches += 1; if (r.result==='W') B.wins += 1;
-    if (kind==='active'){
-      r.actives.forEach(a=>{
-        const nm = a.hero; if (!nm) return;
-        const S = B.skills.get(nm) || { occ:0, appear:0, appearWins:0 };
-        S.occ += 1; S.appear += 1; if (r.result==='W') S.appearWins += 1;
-        B.skills.set(nm, S);
-      });
-    } else if (kind==='passive'){
-      r.passives.forEach(p=>{
-        (p.trio||[]).forEach(x=>{
-          const nm = x?.name || ''; if (!nm) return;
-          const S = B.skills.get(nm) || { occ:0, appear:0, appearWins:0 };
-          S.occ += 1; S.appear += 1; if (r.result==='W') S.appearWins += 1;
-          B.skills.set(nm, S);
-        });
-      });
-    } else { // bans
-      const nm = r.banName; if (!nm) return;
-      const S = B.skills.get(nm) || { occ:0, appear:0, appearWins:0 };
-      S.occ += 1; S.appear += 1; if (r.result==='W') S.appearWins += 1;
-      B.skills.set(nm, S);
-    }
-  });
-  return B;
-}
-function topSkillsData(bucket, limit=10){
-  if (!bucket || !bucket.matches) return [];
-  return [...bucket.skills.entries()].map(([name, s])=>{
-    return {
-      skill: name,
-      count: s.occ,
-      appear: s.appear,
-      pick_rate: bucket.matches ? s.appear/bucket.matches : 0,
-      win_rate: s.appear ? s.appearWins/s.appear : 0
-    };
-  }).sort((a,b)=> b.pick_rate - a.pick_rate || a.skill.localeCompare(b.skill)).slice(0,limit);
-}
-function topSkillsTable(bucket, kind, limit=10){
-  const skills = topSkillsData(bucket, limit);
-  const rateLabel = (kind==='ban') ? 'Ban Rate' : 'Pick Rate';
-  if (!skills.length) return `<div class="muted">No ${kind} data.</div>`;
-  return `
-    <table>
-      <thead><tr><th>Skill</th><th class="right">Count</th><th class="right">${rateLabel}</th><th class="right">Win Rate</th></tr></thead>
-      <tbody>
-        ${skills.map(s=>`
-          <tr><td>${s.skill}</td><td class="right">${s.count}</td><td class="right">${fmtPct(s.pick_rate)}</td><td class="right">${fmtPct(s.win_rate)}</td></tr>
-        `).join('')}
-      </tbody>
-    </table>`;
-}
-
-function teamMapStatsData(rows){
-  const agg = new Map();
-  rows.forEach(r=>{
-    const m = r.map || '—';
-    if (!agg.has(m)) agg.set(m, { map:m, matches:0, wins:0 });
-    const A = agg.get(m); A.matches += 1; if (r.result==='W') A.wins += 1;
-  });
-  return [...agg.values()].map(x=>({ ...x, winpct: x.matches? x.wins/x.matches : 0 }))
-               .sort((a,b)=> b.matches - a.matches || b.winpct - a.winpct || a.map.localeCompare(b.map));
-}
-function teamMapStats(rows){
-  const list = teamMapStatsData(rows);
-  if (!list.length) return `<div class="muted">No team×map rows.</div>`;
-  return `
-    <table>
-      <thead><tr><th>Map</th><th class="right">Matches</th><th class="right">Wins</th><th class="right">Win %</th></tr></thead>
-      <tbody>
-        ${list.map(r=>`<tr><td>${r.map}</td><td class="right">${r.matches}</td><td class="right">${r.wins}</td><td class="right">${fmtPct(r.winpct)}</td></tr>`).join('')}
-      </tbody>
-    </table>`;
-}
-
-/* ===== UPDATED: Active compressed data with players ===== */
-function perSkillActiveCompressedData(rows, limit=12){
-  if (!rows.length) return [];
-
-  const map = new Map();
-  rows.forEach(r=>{
-    r.actives.forEach(a=>{
-      if (!a.hero) return;
-
-      const skillName  = a.hero;
-      const playerName = (a.player && String(a.player).trim()) || '';
-
-      const obj = map.get(skillName) || { p:0, w:0, players:new Map() };
-      obj.p += 1;
-      if (r.result === 'W') obj.w += 1;
-
-      if (playerName){
-        obj.players.set(playerName, (obj.players.get(playerName) || 0) + 1);
-      }
-      map.set(skillName, obj);
-    });
-  });
-
-  const den = rows.length * 4; // 4 actives per match
-
-  return [...map.entries()].map(([name, v])=>{
-    const playerList = [...v.players.entries()]
-      .sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0]));
-
-    return {
-      skill: name,
-      picks: v.p,
-      wins: v.w,
-      win_rate: v.p ? v.w / v.p : null,
-      pick_rate: den ? v.p / den : 0,
-      players: playerList
-    };
-  }).sort((a,b)=>
-    b.pick_rate - a.pick_rate ||
-    (b.win_rate || 0) - (a.win_rate || 0) ||
-    a.skill.localeCompare(b.skill)
-  ).slice(0, limit);
-}
-
-/* ===== UPDATED: Active compressed table with Players column ===== */
-function perSkillActiveCompressed(rows, limit=12){
-  const list = perSkillActiveCompressedData(rows, limit);
-  if (!list.length) return `<div class="muted">No active skills.</div>`;
-
-  return `<table>
-    <thead>
-      <tr>
-        <th>Skill</th>
-        <th class="right">Picks</th>
-        <th class="right">Wins</th>
-        <th class="right">Win %</th>
-        <th class="right">Pick %</th>
-        <th>Players</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${list.map(r=>{
-        const playersCell = (r.players && r.players.length)
-          ? r.players
-              .slice(0, 4)
-              .map(([name, count]) => `${name}${count > 1 ? ` (${count})` : ''}`)
-              .join(', ')
-          : '—';
-
-        return `<tr>
-          <td>${r.skill}</td>
-          <td class="right">${r.picks}</td>
-          <td class="right">${r.wins}</td>
-          <td class="right">${r.win_rate===null ? '—' : fmtPct(r.win_rate)}</td>
-          <td class="right">${fmtPct(r.pick_rate)}</td>
-          <td>${playersCell}</td>
-        </tr>`;
-      }).join('')}
-    </tbody>
-  </table>`;
-}
-
-function perSkillPassiveCompressedData(rows, limit=12){
-  if (!rows.length) return [];
-  const map = new Map();
-  rows.forEach(r=>{
-    r.passives.forEach(p=>{
-      (p.trio||[]).forEach(ps=>{
-        if (!ps?.name) return;
-        const obj = map.get(ps.name) || {p:0,w:0};
-        obj.p += 1; if (r.result==='W') obj.w += 1;
-        map.set(ps.name, obj);
-      });
-    });
-  });
-  const den = rows.length * 12;
-  return [...map.entries()].map(([name,v])=>{
-    return { skill:name, picks:v.p, wins:v.w, win_rate: v.p? v.w/v.p : null, pick_rate: den? v.p/den : 0 };
-  }).sort((a,b)=> b.pick_rate - a.pick_rate || (b.win_rate||0)-(a.win_rate||0) || a.skill.localeCompare(b.skill))
-    .slice(0, limit);
-}
-function perSkillPassiveCompressed(rows, limit=12){
-  const list = perSkillPassiveCompressedData(rows, limit);
-  if (!list.length) return `<div class="muted">No passive skills.</div>`;
-  return `<table>
-    <thead><tr><th>Skill</th><th class="right">Picks</th><th class="right">Wins</th><th class="right">Win %</th><th class="right">Pick %</th></tr></thead>
-    <tbody>
-      ${list.map(r=>`<tr>
-        <td>${r.skill}</td>
-        <td class="right">${r.picks}</td>
-        <td class="right">${r.wins}</td>
-        <td class="right">${r.win_rate===null?'—':fmtPct(r.win_rate)}</td>
-        <td class="right">${fmtPct(r.pick_rate)}</td>
-      </tr>`).join('')}
-    </tbody>
-  </table>`;
-}
-
-/* Active Skill Impact (Win/Loss vs baseline) + loss logos */
-function activeSkillImpactData(rows, limit=12){
-  if (!rows.length) return [];
-  const matches = rows.length;
-  const winsOverall = rows.filter(r=>r.result==='W').length;
-  const baseline = matches ? winsOverall / matches : 0;
-
-  const map = new Map(); // skill -> {p,w,lossOpp Map}
-  rows.forEach(r=>{
-    r.actives.forEach(a=>{
-      if(!a.hero) return;
-      const o = map.get(a.hero) || {p:0,w:0,lossOpp:new Map()};
-      o.p += 1; if (r.result==='W') o.w += 1;
-      if (r.result==='L'){
-        const c = o.lossOpp.get(r.opponent)||0;
-        o.lossOpp.set(r.opponent, c+1);
-      }
-      map.set(a.hero, o);
-    });
-  });
-
-  return [...map.entries()].map(([name, v])=>{
-    const winRate = v.p ? v.w / v.p : 0;
-    const lossRate = v.p ? 1 - winRate : 0;
-    const delta = winRate - baseline;
-    const losses_by_opponent = [...v.lossOpp.entries()]
-      .sort((a,b)=>b[1]-a[1])
-      .map(([opp,count])=>({ opponent:opp, count, logo: TEAM_LOGO[opp] || null }))
-      .slice(0,3);
-    return { skill:name, picks:v.p, win_rate:winRate, loss_rate:lossRate, delta_vs_team:delta, losses_by_opponent };
-  }).sort((a,b)=> b.delta_vs_team - a.delta_vs_team || b.picks - a.picks || a.skill.localeCompare(b.skill))
-    .slice(0, limit);
-}
-function activeSkillImpactTable(rows, limit=12){
-  const list = activeSkillImpactData(rows, limit);
-  if(!list.length) return `<div class="muted">No active skills.</div>`;
-
-  const logoSpan = (lossOppList)=>{
-    const entries = (lossOppList||[]).slice(0,3);
-    if (!entries.length) return '';
-    const imgs = entries.map(({opponent, count, logo})=>{
-      const src = logo || PLACEHOLDER;
-      const badge = count > 1 ? `<span class="cnt">×${count}</span>` : '';
-      return `<span class="logo-wrap" title="${opponent} ×${count}">
-                <img src="${src}" alt="${opponent}">
-                ${badge}
-              </span>`;
-    }).join('');
-    return `<span class="opp-logos">${imgs}</span>`;
-  };
-
-  return `
-    <table>
-      <thead>
-        <tr>
-          <th>Skill</th>
-          <th class="right">Picks</th>
-          <th class="right">Win %</th>
-          <th class="right">Loss %</th>
-          <th class="right">Δ vs team</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${list.map(r=>{
-          const dClass = r.delta_vs_team>0 ? 'delta-pos' : (r.delta_vs_team<0 ? 'delta-neg' : '');
-          const dText = (r.delta_vs_team>=0?'+':'') + fmtPct(r.delta_vs_team);
-          return `<tr>
-            <td>${r.skill}</td>
-            <td class="right mono">${r.picks}</td>
-            <td class="right mono">${fmtPct(r.win_rate)}</td>
-            <td class="right mono">${fmtPct(r.loss_rate)} ${logoSpan(r.losses_by_opponent)}</td>
-            <td class="right mono ${dClass}">${dText}</td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table>
-  `;
-}
-
-/* Combos, Pairs, Trios */
-function buildCombos(rows){
-  const combos = new Map();
-  rows.forEach(r=>{
-    const heroes = r.actives.map(a=>a.hero).filter(Boolean);
-    if (heroes.length!==4) return;
-    const key = [...heroes].sort((x,y)=>x.localeCompare(y)).join('|');
-    if (!combos.has(key)) combos.set(key, { heroes:[...new Set(heroes)].sort((x,y)=>x.localeCompare(y)), picks:0, wins:0 });
-    const C = combos.get(key); C.picks += 1; if (r.result==='W') C.wins += 1;
-  });
-  return [...combos.values()].map(c=>({ ...c, winpct: c.picks? c.wins/c.picks : 0 }));
-}
-function buildPairs(rows){
-  const pairs = new Map();
-  rows.forEach(r=>{
-    const names = r.actives.map(a=>a.hero).filter(Boolean);
-    for (let i=0;i<names.length;i++){
-      for (let j=i+1;j<names.length;j++){
-        const [A,B] = [names[i],names[j]].sort((x,y)=>x.localeCompare(y));
-        const key = A+'|'+B;
-        if (!pairs.has(key)) pairs.set(key, { heroes:[A,B], picks:0, wins:0 });
-        const P = pairs.get(key);
-        P.picks += 1;
-        if (r.result === 'W') P.wins += 1;
-      }
-    }
-  });
-  return [...pairs.values()].map(p=>({ ...p, winpct: p.picks ? p.wins / p.picks : 0 }));
-}
-
-function tableCombos(list, title, limit=5){
-  const rows = [...list].sort((a,b)=> b.picks - a.picks || b.winpct - a.winpct || a.heroes.join(',').localeCompare(b.heroes.join(','))).slice(0,limit);
-  if (!rows.length) return `<div class="muted">No ${title}.</div>`;
-  return `
-    <table>
-      <thead><tr><th>${title}</th><th class="right">Picks</th><th class="right">Wins</th><th class="right">Win %</th></tr></thead>
-      <tbody>
-        ${rows.map(r=>`<tr><td>${r.heroes.join(' · ')}</td><td class="right">${r.picks}</td><td class="right">${r.wins}</td><td class="right">${fmtPct(r.winpct)}</td></tr>`).join('')}
-      </tbody>
-    </table>`;
-}
-
-function buildTrios(rows){
-  const tri = new Map();
-  rows.forEach(r=>{
-    r.passives.forEach(p=>{
-      const names = (p.trio||[]).map(x=>x?.name).filter(Boolean);
-      if (names.length!==3) return;
-      const key = [...names].sort((x,y)=>x.localeCompare(y)).join('|');
-      if (!tri.has(key)) tri.set(key, { names:[...names].sort((a,b)=>a.localeCompare(b)), picks:0, wins:0 });
-      const T = tri.get(key); T.picks += 1; if (r.result==='W') T.wins += 1;
-    });
-  });
-  return [...tri.values()].map(t=>({ ...t, winpct: t.picks? t.wins/t.picks : 0 }));
-}
-function tableTrios(list, limit=5){
-  const rows = [...list].sort((a,b)=> b.picks - a.picks || b.winpct - a.winpct || a.names.join(',').localeCompare(b.names.join(','))).slice(0,limit);
-  if (!rows.length) return `<div class="muted">No passive trios.</div>`;
-  return `
-    <table>
-      <thead><tr><th>Trio</th><th class="right">Picks</th><th class="right">Wins</th><th class="right">Win %</th></tr></thead>
-      <tbody>
-        ${rows.map(r=>`<tr><td>${r.names.join(' · ')}</td><td class="right">${r.picks}</td><td class="right">${r.wins}</td><td class="right">${fmtPct(r.winpct)}</td></tr>`).join('')}
-      </tbody>
-    </table>`;
-}
-
-/* Ban Impact (ignore WL for baseline) */
-function rowsForTeamIgnoringWL(team){
-  const mapSel = el('fMap').value;
-  const tournSel = el('fTourn').value || '__ALL__';
-  const allRows = RAW_RECORDS.flatMap(explodeRecordToRows).filter(r=>r.team===team);
-  let rows = allRows;
-  if (mapSel !== '__ALL__') rows = rows.filter(r=>r.map===mapSel);
-  if (tournSel !== '__ALL__') rows = rows.filter(r=>{
-    const rec = RAW_RECORDS.find(x=>x.id===r.rec_id);
-    return rec?.tournament_name === tournSel;
-  });
-  return rows;
-}
-function banImpactData(rows, limit=10){
-  const skills = new Map();
-  rows.forEach(r=>{
-    const banned = r.banName || '';
-    if (banned){
-      if (!skills.has(banned)) skills.set(banned, { name:banned, ban:{n:0,w:0}, noban:{n:0,w:0} });
-      const S = skills.get(banned); S.ban.n += 1; if (r.result==='W') S.ban.w += 1;
-    }
-  });
-  const rowsBySkill = Object.fromEntries([...skills.keys()].map(k=>[k,{n:0,w:0}]));
-  rows.forEach(r=>{
-    const win = r.result==='W' ? 1 : 0;
-    for (const k in rowsBySkill){
-      if ((r.banName||'') !== k){ rowsBySkill[k].n += 1; rowsBySkill[k].w += win; }
-    }
-  });
-  for (const [name,S] of skills.entries()){ S.noban = rowsBySkill[name] || {n:0,w:0}; }
-
-  const list = [...skills.values()].map(S=>{
-    const bN=S.ban.n, bW=S.ban.w, nN=S.noban.n, nW=S.noban.w;
-    const winBan = bN? bW/bN : 0; const winNot = nN? nW/nN : 0;
-    return { skill:S.name, banned:bN, win_rate_banned:winBan, other:nN, win_rate_not_banned:winNot, delta:winBan-winNot };
-  }).filter(r=>r.banned>=1).sort((a,b)=> b.delta - a.delta || b.banned - a.banned).slice(0,limit);
-
-  return list;
-}
-function banImpactTable(rows, limit=10){
-  const list = banImpactData(rows, limit);
-  if (!list.length) return `<div class="muted">No ban data.</div>`;
-  return `
-    <table>
-      <thead><tr>
-        <th>Skill</th><th class="right">Banned</th><th class="right">Win % (banned)</th>
-        <th class="right">Other</th><th class="right">Win % (not banned)</th><th class="right">Δ Win %</th>
-      </tr></thead>
-      <tbody>
-        ${list.map(r=>`
-          <tr>
-            <td>${r.skill}</td>
-            <td class="right">${r.banned}</td>
-            <td class="right">${fmtPct(r.win_rate_banned)}</td>
-            <td class="right">${r.other}</td>
-            <td class="right">${fmtPct(r.win_rate_not_banned)}</td>
-            <td class="right" style="font-weight:700">${fmtPct(r.delta)}</td>
-          </tr>`).join('')}
-      </tbody>
-    </table>`;
-}
-
-/* ========= Opponent Series (per map) ========= */
-function buildOpponentSeriesRows(rows){
-  if(!rows.length) return [];
-  const keyOf = (r)=>{
-    const d = new Date(r.match_date);
-    const day = d.toISOString().slice(0,10);
-    return `${r.tournament}|${r.opponent}|${day}`;
-  };
-  const series = new Map();
-
-  rows.forEach(r=>{
-    const k = keyOf(r);
-    if(!series.has(k)){
-      series.set(k, { opponent:r.opponent, tournament:r.tournament||'—', date:new Date(r.match_date), games:[] });
-    }
-    series.get(k).games.push({
-      game_number: r.game_number ?? 0,
-      map: r.map,
-      mapScore: `${r.team_score}-${r.opp_score}`,
-      result: r.result,
-      banName: r.banName,
-      banImg: r.banImg || PLACEHOLDER
-    });
-  });
-
-  const flat = [];
-  for(const s of series.values()){
-    s.games.sort((a,b)=>(a.game_number)-(b.game_number));
-    const w = s.games.filter(g=>g.result==='W').length;
-    const l = s.games.length - w;
-    const seriesScore = `${w}-${l}`;
-    s.games.forEach(g=>{
-      flat.push({
-        opponent: s.opponent,
-        seriesScore,
-        map: g.map,
-        mapScore: g.mapScore,
-        result: g.result,
-        banName: g.banName,
-        banImg: g.banImg,
-        date: s.date
-      });
-    });
-  }
-  return flat.sort((a,b)=> b.date - a.date);
-}
-function opponentSeriesTable(rows, limit=30){
-  const list = buildOpponentSeriesRows(rows).slice(0, limit);
-  if(!list.length) return `<div class="muted">No opponent series for selection.</div>`;
-  return `
-    <table>
-      <thead>
-        <tr>
-          <th>Opponent</th>
-          <th class="right">Series</th>
-          <th>Map</th>
-          <th class="right">Map score</th>
-          <th class="right">Res</th>
-          <th>Banned skills</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${list.map(r=>`
-          <tr>
-            <td>${r.opponent}</td>
-            <td class="right mono">${r.seriesScore}</td>
-            <td>${r.map||'—'}</td>
-            <td class="right mono">${r.mapScore||'—'}</td>
-            <td class="right"><span class="wl ${r.result}">${r.result}</span></td>
-            <td>
-              <div class="icons">
-                <img src="${r.banImg||PLACEHOLDER}" alt="${safe(r.banName||'')}" title="${safe(r.banName||'')}">
-                <span class="muted tight">${safe(r.banName||'—')}</span>
+                <div class="hero-actions">
+                  <a class="cta" href="clash-draft.html">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14m7-7H5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    Open Draft Tool
+                  </a>
+                </div>
               </div>
-            </td>
-          </tr>
+            </div>
+
+            <div class="card-inner">
+              <div class="tiles">
+                <div class="tile" onclick="location.href='char.html'">
+                  <div class="k"><span>Characters</span><span class="badge" id="charMeta">meta</span></div>
+                  <div class="v" id="charCount">—</div>
+                </div>
+                <div class="tile" onclick="location.href='pet.html'">
+                  <div class="k"><span>Pets</span><span class="badge">support</span></div>
+                  <div class="v" id="petCount">—</div>
+                </div>
+                <div class="tile" onclick="location.href='weapon.html'">
+                  <div class="k"><span>Weapons</span><span class="badge">armory</span></div>
+                  <div class="v" id="weaponCount">—</div>
+                </div>
+                <div class="tile" onclick="location.href='br_team2.html'">
+                  <div class="k"><span>BR Data</span><span class="badge">analytics</span></div>
+                  <div class="v">Open</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="chart-wrap">
+              <div class="row-head">
+                <h3 class="title">Activity Timeline</h3>
+                <div class="mini-select">
+                  <span class="muted">view</span>
+                  <select id="timelineMode">
+                    <option value="visits">Recent Visits</option>
+                    <option value="random">Demo Pattern</option>
+                  </select>
+                </div>
+              </div>
+
+              <svg class="svg-chart" id="timelineChart" viewBox="0 0 600 120" preserveAspectRatio="none" aria-label="Timeline chart"></svg>
+
+              <div class="chart-note">
+                <span>Tip: your latest page opens show up here (stored locally).</span>
+                <span class="muted" id="lastVisit">Last visit: —</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-inner">
+              <div class="row-head">
+                <h3 class="title">Quick Links</h3>
+                <span class="muted">Most-used pages</span>
+              </div>
+
+              <table>
+                <thead>
+                  <tr>
+                    <th>Tool</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th style="text-align:right">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Clash Squad Draft</td>
+                    <td class="muted">Live tool</td>
+                    <td><span class="pos">Ready</span></td>
+                    <td style="text-align:right"><a class="cta" style="padding:8px 10px; border-radius:12px" href="clash-draft.html">Open</a></td>
+                  </tr>
+                  <tr>
+                    <td>Clash Squad Report</td>
+                    <td class="muted">Analytics</td>
+                    <td><span class="pos">Ready</span></td>
+                    <td style="text-align:right"><a class="cta" style="padding:8px 10px; border-radius:12px" href="clash-report.html">Open</a></td>
+                  </tr>
+                  <tr>
+                    <td>Weapons</td>
+                    <td class="muted">Reference</td>
+                    <td><span class="pos">Ready</span></td>
+                    <td style="text-align:right"><a class="cta" style="padding:8px 10px; border-radius:12px" href="weapon.html">Open</a></td>
+                  </tr>
+                  <tr>
+                    <td>Updates</td>
+                    <td class="muted">Patch info</td>
+                    <td><span class="muted">—</span></td>
+                    <td style="text-align:right"><a class="cta" style="padding:8px 10px; border-radius:12px" href="ff-update.html">Open</a></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT -->
+        <aside class="right">
+          <div class="card">
+            <div class="kpi-title">
+              <h3>Total Library</h3>
+              <p class="muted" style="margin:8px 0 0 0; font-size:.86rem;">Counts pulled from your JSON endpoints</p>
+            </div>
+            <div class="kpis">
+              <div class="kpi">
+                <b id="kpiChars">—</b>
+                <span>Characters</span>
+              </div>
+              <div class="kpi">
+                <b id="kpiPets">—</b>
+                <span>Pets</span>
+              </div>
+              <div class="kpi">
+                <b id="kpiWeapons">—</b>
+                <span>Weapons</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-inner" style="padding-bottom:0">
+              <div class="row-head">
+                <h3 class="title">Notes</h3>
+                <span class="muted">Dashboard feed</span>
+              </div>
+            </div>
+            <div class="feed">
+              <div class="msg">
+                <div class="pic"></div>
+                <div class="t">
+                  <b>Neptune Tip</b>
+                  <p>Use the sidebar search to jump fast during broadcast prep.</p>
+                </div>
+              </div>
+              <div class="msg">
+                <div class="pic"></div>
+                <div class="t">
+                  <b>Quick View</b>
+                  <p>Preview a character, pet, or weapon without leaving the dashboard.</p>
+                </div>
+              </div>
+              <div class="msg">
+                <div class="pic"></div>
+                <div class="t">
+                  <b>Style System</b>
+                  <p>This layout is reusable — we’ll wrap your other pages with the same shell next.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-inner" style="padding-bottom:0">
+              <div class="row-head">
+                <h3 class="title">Quick View</h3>
+                <span class="muted">Pick & preview</span>
+              </div>
+            </div>
+
+            <div class="qv">
+              <div class="box">
+                <label>
+                  <span>Character</span>
+                  <span class="muted" id="charTag">—</span>
+                </label>
+                <select id="characterSelect"></select>
+                <div class="preview" id="characterPreview"></div>
+              </div>
+
+              <div class="box">
+                <label>
+                  <span>Pet</span>
+                  <span class="muted" id="petTag">—</span>
+                </label>
+                <select id="petSelect"></select>
+                <div class="preview" id="petPreview"></div>
+              </div>
+
+              <div class="box">
+                <label>
+                  <span>Weapon</span>
+                  <span class="muted" id="weaponTag">—</span>
+                </label>
+                <select id="weaponSelect"></select>
+                <div class="preview" id="weaponPreview"></div>
+              </div>
+
+              <div class="muted" style="font-size:.8rem; padding: 0 2px;">
+                Free Fire Caster © 2025 — Neptune
+              </div>
+            </div>
+          </div>
+        </aside>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    /***********************
+     * Supabase Auth
+     ***********************/
+    const client = supabase.createClient(
+      'https://gkugecflfddkpitlrmws.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
+    );
+
+    async function ensureSession(){
+      const { data: { session } } = await client.auth.getSession();
+      if (!session) {
+        window.location.href = "index.html";
+        return null;
+      }
+      return session;
+    }
+
+    async function logout(){
+      await client.auth.signOut();
+      window.location.href = "index.html";
+    }
+
+    /***********************
+     * Sidebar + Topbar UX
+     ***********************/
+    const sidebar = document.getElementById('sidebar');
+    const burger = document.getElementById('burger');
+    const backdrop = document.getElementById('backdrop');
+
+    function openSidebar(){
+      sidebar.classList.add('open');
+      backdrop.classList.add('show');
+    }
+    function closeSidebar(){
+      sidebar.classList.remove('open');
+      backdrop.classList.remove('show');
+    }
+
+    burger?.addEventListener('click', () => {
+      if (sidebar.classList.contains('open')) closeSidebar();
+      else openSidebar();
+    });
+    backdrop?.addEventListener('click', closeSidebar);
+
+    // highlight active nav based on filename
+    (function setActiveNav(){
+      const here = (location.pathname.split('/').pop() || 'dashboard.html').toLowerCase();
+      document.querySelectorAll('.nav-item').forEach(a => {
+        const page = (a.getAttribute('data-page') || '').toLowerCase();
+        a.classList.toggle('active', page === here);
+      });
+    })();
+
+    // sidebar search filters nav items
+    document.getElementById('searchInput')?.addEventListener('input', (e) => {
+      const q = (e.target.value || '').toLowerCase().trim();
+      document.querySelectorAll('#nav .nav-item').forEach(a => {
+        const txt = a.textContent.toLowerCase();
+        a.style.display = (!q || txt.includes(q)) ? '' : 'none';
+      });
+    });
+
+    // track visits locally for the timeline
+    function pushVisit(name){
+      const key = 'ff_visits_v1';
+      const now = Date.now();
+      const item = { name, ts: now };
+      let arr = [];
+      try { arr = JSON.parse(localStorage.getItem(key) || '[]'); } catch(e){}
+      arr.unshift(item);
+      arr = arr.slice(0, 18);
+      localStorage.setItem(key, JSON.stringify(arr));
+      localStorage.setItem('ff_last_visit', JSON.stringify(item));
+    }
+
+    // record “dashboard” visit
+    pushVisit('Dashboard');
+
+    // record clicks
+    document.querySelectorAll('.nav-item, .tile, .cta').forEach(el => {
+      el.addEventListener('click', () => {
+        const label = (el.textContent || '').trim().slice(0, 40) || 'Open';
+        pushVisit(label);
+      }, {capture:true});
+    });
+
+    /***********************
+     * Timeline SVG Chart
+     ***********************/
+    function renderTimeline(mode='visits'){
+      const svg = document.getElementById('timelineChart');
+      if (!svg) return;
+
+      let points = [];
+      if (mode === 'visits'){
+        let visits = [];
+        try { visits = JSON.parse(localStorage.getItem('ff_visits_v1') || '[]'); } catch(e){}
+        // Create a simple series from visit timestamps (recency -> higher)
+        const n = Math.max(12, Math.min(18, visits.length || 12));
+        const base = Date.now();
+        for (let i=0;i<n;i++){
+          const v = visits[i];
+          const age = v ? Math.min(1, (base - v.ts) / (1000*60*60*24*2)) : (i/n);
+          const y = 0.25 + (1-age) * 0.65; // newer -> higher
+          points.push(y);
+        }
+        if (!visits.length){
+          // fallback
+          points = [0.3,0.35,0.5,0.42,0.6,0.55,0.48,0.62,0.7,0.58,0.66,0.6];
+        }
+      } else {
+        points = [0.28,0.38,0.44,0.36,0.58,0.52,0.40,0.62,0.48,0.70,0.56,0.66,0.50,0.72,0.60,0.68];
+      }
+
+      const W = 600, H = 120;
+      const padX = 18, padY = 16;
+      const innerW = W - padX*2;
+      const innerH = H - padY*2;
+
+      const xs = points.map((_,i)=> padX + (innerW * (i/(points.length-1 || 1))));
+      const ys = points.map(v => padY + (innerH * (1 - v)));
+
+      // build path
+      const d = xs.map((x,i)=> `${i===0?'M':'L'} ${x.toFixed(1)} ${ys[i].toFixed(1)}`).join(' ');
+
+      // area path for glow
+      const area = `${d} L ${xs[xs.length-1].toFixed(1)} ${(H-padY).toFixed(1)} L ${xs[0].toFixed(1)} ${(H-padY).toFixed(1)} Z`;
+
+      svg.innerHTML = `
+        <defs>
+          <linearGradient id="g1" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="rgba(77,211,255,.9)"/>
+            <stop offset="55%" stop-color="rgba(255,189,89,.9)"/>
+            <stop offset="100%" stop-color="rgba(255,119,51,.9)"/>
+          </linearGradient>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="2.4" result="b"/>
+            <feMerge>
+              <feMergeNode in="b"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+
+        <path d="${area}" fill="rgba(77,211,255,.08)"></path>
+        <path d="${d}" fill="none" stroke="url(#g1)" stroke-width="2.6" filter="url(#glow)" stroke-linecap="round"></path>
+        ${xs.map((x,i)=>`
+          <circle cx="${x.toFixed(1)}" cy="${ys[i].toFixed(1)}" r="4.2" fill="rgba(0,0,0,.30)" stroke="rgba(255,255,255,.20)" stroke-width="1"></circle>
+          <circle cx="${x.toFixed(1)}" cy="${ys[i].toFixed(1)}" r="2.6" fill="rgba(255,189,89,.85)"></circle>
         `).join('')}
-      </tbody>
-    </table>`;
-}
-
-/* ========= KPIs card ========= */
-function kpiCard(bucket, kindActive, kindPassive, kindBan){
-  if (!bucket || !bucket.matches) return `<div class="muted">No data for selection.</div>`;
-  const subjA = [...kindActive.skills.values()].reduce((a,s)=>(a.appear+=s.appear,a),{appear:0});
-  const subjP = [...kindPassive.skills.values()].reduce((a,s)=>(a.appear+=s.appear,a),{appear:0});
-  const subjB = [...kindBan.skills.values()].reduce((a,s)=>(a.appear+=s.appear,a),{appear:0});
-  return `
-    <div class="kpis">
-      <div class="kpi">Matches <strong>${bucket.matches}</strong></div>
-      <div class="kpi">Wins <strong>${bucket.wins}</strong> <span class="muted">(${pct(bucket.wins,bucket.matches)})</span></div>
-      <div class="kpi">Active picks <strong>${subjA.appear}</strong> <span class="muted">(${pct(subjA.appear,bucket.matches)})</span></div>
-      <div class="kpi">Passive picks <strong>${subjP.appear}</strong> <span class="muted">(${pct(subjP.appear,bucket.matches)})</span></div>
-      <div class="kpi">Bans <strong>${subjB.appear}</strong> <span class="muted">(${pct(subjB.appear,bucket.matches)})</span></div>
-    </div>`;
-}
-
-/* ========= AI Prompt Build + Copy ========= */
-function stripLinksDeep(x){
-  if (Array.isArray(x)) return x.map(stripLinksDeep);
-  if (x && typeof x === 'object'){
-    const out = {};
-    for (const [k, v] of Object.entries(x)){
-      if (['logo','banImg','heroImg','img','image','image_url','imageUrl','imageLink','link','url'].includes(k)) continue;
-      if (typeof v === 'string' && /^https?:\/\//i.test(v)) continue;
-      out[k] = stripLinksDeep(v);
+      `;
     }
-    return out;
-  }
-  return x;
-}
 
-function buildAIPrompt(exportObj){
-  const meta = exportObj.meta;
-  const header = `You are an esports analyst. Analyze the following JSON snapshot comparing two Clash Squad teams.
+    document.getElementById('timelineMode')?.addEventListener('change', (e) => {
+      renderTimeline(e.target.value);
+    });
 
-Context:
-- Teams: ${meta.teamA} vs ${meta.teamB}
-- Filters: ${meta.mapLabel}, ${meta.tournamentLabel}, ${meta.wlLabel}
-- Date range: ${meta.from} → ${meta.to}
+    /***********************
+     * Quick View: Data + UI
+     ***********************/
+    const characterData = [];
+    const petData = [];
+    const weaponData = [];
 
-Instructions:
-1) Summarize overall performance for each team (matches, wins, win%).
-2) Highlight strongest/weakest maps (use win% and volume).
-3) Analyze Active Skill Impact (Win/Loss) — call out skills with the largest positive/negative Δ vs team baseline.
-4) Mention rivals driving losses for key skills (logos/opponents listed in the data).
-5) Note top combos/pairs and passive trios; comment on reliability (win% + picks).
-6) Identify impactful bans (largest Δ win% vs not banned).
-7) Surface opponent-series patterns (sweeps, close scores, repeat bans).
-8) Finish with top 3 actionable recommendations.
+    function safeText(v){ return (v ?? '').toString(); }
 
-Use only the provided data. Be concise but specific.`;
-
-  return header + "\n\nJSON:\n" + JSON.stringify(exportObj, null, 2);
-}
-
-async function copyTextToClipboard(text){
-  try{
-    if (navigator.clipboard && window.isSecureContext){
-      await navigator.clipboard.writeText(text);
-      return true;
+    function makePreview(item){
+      const img = item?.image_url || item?.icon || '';
+      const title = safeText(item?.name || '—');
+      const desc = safeText(item?.skill || item?.type || '') + (item?.description ? ` — ${safeText(item.description)}` : '');
+      return `
+        ${img ? `<img src="${img}" alt="${title}" />` : `<img src="https://i.imgur.com/qXFpizS.jpg" alt="preview" />`}
+        <div class="info">
+          <b title="${title}">${title}</b>
+          <p title="${desc}">${desc || 'No description available.'}</p>
+        </div>
+      `;
     }
-  }catch{}
-  const ta = document.createElement('textarea');
-  ta.value = text;
-  ta.style.position='fixed'; ta.style.left='-9999px';
-  document.body.appendChild(ta);
-  ta.focus(); ta.select();
-  let ok=false;
-  try{ ok = document.execCommand('copy'); }catch{}
-  ta.remove();
-  return ok;
-}
 
-/* ===== New: Matches rendering helpers ===== */
-function playerBadge(active, trio){
-  const ico = (ps)=>`<img src="${ps.img||PLACEHOLDER}" alt="${safe(ps.name||'')}" title="${safe(ps.name||'')}">`;
-  const p0 = trio?.[0] || {}, p1 = trio?.[1] || {}, p2 = trio?.[2] || {};
-  const aName = safe(active.hero||'');
-  const pName = safe(active.player||'');
-  return `
-    <div class="pBadge" title="${pName}${aName?(' — '+aName):''}">
-      <img class="pAct" src="${active.heroImg||PLACEHOLDER}" alt="${aName}">
-      <div class="pMeta">
-        <div class="pName">${pName}</div>
-        <div class="pHero">${aName||'—'}</div>
-      </div>
-      <div class="pPass">${ico(p0)}${ico(p1)}${ico(p2)}</div>
-    </div>`;
-}
+    function wireSelect(data, selectId, previewId, tagId){
+      const sel = document.getElementById(selectId);
+      const prev = document.getElementById(previewId);
+      const tag = document.getElementById(tagId);
 
-function matchCard(r){
-  const score = `${r.team_score} - ${r.opp_score}`;
-  const g = r.game_number ? `Game ${r.game_number}` : '—';
-  const players = r.actives.map((a,i)=>playerBadge(a, (r.passives[i]||{}).trio)).join('');
-  return `
-    <div class="matchCard">
-      <div class="mInfo">
-        <div class="mRow"><div class="mKey">Date</div><div class="mVal mono">${String(r.match_date||'').slice(0,10)}</div></div>
-        <div class="mRow"><div class="mKey">Game</div><div class="mVal">${g}</div></div>
-        <div class="mRow"><div class="mKey">Map</div><div class="mVal">${r.map||'—'}</div></div>
-        <div class="mRow"><div class="mKey">Team</div><div class="mVal">${r.team||'—'}<div class="muted" style="line-height:1.1">vs ${r.opponent||'—'}</div></div></div>
-        <div class="mRow"><div class="mKey">Score</div><div class="mVal mono">${score}</div></div>
-        <div class="mRow"><div class="mKey">Result</div><div class="mVal"><span class="wl ${r.result}">${r.result}</span></div></div>
-        <div class="mRow"><div class="mKey">Ban</div><div class="mVal banBox"><img src="${r.banImg||PLACEHOLDER}" alt="${safe(r.banName||'')}" title="${safe(r.banName||'')}"><span class="muted">${safe(r.banName||'—')}</span></div></div>
-      </div>
-      <div class="mPlayers">
-        ${players}
-      </div>
-    </div>`;
-}
+      if (!sel || !prev) return;
 
-function matchesCards(rows){
-  if(!rows.length) return `<div class="muted">No matches for selection.</div>`;
-  const sorted = [...rows].sort((a,b)=>{
-    const da = new Date(a.match_date), db = new Date(b.match_date);
-    return db - da || (a.game_number||0) - (b.game_number||0) || a.rec_id - b.rec_id;
-  });
-  return sorted.map(matchCard).join('');
-}
+      sel.innerHTML = data.map((it, i) => `<option value="${i}">${safeText(it.name || '—')}</option>`).join('');
 
-/* ========= Render ========= */
-function renderAll(){
-  const a = el('cmpTeamA').value, b = el('cmpTeamB').value;
-  if (!a || !b || a===b){
-    el('meta').textContent = 'Pick two different teams.';
-    ['kpiA','kpiB','activeA','activeB','passiveA','passiveB','bansA','bansB','tmA','tmB','psAAct','psBAct','impactA','impactB','psAPas','psBPas','combosA','combosB','pairsA','pairsB','triosA','triosB','biA','biB','oppSeriesA','oppSeriesB','matchesA','matchesB']
-      .forEach(id=>{ if(el(id)) el(id).innerHTML = '<div class="muted">—</div>'; });
-    const ta = el('aiPrompt'); if (ta) ta.value = 'Pick two different teams.';
-    return;
-  }
+      const apply = (idx) => {
+        const item = data[idx] || data[0];
+        prev.innerHTML = makePreview(item);
+        if (tag){
+          // show meta/cs_meta if available, otherwise show role/type
+          const meta = item?.meta ?? item?.cs_meta ?? item?.role ?? item?.type ?? '—';
+          tag.textContent = safeText(meta);
+        }
+      };
 
-  const mapLabel   = (el('fMap').value==='__ALL__')?'All maps':el('fMap').value;
-  const tournLabel = (el('fTourn').value==='__ALL__')?'All tournaments':el('fTourn').value;
-  const wlLabel    = (el('fWL').value==='__ALL__')?'All outcomes':(el('fWL').value==='W'?'Wins only':'Losses only');
-  el('meta').textContent = `${a} vs ${b} • ${mapLabel} • ${tournLabel} • ${wlLabel}`;
-
-  const rowsA = rowsForTeam(a), rowsB = rowsForTeam(b);
-
-  // Buckets
-  const bA = buildTeamBucket(rowsA, a, 'active');
-  const bP_A = buildTeamBucket(rowsA, a, 'passive');
-  const bBan_A = buildTeamBucket(rowsA, a, 'ban');
-  const bB = buildTeamBucket(rowsB, b, 'active');
-  const bP_B = buildTeamBucket(rowsB, b, 'passive');
-  const bBan_B = buildTeamBucket(rowsB, b, 'ban');
-
-  // KPIs
-  el('kpiA').innerHTML = `<h3>${a}</h3>${kpiCard(bA, bA, bP_A, bBan_A)}`;
-  el('kpiB').innerHTML = `<h3>${b}</h3>${kpiCard(bB, bB, bP_B, bBan_B)}`;
-
-  // NEW: Matches
-  el('labelMatchesA').textContent = a;
-  el('labelMatchesB').textContent = b;
-  el('matchesA').innerHTML = matchesCards(rowsA);
-  el('matchesB').innerHTML = matchesCards(rowsB);
-
-  // Skills
-  el('labelActiveA').textContent = `${a} — Active`;
-  el('labelActiveB').textContent = `${b} — Active`;
-  el('activeA').innerHTML = topSkillsTable(bA,'active',10);
-  el('activeB').innerHTML = topSkillsTable(bB,'active',10);
-
-  el('labelPassiveA').textContent = `${a} — Passive`;
-  el('labelPassiveB').textContent = `${b} — Passive`;
-  el('passiveA').innerHTML = topSkillsTable(bP_A,'passive',10);
-  el('passiveB').innerHTML = topSkillsTable(bP_B,'passive',10);
-
-  el('labelBansA').textContent = `${a} — Bans`;
-  el('labelBansB').textContent = `${b} — Bans`;
-  el('bansA').innerHTML = topSkillsTable(bBan_A,'ban',10);
-  el('bansB').innerHTML = topSkillsTable(bBan_B,'ban',10);
-
-  // Team × Map
-  el('labelTMA').textContent = a; el('labelTMB').textContent = b;
-  el('tmA').innerHTML = teamMapStats(rowsA);
-  el('tmB').innerHTML = teamMapStats(rowsB);
-
-  // Per-skill compressed (Active with Players)
-  el('labelPSA_Act').textContent = a; el('labelPSB_Act').textContent = b;
-  el('psAAct').innerHTML = perSkillActiveCompressed(rowsA, 12);
-  el('psBAct').innerHTML = perSkillActiveCompressed(rowsB, 12);
-
-  // Active Skill Impact
-  el('labelImpactA').textContent = a; el('labelImpactB').textContent = b;
-  el('impactA').innerHTML = activeSkillImpactTable(rowsA, 12);
-  el('impactB').innerHTML = activeSkillImpactTable(rowsB, 12);
-
-  // Passive compressed
-  el('labelPSA_Pas').textContent = a; el('labelPSB_Pas').textContent = b;
-  el('psAPas').innerHTML = perSkillPassiveCompressed(rowsA, 12);
-  el('psBPas').innerHTML = perSkillPassiveCompressed(rowsB, 12);
-
-  // Combos / Pairs
-  el('labelCombosA').textContent = `${a} — 4× Active`; el('labelCombosB').textContent = `${b} — 4× Active`;
-  el('combosA').innerHTML = tableCombos(buildCombos(rowsA), 'Combo', 5);
-  el('combosB').innerHTML = tableCombos(buildCombos(rowsB), 'Combo', 5);
-  el('labelPairsA').textContent = `${a} — 2× Active`; el('labelPairsB').textContent = `${b} — 2× Active`;
-  el('pairsA').innerHTML = tableCombos(buildPairs(rowsA), 'Pair', 5);
-  el('pairsB').innerHTML = tableCombos(buildPairs(rowsB), 'Pair', 5);
-
-  // Passive Trios
-  el('labelTriosA').textContent = a; el('labelTriosB').textContent = b;
-  const triA = buildTrios(rowsA), triB = buildTrios(rowsB);
-  el('triosA').innerHTML = tableTrios(triA, 5);
-  el('triosB').innerHTML = tableTrios(rowsB, 5);
-
-  // Ban Impact (ignore WL)
-  el('labelBIA').textContent = a; el('labelBIB').textContent = b;
-  const biA_rows = rowsForTeamIgnoringWL(a), biB_rows = rowsForTeamIgnoringWL(b);
-  el('biA').innerHTML = banImpactTable(biA_rows, 10);
-  el('biB').innerHTML = banImpactTable(biB_rows, 10);
-
-  // Opponent Series (per map)
-  el('labelOppSeriesA').textContent = a; el('labelOppSeriesB').textContent = b;
-  el('oppSeriesA').innerHTML = opponentSeriesTable(rowsA, 30);
-  el('oppSeriesB').innerHTML = opponentSeriesTable(rowsB, 30);
-
-  // ===== Build data snapshot for AI prompt =====
-  const meta = { teamA:a, teamB:b, mapLabel, tournamentLabel: tournLabel, wlLabel, from: el('fFrom').value, to: el('fTo').value };
-  const exportObj = {
-    meta,
-    teamA:{
-      kpis:{ matches:bA.matches, wins:bA.wins, win_rate: bA.matches? bA.wins/bA.matches : 0 },
-      team_map: teamMapStatsData(rowsA),
-      active_skill_impact: activeSkillImpactData(rowsA, 12),
-      per_skill_active: perSkillActiveCompressedData(rowsA, 12),
-      per_skill_passive: perSkillPassiveCompressedData(rowsA, 12),
-      top_active_by_rate: topSkillsData(bA, 10),
-      top_passive_by_rate: topSkillsData(bP_A, 10),
-      top_bans_by_rate: topSkillsData(bBan_A, 10),
-      combos: buildCombos(rowsA).sort((a,b)=> b.picks-a.picks || b.winpct-a.winpct).slice(0,5),
-      pairs: buildPairs(rowsA).sort((a,b)=> b.picks-a.picks || b.winpct-a.winpct).slice(0,5),
-      passive_trios: triA.sort((a,b)=> b.picks-a.picks || b.winpct-a.winpct).slice(0,5),
-      ban_impact: banImpactData(biA_rows, 10),
-      opponent_series: buildOpponentSeriesRows(rowsA).slice(0,30)
-    },
-    teamB:{
-      kpis:{ matches:bB.matches, wins:bB.wins, win_rate: bB.matches? bB.wins/bB.matches : 0 },
-      team_map: teamMapStatsData(rowsB),
-      active_skill_impact: activeSkillImpactData(rowsB, 12),
-      per_skill_active: perSkillActiveCompressedData(rowsB, 12),
-      per_skill_passive: perSkillPassiveCompressedData(rowsB, 12),
-      top_active_by_rate: topSkillsData(bB, 10),
-      top_passive_by_rate: topSkillsData(bP_B, 10),
-      top_bans_by_rate: topSkillsData(bBan_B, 10),
-      combos: buildCombos(rowsB).sort((a,b)=> b.picks-a.picks || b.winpct-a.winpct).slice(0,5),
-      pairs: buildPairs(rowsB).sort((a,b)=> b.picks-a.picks || b.winpct-a.winpct).slice(0,5),
-      passive_trios: triB.sort((a,b)=> b.picks-a.picks || b.winpct-a.winpct).slice(0,5),
-      ban_impact: banImpactData(biB_rows, 10),
-      opponent_series: buildOpponentSeriesRows(rowsB).slice(0,30)
+      sel.addEventListener('change', () => apply(sel.value));
+      apply(0);
     }
-  };
-  const exportClean = stripLinksDeep(exportObj);
-  el('aiPrompt').value = buildAIPrompt(exportClean);
-}
 
-/* ========= Refresh flow ========= */
-async function refresh(){
-  [RAW_RECORDS] = await Promise.all([fetchRecords()]);
-  await Promise.all([fetchTeamLogos()]);
-  await populateTournamentDropdown(RAW_RECORDS);
-  populateTeamDropdowns(RAW_RECORDS);
-  renderAll();
-}
+    async function loadJson(url){
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error('Fetch failed: ' + url);
+      return await res.json();
+    }
 
-/* ========= New: Quick-pick helpers ========= */
-function setSelectToTeam(selectEl, name){
-  if(!selectEl) return false;
-  const opts = [...selectEl.options];
-  const target = String(name||'').trim().toLowerCase();
-  const match = opts.find(o => o.value === name)
-    || opts.find(o => (o.text||'').trim().toLowerCase() === target);
-  if (match){ selectEl.value = match.value; return true; }
-  return false;
-}
+    /***********************
+     * Init
+     ***********************/
+    window.addEventListener('DOMContentLoaded', async () => {
+      // auth
+      const session = await ensureSession();
+      if (!session) return;
 
-async function widenFiltersAndReload(){
-  el('fTourn').value = '__ALL__';
-  el('fMap').value = '__ALL__';
-  el('fWL').value = '__ALL__';
-  const from = new Date(); from.setFullYear(from.getFullYear()-1);
-  el('fFrom').value = ymd(from);
-  el('fTo').value = ymd(new Date());
-  await refresh();
-}
+      const email = session.user?.email || '';
+      document.getElementById('userEmail').textContent = email || 'signed in';
+      const username = email ? email.split('@')[0] : 'PlayerOne';
+      document.getElementById('gamertag').textContent = username;
 
-async function quickPick(team){
-  const target = el('quickTarget')?.value || 'A';
-  const selectEl = target === 'A' ? el('cmpTeamA') : el('cmpTeamB');
+      document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        logout();
+      });
 
-  if (setSelectToTeam(selectEl, team)){ renderAll(); return; }
-  await widenFiltersAndReload();
-  if (setSelectToTeam(selectEl, team)){ renderAll(); return; }
-  alert(`No matches found for "${team}" in the current database.`);
-}
+      // last visit label
+      try{
+        const lv = JSON.parse(localStorage.getItem('ff_last_visit') || 'null');
+        if (lv?.ts){
+          const d = new Date(lv.ts);
+          document.getElementById('lastVisit').textContent = 'Last visit: ' + d.toLocaleString();
+        }
+      }catch(e){}
 
-async function quickPair(aTeam, bTeam){
-  const A = el('cmpTeamA'), B = el('cmpTeamB');
-  let okA = setSelectToTeam(A, aTeam);
-  let okB = setSelectToTeam(B, bTeam);
+      // chart
+      renderTimeline(document.getElementById('timelineMode')?.value || 'visits');
 
-  if (!okA || !okB){
-    await widenFiltersAndReload();
-    okA = setSelectToTeam(A, aTeam);
-    okB = setSelectToTeam(B, bTeam);
-  }
-  if (okA && okB){ renderAll(); return; }
+      // data loads
+      try{
+        const [chars, pets, weapons] = await Promise.all([
+          loadJson('https://neptuneg1.github.io/freefire-caster/character.json'),
+          loadJson('https://neptuneg1.github.io/freefire-caster/pet.json'),
+          loadJson('https://neptuneg1.github.io/freefire-caster/weapon.json')
+        ]);
 
-  const miss = [];
-  if (!okA) miss.push(aTeam);
-  if (!okB) miss.push(bTeam);
-  alert(`Could not find: ${miss.join(', ')}`);
-}
+        characterData.push(...(Array.isArray(chars) ? chars : []));
+        petData.push(...(Array.isArray(pets) ? pets : []));
+        weaponData.push(...(Array.isArray(weapons) ? weapons : []));
 
-/* ========= Events ========= */
-el('applyBtn').onclick = refresh;
-['cmpTeamA','cmpTeamB'].forEach(id=> el(id).addEventListener('change', renderAll));
-el('cmpSwap').addEventListener('click', ()=>{
-  const A = el('cmpTeamA'), B = el('cmpTeamB'); const t = A.value; A.value = B.value; B.value = t; renderAll();
-});
-el('copyPromptBtn').addEventListener('click', async ()=>{
-  const ta = el('aiPrompt');
-  const ok = await copyTextToClipboard(ta.value || '');
-  const btn = el('copyPromptBtn');
-  const orig = btn.textContent;
-  btn.textContent = ok ? 'Copied!' : 'Copy failed';
-  setTimeout(()=> btn.textContent = orig, 1200);
-});
+        // counts
+        const c = characterData.length;
+        const p = petData.length;
+        const w = weaponData.length;
 
-document.addEventListener('click', (e)=>{
-  const chip = e.target.closest('.chipbtn[data-team]');
-  if (chip){ quickPick(chip.dataset.team); return; }
+        document.getElementById('charCount').textContent = c.toLocaleString();
+        document.getElementById('petCount').textContent = p.toLocaleString();
+        document.getElementById('weaponCount').textContent = w.toLocaleString();
 
-  const pair = e.target.closest('.pairbtn[data-pair]');
-  if (pair){
-    const [a,b] = pair.dataset.pair.split('|');
-    quickPair(a, b);
-  }
-});
+        document.getElementById('kpiChars').textContent = c.toLocaleString();
+        document.getElementById('kpiPets').textContent = p.toLocaleString();
+        document.getElementById('kpiWeapons').textContent = w.toLocaleString();
 
-/* ========= First load ========= */
-refresh();
-</script>
+        // meta badge if available (just detect field)
+        const hasMeta = characterData.some(x => x && (x.meta !== undefined || x.cs_meta !== undefined));
+        document.getElementById('charMeta').textContent = hasMeta ? 'meta/cs_meta' : 'library';
+
+        // quick view wiring
+        wireSelect(characterData, 'characterSelect', 'characterPreview', 'charTag');
+        wireSelect(petData, 'petSelect', 'petPreview', 'petTag');
+        wireSelect(weaponData, 'weaponSelect', 'weaponPreview', 'weaponTag');
+
+      }catch(err){
+        console.error(err);
+        // graceful UI fail
+        document.getElementById('charCount').textContent = '—';
+        document.getElementById('petCount').textContent = '—';
+        document.getElementById('weaponCount').textContent = '—';
+      }
+    });
+  </script>
 </body>
 </html>
