@@ -47,7 +47,6 @@
       overflow-x:hidden;
     }
 
-    /* subtle “arc” accents */
     body::before, body::after{
       content:"";
       position:fixed;
@@ -68,7 +67,6 @@
 
     a{color:inherit}
 
-    /* App Layout */
     .app{
       height:100%;
       display:flex;
@@ -392,12 +390,6 @@
       justify-content: space-between;
       gap: 12px;
     }
-    .hero-title{
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-      min-width:0;
-    }
     .hero-title h2{
       font-family: Orbitron, sans-serif;
       font-size: 1.55rem;
@@ -408,6 +400,7 @@
       overflow:hidden;
       text-overflow: ellipsis;
     }
+
     .hero-actions{
       display:flex;
       gap:10px;
@@ -524,7 +517,6 @@
       display:grid;
       place-items:center;
     }
-    /* Fit images (no cut off) */
     .qv-thumb img{
       width:100%;
       height:100%;
@@ -540,7 +532,6 @@
       gap:6px;
       flex:1;
     }
-    /* allow wrapping (no cut off) */
     .qv-meta b{
       font-size:.95rem;
       font-weight:800;
@@ -577,7 +568,7 @@
     .modal.show{display:flex;}
     .modal-card{
       width: min(1040px, 100%);
-      max-height: min(82vh, 760px);
+      max-height: min(84vh, 820px);
       background: rgba(14, 18, 28, .92);
       border: 1px solid rgba(255,255,255,.10);
       border-radius: 22px;
@@ -607,14 +598,20 @@
       font-size:.85rem;
     }
 
-    .modal-search{
+    .modal-controls{
       padding: 12px 14px;
       border-bottom: 1px solid rgba(255,255,255,.08);
       display:flex;
-      align-items:center;
+      flex-direction:column;
       gap:10px;
     }
-    .modal-search input{
+    .modal-row{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .modal-controls input{
       flex:1;
       padding: 10px 12px;
       border-radius: 14px;
@@ -623,7 +620,17 @@
       outline:none;
       color: var(--ink);
       font-size:.95rem;
-      min-width:0;
+      min-width: 220px;
+    }
+    .modal-controls select{
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.12);
+      outline:none;
+      color: var(--ink);
+      font-size:.92rem;
+      min-width: 220px;
     }
     .modal-count{
       flex:0 0 auto;
@@ -634,6 +641,35 @@
       background: rgba(0,0,0,.20);
       color: rgba(244,246,255,.80);
       white-space:nowrap;
+    }
+
+    .filter-pills{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+    }
+    .pill-btn{
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      color: rgba(244,246,255,.86);
+      cursor:pointer;
+      font-weight:800;
+      font-size:.82rem;
+      transition:.18s ease;
+      white-space:nowrap;
+    }
+    .pill-btn:hover{
+      background: rgba(0,0,0,.28);
+      border-color: rgba(77,211,255,.22);
+      box-shadow: 0 0 0 3px rgba(77,211,255,.10);
+    }
+    .pill-btn.active{
+      background: linear-gradient(135deg, rgba(255,189,89,.18), rgba(255,119,51,.10));
+      border-color: rgba(255,189,89,.25);
+      color: rgba(244,246,255,.95);
     }
 
     .modal-grid{
@@ -716,6 +752,8 @@
       .backdrop.show{opacity:1; pointer-events:auto;}
       .app{padding: 14px;}
       .quickbar{grid-template-columns: 1fr;}
+      .modal-controls input{min-width: 0; width:100%;}
+      .modal-controls select{min-width: 0; width:100%;}
     }
   </style>
 </head>
@@ -945,9 +983,16 @@
         </button>
       </div>
 
-      <div class="modal-search">
-        <input id="pickerSearch" placeholder="Search..." />
-        <div class="modal-count" id="pickerCount">—</div>
+      <!-- Search + Filters -->
+      <div class="modal-controls">
+        <div class="modal-row">
+          <input id="pickerSearch" placeholder="Search..." />
+          <!-- used for Pets/Weapons (category) -->
+          <select id="pickerFilterSelect" style="display:none"></select>
+          <div class="modal-count" id="pickerCount">—</div>
+        </div>
+        <!-- used for Characters (meta/skill type) -->
+        <div class="filter-pills" id="pickerFilterPills" style="display:none"></div>
       </div>
 
       <div class="modal-grid" id="pickerGrid"></div>
@@ -1000,7 +1045,6 @@
     });
     backdrop?.addEventListener('click', closeSidebar);
 
-    // desktop collapse (persist)
     (function initSidebarCollapse(){
       const key = 'ff_sidebar_collapsed_v1';
       const saved = localStorage.getItem(key);
@@ -1025,7 +1069,6 @@
       }
     })();
 
-    // highlight active nav
     (function setActiveNav(){
       const here = (location.pathname.split('/').pop() || 'dashboard.html').toLowerCase();
       document.querySelectorAll('.nav-item').forEach(a => {
@@ -1034,7 +1077,6 @@
       });
     })();
 
-    // top search filters nav items
     document.getElementById('searchInput')?.addEventListener('input', (e) => {
       const q = (e.target.value || '').toLowerCase().trim();
       document.querySelectorAll('#nav .nav-item').forEach(a => {
@@ -1052,10 +1094,30 @@
       weapon:    { url:'https://neptuneg1.github.io/freefire-caster/weapon.json',    items:[], selected:0 },
     };
 
+    // filter state per popup
+    const FILTER_STATE = {
+      character: 'all', // all | brmeta | csmeta | active | passive
+      pet: 'all',       // all | <category>
+      weapon: 'all'     // all | <category>
+    };
+
     function safeText(v){ return (v ?? '').toString(); }
+    function norm(v){ return safeText(v).trim(); }
+    function normLower(v){ return norm(v).toLowerCase(); }
+
     function pickImg(item){
       return item?.image_url || item?.icon || item?.img || 'https://i.imgur.com/qXFpizS.jpg';
     }
+
+    function getCategory(type, item){
+      if (!item) return 'Other';
+      if (type === 'pet'){
+        return norm(item.category || item.type || item.pet_type || item.group || item.role || 'Other') || 'Other';
+      }
+      // weapon
+      return norm(item.category || item.type || item.weapon_type || item.class || item.group || 'Other') || 'Other';
+    }
+
     function buildDesc(type, item){
       if (!item) return '—';
 
@@ -1124,6 +1186,8 @@
     const pickerCount = document.getElementById('pickerCount');
     const pickerGrid = document.getElementById('pickerGrid');
     const pickerClose = document.getElementById('pickerClose');
+    const pickerFilterSelect = document.getElementById('pickerFilterSelect');
+    const pickerFilterPills = document.getElementById('pickerFilterPills');
 
     let currentPickerType = 'character';
 
@@ -1135,7 +1199,10 @@
       pickerSub.textContent = `Click a ${label.toLowerCase()} to apply it to Quick View.`;
       pickerSearch.value = '';
 
+      // ensure filter UI matches type
+      setupPickerFilters();
       renderPickerGrid();
+
       modal.classList.add('show');
       modal.setAttribute('aria-hidden','false');
       setTimeout(() => pickerSearch.focus(), 0);
@@ -1146,14 +1213,112 @@
       modal.setAttribute('aria-hidden','true');
     }
 
+    function setupPickerFilters(){
+      // clear previous listeners safely by reassigning handlers
+      pickerFilterSelect.onchange = null;
+
+      if (currentPickerType === 'character'){
+        pickerFilterSelect.style.display = 'none';
+        pickerFilterPills.style.display = 'flex';
+
+        const options = [
+          { id:'all', label:'All' },
+          { id:'brmeta', label:'BR Meta' },
+          { id:'csmeta', label:'CS Meta' },
+          { id:'active', label:'Active' },
+          { id:'passive', label:'Passive' },
+        ];
+
+        pickerFilterPills.innerHTML = options.map(opt => `
+          <button class="pill-btn ${FILTER_STATE.character === opt.id ? 'active' : ''}" data-f="${opt.id}">
+            ${opt.label}
+          </button>
+        `).join('');
+
+        pickerFilterPills.querySelectorAll('button').forEach(btn => {
+          btn.addEventListener('click', () => {
+            FILTER_STATE.character = btn.getAttribute('data-f') || 'all';
+            // update active state
+            pickerFilterPills.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+            renderPickerGrid();
+          });
+        });
+
+      } else {
+        // pets / weapons: category dropdown
+        pickerFilterPills.style.display = 'none';
+        pickerFilterSelect.style.display = 'inline-flex';
+
+        const items = DATA[currentPickerType].items || [];
+        const cats = Array.from(new Set(items.map(it => getCategory(currentPickerType, it)).filter(Boolean)))
+          .sort((a,b) => a.localeCompare(b));
+
+        const stateKey = currentPickerType; // 'pet' or 'weapon'
+        const current = FILTER_STATE[stateKey] || 'all';
+
+        pickerFilterSelect.innerHTML = [
+          `<option value="all">All</option>`,
+          ...cats.map(c => `<option value="${c}">${c}</option>`)
+        ].join('');
+
+        // keep selection if possible
+        pickerFilterSelect.value = cats.includes(current) ? current : 'all';
+        FILTER_STATE[stateKey] = pickerFilterSelect.value;
+
+        pickerFilterSelect.onchange = () => {
+          FILTER_STATE[stateKey] = pickerFilterSelect.value || 'all';
+          renderPickerGrid();
+        };
+      }
+    }
+
+    function passesTypeFilter(it){
+      if (!it) return false;
+
+      if (currentPickerType === 'character'){
+        const f = FILTER_STATE.character || 'all';
+        if (f === 'all') return true;
+
+        if (f === 'brmeta'){
+          return normLower(it.meta || 'no') === 'yes';
+        }
+        if (f === 'csmeta'){
+          return normLower(it.cs_meta || 'no') === 'yes';
+        }
+        if (f === 'active'){
+          // accept anything NOT passive
+          return normLower(it.skill_type || '') !== 'passive';
+        }
+        if (f === 'passive'){
+          return normLower(it.skill_type || '') === 'passive';
+        }
+        return true;
+      }
+
+      if (currentPickerType === 'pet'){
+        const f = FILTER_STATE.pet || 'all';
+        if (f === 'all') return true;
+        return getCategory('pet', it) === f;
+      }
+
+      // weapon
+      const fw = FILTER_STATE.weapon || 'all';
+      if (fw === 'all') return true;
+      return getCategory('weapon', it) === fw;
+    }
+
     function renderPickerGrid(){
       const state = DATA[currentPickerType];
       const q = (pickerSearch.value || '').toLowerCase().trim();
-      const all = state.items;
+      const all = state.items || [];
 
-      const filtered = !q ? all : all.filter(it => {
+      const filtered = all.filter(it => {
+        if (!passesTypeFilter(it)) return false;
+
+        if (!q) return true;
+
         const name = safeText(it?.name).toLowerCase();
-        const skill = safeText(it?.skill || it?.type || it?.ability || '').toLowerCase();
+        const skill = safeText(it?.skill || it?.type || it?.ability || it?.category || '').toLowerCase();
         const desc = safeText(it?.description || it?.special || '').toLowerCase();
         return name.includes(q) || skill.includes(q) || desc.includes(q);
       });
@@ -1190,7 +1355,6 @@
       closePicker();
     });
 
-    // wire Choose buttons
     document.querySelectorAll('[data-open]')?.forEach(btn => {
       btn.addEventListener('click', () => openPicker(btn.getAttribute('data-open')));
     });
