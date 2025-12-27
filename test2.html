@@ -31,6 +31,11 @@
 
       --sb-w: 260px;
       --sb-w-collapsed: 82px;
+
+      --slotTop: 64px;
+      --slotBot: 48px;
+      --slotGap: 8px;
+      --slotRad: 10px;
     }
 
     *{box-sizing:border-box}
@@ -481,110 +486,98 @@
       line-height:1.22rem;
     }
 
-    /* Under-QuickView: Build Bar (1 active, 3 passive, 1 pet, 1 loadout placeholder, 2 weapons) */
+    /* === Screenshot-style Build Bar === */
     .buildbar{
       margin-top: 12px;
       padding-top: 12px;
       border-top: 1px solid rgba(255,255,255,.08);
-      display:flex;
-      align-items:center;
-      justify-content:center;
     }
-    .build-row{
+    .buildpanel{
       display:flex;
-      align-items:center;
-      justify-content:flex-start;
-      gap:10px;
-      flex-wrap:wrap;
+      flex-direction:column;
+      gap: var(--slotGap);
+      align-items:flex-start;
       width:100%;
     }
+    .bp-top, .bp-bottom{
+      display:flex;
+      gap: var(--slotGap);
+      align-items:center;
+      flex-wrap:wrap;
+    }
 
-    .build-slot{
-      width:46px; height:46px;
-      border-radius: 14px;
-      background: rgba(0,0,0,.18);
-      border: 1px solid rgba(255,255,255,.10);
+    .bp-slot{
+      width: var(--slotTop);
+      height: var(--slotTop);
+      border-radius: var(--slotRad);
+      background: rgba(0,0,0,.25);
+      border: 1px solid rgba(255,255,255,.14);
       overflow:hidden;
-      display:grid;
-      place-items:center;
       position:relative;
       cursor:pointer;
-      transition:.18s ease;
-      flex:0 0 auto;
+      transition: .18s ease;
+      display:grid;
+      place-items:center;
     }
-    .build-slot:hover{
+    .bp-slot:hover{
       transform: translateY(-1px);
-      background: rgba(255,255,255,.06);
-      border-color: rgba(77,211,255,.18);
-      box-shadow: 0 0 0 3px rgba(77,211,255,.10);
-    }
-
-    .build-slot.big{
-      width:58px; height:58px;
-      border-radius: 16px;
-      border-color: rgba(255,189,89,.20);
-      background: linear-gradient(135deg, rgba(255,189,89,.10), rgba(0,0,0,.18));
-    }
-    .build-slot.big:hover{
-      border-color: rgba(255,189,89,.28);
+      border-color: rgba(255,189,89,.22);
       box-shadow: 0 0 0 3px rgba(255,189,89,.10);
+      background: rgba(0,0,0,.30);
     }
 
-    .build-slot img{
+    .bp-slot img{
       width:100%;
       height:100%;
       display:block;
       background: rgba(255,255,255,.02);
-    }
-    .build-slot[data-type="character"] img{ object-fit: cover; }
-    .build-slot[data-type="pet"] img,
-    .build-slot[data-type="weapon"] img{ object-fit: contain; }
-
-    .slot-badge{
-      position:absolute;
-      left:6px;
-      bottom:6px;
-      padding: 2px 6px;
-      border-radius: 999px;
-      font-size: .62rem;
-      font-weight: 900;
-      letter-spacing:.3px;
-      background: rgba(0,0,0,.55);
-      border: 1px solid rgba(255,255,255,.12);
-      color: rgba(244,246,255,.88);
-      pointer-events:none;
-      max-width: calc(100% - 12px);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .build-slot.big .slot-badge{
-      border-color: rgba(255,189,89,.20);
-      color: rgba(255,220,160,.95);
+      object-fit: contain;
     }
 
-    .build-slot.disabled{
-      cursor: default;
-      opacity:.85;
+    /* Active: portrait fill */
+    .bp-active img{ object-fit: cover; }
+
+    /* Bottom row smaller slots */
+    .bp-bottom .bp-slot{
+      width: var(--slotBot);
+      height: var(--slotBot);
+      border-radius: 12px;
+      background: rgba(0,0,0,.22);
+      border-color: rgba(255,255,255,.12);
     }
-    .build-slot.disabled:hover{
-      transform:none;
-      box-shadow:none;
-      border-color: rgba(255,255,255,.10);
+
+    /* Bottom characters are round portraits inside square */
+    .bp-bottom .bp-slot[data-type="character"] img{
+      width: calc(100% - 8px);
+      height: calc(100% - 8px);
+      border-radius: 50%;
+      object-fit: cover;
+      margin: 4px;
       background: rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.10);
     }
-    .loadout-placeholder{
+
+    /* Weapons: one square containing two halves (matches screenshot) */
+    .bp-weapons{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:0;
+      background: rgba(0,0,0,.35);
+    }
+    .bp-weapons:hover{ border-color: rgba(77,211,255,.22); box-shadow: 0 0 0 3px rgba(77,211,255,.10); }
+    .bp-weapons .wh{
       width:100%;
       height:100%;
       display:grid;
       place-items:center;
-      font-family: Orbitron, sans-serif;
-      font-size: .78rem;
-      color: rgba(244,246,255,.90);
-      background:
-        radial-gradient(40px 40px at 25% 30%, rgba(77,211,255,.18), transparent 60%),
-        radial-gradient(40px 40px at 75% 70%, rgba(255,189,89,.16), transparent 60%),
-        rgba(0,0,0,.16);
+      position:relative;
+    }
+    .bp-weapons .wh:first-child{ border-right: 1px solid rgba(255,255,255,.10); }
+    .bp-weapons .wh img{
+      width: 88%;
+      height: 88%;
+      object-fit: contain;
+      opacity:.95;
     }
 
     /* Modal Picker */
@@ -791,6 +784,7 @@
       .quickbar{grid-template-columns: 1fr;}
       .modal-controls input{min-width: 0; width:100%;}
       .modal-controls select{min-width: 0; width:100%;}
+      :root{ --slotTop: 60px; --slotBot: 46px; --slotGap: 7px; }
     }
   </style>
 </head>
@@ -1000,49 +994,38 @@
               </div>
             </div>
 
-            <!-- Build Bar (replicate: 1 Active, 3 Passive, 1 Pet, 1 Loadout placeholder, 2 Weapons) -->
+            <!-- Screenshot-style Build Bar -->
             <div class="buildbar">
-              <div class="build-row" id="buildRow">
-                <!-- Active -->
-                <div class="build-slot big" data-build-slot="active" data-type="character" title="Active Character">
-                  <img id="buildActiveImg" alt="Active Character" />
-                  <span class="slot-badge">Active</span>
+              <div class="buildpanel" id="buildPanel">
+                <!-- Top row: Active + Weapons (2 inside one box) -->
+                <div class="bp-top">
+                  <div class="bp-slot bp-active" data-build-slot="active" data-type="character" title="Active Character">
+                    <img id="bpActiveImg" alt="Active Character" />
+                  </div>
+
+                  <div class="bp-slot bp-weapons" data-build-slot="weaponsStack" data-type="weapon" title="Weapons (Left = W1, Right = W2)">
+                    <div class="wh" data-w="0"><img id="bpWeapon1Img" alt="Weapon 1" /></div>
+                    <div class="wh" data-w="1"><img id="bpWeapon2Img" alt="Weapon 2" /></div>
+                  </div>
                 </div>
 
-                <!-- Passives -->
-                <div class="build-slot" data-build-slot="passive0" data-type="character" title="Passive 1">
-                  <img id="buildPassive1Img" alt="Passive 1" />
-                  <span class="slot-badge">P1</span>
-                </div>
-                <div class="build-slot" data-build-slot="passive1" data-type="character" title="Passive 2">
-                  <img id="buildPassive2Img" alt="Passive 2" />
-                  <span class="slot-badge">P2</span>
-                </div>
-                <div class="build-slot" data-build-slot="passive2" data-type="character" title="Passive 3">
-                  <img id="buildPassive3Img" alt="Passive 3" />
-                  <span class="slot-badge">P3</span>
-                </div>
-
-                <!-- Pet -->
-                <div class="build-slot" data-build-slot="pet" data-type="pet" title="Pet">
-                  <img id="buildPetImg" alt="Pet" />
-                  <span class="slot-badge">Pet</span>
-                </div>
-
-                <!-- Loadout placeholder -->
-                <div class="build-slot disabled" data-build-slot="loadout" data-type="loadout" title="Loadout (coming soon)">
-                  <div class="loadout-placeholder">LOAD</div>
-                  <span class="slot-badge">Loadout</span>
-                </div>
-
-                <!-- Weapons -->
-                <div class="build-slot" data-build-slot="weapon0" data-type="weapon" title="Weapon 1">
-                  <img id="buildWeapon1Img" alt="Weapon 1" />
-                  <span class="slot-badge">W1</span>
-                </div>
-                <div class="build-slot" data-build-slot="weapon1" data-type="weapon" title="Weapon 2">
-                  <img id="buildWeapon2Img" alt="Weapon 2" />
-                  <span class="slot-badge">W2</span>
+                <!-- Bottom row: 3 passive + pet + loadout -->
+                <div class="bp-bottom">
+                  <div class="bp-slot" data-build-slot="passive0" data-type="character" title="Passive 1">
+                    <img id="bpPassive1Img" alt="Passive 1" />
+                  </div>
+                  <div class="bp-slot" data-build-slot="passive1" data-type="character" title="Passive 2">
+                    <img id="bpPassive2Img" alt="Passive 2" />
+                  </div>
+                  <div class="bp-slot" data-build-slot="passive2" data-type="character" title="Passive 3">
+                    <img id="bpPassive3Img" alt="Passive 3" />
+                  </div>
+                  <div class="bp-slot" data-build-slot="pet" data-type="pet" title="Pet">
+                    <img id="bpPetImg" alt="Pet" />
+                  </div>
+                  <div class="bp-slot" data-build-slot="loadout" data-type="loadout" title="Loadout">
+                    <img id="bpLoadoutImg" alt="Loadout" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -1073,11 +1056,9 @@
       <div class="modal-controls">
         <div class="modal-row">
           <input id="pickerSearch" placeholder="Search..." />
-          <!-- used for Pets/Weapons (category) -->
           <select id="pickerFilterSelect" style="display:none"></select>
           <div class="modal-count" id="pickerCount">—</div>
         </div>
-        <!-- used for Characters (meta/skill type) -->
         <div class="filter-pills" id="pickerFilterPills" style="display:none"></div>
       </div>
 
@@ -1181,20 +1162,23 @@
       character: { url:'https://neptuneg1.github.io/freefire-caster/character.json', items:[], selected:0 },
       pet:       { url:'https://neptuneg1.github.io/freefire-caster/pet.json',       items:[], selected:0 },
       weapon:    { url:'https://neptuneg1.github.io/freefire-caster/weapon.json',    items:[], selected:0 },
+      loadout:   { url:'https://neptuneg1.github.io/freefire-caster/loadout.json',   items:[], selected:0 },
     };
 
     // filter state per popup
     const FILTER_STATE = {
       character: 'all', // all | brmeta | csmeta | active | passive
       pet: 'all',       // all | <category>
-      weapon: 'all'     // all | <category>
+      weapon: 'all',    // all | <category>
+      loadout: 'all'    // all | <category>
     };
 
-    // Build bar state
+    // Build bar state (matches screenshot layout)
     const BUILD = {
       active: 0,
       passives: [0,0,0],
       pet: 0,
+      loadout: 0,
       weapons: [0,0]
     };
 
@@ -1211,7 +1195,11 @@
       if (type === 'pet'){
         return norm(item.category || item.type || item.pet_type || item.group || item.role || 'Other') || 'Other';
       }
-      return norm(item.category || item.type || item.weapon_type || item.class || item.group || 'Other') || 'Other';
+      if (type === 'weapon'){
+        return norm(item.category || item.type || item.weapon_type || item.class || item.group || 'Other') || 'Other';
+      }
+      // loadout
+      return norm(item.category || item.type || 'Loadout') || 'Loadout';
     }
 
     function buildDesc(type, item){
@@ -1227,9 +1215,20 @@
         const d = safeText(item.description || '');
         return (skill ? skill : '—') + (d ? ` — ${d}` : '');
       }
-      const t = safeText(item.type || item.category || '');
-      const d = safeText(item.description || item.special || '');
-      return (t ? t : '—') + (d ? ` — ${d}` : '');
+      if (type === 'weapon'){
+        const t = safeText(item.type || item.category || '');
+        const d = safeText(item.description || item.special || '');
+        return (t ? t : '—') + (d ? ` — ${d}` : '');
+      }
+      // loadout
+      const br = safeText(item.br || '');
+      const cs = safeText(item.cs || '');
+      const d = safeText(item.description || '');
+      if (d) return d;
+      const parts = [];
+      if (br) parts.push(`BR: ${br}`);
+      if (cs) parts.push(`CS: ${cs}`);
+      return parts.join(' | ') || '—';
     }
 
     async function loadJson(url){
@@ -1283,6 +1282,7 @@
       const chars = DATA.character.items || [];
       const pets = DATA.pet.items || [];
       const weapons = DATA.weapon.items || [];
+      const loadouts = DATA.loadout.items || [];
 
       // active = first non-passive
       BUILD.active = firstIndex(chars, c => normLower(c?.skill_type || '') !== 'passive');
@@ -1299,10 +1299,9 @@
         passiveIdx[2] ?? passiveIdx[1] ?? passiveIdx[0] ?? 0
       ];
 
-      // pet = first
       BUILD.pet = pets.length ? 0 : 0;
+      BUILD.loadout = loadouts.length ? 0 : 0;
 
-      // weapons = first 2
       BUILD.weapons = [
         weapons.length ? 0 : 0,
         weapons.length > 1 ? 1 : (weapons.length ? 0 : 0)
@@ -1315,22 +1314,29 @@
       const chars = DATA.character.items || [];
       const pets = DATA.pet.items || [];
       const weapons = DATA.weapon.items || [];
+      const loadouts = DATA.loadout.items || [];
 
       const active = chars[BUILD.active] || chars[0];
       const p1 = chars[BUILD.passives[0]] || chars[0];
       const p2 = chars[BUILD.passives[1]] || chars[0];
       const p3 = chars[BUILD.passives[2]] || chars[0];
+
       const pet = pets[BUILD.pet] || pets[0];
+      const loadout = loadouts[BUILD.loadout] || loadouts[0];
+
       const w1 = weapons[BUILD.weapons[0]] || weapons[0];
       const w2 = weapons[BUILD.weapons[1]] || weapons[0];
 
-      document.getElementById('buildActiveImg').src = active ? pickImg(active) : '';
-      document.getElementById('buildPassive1Img').src = p1 ? pickImg(p1) : '';
-      document.getElementById('buildPassive2Img').src = p2 ? pickImg(p2) : '';
-      document.getElementById('buildPassive3Img').src = p3 ? pickImg(p3) : '';
-      document.getElementById('buildPetImg').src = pet ? pickImg(pet) : '';
-      document.getElementById('buildWeapon1Img').src = w1 ? pickImg(w1) : '';
-      document.getElementById('buildWeapon2Img').src = w2 ? pickImg(w2) : '';
+      document.getElementById('bpActiveImg').src   = active ? pickImg(active) : '';
+      document.getElementById('bpPassive1Img').src = p1 ? pickImg(p1) : '';
+      document.getElementById('bpPassive2Img').src = p2 ? pickImg(p2) : '';
+      document.getElementById('bpPassive3Img').src = p3 ? pickImg(p3) : '';
+
+      document.getElementById('bpPetImg').src      = pet ? pickImg(pet) : '';
+      document.getElementById('bpLoadoutImg').src  = loadout ? pickImg(loadout) : '';
+
+      document.getElementById('bpWeapon1Img').src  = w1 ? pickImg(w1) : '';
+      document.getElementById('bpWeapon2Img').src  = w2 ? pickImg(w2) : '';
     }
 
     /***********************
@@ -1353,22 +1359,26 @@
 
     function openPicker(type, target){
       currentPickerType = type;
-
       PICK_TARGET = target || { kind:'quickview', type, slot:null };
 
-      // force defaults for build slots
+      // auto-filter helpful defaults for build slots
       if (PICK_TARGET.kind === 'build' && type === 'character'){
         if (PICK_TARGET.slot === 'active') FILTER_STATE.character = 'active';
         if (String(PICK_TARGET.slot || '').startsWith('passive')) FILTER_STATE.character = 'passive';
       }
 
-      const label = type === 'character' ? 'Character' : type === 'pet' ? 'Pet' : 'Weapon';
+      const label =
+        type === 'character' ? 'Character' :
+        type === 'pet' ? 'Pet' :
+        type === 'weapon' ? 'Weapon' :
+        'Loadout';
 
       let titleLabel = `Select ${label}`;
       if (PICK_TARGET.kind === 'build'){
         if (PICK_TARGET.slot === 'active') titleLabel = 'Select Active Character';
         if (String(PICK_TARGET.slot || '').startsWith('passive')) titleLabel = 'Select Passive Character';
         if (PICK_TARGET.slot === 'pet') titleLabel = 'Select Pet';
+        if (PICK_TARGET.slot === 'loadout') titleLabel = 'Select Loadout';
         if (String(PICK_TARGET.slot || '').startsWith('weapon')) titleLabel = 'Select Weapon';
       }
 
@@ -1419,6 +1429,7 @@
         });
 
       } else {
+        // Pets / Weapons / Loadout use select (category)
         pickerFilterPills.style.display = 'none';
         pickerFilterSelect.style.display = 'inline-flex';
 
@@ -1426,7 +1437,7 @@
         const cats = Array.from(new Set(items.map(it => getCategory(currentPickerType, it)).filter(Boolean)))
           .sort((a,b) => a.localeCompare(b));
 
-        const stateKey = currentPickerType; // 'pet' or 'weapon'
+        const stateKey = currentPickerType; // pet | weapon | loadout
         const current = FILTER_STATE[stateKey] || 'all';
 
         pickerFilterSelect.innerHTML = [
@@ -1458,15 +1469,10 @@
         return true;
       }
 
-      if (currentPickerType === 'pet'){
-        const f = FILTER_STATE.pet || 'all';
-        if (f === 'all') return true;
-        return getCategory('pet', it) === f;
-      }
-
-      const fw = FILTER_STATE.weapon || 'all';
-      if (fw === 'all') return true;
-      return getCategory('weapon', it) === fw;
+      const key = currentPickerType; // pet / weapon / loadout
+      const f = FILTER_STATE[key] || 'all';
+      if (f === 'all') return true;
+      return getCategory(currentPickerType, it) === f;
     }
 
     function renderPickerGrid(){
@@ -1480,7 +1486,7 @@
 
         const name = safeText(it?.name).toLowerCase();
         const skill = safeText(it?.skill || it?.type || it?.ability || it?.category || '').toLowerCase();
-        const desc = safeText(it?.description || it?.special || '').toLowerCase();
+        const desc = safeText(it?.description || it?.special || it?.br || it?.cs || '').toLowerCase();
         return name.includes(q) || skill.includes(q) || desc.includes(q);
       });
 
@@ -1524,6 +1530,8 @@
           }
         } else if (currentPickerType === 'pet' && PICK_TARGET.slot === 'pet'){
           BUILD.pet = idx;
+        } else if (currentPickerType === 'loadout' && PICK_TARGET.slot === 'loadout'){
+          BUILD.loadout = idx;
         } else if (currentPickerType === 'weapon' && String(PICK_TARGET.slot || '').startsWith('weapon')){
           const n = Number(String(PICK_TARGET.slot).replace('weapon',''));
           if (!Number.isNaN(n) && n >= 0 && n < 2) BUILD.weapons[n] = idx;
@@ -1546,20 +1554,29 @@
       });
     });
 
-    // Build bar openers (except loadout placeholder)
-    document.getElementById('buildRow')?.addEventListener('click', (e) => {
-      const slotEl = e.target.closest('.build-slot');
-      if (!slotEl || slotEl.classList.contains('disabled')) return;
+    // Build panel openers (weapons box picks W1 or W2 depending on click half)
+    document.getElementById('buildPanel')?.addEventListener('click', (e) => {
+      const slotEl = e.target.closest('.bp-slot');
+      if (!slotEl) return;
 
       const slot = slotEl.getAttribute('data-build-slot');
       const dtype = slotEl.getAttribute('data-type');
+
+      if (slot === 'weaponsStack'){
+        // decide left/right half
+        const rect = slotEl.getBoundingClientRect();
+        const x = (e.clientX - rect.left);
+        const half = x < rect.width / 2 ? 0 : 1;
+        openPicker('weapon', { kind:'build', type:'weapon', slot: `weapon${half}` });
+        return;
+      }
 
       if (dtype === 'character'){
         openPicker('character', { kind:'build', type:'character', slot });
       } else if (dtype === 'pet'){
         openPicker('pet', { kind:'build', type:'pet', slot:'pet' });
-      } else if (dtype === 'weapon'){
-        openPicker('weapon', { kind:'build', type:'weapon', slot });
+      } else if (dtype === 'loadout'){
+        openPicker('loadout', { kind:'build', type:'loadout', slot:'loadout' });
       }
     });
 
@@ -1581,15 +1598,17 @@
       });
 
       try{
-        const [chars, pets, weapons] = await Promise.all([
+        const [chars, pets, weapons, loadouts] = await Promise.all([
           loadJson(DATA.character.url),
           loadJson(DATA.pet.url),
           loadJson(DATA.weapon.url),
+          loadJson(DATA.loadout.url),
         ]);
 
         DATA.character.items = Array.isArray(chars) ? chars : [];
         DATA.pet.items = Array.isArray(pets) ? pets : [];
         DATA.weapon.items = Array.isArray(weapons) ? weapons : [];
+        DATA.loadout.items = Array.isArray(loadouts) ? loadouts : [];
 
         setCounts();
 
