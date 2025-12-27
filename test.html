@@ -1077,38 +1077,67 @@
 
     function buildDesc(type, item){
       if (!item) return '—';
-
+    
       if (type === 'character'){
         const skill = safeText(item.skill || '');
         const d = safeText(item.description || '');
         return (skill ? skill : '—') + (d ? ` — ${d}` : '');
       }
-
+    
       if (type === 'pet'){
         const skill = safeText(item.skill || item.ability || '');
         const d = safeText(item.description || '');
         return (skill ? skill : '—') + (d ? ` — ${d}` : '');
       }
-
+    
       if (type === 'weapon'){
         const t = safeText(item.type || item.category || '');
         const d = safeText(item.description || item.special || item.desc || '');
         return (t ? t : '—') + (d ? ` — ${d}` : '');
       }
-
-      // NEW: loadout
+    
+      // ✅ FIXED: loadout supports object/array fields
       if (type === 'loadout'){
-        const d = safeText(item.description || '');
-        if (d) return d;
-
-        const br = safeText(item.br || '');
-        const cs = safeText(item.cs || '');
+        // preferred top-level description
+        if (item.description) return safeText(item.description);
+    
+        const fmtItem = (x) => {
+          if (x == null) return '';
+          if (typeof x === 'string' || typeof x === 'number' || typeof x === 'boolean') return String(x);
+          if (Array.isArray(x)) return x.map(fmtItem).filter(Boolean).join(', ');
+          if (typeof x === 'object') {
+            // common useful fields
+            if (x.name) return String(x.name);
+            if (x.title) return String(x.title);
+            if (x.desc) return String(x.desc);
+            if (x.description) return String(x.description);
+    
+            // if it contains a list
+            if (Array.isArray(x.items)) return x.items.map(fmtItem).filter(Boolean).join(', ');
+    
+            // fallback: show primitive key: value pairs only
+            const parts = [];
+            for (const [k,v] of Object.entries(x)){
+              if (v == null) continue;
+              if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean'){
+                parts.push(`${k}: ${v}`);
+              }
+            }
+            return parts.join(' • ');
+          }
+          return '';
+        };
+    
+        const brTxt = fmtItem(item.br);
+        const csTxt = fmtItem(item.cs);
+    
         const parts = [];
-        if (br) parts.push(`BR: ${br}`);
-        if (cs) parts.push(`CS: ${cs}`);
+        if (brTxt) parts.push(`BR: ${brTxt}`);
+        if (csTxt) parts.push(`CS: ${csTxt}`);
+    
         return parts.join('  ') || '—';
       }
-
+    
       return '—';
     }
 
