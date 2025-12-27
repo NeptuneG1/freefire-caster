@@ -484,16 +484,10 @@
       line-height:1.22rem;
     }
 
-    /* make loadout desc feel clickable for details */
-    .tap-more{
-      cursor:pointer;
-      position:relative;
-    }
-    .tap-more:hover{
-      color: rgba(244,246,255,.92);
-    }
+    .tap-more{cursor:pointer}
+    .tap-more:hover{color: rgba(244,246,255,.92);}
 
-    /* Modal Picker */
+    /* Modal */
     .modal{
       position: fixed;
       inset: 0;
@@ -668,7 +662,7 @@
       text-align:center;
     }
 
-    /* Loadout Details Modal content */
+    /* Loadout Details */
     .ld-wrap{
       padding: 14px;
       overflow:auto;
@@ -745,7 +739,7 @@
       padding: 0 12px 12px 12px;
       color: rgba(244,246,255,.86);
       line-height: 1.35rem;
-      white-space: pre-wrap; /* preserve newlines */
+      white-space: pre-wrap;
       word-break: break-word;
       font-size: .92rem;
     }
@@ -759,7 +753,7 @@
       .modal-controls select{min-width: 0; width:100%;}
     }
 
-    /* ===== Map Window (Dashboard) ===== */
+    /* ===== Map Window bar (Dashboard) ===== */
     .mapbar{
       margin-top:12px;
       padding:12px;
@@ -771,14 +765,12 @@
       justify-content:space-between;
       gap:12px;
     }
-
     .mapbar-left{
       display:flex;
       flex-direction:column;
       gap:2px;
       min-width:0;
     }
-
     .mapbar-left b{
       font-family: Orbitron, sans-serif;
       letter-spacing:.4px;
@@ -788,51 +780,83 @@
       overflow:hidden;
       text-overflow:ellipsis;
     }
-
     .mapbar-left span{
       color: var(--muted);
       font-size:.83rem;
       white-space:normal;
     }
+    .mapbar-actions{display:flex;gap:8px;flex:0 0 auto;}
+    a.qv-btn{text-decoration:none;display:inline-flex;align-items:center;justify-content:center;}
 
-    .mapbar-actions{
-      display:flex;
-      gap:8px;
-      flex:0 0 auto;
-    }
-
-    a.qv-btn{
-      text-decoration:none;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-    }
-
+    /* ===== Map Image Viewer Modal ===== */
     .modal-card.map-card{
       width: min(1320px, 100%);
       max-height: min(88vh, 920px);
     }
-
-    .map-frame-wrap{
-      flex:1;
+    .map-toolbar{
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
       display:flex;
-      flex-direction:column;
-      background: rgba(0,0,0,.18);
-      border-top: 1px solid rgba(255,255,255,.08);
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .map-toolbar .left{
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+      min-width: 0;
+    }
+    .map-toolbar select{
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.12);
+      outline:none;
+      color: var(--ink);
+      font-size:.92rem;
+      min-width: 220px;
+    }
+    .map-toolbar .right{
+      display:flex; align-items:center; gap:8px; flex: 0 0 auto;
+    }
+    .map-hint{
+      color: var(--muted);
+      font-size:.82rem;
+      max-width: 520px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
     }
 
-    .map-frame{
-      width:100%;
-      height: 74vh;
-      border:0;
-      background: transparent;
+    .map-viewport{
+      position:relative;
+      flex:1;
+      background: rgba(0,0,0,.18);
+      overflow:hidden;
+      touch-action: none; /* required for pointer/touch pan+pinch */
+      border-top: 1px solid rgba(255,255,255,.08);
+    }
+    .map-viewport::after{
+      content:"";
+      position:absolute; inset:0;
+      pointer-events:none;
+      background: radial-gradient(420px 220px at 60% 15%, rgba(77,211,255,.08), transparent 55%);
+    }
+
+    .map-img{
+      position:absolute;
+      left:0; top:0;
+      transform-origin: 0 0;
+      user-select:none;
+      -webkit-user-drag: none;
+      pointer-events:none; /* let viewport receive pointer events */
+      will-change: transform;
+      filter: saturate(1.02) contrast(1.02);
     }
   </style>
 </head>
 
 <body>
-  <div class="backdrop" id="backdrop"></div>
-
   <div class="app">
     <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
@@ -869,6 +893,7 @@
           <span class="nav-label">Weapons</span>
         </a>
 
+        <!-- Keep your existing Map page link if you still want it -->
         <a class="nav-item" href="map.html" data-page="map.html" title="Map">
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M10 6 4 8v14l6-2 4 2 6-2V6l-6 2-4-2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
           <span class="nav-label">Map</span>
@@ -1039,15 +1064,16 @@
               </div>
             </div>
 
-            <!-- Map Window bar (below Quick View cards) -->
+            <!-- Map Window bar -->
             <div class="mapbar">
               <div class="mapbar-left">
                 <b>Map Window</b>
-                <span>Open the interactive map without leaving the dashboard.</span>
+                <span>Pan: drag. Zoom: mouse wheel / trackpad. Touch: drag + pinch zoom.</span>
               </div>
               <div class="mapbar-actions">
                 <button class="qv-btn" id="openMapBtn">Open</button>
-                <a class="qv-btn" href="map.html" target="_blank" rel="noopener">Full Page</a>
+                <!-- Optional: open your Team Path Planner if you want -->
+                <!-- <a class="qv-btn" href="team_path_planner.html" target="_blank" rel="noopener">Open Planner</a> -->
               </div>
             </div>
 
@@ -1127,13 +1153,13 @@
     </div>
   </div>
 
-  <!-- Map Window Modal -->
+  <!-- Map Image Viewer Modal -->
   <div class="modal" id="mapModal" aria-hidden="true">
     <div class="modal-card map-card" role="dialog" aria-modal="true" aria-label="Map Window">
       <div class="modal-top">
         <div>
           <h3>Map Window</h3>
-          <p class="muted">Embedded <code>map.html</code> inside the dashboard.</p>
+          <p class="muted">Map image viewer (no iframe). Drag to pan, wheel/pinch to zoom.</p>
         </div>
         <button class="icon-btn" id="mapClose" aria-label="Close map window" title="Close">
           <svg viewBox="0 0 24 24" fill="none">
@@ -1142,8 +1168,21 @@
         </button>
       </div>
 
-      <div class="map-frame-wrap">
-        <iframe id="mapFrame" class="map-frame" title="Map Window" loading="lazy"></iframe>
+      <div class="map-toolbar">
+        <div class="left">
+          <select id="mapImgSelect" aria-label="Select map"></select>
+          <div class="map-hint" id="mapStatus">Ready</div>
+        </div>
+        <div class="right">
+          <button class="qv-btn" id="zoomOutBtn">-</button>
+          <button class="qv-btn" id="zoomInBtn">+</button>
+          <button class="qv-btn" id="fitBtn">Fit</button>
+          <button class="qv-btn" id="resetBtn">Reset</button>
+        </div>
+      </div>
+
+      <div class="map-viewport" id="mapViewport">
+        <img id="mapImg" class="map-img" alt="Map" />
       </div>
     </div>
   </div>
@@ -1218,7 +1257,7 @@
     });
 
     /***********************
-     * Data
+     * Data (Quick View)
      ***********************/
     const DATA = {
       character: { url:'https://neptuneg1.github.io/freefire-caster/character.json', items:[], selected:0 },
@@ -1271,7 +1310,6 @@
         return (t ? t : '—') + (d ? ` — ${d}` : '');
       }
 
-      // loadout: show only headline (quick view), full in modal
       if (type === 'loadout'){
         const details = item.details || {};
         const br = safeText(details.br || '');
@@ -1303,9 +1341,6 @@
       return await res.json();
     }
 
-    /***********************
-     * Quick View render
-     ***********************/
     function applyQuickView(type){
       const state = DATA[type];
       const item = state.items[state.selected] || state.items[0];
@@ -1569,25 +1604,298 @@
     });
 
     /***********************
-     * Map Window Modal
+     * Map Image Viewer (Zoom + Pan + Selection)
      ***********************/
     const mapModal = document.getElementById('mapModal');
     const mapClose = document.getElementById('mapClose');
     const openMapBtn = document.getElementById('openMapBtn');
-    const mapFrame = document.getElementById('mapFrame');
+
+    const mapViewport = document.getElementById('mapViewport');
+    const mapImg = document.getElementById('mapImg');
+    const mapImgSelect = document.getElementById('mapImgSelect');
+    const mapStatus = document.getElementById('mapStatus');
+
+    const zoomInBtn = document.getElementById('zoomInBtn');
+    const zoomOutBtn = document.getElementById('zoomOutBtn');
+    const fitBtn = document.getElementById('fitBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    const MAPS = [
+      { name: 'Bermuda',  url: 'https://i.imgur.com/V6iUHaA.jpeg' },
+      { name: 'Purgatory',url: 'https://i.imgur.com/ieY0LHk.jpeg' },
+      { name: 'Kalahari', url: 'https://i.imgur.com/4Yz12P9.jpeg' },
+      { name: 'NeXTerra', url: 'https://i.imgur.com/0MZNMJZ.jpeg' },
+      { name: 'Alpine',   url: 'https://i.imgur.com/48O1Jf8.jpeg' },
+      { name: 'Solara',   url: 'https://i.imgur.com/IX1oY9Z.jpeg' },
+    ];
+
+    // Transform state
+    const view = {
+      scale: 1,
+      tx: 0,
+      ty: 0,
+      minScale: 0.25,
+      maxScale: 5,
+      imgW: 1,
+      imgH: 1,
+      isLoaded: false,
+    };
+
+    // Pointer tracking (drag + pinch)
+    const pointers = new Map(); // pointerId -> {x,y}
+    let dragStart = null; // {x,y, tx,ty}
+    let pinchStart = null; // {dist, scale, cx, cy, ix, iy}
+
+    function setStatus(text){
+      mapStatus.textContent = text;
+    }
+
+    function applyTransform(){
+      mapImg.style.transform = `translate(${view.tx}px, ${view.ty}px) scale(${view.scale})`;
+    }
+
+    function clampTransform(){
+      const vw = mapViewport.clientWidth || 1;
+      const vh = mapViewport.clientHeight || 1;
+      const w = view.imgW * view.scale;
+      const h = view.imgH * view.scale;
+
+      // If image smaller than viewport -> center it
+      if (w <= vw) {
+        view.tx = Math.round((vw - w) / 2);
+      } else {
+        const minTx = vw - w;
+        const maxTx = 0;
+        view.tx = Math.min(maxTx, Math.max(minTx, view.tx));
+      }
+
+      if (h <= vh) {
+        view.ty = Math.round((vh - h) / 2);
+      } else {
+        const minTy = vh - h;
+        const maxTy = 0;
+        view.ty = Math.min(maxTy, Math.max(minTy, view.ty));
+      }
+    }
+
+    function zoomAt(clientX, clientY, factor){
+      const rect = mapViewport.getBoundingClientRect();
+      const px = clientX - rect.left;
+      const py = clientY - rect.top;
+
+      const oldScale = view.scale;
+      const newScale = Math.min(view.maxScale, Math.max(view.minScale, oldScale * factor));
+      if (newScale === oldScale) return;
+
+      // image-space point under cursor
+      const ix = (px - view.tx) / oldScale;
+      const iy = (py - view.ty) / oldScale;
+
+      view.scale = newScale;
+      view.tx = px - ix * newScale;
+      view.ty = py - iy * newScale;
+
+      clampTransform();
+      applyTransform();
+      setStatus(`Zoom: ${(view.scale * 100).toFixed(0)}%`);
+    }
+
+    function fitToViewport(){
+      if (!view.isLoaded) return;
+      const vw = mapViewport.clientWidth || 1;
+      const vh = mapViewport.clientHeight || 1;
+
+      const sx = vw / view.imgW;
+      const sy = vh / view.imgH;
+      view.scale = Math.min(sx, sy);
+
+      // clamp scale into allowed range, but prefer fit
+      view.scale = Math.min(view.maxScale, Math.max(view.minScale, view.scale));
+
+      const w = view.imgW * view.scale;
+      const h = view.imgH * view.scale;
+      view.tx = Math.round((vw - w) / 2);
+      view.ty = Math.round((vh - h) / 2);
+
+      applyTransform();
+      setStatus('Fit');
+    }
+
+    function resetView(){
+      // "Reset" = Fit + set default zoom to 100% if it fits? (We keep it simple: fit)
+      fitToViewport();
+    }
+
+    function setMapByUrl(url){
+      setStatus('Loading…');
+      view.isLoaded = false;
+      mapImg.src = url;
+    }
+
+    // Build select
+    (function initMapSelect(){
+      mapImgSelect.innerHTML = MAPS.map(m => `<option value="${m.url}">${m.name}</option>`).join('');
+      mapImgSelect.value = MAPS[0].url;
+    })();
+
+    mapImg.addEventListener('load', () => {
+      view.imgW = mapImg.naturalWidth || 1;
+      view.imgH = mapImg.naturalHeight || 1;
+      view.isLoaded = true;
+      fitToViewport();
+      setStatus('Drag to pan • Wheel/pinch to zoom');
+    });
+
+    mapImg.addEventListener('error', () => {
+      setStatus('Failed to load map image.');
+    });
+
+    mapImgSelect.addEventListener('change', () => {
+      setMapByUrl(mapImgSelect.value);
+    });
+
+    // Wheel zoom
+    mapViewport.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      if (!view.isLoaded) return;
+      const delta = e.deltaY;
+      const factor = delta > 0 ? 0.92 : 1.08;
+      zoomAt(e.clientX, e.clientY, factor);
+    }, { passive: false });
+
+    // Pointer events for pan + pinch
+    function getClientPos(e){ return { x: e.clientX, y: e.clientY }; }
+
+    mapViewport.addEventListener('pointerdown', (e) => {
+      if (!view.isLoaded) return;
+      mapViewport.setPointerCapture(e.pointerId);
+      const p = getClientPos(e);
+      pointers.set(e.pointerId, p);
+
+      if (pointers.size === 1) {
+        dragStart = { x: p.x, y: p.y, tx: view.tx, ty: view.ty };
+        pinchStart = null;
+      } else if (pointers.size === 2) {
+        // start pinch
+        const pts = Array.from(pointers.values());
+        const dx = pts[1].x - pts[0].x;
+        const dy = pts[1].y - pts[0].y;
+        const dist = Math.hypot(dx, dy);
+
+        // pinch center in viewport coords
+        const rect = mapViewport.getBoundingClientRect();
+        const cx = (pts[0].x + pts[1].x) / 2 - rect.left;
+        const cy = (pts[0].y + pts[1].y) / 2 - rect.top;
+
+        // image coords at center
+        const ix = (cx - view.tx) / view.scale;
+        const iy = (cy - view.ty) / view.scale;
+
+        pinchStart = { dist, scale: view.scale, cx, cy, ix, iy };
+        dragStart = null;
+      }
+    });
+
+    mapViewport.addEventListener('pointermove', (e) => {
+      if (!view.isLoaded) return;
+      if (!pointers.has(e.pointerId)) return;
+
+      const p = getClientPos(e);
+      pointers.set(e.pointerId, p);
+
+      if (pointers.size === 1 && dragStart) {
+        const dx = p.x - dragStart.x;
+        const dy = p.y - dragStart.y;
+        view.tx = dragStart.tx + dx;
+        view.ty = dragStart.ty + dy;
+        clampTransform();
+        applyTransform();
+        return;
+      }
+
+      if (pointers.size === 2 && pinchStart) {
+        const pts = Array.from(pointers.values());
+        const dx = pts[1].x - pts[0].x;
+        const dy = pts[1].y - pts[0].y;
+        const dist = Math.hypot(dx, dy);
+
+        const factor = dist / (pinchStart.dist || 1);
+        const newScale = Math.min(view.maxScale, Math.max(view.minScale, pinchStart.scale * factor));
+        view.scale = newScale;
+
+        // Keep pinch center stable
+        view.tx = pinchStart.cx - pinchStart.ix * newScale;
+        view.ty = pinchStart.cy - pinchStart.iy * newScale;
+
+        clampTransform();
+        applyTransform();
+        setStatus(`Zoom: ${(view.scale * 100).toFixed(0)}%`);
+      }
+    });
+
+    function endPointer(e){
+      pointers.delete(e.pointerId);
+      if (pointers.size === 1) {
+        // continue drag with remaining pointer if any
+        const remaining = Array.from(pointers.values())[0];
+        if (remaining) dragStart = { x: remaining.x, y: remaining.y, tx: view.tx, ty: view.ty };
+        pinchStart = null;
+      } else {
+        dragStart = null;
+        pinchStart = null;
+      }
+    }
+
+    mapViewport.addEventListener('pointerup', endPointer);
+    mapViewport.addEventListener('pointercancel', endPointer);
+    mapViewport.addEventListener('pointerleave', (e) => {
+      // if pointer left while captured, ignore; but safe end if not captured
+      if (!mapViewport.hasPointerCapture(e.pointerId)) endPointer(e);
+    });
+
+    // Buttons
+    zoomInBtn.addEventListener('click', () => {
+      if (!view.isLoaded) return;
+      const r = mapViewport.getBoundingClientRect();
+      zoomAt(r.left + r.width/2, r.top + r.height/2, 1.12);
+    });
+    zoomOutBtn.addEventListener('click', () => {
+      if (!view.isLoaded) return;
+      const r = mapViewport.getBoundingClientRect();
+      zoomAt(r.left + r.width/2, r.top + r.height/2, 0.88);
+    });
+    fitBtn.addEventListener('click', fitToViewport);
+    resetBtn.addEventListener('click', resetView);
+
+    // Resize -> keep fit-ish
+    const ro = new ResizeObserver(() => {
+      if (!mapModal.classList.contains('show')) return;
+      if (!view.isLoaded) return;
+      clampTransform();
+      applyTransform();
+    });
+    ro.observe(mapViewport);
 
     function openMapWindow(){
-      // lazy-load map.html only when opened
-      if (mapFrame && !mapFrame.getAttribute('src')) {
-        mapFrame.setAttribute('src', 'map.html');
-      }
-      mapModal?.classList.add('show');
-      mapModal?.setAttribute('aria-hidden','false');
+      if (!mapImg.src) setMapByUrl(mapImgSelect.value);
+      mapModal.classList.add('show');
+      mapModal.setAttribute('aria-hidden','false');
+      // ensure image loads on open (if it was never set)
+      if (!mapImg.src) setMapByUrl(mapImgSelect.value);
+      setTimeout(() => {
+        if (view.isLoaded) {
+          clampTransform();
+          applyTransform();
+        }
+      }, 0);
     }
 
     function closeMapWindow(){
-      mapModal?.classList.remove('show');
-      mapModal?.setAttribute('aria-hidden','true');
+      mapModal.classList.remove('show');
+      mapModal.setAttribute('aria-hidden','true');
+      pointers.clear();
+      dragStart = null;
+      pinchStart = null;
     }
 
     openMapBtn?.addEventListener('click', openMapWindow);
@@ -1595,7 +1903,7 @@
     mapModal?.addEventListener('click', (e) => { if (e.target === mapModal) closeMapWindow(); });
 
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && mapModal?.classList.contains('show')) closeMapWindow();
+      if (e.key === 'Escape' && mapModal.classList.contains('show')) closeMapWindow();
     });
 
     /***********************
@@ -1614,6 +1922,9 @@
         e.preventDefault();
         logout();
       });
+
+      // preload first map (fast open)
+      setMapByUrl(MAPS[0].url);
 
       try{
         const [chars, pets, weapons, loadouts] = await Promise.all([
