@@ -370,31 +370,6 @@
       text-overflow: ellipsis;
     }
 
-    .hero-actions{
-      display:flex;
-      gap:10px;
-      align-items:center;
-      flex:0 0 auto;
-    }
-    .cta{
-      display:inline-flex;
-      align-items:center;
-      gap:10px;
-      padding: 10px 12px;
-      border-radius: 14px;
-      border: 1px solid rgba(255,189,89,.25);
-      background: linear-gradient(135deg, rgba(255,189,89,.18), rgba(255,119,51,.10));
-      cursor:pointer;
-      transition:.2s ease;
-      text-decoration:none;
-      font-weight:700;
-      color: var(--ink);
-      font-size: .92rem;
-      white-space:nowrap;
-    }
-    .cta:hover{transform: translateY(-1px); box-shadow: 0 0 0 3px rgba(255,189,89,.10)}
-    .cta svg{width:16px;height:16px}
-
     /* Horizontal Quick View */
     .quickbar{
       display:grid;
@@ -914,6 +889,26 @@
                   </div>
                 </div>
               </div>
+
+              <!-- Loadout (NEW) -->
+              <div class="qv-item">
+                <div class="qv-head">
+                  <div class="qv-title">
+                    Loadout
+                    <span class="qv-count" id="loadoutCount">—</span>
+                  </div>
+                  <div class="qv-actions">
+                    <button class="qv-btn" data-open="loadout">Choose</button>
+                  </div>
+                </div>
+                <div class="qv-body">
+                  <div class="qv-thumb"><img id="loadoutThumb" alt="Loadout" /></div>
+                  <div class="qv-meta">
+                    <b id="loadoutName">—</b>
+                    <span id="loadoutDesc">—</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div class="muted" style="font-size:.8rem; padding: 10px 2px 0 2px;">
@@ -1051,13 +1046,16 @@
       character: { url:'https://neptuneg1.github.io/freefire-caster/character.json', items:[], selected:0 },
       pet:       { url:'https://neptuneg1.github.io/freefire-caster/pet.json',       items:[], selected:0 },
       weapon:    { url:'https://neptuneg1.github.io/freefire-caster/weapon.json',    items:[], selected:0 },
+      // NEW: loadout slot
+      loadout:   { url:'https://neptuneg1.github.io/freefire-caster/loadout.json',   items:[], selected:0 },
     };
 
     // filter state per popup
     const FILTER_STATE = {
       character: 'all', // all | brmeta | csmeta | active | passive
       pet: 'all',       // all | <category>
-      weapon: 'all'     // all | <category>
+      weapon: 'all',    // all | <category>
+      loadout: 'all'
     };
 
     function safeText(v){ return (v ?? '').toString(); }
@@ -1085,15 +1083,33 @@
         const d = safeText(item.description || '');
         return (skill ? skill : '—') + (d ? ` — ${d}` : '');
       }
+
       if (type === 'pet'){
         const skill = safeText(item.skill || item.ability || '');
         const d = safeText(item.description || '');
         return (skill ? skill : '—') + (d ? ` — ${d}` : '');
       }
-      // weapon
-      const t = safeText(item.type || item.category || '');
-      const d = safeText(item.description || item.special || '');
-      return (t ? t : '—') + (d ? ` — ${d}` : '');
+
+      if (type === 'weapon'){
+        const t = safeText(item.type || item.category || '');
+        const d = safeText(item.description || item.special || item.desc || '');
+        return (t ? t : '—') + (d ? ` — ${d}` : '');
+      }
+
+      // NEW: loadout
+      if (type === 'loadout'){
+        const d = safeText(item.description || '');
+        if (d) return d;
+
+        const br = safeText(item.br || '');
+        const cs = safeText(item.cs || '');
+        const parts = [];
+        if (br) parts.push(`BR: ${br}`);
+        if (cs) parts.push(`CS: ${cs}`);
+        return parts.join('  ') || '—';
+      }
+
+      return '—';
     }
 
     async function loadJson(url){
@@ -1126,6 +1142,10 @@
         document.getElementById('weaponThumb').src = img;
         document.getElementById('weaponName').textContent = name;
         document.getElementById('weaponDesc').textContent = desc || '—';
+      } else if (type === 'loadout'){
+        document.getElementById('loadoutThumb').src = img;
+        document.getElementById('loadoutName').textContent = name;
+        document.getElementById('loadoutDesc').textContent = desc || '—';
       }
     }
 
@@ -1133,6 +1153,7 @@
       document.getElementById('charCount').textContent = DATA.character.items.length ? DATA.character.items.length.toLocaleString() : '—';
       document.getElementById('petCount').textContent = DATA.pet.items.length ? DATA.pet.items.length.toLocaleString() : '—';
       document.getElementById('weaponCount').textContent = DATA.weapon.items.length ? DATA.weapon.items.length.toLocaleString() : '—';
+      document.getElementById('loadoutCount').textContent = DATA.loadout.items.length ? DATA.loadout.items.length.toLocaleString() : '—';
     }
 
     /***********************
@@ -1152,7 +1173,11 @@
 
     function openPicker(type){
       currentPickerType = type;
-      const label = type === 'character' ? 'Character' : type === 'pet' ? 'Pet' : 'Weapon';
+      const label =
+        type === 'character' ? 'Character' :
+        type === 'pet' ? 'Pet' :
+        type === 'weapon' ? 'Weapon' :
+        'Loadout';
 
       pickerTitle.textContent = `Select ${label}`;
       pickerSub.textContent = `Click a ${label.toLowerCase()} to apply it to Quick View.`;
@@ -1200,7 +1225,7 @@
           });
         });
 
-      } else {
+      } else if (currentPickerType === 'pet' || currentPickerType === 'weapon') {
         pickerFilterPills.style.display = 'none';
         pickerFilterSelect.style.display = 'inline-flex';
 
@@ -1223,6 +1248,10 @@
           FILTER_STATE[stateKey] = pickerFilterSelect.value || 'all';
           renderPickerGrid();
         };
+      } else {
+        // loadout: no category filter/pills
+        pickerFilterPills.style.display = 'none';
+        pickerFilterSelect.style.display = 'none';
       }
     }
 
@@ -1246,9 +1275,14 @@
         return getCategory('pet', it) === f;
       }
 
-      const fw = FILTER_STATE.weapon || 'all';
-      if (fw === 'all') return true;
-      return getCategory('weapon', it) === fw;
+      if (currentPickerType === 'weapon'){
+        const fw = FILTER_STATE.weapon || 'all';
+        if (fw === 'all') return true;
+        return getCategory('weapon', it) === fw;
+      }
+
+      // loadout
+      return true;
     }
 
     function renderPickerGrid(){
@@ -1261,8 +1295,8 @@
         if (!q) return true;
 
         const name = safeText(it?.name).toLowerCase();
-        const skill = safeText(it?.skill || it?.type || it?.ability || it?.category || '').toLowerCase();
-        const desc = safeText(it?.description || it?.special || '').toLowerCase();
+        const skill = safeText(it?.skill || it?.type || it?.ability || it?.category || it?.br || it?.cs || '').toLowerCase();
+        const desc = safeText(it?.description || it?.special || it?.desc || '').toLowerCase();
         return name.includes(q) || skill.includes(q) || desc.includes(q);
       });
 
@@ -1298,7 +1332,7 @@
       closePicker();
     });
 
-    document.querySelectorAll('[data-open]')?.forEach(btn => {
+    document.querySelectorAll('[data-open]').forEach(btn => {
       btn.addEventListener('click', () => openPicker(btn.getAttribute('data-open')));
     });
 
@@ -1320,25 +1354,29 @@
       });
 
       try{
-        const [chars, pets, weapons] = await Promise.all([
+        const [chars, pets, weapons, loadouts] = await Promise.all([
           loadJson(DATA.character.url),
           loadJson(DATA.pet.url),
           loadJson(DATA.weapon.url),
+          loadJson(DATA.loadout.url),
         ]);
 
         DATA.character.items = Array.isArray(chars) ? chars : [];
         DATA.pet.items = Array.isArray(pets) ? pets : [];
         DATA.weapon.items = Array.isArray(weapons) ? weapons : [];
+        DATA.loadout.items = Array.isArray(loadouts) ? loadouts : [];
 
         setCounts();
 
         DATA.character.selected = 0;
         DATA.pet.selected = 0;
         DATA.weapon.selected = 0;
+        DATA.loadout.selected = 0;
 
         applyQuickView('character');
         applyQuickView('pet');
         applyQuickView('weapon');
+        applyQuickView('loadout');
       }catch(err){
         console.error(err);
         setCounts();
