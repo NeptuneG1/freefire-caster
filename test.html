@@ -49,7 +49,6 @@
     }
     body.modal-open{ overflow:hidden; }
 
-    /* subtle arcs */
     body::before, body::after{
       content:"";
       position:fixed;
@@ -518,17 +517,7 @@
       margin-bottom:8px;
       letter-spacing:.2px;
     }
-    .qv select{
-      width:100%;
-      padding: 10px;
-      border-radius: 12px;
-      background: rgba(0,0,0,.22);
-      color: var(--ink);
-      border: 1px solid rgba(255,255,255,.12);
-      outline:none;
-    }
 
-    /* NEW: Character picker button (replaces dropdown) */
     .picker-btn{
       width:100%;
       display:flex;
@@ -565,6 +554,11 @@
       color: var(--brand);
       font-size:.8rem;
     }
+    .picker-btn .mini img{
+      width:100%;height:100%;
+      display:block;
+      object-fit: cover;
+    }
     .picker-btn .name{
       white-space:nowrap;
       overflow:hidden;
@@ -589,7 +583,7 @@
     .preview img{
       width:100%;
       height: 150px;
-      object-fit: contain;
+      object-fit: contain;      /* fit in card (no cut off) */
       display:block;
       background: rgba(255,255,255,.04);
       padding: 8px;
@@ -626,7 +620,7 @@
     }
     .backdrop.show{ opacity:1; pointer-events:auto; }
 
-    /* ===== NEW: Character Modal Picker ===== */
+    /* ===== Modal Picker (shared) ===== */
     .modal-backdrop{
       position: fixed;
       inset: 0;
@@ -767,18 +761,18 @@
       box-shadow: 0 0 0 3px rgba(255,189,89,.08);
       background: linear-gradient(135deg, rgba(255,189,89,.16), rgba(77,211,255,.08));
     }
-    .fchip .dot{
+    .fchip .mini-dot{
       width:8px;height:8px;border-radius:999px;
       background: var(--accent);
       box-shadow: 0 0 14px rgba(77,211,255,.22);
     }
 
-    .char-grid{
+    .pick-grid{
       display:grid;
       grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
       gap: 10px;
     }
-    .char-card{
+    .pick-card{
       border-radius: 14px;
       background: rgba(255,255,255,.04);
       border: 1px solid rgba(255,255,255,.08);
@@ -788,24 +782,34 @@
       outline:none;
       position:relative;
     }
-    .char-card:hover{transform: translateY(-1px); background: rgba(255,255,255,.06)}
-    .char-card.selected{
+    .pick-card:hover{transform: translateY(-1px); background: rgba(255,255,255,.06)}
+    .pick-card.selected{
       border-color: rgba(255,189,89,.30);
       box-shadow: 0 0 0 3px rgba(255,189,89,.10);
     }
-    .char-card img{
+    .pick-card img{
       width:100%;
-      aspect-ratio: 3/4;
-      object-fit: cover;
       border-radius: 12px;
       border: 2px solid transparent;
       background: rgba(0,0,0,.15);
       display:block;
     }
-    .char-card img.active{ border-color: #00d2ff; }
-    .char-card img.passive{ border-color: #ff59c7; }
+    .pick-card.char img,
+    .pick-card.pet img{
+      aspect-ratio: 3/4;
+      object-fit: cover;
+    }
+    .pick-card.weapon img{
+      aspect-ratio: 16/9;
+      object-fit: contain;
+      padding: 8px;
+      background: rgba(0,0,0,.18);
+    }
 
-    .char-card .nm{
+    .pick-card img.active{ border-color: #00d2ff; }
+    .pick-card img.passive{ border-color: #ff59c7; }
+
+    .pick-card .nm{
       margin-top: 6px;
       font-size: .78rem;
       color: rgba(244,246,255,.92);
@@ -859,13 +863,13 @@
       display:block;
       margin-bottom: 10px;
     }
-    .detail p{
+    .detail .txt p{
       margin: 0 0 8px 0;
       color: rgba(244,246,255,.90);
       font-size: .86rem;
       line-height: 1.25rem;
     }
-    .detail p small{ color: var(--muted); }
+    .detail .txt p small{ color: var(--muted); }
 
     .detail .pick{
       margin-top:10px;
@@ -919,13 +923,13 @@
 <body>
   <div class="backdrop" id="backdrop"></div>
 
-  <!-- NEW: Character Picker Modal -->
+  <!-- ===== Character Modal ===== -->
   <div class="modal-backdrop" id="charModal" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="charModalTitle">
+    <div class="modal" role="dialog" aria-modal="true">
       <div class="modal-head">
         <div class="ttl">
-          <b id="charModalTitle">Quick View — Pick a Character</b>
-          <span class="muted">Search + filter, then click to preview/select</span>
+          <b>Quick View — Pick a Character</b>
+          <span class="muted">Search + filter, click to select</span>
         </div>
         <button class="modal-close" id="charModalClose" aria-label="Close">
           <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -943,17 +947,18 @@
                 <input id="charModalSearch" placeholder="Search character name..." autocomplete="off" />
               </div>
 
-              <div class="filter-row" aria-label="Filters">
-                <span class="fchip active" data-meta="all"><span class="dot"></span>All</span>
-                <span class="fchip" data-meta="meta"><span class="dot" style="background:var(--brand)"></span>Meta (BR)</span>
-                <span class="fchip" data-meta="cs_meta"><span class="dot" style="background:var(--brand2)"></span>Meta (CS)</span>
-                <span class="fchip" data-skill="all"><span class="dot" style="background:var(--accent)"></span>Any</span>
-                <span class="fchip" data-skill="Active"><span class="dot" style="background:#00d2ff"></span>Active</span>
-                <span class="fchip" data-skill="Passive"><span class="dot" style="background:#ff59c7"></span>Passive</span>
+              <div class="filter-row" id="charFilterRow" aria-label="Filters">
+                <span class="fchip active" data-meta="all"><span class="mini-dot"></span>All</span>
+                <span class="fchip" data-meta="meta"><span class="mini-dot" style="background:var(--brand)"></span>Meta (BR)</span>
+                <span class="fchip" data-meta="cs_meta"><span class="mini-dot" style="background:var(--brand2)"></span>Meta (CS)</span>
+
+                <span class="fchip active" data-skill="all"><span class="mini-dot" style="background:var(--accent)"></span>Any</span>
+                <span class="fchip" data-skill="Active"><span class="mini-dot" style="background:#00d2ff"></span>Active</span>
+                <span class="fchip" data-skill="Passive"><span class="mini-dot" style="background:#ff59c7"></span>Passive</span>
               </div>
             </div>
 
-            <div class="char-grid" id="charModalGrid"></div>
+            <div class="pick-grid" id="charModalGrid"></div>
           </div>
 
           <aside class="detail" id="charModalDetail">
@@ -961,11 +966,105 @@
               <b id="charDetailName">—</b>
               <span id="charDetailTag">—</span>
             </div>
-            <div class="body" id="charDetailBody">
+            <div class="body">
               <img id="charDetailImg" src="https://i.imgur.com/qXFpizS.jpg" alt="preview"/>
-              <p><small>Hover / tap a card to see details here.</small></p>
+              <div class="txt" id="charDetailText">
+                <p><small>Hover / tap a card to see details here.</small></p>
+              </div>
+              <button class="pick" id="charDetailPickBtn" type="button">Use this character</button>
             </div>
-            <button class="pick" id="charDetailPickBtn" type="button">Use this character</button>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Pet Modal ===== -->
+  <div class="modal-backdrop" id="petModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <div class="ttl">
+          <b>Quick View — Pick a Pet</b>
+          <span class="muted">Search, click to select</span>
+        </div>
+        <button class="modal-close" id="petModalClose" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-cols">
+          <div>
+            <div class="modal-controls">
+              <div class="modal-search">
+                <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;opacity:.85">
+                  <path d="M21 21l-4.3-4.3m1.3-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <input id="petModalSearch" placeholder="Search pet name..." autocomplete="off" />
+              </div>
+            </div>
+
+            <div class="pick-grid" id="petModalGrid"></div>
+          </div>
+
+          <aside class="detail" id="petModalDetail">
+            <div class="ph">
+              <b id="petDetailName">—</b>
+              <span id="petDetailTag">—</span>
+            </div>
+            <div class="body">
+              <img id="petDetailImg" src="https://i.imgur.com/qXFpizS.jpg" alt="preview"/>
+              <div class="txt" id="petDetailText">
+                <p><small>Hover / tap a card to see details here.</small></p>
+              </div>
+              <button class="pick" id="petDetailPickBtn" type="button">Use this pet</button>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Weapon Modal ===== -->
+  <div class="modal-backdrop" id="weaponModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <div class="ttl">
+          <b>Quick View — Pick a Weapon</b>
+          <span class="muted">Search, click to select</span>
+        </div>
+        <button class="modal-close" id="weaponModalClose" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-cols">
+          <div>
+            <div class="modal-controls">
+              <div class="modal-search">
+                <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;opacity:.85">
+                  <path d="M21 21l-4.3-4.3m1.3-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <input id="weaponModalSearch" placeholder="Search weapon name..." autocomplete="off" />
+              </div>
+            </div>
+
+            <div class="pick-grid" id="weaponModalGrid"></div>
+          </div>
+
+          <aside class="detail" id="weaponModalDetail">
+            <div class="ph">
+              <b id="weaponDetailName">—</b>
+              <span id="weaponDetailTag">—</span>
+            </div>
+            <div class="body">
+              <img id="weaponDetailImg" src="https://i.imgur.com/qXFpizS.jpg" alt="preview"/>
+              <div class="txt" id="weaponDetailText">
+                <p><small>Hover / tap a card to see details here.</small></p>
+              </div>
+              <button class="pick" id="weaponDetailPickBtn" type="button">Use this weapon</button>
+            </div>
           </aside>
         </div>
       </div>
@@ -1155,8 +1254,6 @@
                   <span>Character</span>
                   <span class="muted" id="charTag">—</span>
                 </label>
-
-                <!-- REPLACED dropdown with modal picker button -->
                 <button class="picker-btn" id="openCharPicker" type="button">
                   <span class="left">
                     <span class="mini" id="charMini">FF</span>
@@ -1164,7 +1261,6 @@
                   </span>
                   <span class="hint">Browse</span>
                 </button>
-
                 <div class="preview" id="characterPreview"></div>
               </div>
 
@@ -1173,7 +1269,13 @@
                   <span>Pet</span>
                   <span class="muted" id="petTag">—</span>
                 </label>
-                <select id="petSelect"></select>
+                <button class="picker-btn" id="openPetPicker" type="button">
+                  <span class="left">
+                    <span class="mini" id="petMini">FF</span>
+                    <span class="name" id="petPickName">Select a pet</span>
+                  </span>
+                  <span class="hint">Browse</span>
+                </button>
                 <div class="preview" id="petPreview"></div>
               </div>
 
@@ -1182,7 +1284,13 @@
                   <span>Weapon</span>
                   <span class="muted" id="weaponTag">—</span>
                 </label>
-                <select id="weaponSelect"></select>
+                <button class="picker-btn" id="openWeaponPicker" type="button">
+                  <span class="left">
+                    <span class="mini" id="weaponMini">FF</span>
+                    <span class="name" id="weaponPickName">Select a weapon</span>
+                  </span>
+                  <span class="hint">Browse</span>
+                </button>
                 <div class="preview" id="weaponPreview"></div>
               </div>
 
@@ -1270,18 +1378,31 @@
     });
 
     /***********************
-     * Quick View helpers
+     * Data + Helpers
      ***********************/
     const characterData = [];
     const petData = [];
     const weaponData = [];
 
     function safeText(v){ return (v ?? '').toString(); }
+    function isYes(v){ return (v || 'no') === 'yes'; }
+
+    function loadIdx(key, fallback=0){
+      const v = Number(localStorage.getItem(key));
+      return Number.isFinite(v) ? v : fallback;
+    }
+    function saveIdx(key, idx){
+      localStorage.setItem(key, String(idx));
+    }
 
     function makePreview(item){
-      const img = item?.image_url || item?.icon || '';
+      const img = item?.image_url || item?.icon || item?.img || item?.image || '';
       const title = safeText(item?.name || '—');
-      const desc = safeText(item?.skill || item?.type || '') + (item?.description ? ` — ${safeText(item.description)}` : '');
+
+      const lineA = safeText(item?.skill || item?.type || item?.category || item?.role || '');
+      const lineB = safeText(item?.description || item?.desc || '');
+      const desc = (lineA && lineB) ? `${lineA} — ${lineB}` : (lineA || lineB);
+
       return `
         ${img ? `<img src="${img}" alt="${title}" />` : `<img src="https://i.imgur.com/qXFpizS.jpg" alt="preview" />`}
         <div class="info">
@@ -1291,217 +1412,242 @@
       `;
     }
 
-    function wireSelect(data, selectId, previewId, tagId){
-      const sel = document.getElementById(selectId);
-      const prev = document.getElementById(previewId);
-      const tag = document.getElementById(tagId);
-      if (!sel || !prev) return;
-
-      sel.innerHTML = data.map((it, i) => `<option value="${i}">${safeText(it.name || '—')}</option>`).join('');
-
-      const apply = (idx) => {
-        const item = data[idx] || data[0];
-        prev.innerHTML = makePreview(item);
-        if (tag){
-          const meta = item?.meta ?? item?.cs_meta ?? item?.role ?? item?.type ?? '—';
-          tag.textContent = safeText(meta);
-        }
-      };
-
-      sel.addEventListener('change', () => apply(sel.value));
-      apply(0);
-    }
-
     async function loadJson(url){
       const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) throw new Error('Fetch failed: ' + url);
       return await res.json();
     }
 
-    /***********************
-     * NEW: Character Modal Picker Logic
-     ***********************/
-    const charModal = document.getElementById('charModal');
-    const charModalClose = document.getElementById('charModalClose');
-    const openCharPicker = document.getElementById('openCharPicker');
-
-    const charModalGrid = document.getElementById('charModalGrid');
-    const charModalSearch = document.getElementById('charModalSearch');
-
-    const charDetailName = document.getElementById('charDetailName');
-    const charDetailTag = document.getElementById('charDetailTag');
-    const charDetailImg = document.getElementById('charDetailImg');
-    const charDetailBody = document.getElementById('charDetailBody');
-    const charDetailPickBtn = document.getElementById('charDetailPickBtn');
-
-    const characterPreview = document.getElementById('characterPreview');
-    const charTag = document.getElementById('charTag');
-
-    const charPickName = document.getElementById('charPickName');
-    const charMini = document.getElementById('charMini');
-
-    let selectedCharIndex = -1;         // in characterData
-    let hoveredCharIndex = -1;          // in characterData
-    const charFilter = { meta: 'all', skill: 'all', q: '' };
-
-    function isMetaYes(v){ return (v || 'no') === 'yes'; }
-
-    function getCharTagText(c){
-      // show useful tag in the dashboard chip
-      if (!c) return '—';
-      if (c.meta !== undefined || c.cs_meta !== undefined){
-        if (isMetaYes(c.meta)) return 'meta';
-        if (isMetaYes(c.cs_meta)) return 'cs_meta';
+    function setMini(el, item){
+      if (!el) return;
+      const img = item?.image_url || item?.icon || item?.img || item?.image || '';
+      if (img){
+        el.innerHTML = `<img src="${img}" alt="mini" />`;
+      } else {
+        const nm = safeText(item?.name || 'FF').slice(0,2).toUpperCase() || 'FF';
+        el.textContent = nm;
       }
-      return c.role || c.skill_type || '—';
     }
 
-    function showCharDetail(idx){
-      const c = characterData[idx];
-      if (!c) return;
+    /***********************
+     * Generic Picker Factory
+     ***********************/
+    function createPicker(opts){
+      const {
+        kind,
+        dataArr,
+        storageKey,
+        modalId, closeId, openId,
+        searchId, gridId,
+        detailNameId, detailTagId, detailImgId, detailTextId, detailPickBtnId,
+        tagSpanId, previewId,
+        pickNameId, miniId,
+        cardKindClass,
+        getTagText,
+        buildDetailText,
+        extraFilter,      // (item)=> boolean
+        onFiltersReady    // optional hook
+      } = opts;
 
-      hoveredCharIndex = idx;
+      const state = {
+        selectedIndex: -1,
+        hoverIndex: -1,
+        q: ''
+      };
 
-      charDetailName.textContent = safeText(c.name || '—');
-      charDetailTag.textContent = getCharTagText(c);
-      charDetailImg.src = c.image_url || 'https://i.imgur.com/qXFpizS.jpg';
-      charDetailImg.alt = safeText(c.name || 'preview');
+      const modal = document.getElementById(modalId);
+      const closeBtn = document.getElementById(closeId);
+      const openBtn = document.getElementById(openId);
+      const search = document.getElementById(searchId);
+      const grid = document.getElementById(gridId);
 
-      const skillType = safeText(c.skill_type || '—');
-      const skill = safeText(c.skill || '');
-      const desc = safeText(c.description || '');
-      const role = safeText(c.role || 'N/A');
+      const detailName = document.getElementById(detailNameId);
+      const detailTag = document.getElementById(detailTagId);
+      const detailImg = document.getElementById(detailImgId);
+      const detailText = document.getElementById(detailTextId);
+      const pickBtn = document.getElementById(detailPickBtnId);
 
-      charDetailBody.innerHTML = `
-        <img id="charDetailImg" src="${c.image_url || 'https://i.imgur.com/qXFpizS.jpg'}" alt="${safeText(c.name || 'preview')}" />
-        <p><small>${skillType} Skill</small><br><b>${skill || '—'}</b></p>
-        <p>${desc || '<small>No description available.</small>'}</p>
-        <p><small>Role:</small> ${role}</p>
-      `;
-      // re-bind img reference (since we replaced body HTML)
-      // (safe enough in this small scope)
-    }
+      const tagSpan = document.getElementById(tagSpanId);
+      const preview = document.getElementById(previewId);
 
-    function applyCharacterSelection(idx){
-      const c = characterData[idx];
-      if (!c) return;
-      selectedCharIndex = idx;
+      const pickName = document.getElementById(pickNameId);
+      const mini = document.getElementById(miniId);
 
-      // Update dashboard preview + tag
-      characterPreview.innerHTML = makePreview(c);
-      if (charTag) charTag.textContent = getCharTagText(c);
+      function data(){ return dataArr; }
 
-      // Update button label
-      charPickName.textContent = safeText(c.name || 'Selected');
-      charMini.textContent = (safeText(c.name || 'FF').slice(0,2) || 'FF').toUpperCase();
+      function open(){
+        if (!modal) return;
+        modal.classList.add('show');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+        const idx = state.selectedIndex >= 0 ? state.selectedIndex : 0;
+        showDetail(idx);
+        setTimeout(() => search?.focus(), 0);
+      }
+      function close(){
+        if (!modal) return;
+        modal.classList.remove('show');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+      }
 
-      // highlight selected in modal
-      renderCharGrid();
-    }
+      function applySelection(idx){
+        const arr = data();
+        const item = arr[idx];
+        if (!item) return;
 
-    function openCharModal(){
-      if (!charModal) return;
-      charModal.classList.add('show');
-      charModal.setAttribute('aria-hidden', 'false');
-      document.body.classList.add('modal-open');
-      // default detail to selected
-      const idx = selectedCharIndex >= 0 ? selectedCharIndex : 0;
-      showCharDetail(idx);
-      // focus search for speed
-      setTimeout(() => charModalSearch?.focus(), 0);
-    }
+        state.selectedIndex = idx;
+        saveIdx(storageKey, idx);
 
-    function closeCharModal(){
-      if (!charModal) return;
-      charModal.classList.remove('show');
-      charModal.setAttribute('aria-hidden', 'true');
-      document.body.classList.remove('modal-open');
-    }
+        // dashboard preview + tag
+        if (preview) preview.innerHTML = makePreview(item);
+        if (tagSpan) tagSpan.textContent = safeText(getTagText(item));
 
-    // click outside modal closes
-    charModal?.addEventListener('click', (e) => {
-      if (e.target === charModal) closeCharModal();
-    });
-    charModalClose?.addEventListener('click', closeCharModal);
-    openCharPicker?.addEventListener('click', openCharModal);
+        // button label + mini
+        if (pickName) pickName.textContent = safeText(item.name || `Selected ${kind}`);
+        setMini(mini, item);
 
-    // ESC closes
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && charModal?.classList.contains('show')) closeCharModal();
-    });
+        renderGrid();
+      }
 
-    // Filters click
-    function setFilterActive(chips, predicate){
-      chips.forEach(c => c.classList.toggle('active', predicate(c)));
-    }
+      function showDetail(idx){
+        const arr = data();
+        const item = arr[idx];
+        if (!item) return;
 
-    function renderCharGrid(){
-      if (!charModalGrid) return;
-      const q = (charFilter.q || '').toLowerCase().trim();
+        state.hoverIndex = idx;
 
-      const filteredIdx = characterData
-        .map((c, idx) => ({ c, idx }))
-        .filter(({c}) => {
-          if (!c) return false;
+        if (detailName) detailName.textContent = safeText(item.name || '—');
+        if (detailTag) detailTag.textContent = safeText(getTagText(item));
 
-          // search
-          if (q && !safeText(c.name).toLowerCase().includes(q)) return false;
+        const img = item?.image_url || item?.icon || item?.img || item?.image || 'https://i.imgur.com/qXFpizS.jpg';
+        if (detailImg){
+          detailImg.src = img;
+          detailImg.alt = safeText(item.name || 'preview');
+        }
+        if (detailText) detailText.innerHTML = buildDetailText(item);
+      }
 
-          // meta filter
-          if (charFilter.meta === 'meta' && !isMetaYes(c.meta)) return false;
-          if (charFilter.meta === 'cs_meta' && !isMetaYes(c.cs_meta)) return false;
+      function filteredIdxList(){
+        const arr = data();
+        const q = (state.q || '').toLowerCase().trim();
+        return arr
+          .map((it, idx) => ({ it, idx }))
+          .filter(({it}) => {
+            if (!it) return false;
+            if (q && !safeText(it.name).toLowerCase().includes(q)) return false;
+            if (typeof extraFilter === 'function' && !extraFilter(it)) return false;
+            return true;
+          });
+      }
 
-          // skill filter
-          if (charFilter.skill !== 'all' && safeText(c.skill_type) !== charFilter.skill) return false;
+      function renderGrid(){
+        if (!grid) return;
+        const list = filteredIdxList();
 
-          return true;
-        });
+        if (!list.length){
+          grid.innerHTML = `<div class="muted" style="padding:10px 4px;">No matches found.</div>`;
+          return;
+        }
 
-      charModalGrid.innerHTML = filteredIdx.map(({c, idx}) => {
-        const st = safeText(c.skill_type);
-        const imgClass = (st === 'Passive') ? 'passive' : 'active';
-        const sel = (idx === selectedCharIndex) ? 'selected' : '';
-        return `
-          <div class="char-card ${sel}" tabindex="0" data-idx="${idx}" title="${safeText(c.name)}">
-            <img src="${c.image_url || 'https://i.imgur.com/qXFpizS.jpg'}" alt="${safeText(c.name)}" class="${imgClass}" />
-            <div class="nm">${safeText(c.name)}</div>
-          </div>
-        `;
-      }).join('');
+        grid.innerHTML = list.map(({it, idx}) => {
+          const sel = (idx === state.selectedIndex) ? 'selected' : '';
+          const img = it?.image_url || it?.icon || it?.img || it?.image || 'https://i.imgur.com/qXFpizS.jpg';
 
-      // bind events once per render
-      charModalGrid.querySelectorAll('.char-card').forEach(card => {
-        const idx = Number(card.getAttribute('data-idx'));
-
-        card.addEventListener('mouseenter', () => showCharDetail(idx));
-        card.addEventListener('focus', () => showCharDetail(idx));
-
-        // single click selects + closes (fast workflow)
-        card.addEventListener('click', () => {
-          applyCharacterSelection(idx);
-          closeCharModal();
-        });
-
-        // keyboard select
-        card.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            applyCharacterSelection(idx);
-            closeCharModal();
+          // character border colors (active/passive)
+          let skillClass = '';
+          if (kind === 'character'){
+            const st = safeText(it.skill_type);
+            skillClass = (st === 'Passive') ? 'passive' : 'active';
           }
+
+          return `
+            <div class="pick-card ${cardKindClass} ${sel}" tabindex="0" data-idx="${idx}" title="${safeText(it.name)}">
+              <img src="${img}" alt="${safeText(it.name)}" class="${skillClass}" />
+              <div class="nm">${safeText(it.name)}</div>
+            </div>
+          `;
+        }).join('');
+
+        grid.querySelectorAll('.pick-card').forEach(card => {
+          const idx = Number(card.getAttribute('data-idx'));
+
+          card.addEventListener('mouseenter', () => showDetail(idx));
+          card.addEventListener('focus', () => showDetail(idx));
+
+          card.addEventListener('click', () => {
+            applySelection(idx);
+            close();
+          });
+
+          card.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              applySelection(idx);
+              close();
+            }
+          });
         });
+      }
+
+      // open / close / outside click / esc
+      openBtn?.addEventListener('click', open);
+      closeBtn?.addEventListener('click', close);
+      modal?.addEventListener('click', (e) => { if (e.target === modal) close(); });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal?.classList.contains('show')) close();
       });
 
-      // if list is empty
-      if (!filteredIdx.length){
-        charModalGrid.innerHTML = `<div class="muted" style="padding:10px 4px;">No matches found.</div>`;
-      }
+      search?.addEventListener('input', (e) => {
+        state.q = e.target.value || '';
+        renderGrid();
+      });
+
+      pickBtn?.addEventListener('click', () => {
+        const idx = (state.hoverIndex >= 0) ? state.hoverIndex : (state.selectedIndex >= 0 ? state.selectedIndex : 0);
+        applySelection(idx);
+        close();
+      });
+
+      if (typeof onFiltersReady === 'function') onFiltersReady({ renderGrid, state, applySelection, showDetail });
+
+      return {
+        state,
+        renderGrid,
+        applySelection,
+        showDetail,
+        open,
+        close
+      };
     }
 
-    // filter chip handlers
-    (function bindCharFilterChips(){
-      const chips = Array.from(document.querySelectorAll('.fchip'));
-      if (!chips.length) return;
+    /***********************
+     * Character Picker Filters
+     ***********************/
+    const charFilterState = { meta: 'all', skill: 'all' };
+
+    function charExtraFilter(c){
+      if (!c) return false;
+
+      // meta filter
+      if (charFilterState.meta === 'meta' && !isYes(c.meta)) return false;
+      if (charFilterState.meta === 'cs_meta' && !isYes(c.cs_meta)) return false;
+
+      // skill filter
+      if (charFilterState.skill !== 'all' && safeText(c.skill_type) !== charFilterState.skill) return false;
+
+      return true;
+    }
+
+    function setChipsActive(chips, predicate){
+      chips.forEach(x => x.classList.toggle('active', predicate(x)));
+    }
+
+    function bindCharacterFilterChips(picker){
+      const chips = Array.from(document.querySelectorAll('#charFilterRow .fchip'));
+      const metaChips = chips.filter(x => x.getAttribute('data-meta'));
+      const skillChips = chips.filter(x => x.getAttribute('data-skill'));
 
       chips.forEach(ch => {
         ch.addEventListener('click', () => {
@@ -1509,38 +1655,18 @@
           const skill = ch.getAttribute('data-skill');
 
           if (meta){
-            charFilter.meta = meta;
-            // update active state for meta chips
-            setFilterActive(chips.filter(x => x.getAttribute('data-meta')), (x) => x.getAttribute('data-meta') === meta);
+            charFilterState.meta = meta;
+            setChipsActive(metaChips, (x) => x.getAttribute('data-meta') === meta);
           }
           if (skill){
-            charFilter.skill = skill;
-            // update active state for skill chips
-            // if skill == all, still a chip; keep it active
-            setFilterActive(chips.filter(x => x.getAttribute('data-skill')), (x) => x.getAttribute('data-skill') === skill);
+            charFilterState.skill = skill;
+            setChipsActive(skillChips, (x) => x.getAttribute('data-skill') === skill);
           }
 
-          renderCharGrid();
+          picker.renderGrid();
         });
       });
-
-      // set initial active for skill group
-      const skillChips = chips.filter(x => x.getAttribute('data-skill'));
-      setFilterActive(skillChips, (x) => x.getAttribute('data-skill') === 'all');
-    })();
-
-    // search input handler
-    charModalSearch?.addEventListener('input', (e) => {
-      charFilter.q = e.target.value || '';
-      renderCharGrid();
-    });
-
-    // “Use this character” button (uses whatever is in detail, or selected)
-    charDetailPickBtn?.addEventListener('click', () => {
-      const idx = (hoveredCharIndex >= 0) ? hoveredCharIndex : (selectedCharIndex >= 0 ? selectedCharIndex : 0);
-      applyCharacterSelection(idx);
-      closeCharModal();
-    });
+    }
 
     /***********************
      * Init
@@ -1573,30 +1699,165 @@
         weaponData.push(...(Array.isArray(weapons) ? weapons : []));
 
         // counts
-        const c = characterData.length;
-        const p = petData.length;
-        const w = weaponData.length;
-
-        document.getElementById('charCount').textContent = c.toLocaleString();
-        document.getElementById('petCount').textContent = p.toLocaleString();
-        document.getElementById('weaponCount').textContent = w.toLocaleString();
+        document.getElementById('charCount').textContent = characterData.length.toLocaleString();
+        document.getElementById('petCount').textContent = petData.length.toLocaleString();
+        document.getElementById('weaponCount').textContent = weaponData.length.toLocaleString();
 
         // meta badge detection
         const hasMeta = characterData.some(x => x && (x.meta !== undefined || x.cs_meta !== undefined));
         document.getElementById('charMeta').textContent = hasMeta ? 'meta/cs_meta' : 'library';
 
-        // Pet/Weapon keep dropdowns
-        wireSelect(petData, 'petSelect', 'petPreview', 'petTag');
-        wireSelect(weaponData, 'weaponSelect', 'weaponPreview', 'weaponTag');
+        // ===== Create pickers =====
 
-        // Character: default selection + modal grid
+        const characterPicker = createPicker({
+          kind: 'character',
+          dataArr: characterData,
+          storageKey: 'ff_qv_char_idx',
+          modalId: 'charModal',
+          closeId: 'charModalClose',
+          openId: 'openCharPicker',
+          searchId: 'charModalSearch',
+          gridId: 'charModalGrid',
+          detailNameId: 'charDetailName',
+          detailTagId: 'charDetailTag',
+          detailImgId: 'charDetailImg',
+          detailTextId: 'charDetailText',
+          detailPickBtnId: 'charDetailPickBtn',
+          tagSpanId: 'charTag',
+          previewId: 'characterPreview',
+          pickNameId: 'charPickName',
+          miniId: 'charMini',
+          cardKindClass: 'char',
+          getTagText: (c) => {
+            if (!c) return '—';
+            if (c.meta !== undefined || c.cs_meta !== undefined){
+              if (isYes(c.meta)) return 'meta';
+              if (isYes(c.cs_meta)) return 'cs_meta';
+            }
+            return c.role || c.skill_type || '—';
+          },
+          buildDetailText: (c) => {
+            const st = safeText(c.skill_type || '—');
+            const skill = safeText(c.skill || '—');
+            const desc = safeText(c.description || '');
+            const role = safeText(c.role || 'N/A');
+            return `
+              <p><small>${st} Skill</small><br><b>${skill}</b></p>
+              <p>${desc || '<small>No description available.</small>'}</p>
+              <p><small>Role:</small> ${role}</p>
+            `;
+          },
+          extraFilter: charExtraFilter,
+          onFiltersReady: ({ renderGrid }) => {
+            bindCharacterFilterChips({ renderGrid });
+          }
+        });
+
+        const petPicker = createPicker({
+          kind: 'pet',
+          dataArr: petData,
+          storageKey: 'ff_qv_pet_idx',
+          modalId: 'petModal',
+          closeId: 'petModalClose',
+          openId: 'openPetPicker',
+          searchId: 'petModalSearch',
+          gridId: 'petModalGrid',
+          detailNameId: 'petDetailName',
+          detailTagId: 'petDetailTag',
+          detailImgId: 'petDetailImg',
+          detailTextId: 'petDetailText',
+          detailPickBtnId: 'petDetailPickBtn',
+          tagSpanId: 'petTag',
+          previewId: 'petPreview',
+          pickNameId: 'petPickName',
+          miniId: 'petMini',
+          cardKindClass: 'pet',
+          getTagText: (p) => p?.type || p?.role || 'pet',
+          buildDetailText: (p) => {
+            const skill = safeText(p.skill || p.ability || '—');
+            const desc = safeText(p.description || p.desc || '');
+            const type = safeText(p.type || p.role || 'N/A');
+            return `
+              <p><small>Type</small><br><b>${type}</b></p>
+              <p><small>Skill</small><br><b>${skill}</b></p>
+              <p>${desc || '<small>No description available.</small>'}</p>
+            `;
+          }
+        });
+
+        const weaponPicker = createPicker({
+          kind: 'weapon',
+          dataArr: weaponData,
+          storageKey: 'ff_qv_weapon_idx',
+          modalId: 'weaponModal',
+          closeId: 'weaponModalClose',
+          openId: 'openWeaponPicker',
+          searchId: 'weaponModalSearch',
+          gridId: 'weaponModalGrid',
+          detailNameId: 'weaponDetailName',
+          detailTagId: 'weaponDetailTag',
+          detailImgId: 'weaponDetailImg',
+          detailTextId: 'weaponDetailText',
+          detailPickBtnId: 'weaponDetailPickBtn',
+          tagSpanId: 'weaponTag',
+          previewId: 'weaponPreview',
+          pickNameId: 'weaponPickName',
+          miniId: 'weaponMini',
+          cardKindClass: 'weapon',
+          getTagText: (w) => w?.type || w?.category || w?.class || 'weapon',
+          buildDetailText: (w) => {
+            const type = safeText(w.type || w.category || w.class || 'N/A');
+            const desc = safeText(w.description || w.desc || w.special || '');
+
+            // show a few common stat fields if they exist
+            const keys = [
+              ['damage','Damage'],
+              ['range','Range'],
+              ['accuracy','Accuracy'],
+              ['rate_of_fire','ROF'],
+              ['reload','Reload'],
+              ['magazine','Magazine'],
+              ['ammo','Ammo'],
+              ['penetration','Penetration'],
+              ['stability','Stability']
+            ];
+            const stats = keys
+              .filter(([k]) => w[k] !== undefined && w[k] !== null && safeText(w[k]) !== '')
+              .slice(0, 6)
+              .map(([k, label]) => `<p><small>${label}:</small> ${safeText(w[k])}</p>`)
+              .join('');
+
+            return `
+              <p><small>Type</small><br><b>${type}</b></p>
+              ${stats || ''}
+              <p>${desc || '<small>No description available.</small>'}</p>
+            `;
+          }
+        });
+
+        // initial selections from storage (fallback 0)
         if (characterData.length){
-          applyCharacterSelection(0);
-          renderCharGrid();
+          characterPicker.applySelection(Math.min(loadIdx('ff_qv_char_idx', 0), characterData.length-1));
+          characterPicker.renderGrid();
         } else {
-          // fallback UI
-          characterPreview.innerHTML = makePreview(null);
-          charPickName.textContent = 'No characters loaded';
+          document.getElementById('characterPreview').innerHTML = makePreview(null);
+          document.getElementById('charPickName').textContent = 'No characters loaded';
+        }
+
+        if (petData.length){
+          petPicker.applySelection(Math.min(loadIdx('ff_qv_pet_idx', 0), petData.length-1));
+          petPicker.renderGrid();
+        } else {
+          document.getElementById('petPreview').innerHTML = makePreview(null);
+          document.getElementById('petPickName').textContent = 'No pets loaded';
+        }
+
+        if (weaponData.length){
+          weaponPicker.applySelection(Math.min(loadIdx('ff_qv_weapon_idx', 0), weaponData.length-1));
+          weaponPicker.renderGrid();
+        } else {
+          document.getElementById('weaponPreview').innerHTML = makePreview(null);
+          document.getElementById('weaponPickName').textContent = 'No weapons loaded';
         }
 
       }catch(err){
