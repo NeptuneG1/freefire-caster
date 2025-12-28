@@ -4,82 +4,728 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Split View — Characters & Weapons</title>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <!-- Supabase JS v2 (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
     :root{
-      --brand:#ffbd59;
-      --bg:#0e0e0e;
-      --panel:#1b1b1b;
-      --ink:#f5f5f5;
-      --header-h:56px;
-      --divider-w:4px;
-      --min-pane:200px;
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif}
+      --bg:#07090f;
+      --bg2:#0b1020;
+      --panel: rgba(20, 26, 38, .72);
+      --panel2: rgba(14, 18, 28, .70);
+      --line: rgba(255,255,255,.08);
+      --ink:#f4f6ff;
+      --muted:#aab1c5;
 
-    /* Header */
-    header{
-      height:var(--header-h);
+      --brand:#ffbd59;
+      --brand2:#ff7733;
+      --accent:#4dd3ff;
+
+      --radius:16px;
+      --radius-lg:22px;
+      --shadow: 0 22px 70px rgba(0,0,0,.55);
+
+      --sb-w: 260px;
+      --sb-w-collapsed: 82px;
+
+      --divider-w: 6px;
+      --min-pane: 240px;
+    }
+
+    *{box-sizing:border-box}
+    html,body{min-height:100%}
+    body{
+      margin:0;
+      font-family: Roboto, system-ui, -apple-system, Segoe UI, Arial;
+      color:var(--ink);
+      background:
+        radial-gradient(900px 500px at 18% 12%, rgba(77,211,255,.15), transparent 60%),
+        radial-gradient(700px 420px at 85% 18%, rgba(255,189,89,.12), transparent 60%),
+        radial-gradient(900px 620px at 50% 110%, rgba(255,119,51,.10), transparent 60%),
+        linear-gradient(180deg, var(--bg), var(--bg2));
+      overflow-x:hidden;
+      overflow-y:auto;
+    }
+
+    body::before, body::after{
+      content:"";
+      position:fixed;
+      inset:auto auto 0 0;
+      width:520px; height:520px;
+      border-radius:50%;
+      border:10px solid rgba(77,211,255,.14);
+      transform: translate(-45%, -35%);
+      filter: blur(.2px);
+      pointer-events:none;
+    }
+    body::after{
+      inset: -120px 0 auto auto;
+      width:420px; height:420px;
+      border:10px solid rgba(77,211,255,.10);
+      transform: translate(38%, 0%);
+    }
+
+    a{color:inherit}
+
+    /* Layout */
+    .app{
+      min-height: 100vh;
+      display:flex;
+      gap:18px;
+      padding:18px;
+      max-width: 1440px;
+      margin: 0 auto;
+      align-items:flex-start;
+    }
+
+    /* Sidebar */
+    .sidebar{
+      width: var(--sb-w);
+      background: var(--panel2);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      position: sticky;
+      top: 18px;
+      height: calc(100vh - 36px);
+      transition: width .18s ease;
+      flex:0 0 auto;
+    }
+    .sidebar.collapsed{ width: var(--sb-w-collapsed); }
+
+    .brand{
       display:flex;
       align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      padding:10px 14px;
-      background:linear-gradient(180deg,#1a1a1a 0%, #121212 100%);
-      border-bottom:3px solid var(--brand);
-      position:sticky; top:0; z-index:10;
+      gap:10px;
+      padding:16px 16px 10px 16px;
+      border-bottom: 1px solid var(--line);
     }
-    .title{font-weight:800; letter-spacing:.3px}
-    .actions{display:flex; gap:8px; align-items:center}
-    .btn{
-      appearance:none; border:1px solid #333; border-radius:10px;
-      background:#222; color:#eee; padding:8px 12px; cursor:pointer; font-weight:700;
+    .brand-left{display:flex;align-items:center;gap:10px;min-width:0;}
+    .logo{
+      width:36px;height:36px;border-radius:12px;
+      background: linear-gradient(135deg, rgba(255,189,89,.25), rgba(77,211,255,.18));
+      border:1px solid rgba(255,255,255,.10);
+      display:grid;place-items:center;
+      font-family: Orbitron, sans-serif;
+      letter-spacing:.5px;
+      color:var(--brand);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      flex:0 0 auto;
     }
-    .btn.brand{background:var(--brand); color:#181818; border-color:#000}
-    .btn.link{background:transparent; border:1px solid #333; color:#ddd; text-decoration:none; display:inline-flex; align-items:center; gap:6px}
-    .btn:hover{filter:brightness(1.05)}
-    .btn:active{transform:translateY(1px)}
-
-    /* Split area */
-    .workspace{
-      height:calc(100vh - var(--header-h));
-      display:flex;
+    .brand h1{
+      margin:0;
+      font-family: Orbitron, sans-serif;
+      font-size: 1.05rem;
+      letter-spacing:.6px;
+      white-space:nowrap;
       overflow:hidden;
-      background:var(--panel);
+      text-overflow:ellipsis;
+      max-width: 150px;
     }
-    iframe{
+    .brand small{
+      display:block;
+      color: var(--muted);
+      font-size:.78rem;
+      margin-top:2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 150px;
+    }
+
+    .nav{
+      padding: 12px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      overflow:auto;
+    }
+    .nav::-webkit-scrollbar{width:10px}
+    .nav::-webkit-scrollbar-thumb{background: rgba(255,255,255,.08); border-radius:10px}
+    .nav::-webkit-scrollbar-track{background: transparent}
+
+    .nav-item{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 10px;
+      border-radius: 12px;
+      border:1px solid transparent;
+      color: var(--muted);
+      text-decoration:none;
+      transition: .2s ease;
+      cursor:pointer;
+      min-width:0;
+    }
+    .nav-item:hover{
+      background: rgba(255,255,255,.05);
+      border-color: rgba(255,255,255,.08);
+      color: var(--ink);
+    }
+    .nav-item.active{
+      background: linear-gradient(135deg, rgba(255,189,89,.14), rgba(77,211,255,.09));
+      border-color: rgba(255,189,89,.22);
+      color: var(--ink);
+    }
+    .nav-ico{
+      width:26px;height:26px;border-radius:10px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.08);
+      display:grid;place-items:center;
+      flex: 0 0 auto;
+    }
+    .nav-ico svg{width:14px;height:14px;opacity:.9}
+    .nav-label{
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      min-width:0;
+    }
+
+    .sidebar.collapsed .brand h1,
+    .sidebar.collapsed .brand small,
+    .sidebar.collapsed .nav-label{display:none;}
+    .sidebar.collapsed .brand{justify-content:center;}
+    .sidebar.collapsed .brand-left{justify-content:center;}
+    .sidebar.collapsed .nav-item{
+      justify-content:center;
+      gap:0;
+      padding:10px 8px;
+    }
+
+    /* Main */
+    .main{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      min-width: 0;
+      gap: 14px;
+      min-height: calc(100vh - 36px);
+    }
+
+    /* Topbar */
+    .topbar{
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      padding: 12px 14px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      position: sticky;
+      top: 18px;
+      z-index: 20;
+    }
+    .search{
+      flex:1;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 10px 12px;
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 14px;
+      min-width: 0;
+    }
+    .search input{
+      width:100%;
+      background: transparent;
+      border:0;
+      outline:none;
+      color: var(--ink);
+      font-size: .95rem;
+    }
+    .search input::placeholder{color: rgba(170,177,197,.75)}
+
+    .top-actions{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex:0 0 auto;
+    }
+
+    .icon-btn{
+      width:42px;height:42px;border-radius:14px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      display:grid;place-items:center;
+      cursor:pointer;
+      transition:.2s ease;
+      color: var(--ink);
+      flex:0 0 auto;
+    }
+    .icon-btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.08)}
+    .icon-btn svg{width:18px;height:18px;opacity:.92}
+
+    .userchip{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      max-width: 260px;
+    }
+    .avatar{
+      width:28px;height:28px;border-radius:10px;
+      background: linear-gradient(135deg, rgba(255,189,89,.30), rgba(77,211,255,.18));
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .usertext{min-width:0}
+    .usertext b{
+      display:block;
+      font-size:.92rem;
+      font-family: Orbitron, sans-serif;
+      color:var(--brand);
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      max-width: 170px;
+    }
+    .usertext span{display:block; font-size:.78rem; color: var(--muted)}
+
+    .logout{
+      color: rgba(255,255,255,.70);
+      text-decoration:none;
+      font-size:.85rem;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.04);
+      transition:.2s ease;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .logout:hover{
+      border-color: rgba(255,77,77,.35);
+      color: #ff8d8d;
+      box-shadow: 0 0 0 3px rgba(255,77,77,.10);
+    }
+
+    /* Card */
+    .card{
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      overflow:hidden;
+      flex:1;                 /* fill remaining height */
+      display:flex;
+      flex-direction:column;
+      min-height:0;           /* allow inner flex to size */
+    }
+    .card-inner{
+      padding:14px;
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      min-height:0;
+      gap:12px;
+    }
+
+    .hero{
+      position:relative;
+      height: 150px;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(90deg, rgba(0,0,0,.55), rgba(0,0,0,.10)),
+        url('https://i.imgur.com/qXFpizS.jpg') center/cover no-repeat;
+    }
+    .hero::after{
+      content:"";
+      position:absolute; inset:0;
+      background: radial-gradient(420px 220px at 55% 45%, rgba(255,189,89,.16), transparent 60%);
+      pointer-events:none;
+    }
+    .hero-content{
+      position:absolute;
+      left:16px; right:16px; bottom:14px;
+      display:flex;
+      align-items:flex-end;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .hero-title h2{
+      font-family: Orbitron, sans-serif;
+      font-size: 1.45rem;
+      color: var(--brand);
+      text-shadow: 0 0 18px rgba(255,189,89,.20);
+      margin:0;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+    }
+    .hero-title small{
+      display:block;
+      margin-top:6px;
+      color: rgba(244,246,255,.78);
+      font-weight:700;
+      font-size:.86rem;
+      letter-spacing:.2px;
+    }
+
+    /* Controls row (Split tools) */
+    .controls{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap;
+    }
+    .controls-left{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      min-width:0;
+    }
+    .controls-right{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      color: rgba(244,246,255,.86);
+      font-weight:800;
+      font-size:.82rem;
+      white-space:nowrap;
+    }
+    .dot{
+      width:9px;height:9px;border-radius:50%;
+      display:inline-block;
+      box-shadow: 0 0 0 3px rgba(255,255,255,.06);
+    }
+    .dot.accent{ background: var(--accent); }
+    .dot.brand{ background: var(--brand); }
+
+    .btn{
+      padding: 9px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.20);
+      color: rgba(244,246,255,.88);
+      cursor:pointer;
+      font-weight:900;
+      font-size:.82rem;
+      transition:.2s ease;
+      white-space:nowrap;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+    }
+    .btn:hover{
+      background: rgba(0,0,0,.28);
+      box-shadow: 0 0 0 3px rgba(77,211,255,.10);
+      border-color: rgba(77,211,255,.22);
+    }
+    .btn.brand{
+      background: linear-gradient(135deg, rgba(255,189,89,.18), rgba(255,119,51,.10));
+      border-color: rgba(255,189,89,.20);
+    }
+    .btn.brand:hover{
+      box-shadow: 0 0 0 3px rgba(255,189,89,.12);
+      border-color: rgba(255,189,89,.28);
+    }
+
+    /* Split Workspace */
+    .split-wrap{
+      flex:1;
+      min-height:0;
+      display:flex;
+      border-radius: 18px;
+      overflow:hidden;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.25);
+    }
+
+    .pane{
       height:100%;
       border:0;
-      background:#0f0f0f;
+      background: #0b0f1a;
+      width:100%;
     }
-    .left{flex:0 0 40%}   /* initial 2/5 */
-    .right{flex:0 0 60%}  /* initial 3/5 */
+    .pane.left{ flex: 0 0 40%; }
+    .pane.right{ flex: 0 0 60%; }
+
     .divider{
-      width:var(--divider-w);
-      background:var(--brand);
-      cursor:col-resize;
-      box-shadow:0 0 0 1px #000 inset;
+      width: var(--divider-w);
+      background: linear-gradient(180deg, rgba(255,189,89,.95), rgba(77,211,255,.55));
+      cursor: col-resize;
+      box-shadow: 0 0 0 1px rgba(0,0,0,.55) inset;
+      position: relative;
+      touch-action: none;
     }
-    .divider.dragging{filter:brightness(1.15)}
+    .divider::after{
+      content:"";
+      position:absolute;
+      left:50%; top:50%;
+      width:18px; height:42px;
+      transform: translate(-50%, -50%);
+      border-radius: 12px;
+      background: rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.12);
+      box-shadow: 0 10px 26px rgba(0,0,0,.35);
+      opacity: .85;
+    }
+    .divider.dragging{
+      filter: brightness(1.12);
+    }
+
+    @media (max-width: 980px){
+      .sidebar{display:none;}
+      .app{padding:12px;}
+      .topbar{top:12px;}
+    }
   </style>
 </head>
+
 <body>
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-left">
+          <div class="logo">FF</div>
+          <div class="brand-text">
+            <h1>Free Fire</h1>
+            <small class="muted">Caster Dashboard</small>
+          </div>
+        </div>
+      </div>
 
-  <header>
-    <div class="title">Split View — Characters & Weapons</div>
-    <div class="actions">
-      <a class="btn link" href="dashboard.html">← Back to Dashboard</a>
-      <button class="btn brand" id="resetSplitBtn">Reset Split (2/5 · 3/5)</button>
-    </div>
-  </header>
+      <nav class="nav" id="nav">
+        <a class="nav-item" href="dashboard.html" data-page="dashboard.html" title="Dashboard">
+          <span class="nav-ico">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M4 13h7V4H4v9Zm9 7h7V4h-7v16ZM4 20h7v-5H4v5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </span>
+          <span class="nav-label">Dashboard</span>
+        </a>
 
-  <div class="workspace" id="workspace">
-    <iframe class="left"  id="paneLeft"  src="char.html"   title="Characters"></iframe>
-    <div class="divider"  id="divider"   title="Drag to resize"></div>
-    <iframe class="right" id="paneRight" src="weapon.html"  title="Weapons"></iframe>
+        <a class="nav-item" href="character.html" data-page="character.html" title="Character Skills">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4 0-7 2-7 4v2h14v-2c0-2-3-4-7-4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Character Skills</span>
+        </a>
+
+        <a class="nav-item" href="pet.html" data-page="pet.html" title="Pets">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M7 14c-1.7 0-3-1.3-3-3S5.3 8 7 8s3 1.3 3 3-1.3 3-3 3Zm10 0c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3ZM7 20c-2.8 0-5-1.8-5-4v-1h6v1c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2v-1h6v1c0 2.2-2.2 4-5 4H7Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Pets</span>
+        </a>
+
+        <a class="nav-item" href="weapon.html" data-page="weapon.html" title="Weapons">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M3 21l6-6m0 0 2 2 8-8-2-2-8 8Zm0 0-2-2 4-4 2 2-4 4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Weapons</span>
+        </a>
+
+        <a class="nav-item" href="map.html" data-page="map.html" title="Map">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M10 6 4 8v14l6-2 4 2 6-2V6l-6 2-4-2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Map</span>
+        </a>
+
+        <a class="nav-item active" href="split-view.html" data-page="split-view.html" title="Split View">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16M4 12h16M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Split View</span>
+        </a>
+
+        <a class="nav-item" href="clash-draft.html" data-page="clash-draft.html" title="Clash Squad Draft">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h10M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Draft</span>
+        </a>
+
+        <a class="nav-item" href="clash-data.html" data-page="clash-data.html" title="Clash Squad Data">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19V5m0 14h16M8 17v-6m4 6V7m4 10v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Data</span>
+        </a>
+
+        <a class="nav-item" href="clash-compare.html" data-page="clash-compare.html" title="Clash Squad Comparison">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M10 3v18M14 3v18M4 7h6M14 17h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Comparison</span>
+        </a>
+
+        <a class="nav-item" href="clash-report.html" data-page="clash-report.html" title="Clash Squad Team Report">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Team Report</span>
+        </a>
+
+        <a class="nav-item" href="clash-store.html" data-page="clash-store.html" title="Clash Squad Store">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16l-1 14H5L4 7Zm3 0 1-3h8l1 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Store</span>
+        </a>
+
+        <a class="nav-item" href="br_team2.html" data-page="br_team2.html" title="BR Data">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M6 20V10m6 10V4m6 16v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">BR Data</span>
+        </a>
+
+        <a class="nav-item" href="ff-update.html" data-page="ff-update.html" title="Free Fire Update">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2v6m0 14v-6M4.9 4.9l4.2 4.2m10.8 10.8-4.2-4.2M2 12h6m14 0h-6M4.9 19.1l4.2-4.2m10.8-10.8-4.2 4.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Free Fire Update</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <header class="topbar">
+        <button class="icon-btn" id="sbToggle" aria-label="Collapse sidebar" title="Collapse sidebar">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path id="sbTogglePath" d="M14 7l-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;opacity:.85">
+            <path d="M21 21l-4.3-4.3m1.3-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <input id="searchInput" placeholder="Search pages..." />
+        </div>
+
+        <div class="top-actions">
+          <div class="userchip">
+            <div class="avatar"></div>
+            <div class="usertext">
+              <b id="gamertag">PlayerOne</b>
+              <span id="userEmail" class="muted">loading…</span>
+            </div>
+          </div>
+
+          <a class="logout" href="#" id="logoutBtn">Logout</a>
+        </div>
+      </header>
+
+      <section class="card">
+        <div class="hero">
+          <div class="hero-content">
+            <div class="hero-title">
+              <h2>Split View</h2>
+              <small>Drag the divider to resize • Double-click divider to reset</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-inner">
+          <div class="controls">
+            <div class="controls-left">
+              <span class="pill"><span class="dot brand"></span>Left: Characters</span>
+              <span class="pill"><span class="dot accent"></span>Right: Weapons</span>
+            </div>
+            <div class="controls-right">
+              <a class="btn" href="dashboard.html">← Dashboard</a>
+              <button class="btn brand" id="resetSplitBtn" type="button">Reset Split (2/5 · 3/5)</button>
+            </div>
+          </div>
+
+          <div class="split-wrap" id="workspace" aria-label="Split workspace">
+            <!-- Change src back to char.html if that’s your real file -->
+            <iframe class="pane left"  id="paneLeft"  src="character.html" title="Characters"></iframe>
+            <div class="divider" id="divider" title="Drag to resize"></div>
+            <iframe class="pane right" id="paneRight" src="weapon.html" title="Weapons"></iframe>
+          </div>
+
+          <div class="muted" style="font-size:.8rem; padding: 2px 2px 2px 2px;">
+            Free Fire Caster © 2025 — Neptune
+          </div>
+        </div>
+      </section>
+    </main>
   </div>
 
   <script>
+    /***********************
+     * Supabase Auth
+     ***********************/
+    const client = supabase.createClient(
+      'https://gkugecflfddkpitlrmws.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
+    );
+
+    async function ensureSession(){
+      const { data: { session } } = await client.auth.getSession();
+      if (!session) {
+        window.location.href = "index.html";
+        return null;
+      }
+      return session;
+    }
+
+    async function logout(){
+      await client.auth.signOut();
+      window.location.href = "index.html";
+    }
+
+    /***********************
+     * Sidebar collapse + active nav + nav search
+     ***********************/
+    const sidebar = document.getElementById('sidebar');
+
+    (function initSidebarCollapse(){
+      const key = 'ff_sidebar_collapsed_v1';
+      const saved = localStorage.getItem(key);
+      if (saved === '1') sidebar.classList.add('collapsed');
+
+      const btn = document.getElementById('sbToggle');
+      const path = document.getElementById('sbTogglePath');
+
+      function syncIcon(){
+        if (!path) return;
+        path.setAttribute('d', sidebar.classList.contains('collapsed')
+          ? 'M10 7l5 5-5 5'
+          : 'M14 7l-5 5 5 5'
+        );
+      }
+      syncIcon();
+
+      btn?.addEventListener('click', () => {
+        sidebar.classList.toggle('collapsed');
+        localStorage.setItem(key, sidebar.classList.contains('collapsed') ? '1' : '0');
+        syncIcon();
+      });
+    })();
+
+    (function setActiveNav(){
+      const here = (location.pathname.split('/').pop() || 'split-view.html').toLowerCase();
+      document.querySelectorAll('.nav-item').forEach(a => {
+        const page = (a.getAttribute('data-page') || '').toLowerCase();
+        a.classList.toggle('active', page === here);
+      });
+    })();
+
+    document.getElementById('searchInput')?.addEventListener('input', (e) => {
+      const q = (e.target.value || '').toLowerCase().trim();
+      document.querySelectorAll('#nav .nav-item').forEach(a => {
+        const txt = a.textContent.toLowerCase();
+        a.style.display = (!q || txt.includes(q)) ? '' : 'none';
+      });
+    });
+
+    /***********************
+     * Split logic (keeps ALL functionality)
+     ***********************/
     (function(){
       const divider = document.getElementById('divider');
       const work    = document.getElementById('workspace');
@@ -87,66 +733,93 @@
       const right   = document.getElementById('paneRight');
       const reset   = document.getElementById('resetSplitBtn');
 
-      const DIV_W = parseInt(getComputedStyle(divider).width, 10) || 4;
-      const MIN   = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--min-pane'), 10) || 200;
+      const DIV_W = parseInt(getComputedStyle(divider).width, 10) || 6;
+      const MIN   = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--min-pane'), 10) || 240;
 
+      const storeKey = 'ff_split_ratio_v1';
       let isDragging = false;
-      let leftRatio  = 0.40; // start at 2/5
+      let leftRatio  = parseFloat(localStorage.getItem(storeKey) || '0.40'); // default 2/5
 
       function applyWidthsByRatio(ratio){
         const rect = work.getBoundingClientRect();
         const total = rect.width;
         const leftW = Math.max(MIN, Math.min(total - DIV_W - MIN, Math.round(total * ratio)));
         const rightW = total - DIV_W - leftW;
+
         left.style.flex  = `0 0 ${leftW}px`;
         right.style.flex = `0 0 ${rightW}px`;
+      }
+
+      function clampX(x, rect){
+        return Math.max(MIN, Math.min(x, rect.width - DIV_W - MIN));
       }
 
       function startDrag(e){
         isDragging = true;
         divider.classList.add('dragging');
-        document.addEventListener('mousemove', onDrag);
-        document.addEventListener('mouseup',   stopDrag);
+
+        // Pointer events handle mouse + touch
+        divider.setPointerCapture?.(e.pointerId);
       }
 
       function onDrag(e){
         if(!isDragging) return;
         const rect = work.getBoundingClientRect();
-        let x = e.clientX - rect.left; // position within workspace
-        // clamp to respect min widths
-        x = Math.max(MIN, Math.min(x, rect.width - DIV_W - MIN));
+        let x = e.clientX - rect.left;
+        x = clampX(x, rect);
+
         leftRatio = x / rect.width;
         applyWidthsByRatio(leftRatio);
       }
 
       function stopDrag(){
+        if(!isDragging) return;
         isDragging = false;
         divider.classList.remove('dragging');
-        document.removeEventListener('mousemove', onDrag);
-        document.removeEventListener('mouseup',   stopDrag);
+        localStorage.setItem(storeKey, String(leftRatio));
       }
 
       function resetSplit(){
         leftRatio = 0.40; // 2/5
         applyWidthsByRatio(leftRatio);
+        localStorage.setItem(storeKey, String(leftRatio));
       }
 
-      // Keep ratio on window resize
       function handleResize(){
         applyWidthsByRatio(leftRatio);
       }
 
-      divider.addEventListener('mousedown', startDrag);
+      divider.addEventListener('pointerdown', startDrag);
+      window.addEventListener('pointermove', onDrag);
+      window.addEventListener('pointerup', stopDrag);
+      window.addEventListener('pointercancel', stopDrag);
+
       reset.addEventListener('click', resetSplit);
       window.addEventListener('resize', handleResize);
 
-      // Also allow double-click on divider to reset
       divider.addEventListener('dblclick', resetSplit);
 
       // Initial apply
-      resetSplit();
+      applyWidthsByRatio(leftRatio);
     })();
-  </script>
 
+    /***********************
+     * Init
+     ***********************/
+    window.addEventListener('DOMContentLoaded', async () => {
+      const session = await ensureSession();
+      if (!session) return;
+
+      const email = session.user?.email || '';
+      document.getElementById('userEmail').textContent = email || 'signed in';
+      const username = email ? email.split('@')[0] : 'PlayerOne';
+      document.getElementById('gamertag').textContent = username;
+
+      document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        logout();
+      });
+    });
+  </script>
 </body>
 </html>
