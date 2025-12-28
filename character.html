@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Free Fire Dashboard</title>
+  <title>Character Skills</title>
 
   <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
@@ -32,11 +32,8 @@
       --sb-w: 260px;
       --sb-w-collapsed: 82px;
 
-      /* Build panel sizing (slightly bigger) */
-      --slotTop: 74px;   /* big row height */
-      --slotBot: 56px;   /* bottom row slot size */
-      --slotGap: 10px;   /* spacing */
-      --slotRad: 14px;   /* rounding */
+      --active:#00d2ff;
+      --passive:#ff59c7;
     }
 
     *{box-sizing:border-box}
@@ -52,7 +49,6 @@
         linear-gradient(180deg, var(--bg), var(--bg2));
       overflow-x:hidden;
     }
-
     body::before, body::after{
       content:"";
       position:fixed;
@@ -61,7 +57,6 @@
       border-radius:50%;
       border:10px solid rgba(77,211,255,.14);
       transform: translate(-45%, -35%);
-      filter: blur(.2px);
       pointer-events:none;
     }
     body::after{
@@ -72,6 +67,17 @@
     }
 
     a{color:inherit}
+
+    /* Fix: dropdown not white-on-white */
+    select{
+      color-scheme: dark;
+      background: rgba(0,0,0,.28);
+      color: var(--ink);
+    }
+    select option{
+      background: #0b1020;
+      color: var(--ink);
+    }
 
     .app{
       height:100%;
@@ -94,7 +100,6 @@
       overflow:hidden;
       display:flex;
       flex-direction:column;
-      position:relative;
       transition: width .18s ease;
     }
     .sidebar.collapsed{ width: var(--sb-w-collapsed); }
@@ -222,8 +227,6 @@
       gap:12px;
     }
 
-    .burger{display:none;}
-
     .search{
       flex:1;
       display:flex;
@@ -291,7 +294,15 @@
       text-overflow: ellipsis;
       max-width: 170px;
     }
-    .usertext span{display:block; font-size:.78rem; color: var(--muted)}
+    .usertext span{
+      display:block;
+      font-size:.78rem;
+      color: var(--muted);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 170px;
+    }
 
     .logout{
       color: rgba(255,255,255,.70);
@@ -311,15 +322,7 @@
       box-shadow: 0 0 0 3px rgba(255,77,77,.10);
     }
 
-    /* Content */
-    .content{
-      min-height: 0;
-      flex:1;
-      display:flex;
-      flex-direction:column;
-      gap: 14px;
-    }
-
+    /* Content Card */
     .card{
       background: var(--panel);
       border: 1px solid var(--line);
@@ -329,595 +332,262 @@
       -webkit-backdrop-filter: blur(14px);
       overflow:hidden;
     }
-    .card-inner{padding:14px}
+    .card-inner{padding:14px 14px 18px 14px}
 
-    .hero{
+    /* Page hero */
+    .page-hero{
       position:relative;
-      height: 170px;
+      padding: 18px 16px 16px 16px;
       border-bottom: 1px solid var(--line);
       background:
-        linear-gradient(90deg, rgba(0,0,0,.55), rgba(0,0,0,.10)),
-        url('https://i.imgur.com/qXFpizS.jpg') center/cover no-repeat;
+        radial-gradient(420px 220px at 20% 25%, rgba(255,189,89,.16), transparent 60%),
+        radial-gradient(520px 260px at 85% 35%, rgba(77,211,255,.12), transparent 60%),
+        linear-gradient(180deg, rgba(0,0,0,.18), rgba(0,0,0,.02));
     }
-    .hero::after{
-      content:"";
-      position:absolute; inset:0;
-      background: radial-gradient(420px 220px at 55% 45%, rgba(255,189,89,.16), transparent 60%);
-      pointer-events:none;
-    }
-    .hero-content{
-      position:absolute;
-      left:16px; right:16px; bottom:14px;
-      display:flex;
-      align-items:flex-end;
-      justify-content: space-between;
-      gap: 12px;
-    }
-    .hero-title h2{
-      font-family: Orbitron, sans-serif;
-      font-size: 1.55rem;
-      color: var(--brand);
-      text-shadow: 0 0 18px rgba(255,189,89,.20);
-      margin:0;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow: ellipsis;
-    }
-
-    /* Horizontal Quick View */
-    .quickbar{
-      display:grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .qv-item{
-      padding: 10px 12px;
-      border-radius: 18px;
-      background: rgba(255,255,255,.05);
-      border: 1px solid rgba(255,255,255,.09);
-      transition: .2s ease;
-      min-width:0;
-      cursor:pointer;
-      position:relative;
-    }
-    .qv-item:hover{
-      background: rgba(255,255,255,.07);
-      transform: translateY(-1px);
-    }
-    .qv-item:focus{
-      outline:none;
-      box-shadow: 0 0 0 3px rgba(77,211,255,.12);
-      border-color: rgba(77,211,255,.22);
-    }
-
-    .qv-head{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      margin-bottom:10px;
-      min-width:0;
-    }
-    .qv-title{
-      display:flex;
-      align-items:center;
-      gap:8px;
-      min-width:0;
-      font-weight:700;
-      color: rgba(244,246,255,.92);
-      letter-spacing:.2px;
-      font-size:.9rem;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .qv-count{
-      font-size:.75rem;
-      padding: 4px 8px;
-      border-radius: 999px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.18);
-      color: rgba(244,246,255,.78);
-      flex:0 0 auto;
-    }
-    .qv-edit{
-      width:28px;height:28px;border-radius:10px;
-      background: rgba(0,0,0,.18);
-      border:1px solid rgba(255,255,255,.10);
-      display:grid;place-items:center;
-      opacity:.65;
-      transition:.18s ease;
-      flex:0 0 auto;
-    }
-    .qv-item:hover .qv-edit{opacity:1; border-color: rgba(255,189,89,.18);}
-    .qv-edit svg{width:14px;height:14px;opacity:.92}
-
-    .qv-body{
-      display:flex;
-      align-items:flex-start;
-      gap:10px;
-      min-width:0;
-    }
-    .qv-thumb{
-      width:54px;
-      height:54px;
-      border-radius: 14px;
-      background: rgba(0,0,0,.18);
-      border: 1px solid rgba(255,255,255,.10);
-      overflow:hidden;
-      flex:0 0 auto;
-      display:grid;
-      place-items:center;
-    }
-    .qv-thumb img{
-      width:100%;
-      height:100%;
-      object-fit: contain;
-      display:block;
-      background: rgba(255,255,255,.02);
-    }
-
-    .qv-meta{
-      min-width:0;
-      display:flex;
-      flex-direction:column;
-      gap:6px;
-      flex:1;
-    }
-    .qv-meta b{
-      font-size:.95rem;
-      font-weight:800;
-      color: rgba(244,246,255,.92);
-      white-space:normal;
-      overflow:visible;
-      word-break:break-word;
-      line-height:1.15rem;
-    }
-    .qv-meta span{
-      color: var(--muted);
-      font-size:.84rem;
-      white-space:normal;
-      overflow:visible;
-      word-break:break-word;
-      line-height:1.22rem;
-    }
-
-    /* Layout: left build + right summary */
-    .dash-grid{
-      display:grid;
-      grid-template-columns: minmax(0, 1fr) 380px;
-      gap: 14px;
-      align-items:start;
-      margin-top: 10px;
-    }
-    @media (max-width: 980px){
-      .dash-grid{grid-template-columns: 1fr;}
-      .quickbar{grid-template-columns: 1fr;}
-    }
-
-    /* Under-QuickView: Build Panel (replicate) */
-    .buildbar{
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid rgba(255,255,255,.08);
-    }
-
-    .build-panel{
-      display:flex;
-      flex-direction:column;
-      gap: var(--slotGap);
-    }
-
-    .bp-top{
-      display:flex;
-      align-items:stretch;
-      gap: var(--slotGap);
-    }
-
-    .bp-bottom{
-      display:flex;
-      align-items:center;
-      gap: var(--slotGap);
-      flex-wrap:wrap;
-    }
-
-    .bp-slot{
-      width: var(--slotBot);
-      height: var(--slotBot);
-      border-radius: var(--slotRad);
-      background: rgba(0,0,0,.22);
-      border: 1px solid rgba(255,255,255,.10);
-      overflow:hidden;
-      position:relative;
-      cursor:pointer;
-      transition: .18s ease;
-      display:grid;
-      place-items:center;
-      box-shadow: 0 0 0 0 rgba(77,211,255,.0);
-    }
-
-    .bp-slot:hover{
-      transform: translateY(-1px);
-      background: rgba(255,255,255,.06);
-      border-color: rgba(77,211,255,.18);
-      box-shadow: 0 0 0 3px rgba(77,211,255,.10);
-    }
-
-    .bp-slot img{
-      width:100%;
-      height:100%;
-      display:block;
-      background: rgba(255,255,255,.02);
-    }
-
-    /* Big Active */
-    .bp-active{
-      width: var(--slotTop);
-      height: var(--slotTop);
-      border-radius: calc(var(--slotRad) + 2px);
-      border-color: rgba(255,189,89,.22);
-      background: linear-gradient(135deg, rgba(255,189,89,.10), rgba(0,0,0,.22));
-      flex: 0 0 auto;
-    }
-    .bp-active:hover{
-      border-color: rgba(255,189,89,.30);
-      box-shadow: 0 0 0 3px rgba(255,189,89,.10);
-    }
-
-    /* Weapons wide box (top-right) */
-    .bp-weapons{
-      flex:1;
-      height: var(--slotTop);
-      border-radius: calc(var(--slotRad) + 2px);
-      background: rgba(0,0,0,.22);
-      border: 1px solid rgba(255,255,255,.10);
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap: var(--slotGap);
-      padding: var(--slotGap);
-      min-width: 220px; /* increased width baseline */
-    }
-
-    .bp-mini{
-      flex: 1;
-      height: 100%;
-      border-radius: var(--slotRad);
-      background: rgba(255,255,255,.05);
-      border: 1px solid rgba(255,255,255,.10);
-      overflow:hidden;
-      position:relative;
-      cursor:pointer;
-      transition:.18s ease;
-      display:grid;
-      place-items:center;
-    }
-    .bp-mini:hover{
-      transform: translateY(-1px);
-      background: rgba(255,255,255,.08);
-      border-color: rgba(77,211,255,.18);
-      box-shadow: 0 0 0 3px rgba(77,211,255,.10);
-    }
-    .bp-mini img{
-      width:100%;
-      height:100%;
-      object-fit: contain;
-      display:block;
-      background: rgba(255,255,255,.02);
-    }
-
-    /* object-fit rules */
-    .bp-active img,
-    .bp-slot[data-type="character"] img{ object-fit: cover; }
-    .bp-slot[data-type="pet"] img,
-    .bp-slot[data-type="loadout"] img{ object-fit: contain; }
-
-    /* hover badges (hidden by default for "exact" look) */
-    .bp-slot::after,
-    .bp-mini::after{
-      content: attr(data-badge);
-      position:absolute;
-      left:6px;
-      bottom:6px;
-      padding: 2px 6px;
-      border-radius: 999px;
-      font-size: .62rem;
-      font-weight: 900;
-      letter-spacing:.3px;
-      background: rgba(0,0,0,.60);
-      border: 1px solid rgba(255,255,255,.12);
-      color: rgba(244,246,255,.88);
-      opacity:0;
-      transform: translateY(2px);
-      transition:.16s ease;
-      pointer-events:none;
-      max-width: calc(100% - 12px);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .bp-slot:hover::after,
-    .bp-mini:hover::after{
-      opacity:1;
-      transform: translateY(0);
-    }
-
-    /* Summary panel */
-    .build-summary{
-      padding: 14px;
-      border-radius: 18px;
-      background: rgba(255,255,255,.05);
-      border: 1px solid rgba(255,255,255,.09);
-      min-width:0;
-    }
-    .build-summary h4{
-      margin:0 0 10px 0;
-      font-family: Orbitron, sans-serif;
-      letter-spacing:.5px;
-      color: var(--brand);
-      font-size: 1.0rem;
-    }
-
-    .sum-item{
-      border: 1px solid rgba(255,255,255,.08);
-      background: rgba(0,0,0,.18);
-      border-radius: 14px;
-      padding: 10px;
-      margin-bottom: 10px;
-    }
-    .sum-head{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      margin-bottom:8px;
-      min-width:0;
-    }
-    .sum-ico{
-      width:42px;height:42px;
-      border-radius: 12px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.04);
-      overflow:hidden;
-      flex:0 0 auto;
-      display:grid;place-items:center;
-    }
-    .sum-ico img{width:100%;height:100%;object-fit:contain;background:rgba(255,255,255,.02)}
-    .sum-title{min-width:0}
-    .sum-title b{
-      display:block;
-      font-size:.95rem;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .sum-title small{
-      display:block;
-      color: var(--muted);
-      font-size:.78rem;
-      margin-top:2px;
-    }
-
-    /* IMPORTANT: make long BR/CS + weapon text show */
-    .sum-desc{
-      color: rgba(244,246,255,.88);
-      font-size:.86rem;
-      line-height:1.28rem;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    /* Modal Picker */
-    .modal{
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,.62);
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      padding: 18px;
-      z-index: 1000;
-    }
-    .modal.show{display:flex;}
-    .modal-card{
-      width: min(1040px, 100%);
-      max-height: min(84vh, 820px);
-      background: rgba(14, 18, 28, .92);
-      border: 1px solid rgba(255,255,255,.10);
-      border-radius: 22px;
-      box-shadow: 0 26px 80px rgba(0,0,0,.65);
-      overflow:hidden;
-      display:flex;
-      flex-direction:column;
-    }
-    .modal-top{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:12px;
-      padding: 14px 14px 10px 14px;
-      border-bottom: 1px solid rgba(255,255,255,.08);
-    }
-    .modal-top h3{
+    .page-hero h2{
       margin:0;
       font-family: Orbitron, sans-serif;
+      font-size: 1.35rem;
       letter-spacing:.6px;
       color: var(--brand);
-      font-size: 1.05rem;
     }
-    .modal-top p{
-      margin:6px 0 0 0;
+    .page-hero p{
+      margin:8px 0 0 0;
       color: var(--muted);
-      font-size:.85rem;
+      font-size:.9rem;
     }
 
-    .modal-controls{
-      padding: 12px 14px;
-      border-bottom: 1px solid rgba(255,255,255,.08);
+    /* Controls row */
+    .controls{
       display:flex;
-      flex-direction:column;
-      gap:10px;
-    }
-    .modal-row{
-      display:flex;
-      align-items:center;
-      gap:10px;
       flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      padding: 14px 14px 0 14px;
     }
-    .modal-controls input{
-      flex:1;
+
+    .pill{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+      padding: 10px 12px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.09);
+    }
+    .pill label{
+      font-weight:900;
+      color: rgba(244,246,255,.90);
+      margin-right: 6px;
+      white-space:nowrap;
+    }
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
       padding: 10px 12px;
       border-radius: 14px;
-      background: rgba(0,0,0,.22);
-      border:1px solid rgba(255,255,255,.12);
-      outline:none;
-      color: var(--ink);
-      font-size:.95rem;
-      min-width: 220px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.20);
+      color: rgba(244,246,255,.90);
+      cursor:pointer;
+      font-weight:900;
+      font-size:.86rem;
+      transition:.2s ease;
+      text-decoration:none;
+      white-space:nowrap;
     }
-    .modal-controls select{
-      padding: 10px 12px;
-      border-radius: 14px;
-      background: rgba(0,0,0,.22);
-      border:1px solid rgba(255,255,255,.12);
-      outline:none;
-      color: var(--ink);
-      font-size:.92rem;
-      min-width: 220px;
+    .btn:hover{
+      background: rgba(0,0,0,.28);
+      box-shadow: 0 0 0 3px rgba(77,211,255,.10);
+      border-color: rgba(77,211,255,.22);
     }
-    .modal-count{
-      flex:0 0 auto;
-      font-size:.78rem;
+    .btn.brand{
+      background: linear-gradient(135deg, rgba(255,189,89,.18), rgba(255,119,51,.10));
+      border-color: rgba(255,189,89,.25);
+    }
+    .btn.brand:hover{
+      box-shadow: 0 0 0 3px rgba(255,189,89,.10);
+      border-color: rgba(255,189,89,.30);
+    }
+
+    /* Legend */
+    .legend{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      justify-content:center;
+      align-items:center;
+      margin: 12px 0 4px 0;
+      color: var(--muted);
+      font-size:.9rem;
+    }
+    .swatch{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
       padding: 6px 10px;
       border-radius: 999px;
       border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.20);
-      color: rgba(244,246,255,.80);
-      white-space:nowrap;
-    }
-
-    .filter-pills{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      align-items:center;
-    }
-    .pill-btn{
-      padding: 8px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.12);
       background: rgba(0,0,0,.18);
-      color: rgba(244,246,255,.86);
-      cursor:pointer;
-      font-weight:800;
-      font-size:.82rem;
-      transition:.18s ease;
-      white-space:nowrap;
     }
-    .pill-btn:hover{
-      background: rgba(0,0,0,.28);
-      border-color: rgba(77,211,255,.22);
-      box-shadow: 0 0 0 3px rgba(77,211,255,.10);
-    }
-    .pill-btn.active{
-      background: linear-gradient(135deg, rgba(255,189,89,.18), rgba(255,119,51,.10));
-      border-color: rgba(255,189,89,.25);
-      color: rgba(244,246,255,.95);
+    .dot{
+      width:10px;height:10px;border-radius:3px;
+      background: currentColor;
+      box-shadow: 0 0 0 3px rgba(255,255,255,.06) inset;
     }
 
-    .modal-grid{
-      padding: 14px;
-      overflow:auto;
+    /* Section headings */
+    .section-title{
+      margin: 18px 0 10px 0;
+      text-align:center;
+      font-family: Orbitron, sans-serif;
+      letter-spacing:.5px;
+      font-size: 1.02rem;
+      color: rgba(244,246,255,.92);
+    }
+    .section-title.accent{ color: var(--accent); }
+    .section-title.passive{ color: var(--passive); }
+    .section-title.brand{ color: var(--brand); }
+
+    /* Grids */
+    .grid{
       display:grid;
-      grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
       gap: 12px;
+      padding: 0 14px;
     }
-    .modal-grid::-webkit-scrollbar{width:10px}
-    .modal-grid::-webkit-scrollbar-thumb{background: rgba(255,255,255,.10); border-radius:10px}
-    .modal-grid::-webkit-scrollbar-track{background: transparent}
 
-    .pick-card{
-      padding: 10px 10px 8px 10px;
-      border-radius: 16px;
-      background: rgba(255,255,255,.05);
-      border: 1px solid rgba(255,255,255,.09);
-      cursor:pointer;
-      transition:.18s ease;
+    .char-card{
+      position: relative;
+      cursor: pointer;
       display:flex;
       flex-direction:column;
+      align-items:center;
       gap:8px;
-      min-width:0;
+      padding: 10px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.09);
+      transition: .18s ease;
+      outline: none;
     }
-    .pick-card:hover{
-      background: rgba(255,255,255,.08);
+    .char-card:hover{
+      background: rgba(255,255,255,.06);
       transform: translateY(-1px);
-      border-color: rgba(255,189,89,.18);
+      border-color: rgba(255,189,89,.14);
     }
-    .pick-thumb{
-      width:100%;
-      aspect-ratio: 1 / 1;
+
+    .char-img{
+      width: 100%;
+      aspect-ratio: 3 / 4;
+      object-fit: cover;
       border-radius: 14px;
+      border: 2px solid rgba(255,255,255,.10);
       background: rgba(0,0,0,.18);
-      border: 1px solid rgba(255,255,255,.10);
-      overflow:hidden;
-      display:grid;
-      place-items:center;
-    }
-    .pick-thumb img{
-      width:100%;
-      height:100%;
-      object-fit: contain;
       display:block;
-      background: rgba(255,255,255,.02);
     }
-    .pick-name{
-      font-size:.82rem;
-      font-weight:800;
-      color: rgba(244,246,255,.92);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
+    .char-img.active{ border-color: var(--active); }
+    .char-img.passive{ border-color: var(--passive); }
+
+    .char-name{
       text-align:center;
+      font-size: .86rem;
+      color: var(--brand);
+      font-weight: 900;
+      line-height: 1.1rem;
+      word-break: break-word;
     }
 
-    /* Mobile / Responsive */
+    /* Tooltip */
+    .tooltip{
+      display:none;
+      position: fixed;
+      width: 260px;
+      padding: 12px;
+      border-radius: 16px;
+      background: rgba(14, 18, 28, .96);
+      border: 1px solid rgba(255,189,89,.28);
+      color: rgba(244,246,255,.94);
+      z-index: 9999;
+      box-shadow: 0 18px 60px rgba(0,0,0,.65);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      font-size: .82rem;
+      line-height: 1.25rem;
+    }
+    .tooltip.active{ display:block; }
+    .tooltip strong{ color: var(--brand); font-family: Orbitron, sans-serif; letter-spacing:.3px; }
+    .tooltip em{ color: rgba(77,211,255,.92); font-style: normal; font-weight: 900; }
+    .tooltip .role{ color: rgba(170,177,197,.92); }
+
+    /* Compact role groups */
+    .compact-role-container{
+      padding: 0 14px 10px 14px;
+    }
+    .role-group{
+      margin: 12px 0;
+      padding: 12px;
+      background: rgba(255,255,255,.04);
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.09);
+    }
+    .role-title{
+      color: var(--brand);
+      font-weight: 900;
+      font-family: Orbitron, sans-serif;
+      letter-spacing:.4px;
+      font-size: .95rem;
+      margin: 2px 0 10px 0;
+    }
+    .grid.compact{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      justify-content:flex-start;
+    }
+    .grid.compact .char-card{
+      width: 86px;
+      padding: 8px;
+      border-radius: 16px;
+      gap:6px;
+    }
+    .grid.compact .char-img{
+      width: 100%;
+      height: 110px;
+      aspect-ratio: auto;
+      border-radius: 12px;
+      border-width: 2px;
+    }
+    .grid.compact .char-name{ display:none; }
+    .compact-name{
+      text-align:center;
+      font-size: .72rem;
+      color: rgba(244,246,255,.72);
+      line-height: 1.05rem;
+      word-break: break-word;
+      max-width: 86px;
+    }
+
+    /* Footer note */
+    .foot{
+      padding: 12px 14px 0 14px;
+      color: var(--muted);
+      font-size:.8rem;
+    }
+
     @media (max-width: 980px){
-      .burger{display:grid}
-      #sbToggle{display:none}
-
-      .sidebar{
-        position: fixed;
-        top: 18px; bottom: 18px; left: 18px;
-        transform: translateX(-110%);
-        transition: .22s ease;
-        z-index: 30;
-      }
-      .sidebar.open{transform: translateX(0)}
-      .backdrop{
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,.55);
-        backdrop-filter: blur(2px);
-        -webkit-backdrop-filter: blur(2px);
-        opacity:0;
-        pointer-events:none;
-        transition:.22s ease;
-        z-index: 25;
-      }
-      .backdrop.show{opacity:1; pointer-events:auto;}
-      .app{padding: 14px;}
-
-      .modal-controls input{min-width: 0; width:100%;}
-      .modal-controls select{min-width: 0; width:100%;}
+      .app{ padding: 12px; gap: 12px; }
+      .sidebar{ display:none; } /* keep it simple on very small screens */
+      .main{ gap: 12px; }
     }
   </style>
 </head>
 
 <body>
-  <div class="backdrop" id="backdrop"></div>
-
   <div class="app">
     <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
@@ -932,14 +602,14 @@
       </div>
 
       <nav class="nav" id="nav">
-        <a class="nav-item active" href="dashboard.html" data-page="dashboard.html" title="Dashboard">
+        <a class="nav-item" href="dashboard.html" data-page="dashboard.html" title="Dashboard">
           <span class="nav-ico">
             <svg viewBox="0 0 24 24" fill="none"><path d="M4 13h7V4H4v9Zm9 7h7V4h-7v16ZM4 20h7v-5H4v5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           </span>
           <span class="nav-label">Dashboard</span>
         </a>
 
-        <a class="nav-item" href="char.html" data-page="char.html" title="Character Skills">
+        <a class="nav-item active" href="char.html" data-page="char.html" title="Character Skills">
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4 0-7 2-7 4v2h14v-2c0-2-3-4-7-4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
           <span class="nav-label">Character Skills</span>
         </a>
@@ -1004,14 +674,6 @@
     <!-- MAIN -->
     <main class="main">
       <header class="topbar">
-        <!-- mobile menu -->
-        <button class="burger icon-btn" id="burger" aria-label="Open menu" title="Menu">
-          <svg viewBox="0 0 24 24" fill="none">
-            <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-        </button>
-
-        <!-- desktop collapse (next to search) -->
         <button class="icon-btn" id="sbToggle" aria-label="Collapse sidebar" title="Collapse sidebar">
           <svg viewBox="0 0 24 24" fill="none">
             <path id="sbTogglePath" d="M14 7l-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1030,7 +692,7 @@
             <div class="avatar"></div>
             <div class="usertext">
               <b id="gamertag">PlayerOne</b>
-              <span id="userEmail" class="muted">loading…</span>
+              <span id="userEmail">Checking login…</span>
             </div>
           </div>
 
@@ -1038,181 +700,43 @@
         </div>
       </header>
 
-      <section class="content">
-        <div class="card">
-          <div class="hero">
-            <div class="hero-content">
-              <div class="hero-title">
-                <h2>Free Fire Dashboard</h2>
-              </div>
-            </div>
+      <section class="card">
+        <div class="page-hero">
+          <h2>Character Gallery</h2>
+          <p>Tap a character to preview their skill tooltip. Meta toggle switches BR / CS meta lists.</p>
+        </div>
+
+        <div class="controls">
+          <div class="pill">
+            <label>Show Meta For:</label>
+            <button class="btn brand" id="toggleModeBtn" type="button">Battle Royale</button>
           </div>
 
-          <div class="card-inner">
-            <div class="dash-grid">
-              <!-- LEFT -->
-              <div>
-                <div class="quickbar">
-                  <!-- Character -->
-                  <div class="qv-item" data-open="character" role="button" tabindex="0" aria-label="Choose Character">
-                    <div class="qv-head">
-                      <div class="qv-title">
-                        Character
-                        <span class="qv-count" id="charCount">—</span>
-                      </div>
-                      <div class="qv-edit" aria-hidden="true" title="Choose Character">
-                        <svg viewBox="0 0 24 24" fill="none">
-                          <path d="M4 20h4l10.5-10.5a2.8 2.8 0 0 0 0-4L17.5 4a2.8 2.8 0 0 0-4 0L3 14.5V18a2 2 0 0 0 2 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                          <path d="M13.5 6.5 17.5 10.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                      </div>
-                    </div>
-                    <div class="qv-body">
-                      <div class="qv-thumb"><img id="charThumb" alt="Character" /></div>
-                      <div class="qv-meta">
-                        <b id="charName">—</b>
-                        <span id="charDesc">—</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Pet -->
-                  <div class="qv-item" data-open="pet" role="button" tabindex="0" aria-label="Choose Pet">
-                    <div class="qv-head">
-                      <div class="qv-title">
-                        Pet
-                        <span class="qv-count" id="petCount">—</span>
-                      </div>
-                      <div class="qv-edit" aria-hidden="true" title="Choose Pet">
-                        <svg viewBox="0 0 24 24" fill="none">
-                          <path d="M4 20h4l10.5-10.5a2.8 2.8 0 0 0 0-4L17.5 4a2.8 2.8 0 0 0-4 0L3 14.5V18a2 2 0 0 0 2 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                          <path d="M13.5 6.5 17.5 10.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                      </div>
-                    </div>
-                    <div class="qv-body">
-                      <div class="qv-thumb"><img id="petThumb" alt="Pet" /></div>
-                      <div class="qv-meta">
-                        <b id="petName">—</b>
-                        <span id="petDesc">—</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Weapon (Quick View = Weapon 1) -->
-                  <div class="qv-item" data-open="weapon" role="button" tabindex="0" aria-label="Choose Weapon">
-                    <div class="qv-head">
-                      <div class="qv-title">
-                        Weapon
-                        <span class="qv-count" id="weaponCount">—</span>
-                      </div>
-                      <div class="qv-edit" aria-hidden="true" title="Choose Weapon">
-                        <svg viewBox="0 0 24 24" fill="none">
-                          <path d="M4 20h4l10.5-10.5a2.8 2.8 0 0 0 0-4L17.5 4a2.8 2.8 0 0 0-4 0L3 14.5V18a2 2 0 0 0 2 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                          <path d="M13.5 6.5 17.5 10.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                      </div>
-                    </div>
-                    <div class="qv-body">
-                      <div class="qv-thumb"><img id="weaponThumb" alt="Weapon" /></div>
-                      <div class="qv-meta">
-                        <b id="weaponName">—</b>
-                        <span id="weaponDesc">—</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Build Panel (replicate layout) -->
-                <div class="buildbar">
-                  <div class="build-panel" id="buildPanel">
-                    <div class="bp-top">
-                      <!-- Active -->
-                      <div class="bp-slot bp-active" data-build-slot="active" data-type="character" data-badge="Active" title="Active Character">
-                        <img id="bpActiveImg" alt="Active Character" />
-                      </div>
-
-                      <!-- Weapons wide box -->
-                      <div class="bp-weapons" title="Weapons">
-                        <div class="bp-mini" data-build-slot="weapon0" data-type="weapon" data-badge="Weapon 1" title="Weapon 1">
-                          <img id="bpWeapon1Img" alt="Weapon 1" />
-                        </div>
-                        <div class="bp-mini" data-build-slot="weapon1" data-type="weapon" data-badge="Weapon 2" title="Weapon 2">
-                          <img id="bpWeapon2Img" alt="Weapon 2" />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div class="bp-bottom">
-                      <!-- Passives -->
-                      <div class="bp-slot" data-build-slot="passive0" data-type="character" data-badge="Passive 1" title="Passive 1">
-                        <img id="bpPassive1Img" alt="Passive 1" />
-                      </div>
-                      <div class="bp-slot" data-build-slot="passive1" data-type="character" data-badge="Passive 2" title="Passive 2">
-                        <img id="bpPassive2Img" alt="Passive 2" />
-                      </div>
-                      <div class="bp-slot" data-build-slot="passive2" data-type="character" data-badge="Passive 3" title="Passive 3">
-                        <img id="bpPassive3Img" alt="Passive 3" />
-                      </div>
-
-                      <!-- Pet -->
-                      <div class="bp-slot" data-build-slot="pet" data-type="pet" data-badge="Pet" title="Pet">
-                        <img id="bpPetImg" alt="Pet" />
-                      </div>
-
-                      <!-- Loadout -->
-                      <div class="bp-slot" data-build-slot="loadout" data-type="loadout" data-badge="Loadout" title="Loadout">
-                        <img id="bpLoadoutImg" alt="Loadout" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="muted" style="font-size:.8rem; padding: 10px 2px 0 2px;">
-                  Free Fire Caster © 2025 — Neptune
-                </div>
-              </div>
-
-              <!-- RIGHT: Combined Description -->
-              <div class="build-summary" id="buildSummary">
-                <h4>Current Build</h4>
-                <div class="muted" style="font-size:.85rem;">Select slots to see combined details.</div>
-              </div>
-            </div>
-
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <a class="btn" href="dashboard.html">← Back to Dashboard</a>
+            <a class="btn" href="character-comparison.html">➤ Compare Characters</a>
           </div>
+        </div>
+
+        <div class="legend">
+          <span class="swatch" style="color: var(--active);"><span class="dot"></span> Active Skill</span>
+          <span class="swatch" style="color: var(--passive);"><span class="dot"></span> Passive Skill</span>
+        </div>
+
+        <div class="card-inner">
+          <h3 class="section-title accent" id="metaTitle">Meta Characters (Battle Royale)</h3>
+          <div class="grid" id="metaGrid"><div style="padding:10px 14px; color:var(--muted);">Loading meta characters…</div></div>
+
+          <h3 class="section-title passive">Non-Meta Characters</h3>
+          <div class="grid" id="nonMetaGrid"><div style="padding:10px 14px; color:var(--muted);">Loading non-meta characters…</div></div>
+
+          <h3 class="section-title brand" style="margin-top:22px;">Overview by Role</h3>
+          <div id="compactByRole" class="compact-role-container"></div>
+
+          <div class="foot">Free Fire Caster © 2025 — Neptune</div>
         </div>
       </section>
     </main>
-  </div>
-
-  <!-- Picker Modal -->
-  <div class="modal" id="pickerModal" aria-hidden="true">
-    <div class="modal-card" role="dialog" aria-modal="true" aria-label="Picker">
-      <div class="modal-top">
-        <div>
-          <h3 id="pickerTitle">Select</h3>
-          <p id="pickerSub">Click an item to apply it.</p>
-        </div>
-        <button class="icon-btn" id="pickerClose" aria-label="Close picker" title="Close">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        </button>
-      </div>
-
-      <!-- Search + Filters -->
-      <div class="modal-controls">
-        <div class="modal-row">
-          <input id="pickerSearch" placeholder="Search..." />
-          <!-- used for Pets/Weapons (category) -->
-          <select id="pickerFilterSelect" style="display:none"></select>
-          <div class="modal-count" id="pickerCount">—</div>
-        </div>
-        <!-- used for Characters (meta/skill type) -->
-        <div class="filter-pills" id="pickerFilterPills" style="display:none"></div>
-      </div>
-
-      <div class="modal-grid" id="pickerGrid"></div>
-    </div>
   </div>
 
   <script>
@@ -1239,28 +763,10 @@
     }
 
     /***********************
-     * Sidebar + Topbar UX
+     * Sidebar + Nav search
      ***********************/
     const sidebar = document.getElementById('sidebar');
-    const burger = document.getElementById('burger');
-    const backdrop = document.getElementById('backdrop');
 
-    function openSidebar(){
-      sidebar.classList.add('open');
-      backdrop.classList.add('show');
-    }
-    function closeSidebar(){
-      sidebar.classList.remove('open');
-      backdrop.classList.remove('show');
-    }
-
-    burger?.addEventListener('click', () => {
-      if (sidebar.classList.contains('open')) closeSidebar();
-      else openSidebar();
-    });
-    backdrop?.addEventListener('click', closeSidebar);
-
-    // desktop collapse toggle (in header)
     (function initSidebarCollapse(){
       const key = 'ff_sidebar_collapsed_v1';
       const saved = localStorage.getItem(key);
@@ -1276,7 +782,6 @@
           : 'M14 7l-5 5 5 5'
         );
       }
-
       syncIcon();
 
       btn?.addEventListener('click', () => {
@@ -1286,16 +791,6 @@
       });
     })();
 
-    // highlight active nav based on filename
-    (function setActiveNav(){
-      const here = (location.pathname.split('/').pop() || 'dashboard.html').toLowerCase();
-      document.querySelectorAll('.nav-item').forEach(a => {
-        const page = (a.getAttribute('data-page') || '').toLowerCase();
-        a.classList.toggle('active', page === here);
-      });
-    })();
-
-    // sidebar search filters nav items
     document.getElementById('searchInput')?.addEventListener('input', (e) => {
       const q = (e.target.value || '').toLowerCase().trim();
       document.querySelectorAll('#nav .nav-item').forEach(a => {
@@ -1305,516 +800,181 @@
     });
 
     /***********************
-     * Data
+     * Character Page Logic
      ***********************/
-    const DATA = {
-      character: { url:'https://neptuneg1.github.io/freefire-caster/character.json', items:[], selected:0 },
-      pet:       { url:'https://neptuneg1.github.io/freefire-caster/pet.json',       items:[], selected:0 },
-      weapon:    { url:'https://neptuneg1.github.io/freefire-caster/weapon.json',    items:[], selected:0 },
-      loadout:   { url:'https://neptuneg1.github.io/freefire-caster/loadout.json',   items:[], selected:0 },
+    let currentMetaMode = 'meta'; // default BR
+
+    const roleIcons = {
+      Attack: "⚔️",
+      Support: "🛡️",
+      Info: "📡",
+      Heal: "💊",
+      Defense: "🛡️",
+      Scout: "👁️",
+      Other: "❓"
     };
 
-    // filter state per popup
-    const FILTER_STATE = {
-      character: 'all', // all | brmeta | csmeta | active | passive
-      pet: 'all',       // all | <category>
-      weapon: 'all',    // all | <category>
-      loadout: 'all'
-    };
-
-    // Build panel state
-    const BUILD = {
-      active: 0,
-      passives: [0,0,0],
-      pet: 0,
-      loadout: 0,
-      weapons: [0,0]
-    };
-
-    function safeText(v){ return (v ?? '').toString(); }
-    function norm(v){ return safeText(v).trim(); }
-    function normLower(v){ return norm(v).toLowerCase(); }
-
-    function pickImg(item){
-      return item?.image_url || item?.icon || item?.img || 'https://i.imgur.com/qXFpizS.jpg';
+    function safeImg(url){
+      const u = (url || '').toString().trim();
+      return u || 'https://i.imgur.com/qXFpizS.jpg';
     }
 
-    function getCategory(type, item){
-      if (!item) return 'Other';
-      if (type === 'pet'){
-        return norm(item.category || item.type || item.pet_type || item.group || item.role || 'Other') || 'Other';
-      }
-      if (type === 'weapon'){
-        return norm(item.category || item.type || item.weapon_type || item.class || item.group || 'Other') || 'Other';
-      }
-      return 'Other';
+    function toggleMetaMode(){
+      currentMetaMode = currentMetaMode === 'meta' ? 'cs_meta' : 'meta';
+      document.getElementById('toggleModeBtn').textContent = currentMetaMode === 'meta' ? 'Battle Royale' : 'Clash Squad';
+      document.getElementById('metaTitle').textContent =
+        currentMetaMode === 'meta' ? 'Meta Characters (Battle Royale)' : 'Meta Characters (Clash Squad)';
+      loadCharacterGrids();
     }
 
-    function buildDesc(type, item){
-      if (!item) return '—';
+    document.getElementById('toggleModeBtn')?.addEventListener('click', toggleMetaMode);
 
-      if (type === 'character'){
-        const skill = safeText(item.skill || '');
-        const d = safeText(item.description || '');
-        return (skill ? skill : '—') + (d ? `\n${d}` : '');
-      }
+    function loadCharacterGrids(){
+      fetch('https://neptuneg1.github.io/freefire-caster/character.json', { cache: 'no-store' })
+        .then(res => res.json())
+        .then(characters => {
+          const metaGrid = document.getElementById('metaGrid');
+          const nonMetaGrid = document.getElementById('nonMetaGrid');
+          const compactByRole = document.getElementById('compactByRole');
 
-      if (type === 'pet'){
-        const skill = safeText(item.skill || item.ability || '');
-        const d = safeText(item.description || '');
-        return (skill ? skill : '—') + (d ? `\n${d}` : '');
-      }
+          metaGrid.innerHTML = '';
+          nonMetaGrid.innerHTML = '';
+          compactByRole.innerHTML = '';
 
-      if (type === 'weapon'){
-        const parts = [];
-        const cat = safeText(item.category || item.type || item.class || '');
-        const sp  = safeText(item.special || item.unique || item.passive || item.effect || '');
-        const d   = safeText(item.description || item.desc || '');
+          // Build meta / non-meta cards
+          const fragMeta = document.createDocumentFragment();
+          const fragNon = document.createDocumentFragment();
 
-        if (cat) parts.push(cat);
-        if (sp)  parts.push(sp);
-        if (d)   parts.push(d);
-
-        if (!parts.length){
-          const statKeys = ["damage","rate","range","accuracy","magazine","reload","armor_pen","move_speed"];
-          const statParts = statKeys
-            .filter(k => item[k] !== undefined && item[k] !== null && String(item[k]).trim() !== '')
-            .map(k => `${k.toUpperCase()}: ${item[k]}`);
-          if (statParts.length) parts.push(statParts.join(" • "));
-        }
-
-        return parts.join("\n") || '—';
-      }
-
-      // loadout
-      const d = safeText(item.description || '');
-      const br = safeText(item.br || '');
-      const cs = safeText(item.cs || '');
-
-      if (d) return d;
-      const parts = [];
-      if (br) parts.push(`BR:\n${br}`);
-      if (cs) parts.push(`CS:\n${cs}`);
-      return parts.join("\n\n") || '—';
-    }
-
-    async function loadJson(url){
-      const res = await fetch(url, { cache: 'no-store' });
-      if (!res.ok) throw new Error('Fetch failed: ' + url);
-      return await res.json();
-    }
-
-    /***********************
-     * Quick View render
-     ***********************/
-    function applyQuickView(type){
-      const state = DATA[type];
-      const item = state.items[state.selected] || state.items[0];
-      if (!item) return;
-
-      const img = pickImg(item);
-      const name = safeText(item.name || '—');
-      const desc = buildDesc(type, item);
-
-      if (type === 'character'){
-        document.getElementById('charThumb').src = img;
-        document.getElementById('charName').textContent = name;
-        document.getElementById('charDesc').textContent = desc || '—';
-      } else if (type === 'pet'){
-        document.getElementById('petThumb').src = img;
-        document.getElementById('petName').textContent = name;
-        document.getElementById('petDesc').textContent = desc || '—';
-      } else if (type === 'weapon'){
-        document.getElementById('weaponThumb').src = img;
-        document.getElementById('weaponName').textContent = name;
-        document.getElementById('weaponDesc').textContent = desc || '—';
-      }
-    }
-
-    function setCounts(){
-      document.getElementById('charCount').textContent = DATA.character.items.length ? DATA.character.items.length.toLocaleString() : '—';
-      document.getElementById('petCount').textContent = DATA.pet.items.length ? DATA.pet.items.length.toLocaleString() : '—';
-      document.getElementById('weaponCount').textContent = DATA.weapon.items.length ? DATA.weapon.items.length.toLocaleString() : '—';
-    }
-
-    /***********************
-     * Build panel render
-     ***********************/
-    function firstIndex(items, predicate){
-      const i = (items || []).findIndex(predicate);
-      return i >= 0 ? i : 0;
-    }
-
-    function initBuildDefaults(){
-      const chars = DATA.character.items || [];
-      const pets = DATA.pet.items || [];
-      const weapons = DATA.weapon.items || [];
-      const loadouts = DATA.loadout.items || [];
-
-      // active = first non-passive
-      BUILD.active = firstIndex(chars, c => normLower(c?.skill_type || '') !== 'passive');
-
-      // passives = first 3 passives
-      const passiveIdx = chars
-        .map((c, idx) => ({c, idx}))
-        .filter(x => normLower(x.c?.skill_type || '') === 'passive')
-        .map(x => x.idx);
-
-      BUILD.passives = [
-        passiveIdx[0] ?? 0,
-        passiveIdx[1] ?? passiveIdx[0] ?? 0,
-        passiveIdx[2] ?? passiveIdx[1] ?? passiveIdx[0] ?? 0
-      ];
-
-      BUILD.pet = pets.length ? 0 : 0;
-      BUILD.loadout = loadouts.length ? 0 : 0;
-
-      BUILD.weapons = [
-        weapons.length ? 0 : 0,
-        weapons.length > 1 ? 1 : (weapons.length ? 0 : 0)
-      ];
-
-      applyBuildSlots();
-    }
-
-    function applyBuildSlots(){
-      const chars = DATA.character.items || [];
-      const pets = DATA.pet.items || [];
-      const weapons = DATA.weapon.items || [];
-      const loadouts = DATA.loadout.items || [];
-
-      const active = chars[BUILD.active] || chars[0];
-      const p1 = chars[BUILD.passives[0]] || chars[0];
-      const p2 = chars[BUILD.passives[1]] || chars[0];
-      const p3 = chars[BUILD.passives[2]] || chars[0];
-      const pet = pets[BUILD.pet] || pets[0];
-      const loadout = loadouts[BUILD.loadout] || loadouts[0];
-
-      const w1 = weapons[BUILD.weapons[0]] || weapons[0];
-      const w2 = weapons[BUILD.weapons[1]] || weapons[0];
-
-      document.getElementById('bpActiveImg').src   = active ? pickImg(active) : '';
-      document.getElementById('bpPassive1Img').src = p1 ? pickImg(p1) : '';
-      document.getElementById('bpPassive2Img').src = p2 ? pickImg(p2) : '';
-      document.getElementById('bpPassive3Img').src = p3 ? pickImg(p3) : '';
-      document.getElementById('bpPetImg').src      = pet ? pickImg(pet) : '';
-      document.getElementById('bpLoadoutImg').src  = loadout ? pickImg(loadout) : '';
-      document.getElementById('bpWeapon1Img').src  = w1 ? pickImg(w1) : '';
-      document.getElementById('bpWeapon2Img').src  = w2 ? pickImg(w2) : '';
-
-      // keep quickview weapon synced to Weapon 1 (optional, but feels natural)
-      if (weapons.length){
-        DATA.weapon.selected = BUILD.weapons[0];
-        applyQuickView('weapon');
-      }
-
-      renderBuildSummary();
-    }
-
-    function renderBuildSummary(){
-      const box = document.getElementById('buildSummary');
-      if (!box) return;
-
-      const chars = DATA.character.items || [];
-      const pets = DATA.pet.items || [];
-      const weapons = DATA.weapon.items || [];
-      const loadouts = DATA.loadout.items || [];
-
-      const active = chars[BUILD.active] || chars[0];
-      const p1 = chars[BUILD.passives[0]] || chars[0];
-      const p2 = chars[BUILD.passives[1]] || chars[0];
-      const p3 = chars[BUILD.passives[2]] || chars[0];
-
-      const pet = pets[BUILD.pet] || pets[0];
-      const loadout = loadouts[BUILD.loadout] || loadouts[0];
-
-      const w1 = weapons[BUILD.weapons[0]] || weapons[0];
-      const w2 = weapons[BUILD.weapons[1]] || weapons[0];
-
-      const blocks = [
-        { label:"Active", type:"character", item: active },
-        { label:"Passive 1", type:"character", item: p1 },
-        { label:"Passive 2", type:"character", item: p2 },
-        { label:"Passive 3", type:"character", item: p3 },
-        { label:"Pet", type:"pet", item: pet },
-        { label:"Loadout", type:"loadout", item: loadout },
-        { label:"Weapon 1", type:"weapon", item: w1 },
-        { label:"Weapon 2", type:"weapon", item: w2 },
-      ];
-
-      box.innerHTML = `
-        <h4>Current Build</h4>
-        ${blocks.map(b => {
-          const name = safeText(b.item?.name || '—');
-          const img = b.item ? pickImg(b.item) : '';
-          const desc = buildDesc(b.type, b.item);
-          return `
-            <div class="sum-item">
-              <div class="sum-head">
-                <div class="sum-ico">${img ? `<img src="${img}" alt="">` : ''}</div>
-                <div class="sum-title">
-                  <b>${b.label}: ${name}</b>
-                  <small>${(b.type || '').toUpperCase()}</small>
-                </div>
-              </div>
-              <div class="sum-desc">${(desc || '—').replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
-            </div>
-          `;
-        }).join("")}
-      `;
-    }
-
-    /***********************
-     * Picker Modal
-     ***********************/
-    const modal = document.getElementById('pickerModal');
-    const pickerTitle = document.getElementById('pickerTitle');
-    const pickerSub = document.getElementById('pickerSub');
-    const pickerSearch = document.getElementById('pickerSearch');
-    const pickerCount = document.getElementById('pickerCount');
-    const pickerGrid = document.getElementById('pickerGrid');
-    const pickerClose = document.getElementById('pickerClose');
-    const pickerFilterSelect = document.getElementById('pickerFilterSelect');
-    const pickerFilterPills = document.getElementById('pickerFilterPills');
-
-    let currentPickerType = 'character';
-
-    // where to apply selection
-    let PICK_TARGET = { kind:'quickview', type:'character', slot:null };
-
-    function openPicker(type, target){
-      currentPickerType = type;
-      PICK_TARGET = target || { kind:'quickview', type, slot:null };
-
-      // force defaults for build character slots
-      if (PICK_TARGET.kind === 'build' && type === 'character'){
-        if (PICK_TARGET.slot === 'active') FILTER_STATE.character = 'active';
-        if (String(PICK_TARGET.slot || '').startsWith('passive')) FILTER_STATE.character = 'passive';
-      }
-
-      const label = type === 'character' ? 'Character'
-                  : type === 'pet' ? 'Pet'
-                  : type === 'weapon' ? 'Weapon'
-                  : 'Loadout';
-
-      let titleLabel = `Select ${label}`;
-      if (PICK_TARGET.kind === 'build'){
-        if (PICK_TARGET.slot === 'active') titleLabel = 'Select Active Character';
-        if (String(PICK_TARGET.slot || '').startsWith('passive')) titleLabel = 'Select Passive Character';
-        if (PICK_TARGET.slot === 'pet') titleLabel = 'Select Pet';
-        if (String(PICK_TARGET.slot || '').startsWith('weapon')) titleLabel = 'Select Weapon';
-        if (PICK_TARGET.slot === 'loadout') titleLabel = 'Select Loadout';
-      }
-
-      pickerTitle.textContent = titleLabel;
-      pickerSub.textContent = `Click an item to apply it.`;
-      pickerSearch.value = '';
-
-      setupPickerFilters();
-      renderPickerGrid();
-
-      modal.classList.add('show');
-      modal.setAttribute('aria-hidden','false');
-      setTimeout(() => pickerSearch.focus(), 0);
-    }
-
-    function closePicker(){
-      modal.classList.remove('show');
-      modal.setAttribute('aria-hidden','true');
-    }
-
-    function setupPickerFilters(){
-      pickerFilterSelect.onchange = null;
-
-      if (currentPickerType === 'character'){
-        pickerFilterSelect.style.display = 'none';
-        pickerFilterPills.style.display = 'flex';
-
-        const options = [
-          { id:'all', label:'All' },
-          { id:'brmeta', label:'BR Meta' },
-          { id:'csmeta', label:'CS Meta' },
-          { id:'active', label:'Active' },
-          { id:'passive', label:'Passive' },
-        ];
-
-        pickerFilterPills.innerHTML = options.map(opt => `
-          <button class="pill-btn ${FILTER_STATE.character === opt.id ? 'active' : ''}" data-f="${opt.id}">
-            ${opt.label}
-          </button>
-        `).join('');
-
-        pickerFilterPills.querySelectorAll('button').forEach(btn => {
-          btn.addEventListener('click', () => {
-            FILTER_STATE.character = btn.getAttribute('data-f') || 'all';
-            pickerFilterPills.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
-            renderPickerGrid();
+          characters.forEach(c => {
+            const isMeta = ((c[currentMetaMode] || 'no') === 'yes');
+            const card = buildCharCard(c, true);
+            (isMeta ? fragMeta : fragNon).appendChild(card);
           });
+
+          metaGrid.appendChild(fragMeta);
+          nonMetaGrid.appendChild(fragNon);
+
+          // Role overview
+          const roleGroups = {};
+          characters.forEach(c => {
+            const role = c.role || 'Other';
+            if (!roleGroups[role]) roleGroups[role] = [];
+            roleGroups[role].push(c);
+          });
+
+          const rolesSorted = Object.keys(roleGroups).sort((a,b) => a.localeCompare(b));
+
+          rolesSorted.forEach(role => {
+            const group = document.createElement('div');
+            group.className = 'role-group';
+            group.innerHTML = `
+              <div class="role-title">${roleIcons[role] || "🔸"} ${role}</div>
+              <div class="grid compact"></div>
+            `;
+
+            const compactGrid = group.querySelector('.grid.compact');
+            roleGroups[role].forEach(c => {
+              const card = buildCharCard(c, false);
+              compactGrid.appendChild(card);
+            });
+
+            compactByRole.appendChild(group);
+          });
+        })
+        .catch(err => {
+          console.error(err);
+          document.getElementById('metaGrid').innerHTML = `<div style="padding:10px 14px; color:var(--muted);">Failed to load character.json</div>`;
+          document.getElementById('nonMetaGrid').innerHTML = '';
+          document.getElementById('compactByRole').innerHTML = '';
         });
-
-      } else if (currentPickerType === 'pet' || currentPickerType === 'weapon') {
-        pickerFilterPills.style.display = 'none';
-        pickerFilterSelect.style.display = 'inline-flex';
-
-        const items = DATA[currentPickerType].items || [];
-        const cats = Array.from(new Set(items.map(it => getCategory(currentPickerType, it)).filter(Boolean)))
-          .sort((a,b) => a.localeCompare(b));
-
-        const stateKey = currentPickerType;
-        const current = FILTER_STATE[stateKey] || 'all';
-
-        pickerFilterSelect.innerHTML = [
-          `<option value="all">All</option>`,
-          ...cats.map(c => `<option value="${c}">${c}</option>`)
-        ].join('');
-
-        pickerFilterSelect.value = cats.includes(current) ? current : 'all';
-        FILTER_STATE[stateKey] = pickerFilterSelect.value;
-
-        pickerFilterSelect.onchange = () => {
-          FILTER_STATE[stateKey] = pickerFilterSelect.value || 'all';
-          renderPickerGrid();
-        };
-      } else {
-        // loadout: no category filter
-        pickerFilterPills.style.display = 'none';
-        pickerFilterSelect.style.display = 'none';
-      }
     }
 
-    function passesTypeFilter(it){
-      if (!it) return false;
+    function buildCharCard(c, withTooltip){
+      const card = document.createElement('div');
+      card.className = 'char-card';
+      card.tabIndex = 0;
 
-      if (currentPickerType === 'character'){
-        const f = FILTER_STATE.character || 'all';
-        if (f === 'all') return true;
+      const img = document.createElement('img');
+      img.className = 'char-img ' + ((c.skill_type || '').toLowerCase() === 'passive' ? 'passive' : 'active');
+      img.src = safeImg(c.image_url);
+      img.alt = c.name || 'Character';
 
-        if (f === 'brmeta') return normLower(it.meta || 'no') === 'yes';
-        if (f === 'csmeta') return normLower(it.cs_meta || 'no') === 'yes';
-        if (f === 'active') return normLower(it.skill_type || '') !== 'passive';
-        if (f === 'passive') return normLower(it.skill_type || '') === 'passive';
-        return true;
-      }
+      const name = document.createElement('div');
+      name.className = 'char-name';
+      name.textContent = c.name || '—';
 
-      if (currentPickerType === 'pet'){
-        const f = FILTER_STATE.pet || 'all';
-        if (f === 'all') return true;
-        return getCategory('pet', it) === f;
-      }
+      card.appendChild(img);
 
-      if (currentPickerType === 'weapon'){
-        const fw = FILTER_STATE.weapon || 'all';
-        if (fw === 'all') return true;
-        return getCategory('weapon', it) === fw;
-      }
+      if (withTooltip){
+        card.appendChild(name);
 
-      // loadout
-      return true;
-    }
-
-    function renderPickerGrid(){
-      const state = DATA[currentPickerType];
-      const q = (pickerSearch.value || '').toLowerCase().trim();
-      const all = state.items || [];
-
-      const filtered = all.filter(it => {
-        if (!passesTypeFilter(it)) return false;
-        if (!q) return true;
-
-        const name = safeText(it?.name).toLowerCase();
-        const skill = safeText(it?.skill || it?.type || it?.ability || it?.category || it?.br || it?.cs || '').toLowerCase();
-        const desc = safeText(it?.description || it?.special || it?.desc || '').toLowerCase();
-        return name.includes(q) || skill.includes(q) || desc.includes(q);
-      });
-
-      pickerCount.textContent = `${filtered.length.toLocaleString()} item${filtered.length===1?'':'s'}`;
-
-      pickerGrid.innerHTML = filtered.map(it => {
-        const idx = all.indexOf(it);
-        const img = pickImg(it);
-        const name = safeText(it?.name || '—');
-        const tip = buildDesc(currentPickerType, it);
-        const safeTip = safeText(tip).replace(/"/g,'&quot;');
-        return `
-          <div class="pick-card" data-idx="${idx}" title="${name}${safeTip ? ' — ' + safeTip : ''}">
-            <div class="pick-thumb"><img src="${img}" alt="${name}" /></div>
-            <div class="pick-name">${name}</div>
-          </div>
+        const tip = document.createElement('div');
+        tip.className = 'tooltip';
+        tip.innerHTML = `
+          <strong>${(c.name || '—')}</strong><br/>
+          <em>${(c.skill_type || 'Skill')}:</em> ${(c.skill || '—')}<br/>
+          ${(c.description || '')}<br/>
+          <span class="role"><strong>Role:</strong> ${(c.role || 'N/A')}</span>
         `;
-      }).join('');
+        card.appendChild(tip);
+
+        card.addEventListener('click', (event) => toggleTooltip(event, card));
+        card.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleTooltip(e, card);
+          }
+        });
+      } else {
+        const cname = document.createElement('div');
+        cname.className = 'compact-name';
+        cname.textContent = c.name || '—';
+        card.appendChild(cname);
+      }
+
+      return card;
     }
 
-    pickerClose?.addEventListener('click', closePicker);
-    modal?.addEventListener('click', (e) => { if (e.target === modal) closePicker(); });
-    window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modal.classList.contains('show')) closePicker(); });
-    pickerSearch?.addEventListener('input', renderPickerGrid);
-
-    pickerGrid?.addEventListener('click', (e) => {
-      const card = e.target.closest('.pick-card');
-      if (!card) return;
-      const idx = Number(card.getAttribute('data-idx'));
-      if (Number.isNaN(idx)) return;
-
-      if (PICK_TARGET.kind === 'quickview'){
-        DATA[currentPickerType].selected = idx;
-        applyQuickView(currentPickerType);
-      } else if (PICK_TARGET.kind === 'build'){
-        if (currentPickerType === 'character'){
-          if (PICK_TARGET.slot === 'active'){
-            BUILD.active = idx;
-          } else if (String(PICK_TARGET.slot || '').startsWith('passive')){
-            const n = Number(String(PICK_TARGET.slot).replace('passive',''));
-            if (!Number.isNaN(n) && n >= 0 && n < 3) BUILD.passives[n] = idx;
-          }
-        } else if (currentPickerType === 'pet' && PICK_TARGET.slot === 'pet'){
-          BUILD.pet = idx;
-        } else if (currentPickerType === 'loadout' && PICK_TARGET.slot === 'loadout'){
-          BUILD.loadout = idx;
-        } else if (currentPickerType === 'weapon' && String(PICK_TARGET.slot || '').startsWith('weapon')){
-          const n = Number(String(PICK_TARGET.slot).replace('weapon',''));
-          if (!Number.isNaN(n) && n >= 0 && n < 2) BUILD.weapons[n] = idx;
-        }
-        applyBuildSlots();
-      }
-
-      closePicker();
-    });
-
-    // Quick View openers (whole cards)
-    document.querySelectorAll('.qv-item[data-open]').forEach(el => {
-      const type = el.getAttribute('data-open');
-      el.addEventListener('click', () => openPicker(type, { kind:'quickview', type, slot:null }));
-      el.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          openPicker(type, { kind:'quickview', type, slot:null });
+    function closeAllTooltips(){
+      document.querySelectorAll('.char-card').forEach(card => {
+        card.classList.remove('active');
+        const t = card.querySelector('.tooltip');
+        if (t) {
+          t.classList.remove('active');
+          t.style.display = 'none';
         }
       });
-    });
+    }
 
-    // Build panel click handling
-    document.getElementById('buildPanel')?.addEventListener('click', (e) => {
-      const mini = e.target.closest('.bp-mini');
-      if (mini){
-        const slot = mini.getAttribute('data-build-slot'); // weapon0/weapon1
-        openPicker('weapon', { kind:'build', type:'weapon', slot });
-        return;
-      }
+    function toggleTooltip(event, card){
+      event.stopPropagation();
+      closeAllTooltips();
 
-      const slotEl = e.target.closest('.bp-slot');
-      if (!slotEl) return;
+      const tooltip = card.querySelector('.tooltip');
+      if (!tooltip) return;
 
-      const slot = slotEl.getAttribute('data-build-slot');
-      const dtype = slotEl.getAttribute('data-type');
+      card.classList.add('active');
+      tooltip.classList.add('active');
+      tooltip.style.display = 'block';
 
-      if (dtype === 'character'){
-        openPicker('character', { kind:'build', type:'character', slot });
-      } else if (dtype === 'pet'){
-        openPicker('pet', { kind:'build', type:'pet', slot:'pet' });
-      } else if (dtype === 'loadout'){
-        openPicker('loadout', { kind:'build', type:'loadout', slot:'loadout' });
-      }
-    });
+      requestAnimationFrame(() => {
+        const rect = card.getBoundingClientRect();
+        const tipRect = tooltip.getBoundingClientRect();
+
+        let left = rect.left + rect.width / 2 - tipRect.width / 2;
+        let top = rect.bottom + 10;
+
+        left = Math.max(10, Math.min(left, window.innerWidth - tipRect.width - 10));
+        top  = Math.max(10, Math.min(top,  window.innerHeight - tipRect.height - 10));
+
+        tooltip.style.left = left + 'px';
+        tooltip.style.top  = top + 'px';
+      });
+    }
+
+    document.body.addEventListener('click', closeAllTooltips);
+    window.addEventListener('scroll', closeAllTooltips, { passive: true });
+    window.addEventListener('resize', closeAllTooltips);
 
     /***********************
      * Init
@@ -1825,42 +985,14 @@
 
       const email = session.user?.email || '';
       document.getElementById('userEmail').textContent = email || 'signed in';
-      const username = email ? email.split('@')[0] : 'PlayerOne';
-      document.getElementById('gamertag').textContent = username;
+      document.getElementById('gamertag').textContent = email ? email.split('@')[0] : 'PlayerOne';
 
       document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
         e.preventDefault();
         logout();
       });
 
-      try{
-        const [chars, pets, weapons, loadouts] = await Promise.all([
-          loadJson(DATA.character.url),
-          loadJson(DATA.pet.url),
-          loadJson(DATA.weapon.url),
-          loadJson(DATA.loadout.url),
-        ]);
-
-        DATA.character.items = Array.isArray(chars) ? chars : [];
-        DATA.pet.items = Array.isArray(pets) ? pets : [];
-        DATA.weapon.items = Array.isArray(weapons) ? weapons : [];
-        DATA.loadout.items = Array.isArray(loadouts) ? loadouts : [];
-
-        setCounts();
-
-        DATA.character.selected = 0;
-        DATA.pet.selected = 0;
-        DATA.weapon.selected = 0;
-
-        applyQuickView('character');
-        applyQuickView('pet');
-        applyQuickView('weapon');
-
-        initBuildDefaults();
-      }catch(err){
-        console.error(err);
-        setCounts();
-      }
+      loadCharacterGrids();
     });
   </script>
 </body>
