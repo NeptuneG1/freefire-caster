@@ -4,427 +4,1515 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Weapon Gallery</title>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <!-- Supabase JS v2 (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root{
+      --bg:#07090f;
+      --bg2:#0b1020;
+      --panel: rgba(20, 26, 38, .72);
+      --panel2: rgba(14, 18, 28, .70);
+      --line: rgba(255,255,255,.08);
+      --ink:#f4f6ff;
+      --muted:#aab1c5;
+
+      --brand:#ffbd59;
+      --brand2:#ff7733;
+      --accent:#4dd3ff;
+
+      --radius:16px;
+      --radius-lg:22px;
+      --shadow: 0 22px 70px rgba(0,0,0,.55);
+
+      --sb-w: 260px;
+      --sb-w-collapsed: 82px;
+
+      /* weapon card sizing */
+      --wep-min: 140px;
+      --wep-gap: 10px;
+      --wep-pad: 8px;
+      --wep-radius: 14px;
+      --wep-thumb-radius: 12px;
+
+      --chip-bg: rgba(0,0,0,.18);
+      --chip-bd: rgba(255,255,255,.12);
+
+      --cs:#4dd3ff;
+    }
+
+    *{box-sizing:border-box}
+    html,body{min-height:100%}
+    body{
+      margin:0;
+      font-family: Roboto, system-ui, -apple-system, Segoe UI, Arial;
+      color:var(--ink);
+      background:
+        radial-gradient(900px 500px at 18% 12%, rgba(77,211,255,.15), transparent 60%),
+        radial-gradient(700px 420px at 85% 18%, rgba(255,189,89,.12), transparent 60%),
+        radial-gradient(900px 620px at 50% 110%, rgba(255,119,51,.10), transparent 60%),
+        linear-gradient(180deg, var(--bg), var(--bg2));
+      overflow-x:hidden;
+      overflow-y:auto;
+    }
+
+    body::before, body::after{
+      content:"";
+      position:fixed;
+      inset:auto auto 0 0;
+      width:520px; height:520px;
+      border-radius:50%;
+      border:10px solid rgba(77,211,255,.14);
+      transform: translate(-45%, -35%);
+      filter: blur(.2px);
+      pointer-events:none;
+    }
+    body::after{
+      inset: -120px 0 auto auto;
+      width:420px; height:420px;
+      border:10px solid rgba(77,211,255,.10);
+      transform: translate(38%, 0%);
+    }
+
+    a{color:inherit}
+    select, input{
+      color-scheme: dark;
+      background: rgba(0,0,0,.28);
+      color: var(--ink);
+    }
+    select option{ background:#0b1020; color:var(--ink); }
+
+    /* Layout */
+    .app{
+      min-height: 100vh;
+      display:flex;
+      gap:18px;
+      padding:18px;
+      max-width: 1440px;
+      margin: 0 auto;
+      align-items:flex-start;
+    }
+
+    /* Sidebar */
+    .sidebar{
+      width: var(--sb-w);
+      background: var(--panel2);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      position: sticky;
+      top: 18px;
+      height: calc(100vh - 36px);
+      transition: width .18s ease;
+      flex:0 0 auto;
+    }
+    .sidebar.collapsed{ width: var(--sb-w-collapsed); }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:16px 16px 10px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .brand-left{display:flex;align-items:center;gap:10px;min-width:0;}
+    .logo{
+      width:36px;height:36px;border-radius:12px;
+      background: linear-gradient(135deg, rgba(255,189,89,.25), rgba(77,211,255,.18));
+      border:1px solid rgba(255,255,255,.10);
+      display:grid;place-items:center;
+      font-family: Orbitron, sans-serif;
+      letter-spacing:.5px;
+      color:var(--brand);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      flex:0 0 auto;
+    }
+    .brand h1{
+      margin:0;
+      font-family: Orbitron, sans-serif;
+      font-size: 1.05rem;
+      letter-spacing:.6px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 150px;
+    }
+    .brand small{
+      display:block;
+      color: var(--muted);
+      font-size:.78rem;
+      margin-top:2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 150px;
+    }
+
+    .nav{
+      padding: 12px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      overflow:auto;
+    }
+    .nav::-webkit-scrollbar{width:10px}
+    .nav::-webkit-scrollbar-thumb{background: rgba(255,255,255,.08); border-radius:10px}
+    .nav::-webkit-scrollbar-track{background: transparent}
+
+    .nav-item{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 10px;
+      border-radius: 12px;
+      border:1px solid transparent;
+      color: var(--muted);
+      text-decoration:none;
+      transition: .2s ease;
+      cursor:pointer;
+      min-width:0;
+    }
+    .nav-item:hover{
+      background: rgba(255,255,255,.05);
+      border-color: rgba(255,255,255,.08);
+      color: var(--ink);
+    }
+    .nav-item.active{
+      background: linear-gradient(135deg, rgba(255,189,89,.14), rgba(77,211,255,.09));
+      border-color: rgba(255,189,89,.22);
+      color: var(--ink);
+    }
+    .nav-ico{
+      width:26px;height:26px;border-radius:10px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.08);
+      display:grid;place-items:center;
+      flex: 0 0 auto;
+    }
+    .nav-ico svg{width:14px;height:14px;opacity:.9}
+    .nav-label{
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      min-width:0;
+    }
+
+    .sidebar.collapsed .brand h1,
+    .sidebar.collapsed .brand small,
+    .sidebar.collapsed .nav-label{display:none;}
+    .sidebar.collapsed .brand{justify-content:center;}
+    .sidebar.collapsed .brand-left{justify-content:center;}
+    .sidebar.collapsed .nav-item{
+      justify-content:center;
+      gap:0;
+      padding:10px 8px;
+    }
+
+    /* Main */
+    .main{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      min-width: 0;
+      gap: 14px;
+    }
+
+    /* Topbar */
+    .topbar{
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      padding: 12px 14px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      position: sticky;
+      top: 18px;
+      z-index: 20;
+    }
+    .search{
+      flex:1;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 10px 12px;
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 14px;
+      min-width: 0;
+    }
+    .search input{
+      width:100%;
+      background: transparent;
+      border:0;
+      outline:none;
+      color: var(--ink);
+      font-size: .95rem;
+    }
+    .search input::placeholder{color: rgba(170,177,197,.75)}
+
+    .top-actions{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex:0 0 auto;
+    }
+
+    .icon-btn{
+      width:42px;height:42px;border-radius:14px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      display:grid;place-items:center;
+      cursor:pointer;
+      transition:.2s ease;
+      color: var(--ink);
+      flex:0 0 auto;
+    }
+    .icon-btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.08)}
+    .icon-btn svg{width:18px;height:18px;opacity:.92}
+
+    .userchip{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      max-width: 260px;
+    }
+    .avatar{
+      width:28px;height:28px;border-radius:10px;
+      background: linear-gradient(135deg, rgba(255,189,89,.30), rgba(77,211,255,.18));
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .usertext{min-width:0}
+    .usertext b{
+      display:block;
+      font-size:.92rem;
+      font-family: Orbitron, sans-serif;
+      color:var(--brand);
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      max-width: 170px;
+    }
+    .usertext span{display:block; font-size:.78rem; color: var(--muted)}
+
+    .logout{
+      color: rgba(255,255,255,.70);
+      text-decoration:none;
+      font-size:.85rem;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.04);
+      transition:.2s ease;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .logout:hover{
+      border-color: rgba(255,77,77,.35);
+      color: #ff8d8d;
+      box-shadow: 0 0 0 3px rgba(255,77,77,.10);
+    }
+
+    /* Card shell */
+    .card{
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      overflow:hidden;
+    }
+    .card-inner{padding:14px}
+
+    .hero{
+      position:relative;
+      height: 150px;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(90deg, rgba(0,0,0,.55), rgba(0,0,0,.10)),
+        url('https://i.imgur.com/qXFpizS.jpg') center/cover no-repeat;
+    }
+    .hero::after{
+      content:"";
+      position:absolute; inset:0;
+      background: radial-gradient(420px 220px at 55% 45%, rgba(255,189,89,.16), transparent 60%);
+      pointer-events:none;
+    }
+    .hero-content{
+      position:absolute;
+      left:16px; right:16px; bottom:14px;
+      display:flex;
+      align-items:flex-end;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .hero-title h2{
+      font-family: Orbitron, sans-serif;
+      font-size: 1.45rem;
+      color: var(--brand);
+      text-shadow: 0 0 18px rgba(255,189,89,.20);
+      margin:0;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Controls */
+    .controls{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap;
+      margin-bottom: 10px;
+    }
+    .controls-left{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      min-width:0;
+    }
+    .controls-right{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--chip-bd);
+      background: var(--chip-bg);
+      color: rgba(244,246,255,.86);
+      font-weight:800;
+      font-size:.82rem;
+      white-space:nowrap;
+    }
+    .dot{
+      width:9px;height:9px;border-radius:50%;
+      display:inline-block;
+      box-shadow: 0 0 0 3px rgba(255,255,255,.06);
+      background: var(--accent);
+    }
+    .dot.cs{ background: var(--cs); }
+
+    .field{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding: 8px 10px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+    }
+    .field label{
+      font-size:.82rem;
+      font-weight:900;
+      color: rgba(244,246,255,.85);
+    }
+    .field select{
+      border:0;
+      outline:none;
+      padding: 6px 8px;
+      border-radius: 12px;
+      background: rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.10);
+    }
+    .field input[type="checkbox"]{
+      width:16px;height:16px;
+      accent-color: var(--brand);
+      cursor:pointer;
+    }
+
+    .btn{
+      padding: 9px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.20);
+      color: rgba(244,246,255,.88);
+      cursor:pointer;
+      font-weight:900;
+      font-size:.82rem;
+      transition:.2s ease;
+      white-space:nowrap;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .btn:hover{
+      background: rgba(0,0,0,.28);
+      box-shadow: 0 0 0 3px rgba(77,211,255,.10);
+      border-color: rgba(77,211,255,.22);
+    }
+
+    .section-title{
+      margin: 16px 0 10px 0;
+      font-family: Orbitron, sans-serif;
+      letter-spacing:.4px;
+      font-size: 1.02rem;
+      color: rgba(244,246,255,.92);
+    }
+    .section-title .hint{
+      font-family: Roboto, system-ui, -apple-system, Segoe UI, Arial;
+      color: var(--muted);
+      font-weight:700;
+      font-size: .82rem;
+      margin-left: 8px;
+      letter-spacing: 0;
+    }
+
+    /* ✅ Weapon Grid */
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(var(--wep-min), 1fr));
+      gap: var(--wep-gap);
+    }
+
+    .wep-card{
+      position:relative;
+      padding: var(--wep-pad);
+      border-radius: var(--wep-radius);
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.09);
+      cursor:pointer;
+      transition:.18s ease;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      min-width:0;
+      overflow:hidden;
+    }
+    .wep-card:hover{
+      background: rgba(255,255,255,.08);
+      transform: translateY(-1px);
+      border-color: rgba(255,189,89,.18);
+    }
+
+    .wep-thumb{
+      width:100%;
+      aspect-ratio: 16 / 9;
+      border-radius: var(--wep-thumb-radius);
+      background: rgba(0,0,0,.18);
+      border: 2px solid rgba(255,255,255,.10);
+      overflow:hidden;
+      display:grid;
+      place-items:center;
+      position:relative;
+    }
+    .wep-thumb img{
+      width:100%;
+      height:100%;
+      object-fit: contain;
+      object-position: center;
+      display:block;
+      background: rgba(255,255,255,.02);
+    }
+
+    .cs-dot{
+      position:absolute;
+      top:8px; right:8px;
+      width:9px; height:9px;
+      border-radius:50%;
+      box-shadow: 0 0 0 3px rgba(0,0,0,.35);
+      border: 1px solid rgba(255,255,255,.22);
+      background: transparent;
+      display:none;
+    }
+    .wep-card.is-cs .cs-dot{ display:block; background: var(--cs); }
+
+    .wep-name{
+      font-size:.82rem;
+      font-weight:1000;
+      color: rgba(244,246,255,.92);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      text-align:center;
+      padding: 0 2px;
+    }
+    .wep-sub{
+      display:flex;
+      justify-content:center;
+      gap:6px;
+      flex-wrap:wrap;
+      margin-top:-2px;
+    }
+    .chip{
+      font-size:.66rem;
+      font-weight:900;
+      color: rgba(244,246,255,.86);
+      border: 1px solid var(--chip-bd);
+      background: var(--chip-bg);
+      border-radius: 999px;
+      padding: 5px 7px;
+      white-space:nowrap;
+      max-width: 100%;
+    }
+    .chip.brand{
+      border-color: rgba(255,189,89,.26);
+      background: rgba(255,189,89,.12);
+      color: rgba(255,230,190,.95);
+    }
+    .chip.cs{
+      border-color: rgba(77,211,255,.26);
+      background: rgba(77,211,255,.10);
+    }
+
+    .empty-msg{
+      grid-column: 1 / -1;
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px dashed rgba(255,255,255,.12);
+      background: rgba(0,0,0,.16);
+      color: var(--muted);
+      font-weight: 800;
+      text-align: center;
+    }
+
+    /* ✅ List view */
+    .grid.list-view{
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+    }
+    .grid.list-view .wep-card{
+      flex-direction: row;
+      align-items:center;
+      gap: 12px;
+      padding: 10px;
+    }
+    .grid.list-view .wep-thumb{
+      width: 160px;
+      flex: 0 0 auto;
+      aspect-ratio: 16 / 9;
+    }
+    .grid.list-view .wep-name{
+      text-align:left;
+      font-size: 1rem;
+      padding: 0;
+    }
+    .wep-row{
+      min-width:0;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      flex:1;
+    }
+    .wep-row .wep-sub{
+      justify-content:flex-start;
+    }
+    .wep-row .wep-mini{
+      color: var(--muted);
+      font-size: .78rem;
+      line-height: 1.05rem;
+      font-weight: 700;
+      overflow:hidden;
+      display:-webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    /* Modal */
+    .modal{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.62);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+      z-index: 1000;
+    }
+    .modal.show{display:flex;}
+
+    .modal-card{
+      width: min(620px, 100%);
+      background: rgba(14, 18, 28, .92);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 22px;
+      box-shadow: 0 26px 80px rgba(0,0,0,.65);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .modal-top{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      padding: 14px 14px 10px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .modal-top h3{
+      margin:0;
+      font-family: Orbitron, sans-serif;
+      letter-spacing:.6px;
+      color: var(--brand);
+      font-size: 1.15rem;
+      line-height: 1.25rem;
+    }
+    .modal-top p{
+      margin:6px 0 0 0;
+      color: var(--muted);
+      font-size:.82rem;
+      font-weight:700;
+      letter-spacing:.2px;
+      white-space:normal;
+    }
+
+    .modal-body{
+      padding: 12px 14px 14px 14px;
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+      justify-content:flex-start;
+    }
+
+    .badge-row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin: 0;
+      padding: 0;
+    }
+
+    .info-block{
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 16px;
+      padding: 10px 12px;
+    }
+    .info-block b{
+      display:block;
+      margin:0 0 6px 0;
+      color: rgba(244,246,255,.92);
+      font-size: .92rem;
+      font-weight:1000;
+    }
+    .info-block .txt{
+      margin:0;
+      color: rgba(244,246,255,.86);
+      font-size: .92rem;
+      line-height: 1.28rem;
+      white-space: normal;
+    }
+
+    .kv{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+      margin-top: 2px;
+    }
+    .kv .k{
+      color: var(--muted);
+      font-size:.78rem;
+      font-weight:800;
+      margin-bottom: 4px;
+    }
+    .kv .v{
+      font-size:.92rem;
+      font-weight:900;
+      color: rgba(244,246,255,.92);
+      word-break: break-word;
+    }
+
+    @media (max-width: 980px){
+      .sidebar{display:none;}
+      .app{padding:12px;}
+      .topbar{top:12px;}
+      :root{
+        --wep-min: 130px;
+      }
+      .grid.list-view .wep-thumb{width: 140px;}
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-left">
+          <div class="logo">FF</div>
+          <div class="brand-text">
+            <h1>Free Fire</h1>
+            <small class="muted">Caster Dashboard</small>
+          </div>
+        </div>
+      </div>
+
+      <nav class="nav" id="nav">
+        <a class="nav-item" href="dashboard.html" data-page="dashboard.html" title="Dashboard">
+          <span class="nav-ico">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M4 13h7V4H4v9Zm9 7h7V4h-7v16ZM4 20h7v-5H4v5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </span>
+          <span class="nav-label">Dashboard</span>
+        </a>
+
+        <a class="nav-item" href="character.html" data-page="character.html" title="Character Skills">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4 0-7 2-7 4v2h14v-2c0-2-3-4-7-4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Character Skills</span>
+        </a>
+
+        <a class="nav-item" href="pet.html" data-page="pet.html" title="Pets">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M7 14c-1.7 0-3-1.3-3-3S5.3 8 7 8s3 1.3 3 3-1.3 3-3 3Zm10 0c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3ZM7 20c-2.8 0-5-1.8-5-4v-1h6v1c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2v-1h6v1c0 2.2-2.2 4-5 4H7Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Pets</span>
+        </a>
+
+        <a class="nav-item active" href="weapon.html" data-page="weapon.html" title="Weapons">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M3 21l6-6m0 0 2 2 8-8-2-2-8 8Zm0 0-2-2 4-4 2 2-4 4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Weapons</span>
+        </a>
+
+        <a class="nav-item" href="map.html" data-page="map.html" title="Map">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M10 6 4 8v14l6-2 4 2 6-2V6l-6 2-4-2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Map</span>
+        </a>
+
+        <a class="nav-item" href="split-view.html" data-page="split-view.html" title="Split View">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16M4 12h16M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Split View</span>
+        </a>
+
+        <a class="nav-item" href="clash-draft.html" data-page="clash-draft.html" title="Clash Squad Draft">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h10M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Draft</span>
+        </a>
+
+        <a class="nav-item" href="clash-data.html" data-page="clash-data.html" title="Clash Squad Data">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19V5m0 14h16M8 17v-6m4 6V7m4 10v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Data</span>
+        </a>
+
+        <a class="nav-item" href="clash-compare.html" data-page="clash-compare.html" title="Clash Squad Comparison">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M10 3v18M14 3v18M4 7h6M14 17h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Comparison</span>
+        </a>
+
+        <a class="nav-item" href="clash-report.html" data-page="clash-report.html" title="Clash Squad Team Report">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Team Report</span>
+        </a>
+
+        <a class="nav-item" href="clash-store.html" data-page="clash-store.html" title="Clash Squad Store">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16l-1 14H5L4 7Zm3 0 1-3h8l1 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Store</span>
+        </a>
+
+        <a class="nav-item" href="br_team2.html" data-page="br_team2.html" title="BR Data">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M6 20V10m6 10V4m6 16v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">BR Data</span>
+        </a>
+
+        <a class="nav-item" href="ff-update.html" data-page="ff-update.html" title="Free Fire Update">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2v6m0 14v-6M4.9 4.9l4.2 4.2m10.8 10.8-4.2-4.2M2 12h6m14 0h-6M4.9 19.1l4.2-4.2m10.8-10.8-4.2 4.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Free Fire Update</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <header class="topbar">
+        <button class="icon-btn" id="sbToggle" aria-label="Collapse sidebar" title="Collapse sidebar">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path id="sbTogglePath" d="M14 7l-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;opacity:.85">
+            <path d="M21 21l-4.3-4.3m1.3-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <input id="searchInput" placeholder="Search weapons (name / type / armory / attributes)..." />
+        </div>
+
+        <div class="top-actions">
+          <div class="userchip">
+            <div class="avatar"></div>
+            <div class="usertext">
+              <b id="gamertag">PlayerOne</b>
+              <span id="userEmail" class="muted">loading…</span>
+            </div>
+          </div>
+
+          <a class="logout" href="#" id="logoutBtn">Logout</a>
+        </div>
+      </header>
+
+      <section class="card">
+        <div class="hero">
+          <div class="hero-content">
+            <div class="hero-title">
+              <h2>Weapon Gallery</h2>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-inner">
+          <div class="controls">
+            <div class="controls-left">
+              <span class="pill"><span class="dot"></span>All Weapons</span>
+              <span class="pill"><span class="dot cs"></span>CS Weapons</span>
+              <span class="pill" id="countPill" style="display:none;"></span>
+            </div>
+
+            <div class="controls-right">
+              <div class="field">
+                <label for="filterType">Type</label>
+                <select id="filterType">
+                  <option value="">All</option>
+                  <option value="Assault Rifle">Assault Rifle</option>
+                  <option value="SMG">SMG</option>
+                  <option value="Shotgun">Shotgun</option>
+                  <option value="Sniper Rifle">Sniper Rifle</option>
+                  <option value="Marksman Rifle">Marksman Rifle</option>
+                  <option value="Pistol">Pistol</option>
+                  <option value="Light Machine Gun">Light Machine Gun</option>
+                  <option value="Launcher">Launcher</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="filterArmory">Armory</label>
+                <select id="filterArmory">
+                  <option value="">All</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="filterCSOnly">CS</label>
+                <input type="checkbox" id="filterCSOnly" />
+              </div>
+
+              <button class="btn" id="toggleView" type="button">📃 List View</button>
+              <a class="btn" href="dashboard.html">← Dashboard</a>
+            </div>
+          </div>
+
+          <div class="section-title">Weapons <span class="hint">(click a weapon for details)</span></div>
+          <div class="grid" id="weaponGrid">
+            <div class="empty-msg">Loading…</div>
+          </div>
+
+          <div class="muted" style="font-size:.8rem; padding: 14px 2px 2px 2px;">
+            Free Fire Caster © 2025 — Neptune
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Info Modal -->
+  <div class="modal" id="infoModal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="Weapon Info">
+      <div class="modal-top">
+        <div style="min-width:0">
+          <h3 id="infoName">—</h3>
+          <p id="infoSub">—</p>
+        </div>
+        <button class="icon-btn" id="infoClose" aria-label="Close" title="Close">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="badge-row" id="infoBadges"></div>
+
+        <div class="info-block">
+          <b>Stats</b>
+          <div class="kv">
+            <div>
+              <div class="k">Damage</div>
+              <div class="v" id="infoDamage">—</div>
+            </div>
+            <div>
+              <div class="k">Rate of Fire</div>
+              <div class="v" id="infoROF">—</div>
+            </div>
+            <div>
+              <div class="k">Range</div>
+              <div class="v" id="infoRange">—</div>
+            </div>
+            <div>
+              <div class="k">Magazine</div>
+              <div class="v" id="infoMag">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="info-block">
+          <b>Special Attributes</b>
+          <p class="txt" id="infoAttrs">—</p>
+        </div>
+
+        <div class="info-block">
+          <b>Description</b>
+          <p class="txt" id="infoDesc">—</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
+    /***********************
+     * Supabase Auth
+     ***********************/
     const client = supabase.createClient(
       'https://gkugecflfddkpitlrmws.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
     );
 
-    client.auth.getSession().then(({ data: { session } }) => {
+    async function ensureSession(){
+      const { data: { session } } = await client.auth.getSession();
       if (!session) {
         window.location.href = "index.html";
-      } else {
-        const userInfo = document.getElementById("user-info");
-        if (userInfo && session.user?.email) {
-          userInfo.textContent = "Logged in as: " + session.user.email;
-        }
+        return null;
       }
-    });
+      return session;
+    }
 
-    function logout() {
-      client.auth.signOut().then(() => {
-        window.location.href = "index.html";
+    async function logout(){
+      await client.auth.signOut();
+      window.location.href = "index.html";
+    }
+
+    /***********************
+     * Sidebar collapse + active nav
+     ***********************/
+    const sidebar = document.getElementById('sidebar');
+
+    (function initSidebarCollapse(){
+      const key = 'ff_sidebar_collapsed_v1';
+      const saved = localStorage.getItem(key);
+      if (saved === '1') sidebar.classList.add('collapsed');
+
+      const btn = document.getElementById('sbToggle');
+      const path = document.getElementById('sbTogglePath');
+
+      function syncIcon(){
+        if (!path) return;
+        path.setAttribute('d', sidebar.classList.contains('collapsed')
+          ? 'M10 7l5 5-5 5'
+          : 'M14 7l-5 5 5 5'
+        );
+      }
+      syncIcon();
+
+      btn?.addEventListener('click', () => {
+        sidebar.classList.toggle('collapsed');
+        localStorage.setItem(key, sidebar.classList.contains('collapsed') ? '1' : '0');
+        syncIcon();
       });
+    })();
+
+    (function setActiveNav(){
+      const here = (location.pathname.split('/').pop() || 'weapon.html').toLowerCase();
+      document.querySelectorAll('.nav-item').forEach(a => {
+        const page = (a.getAttribute('data-page') || '').toLowerCase();
+        a.classList.toggle('active', page === here);
+      });
+    })();
+
+    /***********************
+     * Helpers
+     ***********************/
+    function safeText(v){ return (v ?? '').toString(); }
+    function tidy(v){
+      return safeText(v)
+        .replace(/[\u200B-\u200D\uFEFF]/g, '')
+        .replace(/\s*\n+\s*/g, ' ')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
     }
-  </script>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto&display=swap" rel="stylesheet">
-  <style>
-    body {
-      margin: 0;
-      font-family: 'Roboto', sans-serif;
-      background: #0e0e0e;
-      color: #f5f5f5;
+    function isCS(w){
+      const v = tidy(w?.clash_squad).toLowerCase();
+      return v === 'cs' || v === 'yes' || v === 'true';
     }
-    header {
-      background: #1f1f1f;
-      padding: 20px;
-      text-align: center;
-      border-bottom: 3px solid #ffbd59;
+    function toPriceNum(v){
+      const n = parseInt(String(v ?? '').replace(/[^\d]/g,''), 10);
+      return Number.isFinite(n) ? n : NaN;
     }
-    header h1 {
-      font-family: 'Orbitron', sans-serif;
-      color: #ffbd59;
-      margin: 0;
-      font-size: 2rem;
-    }
-    #user-info {
-      font-size: 0.9rem;
-      text-align: center;
-      color: #ccc;
-      margin-top: 4px;
-    }
-    .filter-bar {
-      display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 10px;
-      padding: 15px;
-      background: #1c1c1c;
-      border-bottom: 1px solid #333;
-    }
-    .filter-bar select,
-    .filter-bar input[type="text"],
-    .filter-bar input[type="checkbox"],
-    .filter-bar button {
-      padding: 6px 10px;
-      background: #2a2a2a;
-      border: 1px solid #ffbd59;
-      color: #fff;
-      font-size: 0.9rem;
-      font-family: 'Roboto', sans-serif;
-      border-radius: 6px;
-      height: 36px;
-      box-sizing: border-box;
-    }
-    
-    .filter-bar label {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.9rem;
-      color: #fff;
-    }
-    .filter-bar input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-      gap: 10px;
-      padding: 15px;
-    }
-    .card {
-      position: relative;
-      background: #1c1c1c;
-      border-radius: 6px;
-      padding: 6px;
-      text-align: center;
-      cursor: pointer;
-    }
-    .card img {
-      width: 100%;
-      height: 70px; /* or adjust as needed */
-      object-fit: contain;
-      background: #979695;
-      border: 2px solid #ffbd59;
-      border-radius: 4px;
-    }
-    .card h3 {
-      font-size: 0.85rem;
-      color: #ffbd59;
-      margin: 6px 0 0 0;
-    }
-    .card .tooltip {
-      display: none;
-      position: absolute;
-      z-index: 1000;
-      background: #222;
-      padding: 10px;
-      border-radius: 6px;
-      width: 200px;
-      text-align: left;
-      font-size: 0.75rem;
-      color: #f5f5f5;
-      border: 1px solid #ffbd59;
-      box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
-      pointer-events: none;
-    }
-    @media (hover: hover) {
-      .card:hover .tooltip {
-        display: block;
-        pointer-events: auto;
-      }
-    }
-    .card.show-tooltip .tooltip {
-      display: block;
-      pointer-events: auto;
-    }
-    .back-button {
-      text-align: center;
-      margin: 20px;
-    }
-    .back-button a,
-    .logout-btn {
-      display: inline-block;
-      background: #ffbd59;
-      color: #1c1c1c;
-      padding: 10px 20px;
-      font-weight: bold;
-      border-radius: 6px;
-      text-decoration: none;
-      margin: 0 8px;
-      transition: background 0.2s;
-    }
-    .back-button a:hover,
-    .logout-btn:hover {
-      background: #e0a84f;
-    }
-    .logout-btn {
-      border: none;
-      cursor: pointer;
+    function splitArmory(v){
+      return tidy(v)
+        .split(',')
+        .map(s => tidy(s))
+        .filter(Boolean);
     }
 
-    #toggleView {
-      background: #ffbd59;
-      color: #1c1c1c;
-      border: none;
-      padding: 6px 12px;
-      font-weight: bold;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    
-    #toggleView:hover {
-      background: #e0a84f;
-    }
-    
-    .grid.list-view {
-      display: block;
-    }
-    
-    .grid.list-view .card {
-      display: flex;
-      align-items: center;
-      text-align: left;
-      gap: 12px;
-      padding: 10px;
-    }
-    
-    .grid.list-view .card img {
-      width: 120px;
-      aspect-ratio: auto;
-      object-fit: contain;
-      border-radius: 4px;
-    }
-    
-    .grid.list-view .card h3 {
-      font-size: 1rem;
-      margin: 0;
-    }
-    
-    .grid.list-view .card .tooltip {
-      position: static;
-      display: block;
-      background: none;
-      color: #ccc;
-      border: none;
-      box-shadow: none;
-      padding: 0;
-      margin-left: 10px;
-    }
+    /***********************
+     * Data + State
+     ***********************/
+    const WEAPON_URL = 'https://neptuneg1.github.io/freefire-caster/weapon.json';
 
-  </style>
-</head>
-<body>
-  <header>
-    <h1>Weapon Gallery</h1>
-    <p id="user-info">Checking login...</p>
-  </header>
-
-   <div class="filter-bar">
-    <label>Type:
-      <select id="filterType">
-        <option value="">All</option>
-        <option value="Assault Rifle">Assault Rifle</option>
-        <option value="SMG">SMG</option>
-        <option value="Shotgun">Shotgun</option>
-        <option value="Sniper Rifle">Sniper Rifle</option>
-        <option value="Marksman Rifle">Marksman Rifle</option>
-        <option value="Pistol">Pistol</option>
-        <option value="Light Machine Gun">Light Machine Gun</option>
-        <option value="Launcher">Launcher</option>
-      </select>
-    </label>
-  
-    <label>Name:
-      <input type="text" id="filterName" placeholder="Search by name" />
-    </label>
-  
-    <label>Armory:
-      <select id="filterArmory">
-        <option value="">All</option>
-      </select>
-    </label>
-  
-    <label>CS Only:
-      <input type="checkbox" id="filterCSOnly" />
-    </label>
-  
-    <button id="toggleView">🔳 Grid View</button>
-  </div>
-
-  <div class="back-button">
-    <a href="dashboard.html">← Back to Dashboard</a>
-    <button class="logout-btn" onclick="logout()">Logout</button>
-  </div>
-
-  <div class="grid" id="weaponGrid">
-    <p>Loading weapons...</p>
-  </div>
-
-  <script>
     let allWeapons = [];
     let isListView = false;
-  
-    function renderWeaponCard(w, index) {
-      return `
-        <div class="card" data-index="${index}">
-          <img src="${w.image_url}" alt="${w.name}">
-          <h3>${w.name}</h3>
-          <div class="tooltip">
-            <strong>Type:</strong> ${w.type}<br>
-            <strong>Damage:</strong> ${w.damage}<br>
-            <strong>Rate of Fire:</strong> ${w.rate_of_fire}<br>
-            <strong>Range:</strong> ${w.range}<br>
-            <strong>Magazine:</strong> ${w.magazine_size}<br>
-            <strong>CS Price:</strong> ${w.price}<br>
-            <strong>Attributes:</strong> ${w.special_attributes}<br>
-            <em>${w.description}</em>
-          </div>
-        </div>`;
+
+    let currentSearch = '';
+    let currentTypeFilter = '';
+    let currentArmoryFilter = '';
+    let currentCsOnly = false;
+
+    const weaponGrid = document.getElementById('weaponGrid');
+    const countPill = document.getElementById('countPill');
+
+    const searchInput = document.getElementById('searchInput');
+    const filterType = document.getElementById('filterType');
+    const filterArmory = document.getElementById('filterArmory');
+    const filterCSOnly = document.getElementById('filterCSOnly');
+    const toggleViewBtn = document.getElementById('toggleView');
+
+    function typeSortIndex(type){
+      const order = [
+        'Pistol',
+        'Shotgun',
+        'SMG',
+        'Assault Rifle',
+        'Marksman Rifle',
+        'Sniper Rifle',
+        'Light Machine Gun',
+        'Launcher'
+      ];
+      const i = order.indexOf(type);
+      return i === -1 ? order.length : i;
     }
-  
-    function enableTooltipClicks() {
-      document.querySelectorAll('.card').forEach(card => {
-        card.addEventListener('click', function (e) {
-          if (window.matchMedia('(hover: none)').matches) {
-            e.stopPropagation();
-            const alreadyOpen = card.classList.contains('show-tooltip');
-            document.querySelectorAll('.card').forEach(c => c.classList.remove('show-tooltip'));
-  
-            if (!alreadyOpen) {
-              card.classList.add('show-tooltip');
-  
-              const tooltip = card.querySelector('.tooltip');
-              tooltip.style.position = 'absolute';
-              tooltip.style.maxWidth = '250px'; // optional max width
-              tooltip.style.zIndex = 1000;
-              
-              const cardRect = card.getBoundingClientRect();
-              const tooltipRect = tooltip.getBoundingClientRect();
-              
-              // Prefer top, fallback to bottom
-              let top = -tooltip.offsetHeight - 10;
-              if (cardRect.top < tooltip.offsetHeight + 20) {
-                top = card.offsetHeight + 10;
-              }
-              
-              let left = (card.offsetWidth - tooltip.offsetWidth) / 2;
-              left = Math.max(-cardRect.left, left); // prevent overflow left
-              
-              tooltip.style.top = `${top}px`;
-              tooltip.style.left = `${left}px`;
-            }
-          }
-        });
-      });
-  
-      document.addEventListener('click', function () {
-        if (window.matchMedia('(hover: none)').matches) {
-          document.querySelectorAll('.card').forEach(c => c.classList.remove('show-tooltip'));
+
+    function weaponSearchBlob(w){
+      return [
+        tidy(w?.name),
+        tidy(w?.type),
+        splitArmory(w?.armory).join(' '),
+        tidy(w?.special_attributes),
+        tidy(w?.description)
+      ].filter(Boolean).join(' ').toLowerCase();
+    }
+
+    function ensureEmptyMsg(){
+      let msg = weaponGrid.querySelector('.empty-msg');
+      if (!msg){
+        msg = document.createElement('div');
+        msg.className = 'empty-msg';
+        msg.textContent = 'No weapons match your filters.';
+        weaponGrid.appendChild(msg);
+      }
+      return msg;
+    }
+
+    function makeWeaponCard(w){
+      const el = document.createElement('div');
+      const name = tidy(w?.name) || 'Unknown';
+      const type = tidy(w?.type) || '—';
+      const armory = splitArmory(w?.armory);
+      const cs = isCS(w);
+      const price = tidy(w?.price);
+
+      el.className = 'wep-card' + (cs ? ' is-cs' : '');
+      el.tabIndex = 0;
+
+      const thumb = document.createElement('div');
+      thumb.className = 'wep-thumb';
+
+      const img = document.createElement('img');
+      img.src = w?.image_url || '';
+      img.alt = name;
+      img.loading = 'lazy';
+      img.referrerPolicy = 'no-referrer';
+
+      const csDot = document.createElement('span');
+      csDot.className = 'cs-dot';
+
+      thumb.appendChild(img);
+      thumb.appendChild(csDot);
+
+      const nm = document.createElement('div');
+      nm.className = 'wep-name';
+      nm.textContent = name;
+
+      const sub = document.createElement('div');
+      sub.className = 'wep-sub';
+
+      if (type){
+        const chipType = document.createElement('span');
+        chipType.className = 'chip';
+        chipType.textContent = type;
+        sub.appendChild(chipType);
+      }
+
+      if (cs){
+        const chipCS = document.createElement('span');
+        chipCS.className = 'chip cs';
+        chipCS.textContent = price ? `CS ₱${price}` : 'CS';
+        sub.appendChild(chipCS);
+      }
+
+      // list view extra row info
+      const row = document.createElement('div');
+      row.className = 'wep-row';
+      row.appendChild(nm);
+      row.appendChild(sub);
+
+      const mini = document.createElement('div');
+      mini.className = 'wep-mini';
+      const dmg = tidy(w?.damage);
+      const rof = tidy(w?.rate_of_fire);
+      const rng = tidy(w?.range);
+      const mag = tidy(w?.magazine_size);
+      const attrs = tidy(w?.special_attributes);
+      const arm = armory.length ? armory.join(', ') : '';
+      mini.textContent = [
+        dmg ? `DMG ${dmg}` : '',
+        rof ? `ROF ${rof}` : '',
+        rng ? `RNG ${rng}` : '',
+        mag ? `MAG ${mag}` : '',
+        arm ? `Armory: ${arm}` : '',
+        attrs ? `• ${attrs}` : ''
+      ].filter(Boolean).join(' • ');
+      row.appendChild(mini);
+
+      // default grid structure
+      el.appendChild(thumb);
+      el.appendChild(nm);
+      el.appendChild(sub);
+
+      // store blob for filtering
+      el.dataset.search = weaponSearchBlob(w);
+      el.dataset.type = type;
+      el.dataset.cs = cs ? '1' : '0';
+      el.dataset.armory = armory.map(a => a.toLowerCase()).join('|');
+      el._weapon = w;
+
+      el.addEventListener('click', () => openInfo(w));
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openInfo(w);
         }
       });
-    }
-  
-    function updateGrid() {
-      const armory = document.getElementById('filterArmory').value;
-      const type = document.getElementById('filterType').value;
-      const nameSearch = document.getElementById('filterName').value.toLowerCase();
-      const csOnly = document.getElementById('filterCSOnly').checked;
-      const container = document.getElementById('weaponGrid');
-  
-      let filtered = allWeapons.filter(w => {
-          const armoryNames = (w.armory || "").split(',').map(s => s.trim().toLowerCase());
-          return (!type || w.type === type) &&
-                 (!nameSearch || w.name.toLowerCase().includes(nameSearch)) &&
-                 (!csOnly || (w.clash_squad && w.clash_squad.toLowerCase() === 'cs')) &&
-                 (!armory || armoryNames.includes(armory.toLowerCase()));
-        });
 
-      if (csOnly) {
-        // Sort by price (ascending)
-        filtered.sort((a, b) => {
-          const priceA = parseInt(a.price || 0, 10);
-          const priceB = parseInt(b.price || 0, 10);
-          return priceA - priceB;
-        });
-      } else {
-        // Sort by custom type order, then by name
-        const typeOrder = [
-          'Pistol',
-          'Shotgun',
-          'SMG',
-          'Assault Rifle',
-          'Marksman Rifle',
-          'Sniper Rifle',
-          'Light Machine Gun',
-          'Launcher'
-        ];
-        
-        filtered.sort((a, b) => {
-          const indexA = typeOrder.indexOf(a.type) !== -1 ? typeOrder.indexOf(a.type) : typeOrder.length;
-          const indexB = typeOrder.indexOf(b.type) !== -1 ? typeOrder.indexOf(b.type) : typeOrder.length;
-          return indexA - indexB || a.name.localeCompare(b.name);
-        });
-      }
-  
-      container.innerHTML = filtered.length
-        ? filtered.map((w, i) => renderWeaponCard(w, i)).join('')
-        : '<p>No weapons match the selected filters.</p>';
-  
-      // Apply current view mode
-      if (isListView) {
-        container.classList.add('list-view');
-        document.getElementById('toggleView').textContent = '📃 List View';
-      } else {
-        container.classList.remove('list-view');
-        document.getElementById('toggleView').textContent = '🔳 Grid View';
-      }
-  
-      enableTooltipClicks();
+      // In list view, we replace inner layout (handled in applyViewMode)
+      el._row = row;
+      el._thumb = thumb;
+
+      return el;
     }
-  
-    document.getElementById('toggleView').addEventListener('click', () => {
-      isListView = !isListView;
-      updateGrid();
-    });
-  
-    fetch('https://neptuneg1.github.io/freefire-caster/weapon.json')
-        .then(res => res.json())
-        .then(data => {
-          allWeapons = data;
-      
-          // ✅ Extract and populate unique Armory names
-          const armorySet = new Set();
-      
-          data.forEach(w => {
-            if (w.armory) {
-              w.armory.split(',').map(name => name.trim()).forEach(name => {
-                if (name) armorySet.add(name);
-              });
-            }
-          });
-      
-          const armorySelect = document.getElementById('filterArmory');
-          [...armorySet].sort().forEach(name => {
-            const option = document.createElement('option');
-            option.value = name;
-            option.textContent = name;
-            armorySelect.appendChild(option);
-          });
-      
-          updateGrid();
-      
-          document.getElementById('filterType').addEventListener('change', updateGrid);
-          document.getElementById('filterName').addEventListener('input', updateGrid);
-          document.getElementById('filterCSOnly').addEventListener('change', updateGrid);
-          document.getElementById('filterArmory').addEventListener('change', updateGrid);
-        })
-        .catch(() => {
-          document.getElementById('weaponGrid').innerHTML = '<p>Error loading weapon data.</p>';
+
+    function applyViewMode(){
+      if (isListView){
+        weaponGrid.classList.add('list-view');
+        toggleViewBtn.textContent = '🔳 Grid View';
+        // swap each card into row layout
+        [...weaponGrid.querySelectorAll('.wep-card')].forEach(card => {
+          const thumb = card._thumb || card.querySelector('.wep-thumb');
+          const row = card._row;
+          if (!row) return;
+          card.innerHTML = '';
+          card.appendChild(thumb);
+          card.appendChild(row);
         });
+      } else {
+        weaponGrid.classList.remove('list-view');
+        toggleViewBtn.textContent = '📃 List View';
+        // restore grid layout
+        [...weaponGrid.querySelectorAll('.wep-card')].forEach(card => {
+          const w = card._weapon;
+          if (!w) return;
+          const thumb = card._thumb;
+          const name = tidy(w?.name) || 'Unknown';
+          const type = tidy(w?.type) || '—';
+          const cs = isCS(w);
+          const price = tidy(w?.price);
+
+          // rebuild grid layout quickly
+          const nm = document.createElement('div');
+          nm.className = 'wep-name';
+          nm.textContent = name;
+
+          const sub = document.createElement('div');
+          sub.className = 'wep-sub';
+
+          if (type){
+            const chipType = document.createElement('span');
+            chipType.className = 'chip';
+            chipType.textContent = type;
+            sub.appendChild(chipType);
+          }
+          if (cs){
+            const chipCS = document.createElement('span');
+            chipCS.className = 'chip cs';
+            chipCS.textContent = price ? `CS ₱${price}` : 'CS';
+            sub.appendChild(chipCS);
+          }
+
+          card.innerHTML = '';
+          card.appendChild(thumb);
+          card.appendChild(nm);
+          card.appendChild(sub);
+        });
+      }
+    }
+
+    function applyFilters(){
+      const q = (currentSearch || '').toLowerCase().trim();
+      const type = (currentTypeFilter || '').trim();
+      const armory = (currentArmoryFilter || '').toLowerCase().trim();
+      const csOnly = !!currentCsOnly;
+
+      const cards = [...weaponGrid.querySelectorAll('.wep-card')];
+      let visible = 0;
+
+      cards.forEach(el => {
+        const blob = el.dataset.search || '';
+        const t = el.dataset.type || '';
+        const iscs = el.dataset.cs === '1';
+        const arms = el.dataset.armory || '';
+
+        const ok =
+          (!q || blob.includes(q)) &&
+          (!type || t === type) &&
+          (!csOnly || iscs) &&
+          (!armory || arms.split('|').includes(armory));
+
+        el.style.display = ok ? '' : 'none';
+        if (ok) visible++;
+      });
+
+      const empty = ensureEmptyMsg();
+      empty.style.display = visible ? 'none' : '';
+
+      countPill.style.display = '';
+      countPill.textContent = `Showing: ${visible} weapon${visible===1?'':'s'}`;
+    }
+
+    function renderWeapons(){
+      weaponGrid.innerHTML = '';
+
+      // filter + sort array first
+      const type = (currentTypeFilter || '').trim();
+      const armory = (currentArmoryFilter || '').toLowerCase().trim();
+      const csOnly = !!currentCsOnly;
+      const q = (currentSearch || '').toLowerCase().trim();
+
+      let filtered = (Array.isArray(allWeapons) ? allWeapons.slice() : []).filter(w => {
+        const t = tidy(w?.type);
+        const cs = isCS(w);
+        const arms = splitArmory(w?.armory).map(a => a.toLowerCase());
+        const blob = weaponSearchBlob(w);
+
+        return (!type || t === type) &&
+               (!csOnly || cs) &&
+               (!armory || arms.includes(armory)) &&
+               (!q || blob.includes(q));
+      });
+
+      if (csOnly){
+        filtered.sort((a,b) => {
+          const pa = toPriceNum(a?.price);
+          const pb = toPriceNum(b?.price);
+          // NaN goes last
+          if (!Number.isFinite(pa) && !Number.isFinite(pb)) return tidy(a?.name).localeCompare(tidy(b?.name));
+          if (!Number.isFinite(pa)) return 1;
+          if (!Number.isFinite(pb)) return -1;
+          return pa - pb || tidy(a?.name).localeCompare(tidy(b?.name));
+        });
+      } else {
+        filtered.sort((a,b) => {
+          const ia = typeSortIndex(tidy(a?.type));
+          const ib = typeSortIndex(tidy(b?.type));
+          return ia - ib || tidy(a?.name).localeCompare(tidy(b?.name));
+        });
+      }
+
+      if (!filtered.length){
+        weaponGrid.innerHTML = '<div class="empty-msg">No weapons match your filters.</div>';
+        countPill.style.display = '';
+        countPill.textContent = 'Showing: 0 weapons';
+        return;
+      }
+
+      filtered.forEach(w => weaponGrid.appendChild(makeWeaponCard(w)));
+
+      applyViewMode();
+      applyFilters(); // also updates count pill reliably
+    }
+
+    function populateArmoryOptions(weapons){
+      const set = new Set();
+      (weapons || []).forEach(w => {
+        splitArmory(w?.armory).forEach(a => set.add(a));
+      });
+
+      // reset
+      filterArmory.innerHTML = '<option value="">All</option>';
+
+      [...set].sort((a,b) => a.localeCompare(b)).forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        filterArmory.appendChild(opt);
+      });
+    }
+
+    async function loadWeapons(){
+      weaponGrid.innerHTML = '<div class="empty-msg">Loading…</div>';
+
+      const url = `${WEAPON_URL}?ts=${Date.now()}`;
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      allWeapons = Array.isArray(data) ? data : [];
+      populateArmoryOptions(allWeapons);
+      renderWeapons();
+    }
+
+    /***********************
+     * Modal
+     ***********************/
+    const infoModal = document.getElementById('infoModal');
+    const infoClose = document.getElementById('infoClose');
+
+    const infoName = document.getElementById('infoName');
+    const infoSub = document.getElementById('infoSub');
+    const infoBadges = document.getElementById('infoBadges');
+
+    const infoDamage = document.getElementById('infoDamage');
+    const infoROF = document.getElementById('infoROF');
+    const infoRange = document.getElementById('infoRange');
+    const infoMag = document.getElementById('infoMag');
+
+    const infoAttrs = document.getElementById('infoAttrs');
+    const infoDesc = document.getElementById('infoDesc');
+
+    function badge(label, cls){
+      const el = document.createElement('span');
+      el.className = 'pill';
+      const d = document.createElement('span');
+      d.className = 'dot ' + (cls || '');
+      el.appendChild(d);
+      el.appendChild(document.createTextNode(label));
+      return el;
+    }
+
+    function openInfo(w){
+      const name = tidy(w?.name) || '—';
+      const type = tidy(w?.type) || '—';
+      const cs = isCS(w);
+      const price = tidy(w?.price);
+      const armory = splitArmory(w?.armory);
+
+      infoName.textContent = name;
+      infoSub.textContent = [
+        type ? type.toUpperCase() : null,
+        cs ? (price ? `CS ₱${price}` : 'CS') : null,
+        armory.length ? `ARMORY: ${armory.join(', ')}` : null
+      ].filter(Boolean).join(' • ');
+
+      infoBadges.innerHTML = '';
+      infoBadges.appendChild(badge(type || 'TYPE', ''));
+      if (cs) infoBadges.appendChild(badge('CLASH SQUAD', 'cs'));
+
+      infoDamage.textContent = tidy(w?.damage) || '—';
+      infoROF.textContent = tidy(w?.rate_of_fire) || '—';
+      infoRange.textContent = tidy(w?.range) || '—';
+      infoMag.textContent = tidy(w?.magazine_size) || '—';
+
+      infoAttrs.textContent = tidy(w?.special_attributes) || '—';
+      infoDesc.textContent = tidy(w?.description) || '—';
+
+      infoModal.classList.add('show');
+      infoModal.setAttribute('aria-hidden','false');
+    }
+
+    function closeInfo(){
+      infoModal.classList.remove('show');
+      infoModal.setAttribute('aria-hidden','true');
+    }
+
+    infoClose?.addEventListener('click', closeInfo);
+    infoModal?.addEventListener('click', (e) => { if (e.target === infoModal) closeInfo(); });
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && infoModal.classList.contains('show')) closeInfo(); });
+
+    /***********************
+     * Events
+     ***********************/
+    searchInput?.addEventListener('input', (e) => {
+      currentSearch = e.target.value || '';
+      renderWeapons();
+    });
+
+    filterType?.addEventListener('change', (e) => {
+      currentTypeFilter = e.target.value || '';
+      renderWeapons();
+    });
+
+    filterArmory?.addEventListener('change', (e) => {
+      currentArmoryFilter = e.target.value || '';
+      renderWeapons();
+    });
+
+    filterCSOnly?.addEventListener('change', (e) => {
+      currentCsOnly = !!e.target.checked;
+      renderWeapons();
+    });
+
+    toggleViewBtn?.addEventListener('click', () => {
+      isListView = !isListView;
+      applyViewMode();
+    });
+
+    document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      logout();
+    });
+
+    /***********************
+     * Init
+     ***********************/
+    window.addEventListener('DOMContentLoaded', async () => {
+      const session = await ensureSession();
+      if (!session) return;
+
+      const email = session.user?.email || '';
+      document.getElementById('userEmail').textContent = email || 'signed in';
+      const username = email ? email.split('@')[0] : 'PlayerOne';
+      document.getElementById('gamertag').textContent = username;
+
+      try{
+        await loadWeapons();
+      }catch(err){
+        console.error('Error loading weapon data:', err);
+        weaponGrid.innerHTML = '<div class="empty-msg">Error loading weapon data.</div>';
+        countPill.style.display = 'none';
+      }
+    });
   </script>
 </body>
 </html>
