@@ -39,6 +39,13 @@
       --role-support:#ff59c7;
       --role-movement:#b58cff;
       --role-other:#ffbd59;
+
+      /* 👇 sizing knobs (smaller cards) */
+      --pet-min: 128px;        /* smaller column min width */
+      --pet-gap: 10px;         /* tighter gaps */
+      --pet-pad: 8px;          /* tighter padding */
+      --pet-radius: 14px;      /* slightly smaller radius */
+      --pet-thumb-radius: 12px;
     }
 
     *{box-sizing:border-box}
@@ -479,24 +486,24 @@
       letter-spacing: 0;
     }
 
-    /* Pet grid */
+    /* ✅ Smaller pet grid/cards */
     .grid{
       display:grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: 12px;
+      grid-template-columns: repeat(auto-fill, minmax(var(--pet-min), 1fr));
+      gap: var(--pet-gap);
     }
 
     .pet-card{
       position:relative;
-      padding: 10px;
-      border-radius: 16px;
+      padding: var(--pet-pad);
+      border-radius: var(--pet-radius);
       background: rgba(255,255,255,.05);
       border: 1px solid rgba(255,255,255,.09);
       cursor:pointer;
       transition:.18s ease;
       display:flex;
       flex-direction:column;
-      gap:8px;
+      gap:6px;
       min-width:0;
       overflow:hidden;
     }
@@ -508,8 +515,8 @@
 
     .pet-thumb{
       width:100%;
-      aspect-ratio: 4 / 3;
-      border-radius: 14px;
+      aspect-ratio: 1 / 1; /* smaller height vs wide 4:3 */
+      border-radius: var(--pet-thumb-radius);
       background: rgba(0,0,0,.18);
       border: 2px solid rgba(255,255,255,.10);
       overflow:hidden;
@@ -528,8 +535,8 @@
 
     .role-dot{
       position:absolute;
-      top:10px; right:10px;
-      width:10px; height:10px;
+      top:8px; right:8px;
+      width:9px; height:9px;
       border-radius:50%;
       box-shadow: 0 0 0 3px rgba(0,0,0,.35);
       border: 1px solid rgba(255,255,255,.22);
@@ -537,7 +544,7 @@
     }
 
     .pet-name{
-      font-size:.9rem;
+      font-size:.82rem;
       font-weight:1000;
       color: rgba(244,246,255,.92);
       white-space:nowrap;
@@ -549,19 +556,20 @@
     .pet-sub{
       display:flex;
       justify-content:center;
-      gap:8px;
+      gap:6px;
       flex-wrap:wrap;
       margin-top:-2px;
     }
     .chip{
-      font-size:.72rem;
+      font-size:.66rem;
       font-weight:900;
       color: rgba(244,246,255,.86);
       border: 1px solid rgba(255,255,255,.12);
       background: rgba(0,0,0,.18);
       border-radius: 999px;
-      padding: 6px 8px;
+      padding: 5px 7px;
       white-space:nowrap;
+      max-width: 100%;
     }
 
     .empty-msg{
@@ -668,6 +676,9 @@
       .sidebar{display:none;}
       .app{padding:12px;}
       .topbar{top:12px;}
+      :root{
+        --pet-min: 118px; /* even smaller on mobile */
+      }
     }
   </style>
 </head>
@@ -1183,23 +1194,6 @@
       document.getElementById('userEmail').textContent = email || 'signed in';
       const username = email ? email.split('@')[0] : 'PlayerOne';
       document.getElementById('gamertag').textContent = username;
-
-      // Sidebar toggle icon
-      const btn = document.getElementById('sbToggle');
-      const path = document.getElementById('sbTogglePath');
-      function syncIcon(){
-        if (!path) return;
-        path.setAttribute('d', sidebar.classList.contains('collapsed')
-          ? 'M10 7l5 5-5 5'
-          : 'M14 7l-5 5 5 5'
-        );
-      }
-      syncIcon();
-      btn?.addEventListener('click', () => {
-        sidebar.classList.toggle('collapsed');
-        localStorage.setItem('ff_sidebar_collapsed_v1', sidebar.classList.contains('collapsed') ? '1' : '0');
-        syncIcon();
-      });
 
       try{
         await loadPets();
