@@ -32,8 +32,8 @@
       --sb-w: 260px;
       --sb-w-collapsed: 82px;
 
-      --active:#4dd3ff;
-      --passive:#ff59c7;
+      --active:#4dd3ff;   /* color only */
+      --passive:#ff59c7;  /* color only */
     }
 
     *{box-sizing:border-box}
@@ -49,7 +49,7 @@
         radial-gradient(900px 620px at 50% 110%, rgba(255,119,51,.10), transparent 60%),
         linear-gradient(180deg, var(--bg), var(--bg2));
       overflow-x:hidden;
-      overflow-y:auto; /* IMPORTANT: allow scrolling */
+      overflow-y:auto; /* page scroll */
     }
 
     body::before, body::after{
@@ -60,7 +60,6 @@
       border-radius:50%;
       border:10px solid rgba(77,211,255,.14);
       transform: translate(-45%, -35%);
-      filter: blur(.2px);
       pointer-events:none;
       z-index:0;
     }
@@ -73,20 +72,15 @@
 
     a{color:inherit}
 
-    /* Fix: dropdown not white-on-white */
     select{
       color-scheme: dark;
       background: rgba(0,0,0,.28);
       color: var(--ink);
     }
-    select option{
-      background: #0b1020;
-      color: var(--ink);
-    }
+    select option{ background:#0b1020; color:var(--ink); }
 
     /* Layout */
     .app{
-      min-height: 100vh;
       display:flex;
       gap:18px;
       padding:18px;
@@ -94,6 +88,7 @@
       margin: 0 auto;
       position:relative;
       z-index:1;
+      align-items:flex-start;
     }
 
     /* Sidebar */
@@ -108,10 +103,13 @@
       overflow:hidden;
       display:flex;
       flex-direction:column;
-      position:relative;
       transition: width .18s ease;
       flex: 0 0 auto;
-      max-height: calc(100vh - 36px);
+
+      /* make sidebar usable while page scrolls */
+      position: sticky;
+      top: 18px;
+      height: calc(100vh - 36px);
     }
     .sidebar.collapsed{ width: var(--sb-w-collapsed); }
 
@@ -162,6 +160,7 @@
       gap:8px;
       overflow:auto;
       min-height:0;
+      flex:1;
     }
     .nav::-webkit-scrollbar{width:10px}
     .nav::-webkit-scrollbar-thumb{background: rgba(255,255,255,.08); border-radius:10px}
@@ -216,15 +215,13 @@
       padding:10px 8px;
     }
 
-    /* Main */
+    /* Main (no fixed height; BODY scrolls) */
     .main{
       flex:1;
       display:flex;
       flex-direction:column;
       min-width: 0;
       gap: 14px;
-      min-height: 0; /* IMPORTANT for overflow child */
-      max-height: calc(100vh - 36px);
     }
 
     /* Topbar */
@@ -239,7 +236,6 @@
       display:flex;
       align-items:center;
       gap:12px;
-      flex: 0 0 auto;
     }
 
     .search{
@@ -324,21 +320,13 @@
       box-shadow: 0 0 0 3px rgba(255,77,77,.10);
     }
 
-    /* Content scroll area */
+    /* Content (no internal scroll; BODY scrolls) */
     .content{
-      flex:1;
-      min-height:0;
-      overflow:auto; /* IMPORTANT: scroll the page content */
       display:flex;
       flex-direction:column;
       gap:14px;
-      padding-right: 2px;
     }
-    .content::-webkit-scrollbar{width:10px}
-    .content::-webkit-scrollbar-thumb{background: rgba(255,255,255,.10); border-radius:10px}
-    .content::-webkit-scrollbar-track{background: transparent}
 
-    /* Card */
     .panel-card{
       background: var(--panel);
       border: 1px solid var(--line);
@@ -350,7 +338,6 @@
     }
     .card-inner{padding:14px}
 
-    /* Hero header */
     .hero{
       position:relative;
       height: 170px;
@@ -424,7 +411,6 @@
       border-color: rgba(255,189,89,.22);
     }
 
-    /* Controls */
     .controls-row{
       display:flex;
       flex-wrap:wrap;
@@ -439,10 +425,8 @@
     .legend{
       display:flex;
       align-items:center;
-      gap:14px;
+      gap:10px;
       flex-wrap:wrap;
-      color: var(--muted);
-      font-size:.86rem;
     }
     .chip{
       display:inline-flex;
@@ -463,8 +447,17 @@
       display:inline-block;
       box-shadow: 0 0 0 3px rgba(255,255,255,.06);
     }
+    /* legend: color-only (no active/passive text) */
+    .chip.colors-only{
+      padding: 7px 10px;
+      gap: 8px;
+    }
+    .dots{
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+    }
 
-    /* Character sections */
     .section-head{
       display:flex;
       align-items:flex-end;
@@ -480,10 +473,7 @@
       color: rgba(244,246,255,.94);
       font-size: 1.05rem;
     }
-    .section-head small{
-      color: var(--muted);
-      font-size:.85rem;
-    }
+    .section-head small{ color: var(--muted); font-size:.85rem; }
 
     .grid{
       margin-top: 10px;
@@ -524,26 +514,27 @@
       width:100%;
       height:100%;
       object-fit: cover;
-      object-position: center top; /* IMPORTANT: keep top visible */
+      object-position: center top; /* keep top visible */
       display:block;
       background: rgba(255,255,255,.02);
     }
-    .badge{
+
+    /* Color-only indicator (no text) */
+    .type-dot{
       position:absolute;
-      left:8px; top:8px;
-      font-size:.72rem;
-      padding: 4px 8px;
-      border-radius: 999px;
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(0,0,0,.35);
+      left:8px;
+      top:8px;
+      width:12px;
+      height:12px;
+      border-radius:50%;
+      border:1px solid rgba(255,255,255,.25);
+      background: rgba(255,255,255,.15);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
-      font-weight:900;
-      letter-spacing:.2px;
-      color: rgba(244,246,255,.90);
+      box-shadow: 0 0 0 3px rgba(0,0,0,.18);
     }
-    .badge.active{ border-color: rgba(77,211,255,.35); box-shadow: 0 0 0 3px rgba(77,211,255,.10) inset; }
-    .badge.passive{ border-color: rgba(255,89,199,.35); box-shadow: 0 0 0 3px rgba(255,89,199,.10) inset; }
+    .type-dot.active{ background: var(--active); }
+    .type-dot.passive{ background: var(--passive); }
 
     .name{
       font-size:.84rem;
@@ -554,7 +545,6 @@
       text-overflow:ellipsis;
       text-align:center;
     }
-
     .subline{
       text-align:center;
       font-size:.74rem;
@@ -573,6 +563,7 @@
     }
     @media (max-width: 980px){
       .role-wrap{ grid-template-columns: 1fr; }
+      .userchip{display:none;}
     }
 
     .role-card{
@@ -620,13 +611,27 @@
       background: rgba(0,0,0,.18);
       border:1px solid rgba(255,255,255,.10);
       overflow:hidden;
+      position:relative;
     }
     .mini .miniimg img{
       width:100%; height:100%;
       object-fit: cover;
-      object-position: center top; /* IMPORTANT */
+      object-position: center top;
       display:block;
     }
+    .mini .miniDot{
+      position:absolute;
+      left:6px;
+      top:6px;
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      border:1px solid rgba(255,255,255,.25);
+      box-shadow: 0 0 0 3px rgba(0,0,0,.18);
+    }
+    .mini .miniDot.active{ background: var(--active); }
+    .mini .miniDot.passive{ background: var(--passive); }
+
     .mini small{
       width:100%;
       text-align:center;
@@ -638,7 +643,7 @@
       text-overflow:ellipsis;
     }
 
-    /* Tooltip (single global popup) */
+    /* Tooltip */
     .tip{
       position: fixed;
       z-index: 9999;
@@ -651,7 +656,6 @@
       -webkit-backdrop-filter: blur(10px);
       padding: 10px 10px 12px 10px;
       display:none;
-      transform: translateZ(0);
     }
     .tip.show{ display:block; }
 
@@ -662,9 +666,7 @@
       gap:10px;
       margin-bottom:8px;
     }
-    .tip-title{
-      min-width:0;
-    }
+    .tip-title{ min-width:0; display:flex; gap:10px; align-items:flex-start; }
     .tip-title b{
       display:block;
       font-family: Orbitron, sans-serif;
@@ -674,7 +676,7 @@
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
-      max-width: 260px;
+      max-width: 230px;
     }
     .tip-title span{
       display:block;
@@ -690,9 +692,8 @@
       cursor:pointer;
       flex:0 0 auto;
     }
-    .tip-close:hover{
-      background: rgba(255,255,255,.09);
-    }
+    .tip-close:hover{ background: rgba(255,255,255,.09); }
+
     .tip-body{
       color: rgba(244,246,255,.88);
       font-size: .9rem;
@@ -700,24 +701,7 @@
       white-space: pre-wrap;
       word-break: break-word;
     }
-    .tip-body .pill{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.22);
-      font-weight:900;
-      font-size:.78rem;
-      margin-bottom:8px;
-    }
-    .tip-body .pill .dot{ box-shadow:none; }
     .muted{ color: var(--muted); }
-
-    @media (max-width: 980px){
-      .userchip{display:none;}
-    }
   </style>
 </head>
 
@@ -758,49 +742,9 @@
           <span class="nav-label">Weapons</span>
         </a>
 
-        <a class="nav-item" href="map.html" data-page="map.html" title="Map">
-          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M10 6 4 8v14l6-2 4 2 6-2V6l-6 2-4-2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          <span class="nav-label">Map</span>
-        </a>
-
-        <a class="nav-item" href="split-view.html" data-page="split-view.html" title="Split View">
-          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16M4 12h16M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          <span class="nav-label">Split View</span>
-        </a>
-
-        <a class="nav-item" href="clash-draft.html" data-page="clash-draft.html" title="Clash Squad Draft">
-          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h10M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          <span class="nav-label">Clash Squad Draft</span>
-        </a>
-
-        <a class="nav-item" href="clash-data.html" data-page="clash-data.html" title="Clash Squad Data">
-          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19V5m0 14h16M8 17v-6m4 6V7m4 10v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          <span class="nav-label">Clash Squad Data</span>
-        </a>
-
-        <a class="nav-item" href="clash-compare.html" data-page="clash-compare.html" title="Clash Squad Comparison">
-          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M10 3v18M14 3v18M4 7h6M14 17h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          <span class="nav-label">Clash Squad Comparison</span>
-        </a>
-
-        <a class="nav-item" href="clash-report.html" data-page="clash-report.html" title="Clash Squad Team Report">
-          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          <span class="nav-label">Clash Squad Team Report</span>
-        </a>
-
-        <a class="nav-item" href="clash-store.html" data-page="clash-store.html" title="Clash Squad Store">
-          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16l-1 14H5L4 7Zm3 0 1-3h8l1 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          <span class="nav-label">Clash Squad Store</span>
-        </a>
-
         <a class="nav-item" href="br_team2.html" data-page="br_team2.html" title="BR Data">
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M6 20V10m6 10V4m6 16v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
           <span class="nav-label">BR Data</span>
-        </a>
-
-        <a class="nav-item" href="ff-update.html" data-page="ff-update.html" title="Free Fire Update">
-          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2v6m0 14v-6M4.9 4.9l4.2 4.2m10.8 10.8-4.2-4.2M2 12h6m14 0h-6M4.9 19.1l4.2-4.2m10.8-10.8-4.2 4.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          <span class="nav-label">Free Fire Update</span>
         </a>
       </nav>
     </aside>
@@ -849,10 +793,17 @@
 
           <div class="card-inner">
             <div class="controls-row">
+              <!-- Color-only legend (no active/passive text) -->
               <div class="legend">
-                <span class="chip"><span class="dot" style="background:var(--active)"></span> Active Skill</span>
-                <span class="chip"><span class="dot" style="background:var(--passive)"></span> Passive Skill</span>
-                <span class="chip"><span class="dot" style="background:var(--brand)"></span> Meta</span>
+                <span class="chip colors-only" title="Skill color keys">
+                  <span class="dots">
+                    <span class="dot" style="background:var(--active)" title="Type A"></span>
+                    <span class="dot" style="background:var(--passive)" title="Type B"></span>
+                  </span>
+                </span>
+                <span class="chip" title="Meta">
+                  <span class="dot" style="background:var(--brand)"></span> Meta
+                </span>
               </div>
 
               <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
@@ -899,11 +850,13 @@
   </div>
 
   <!-- Global Tooltip -->
-  <div class="tip" id="tip" role="dialog" aria-modal="false" aria-hidden="true">
+  <div class="tip" id="tip" role="dialog" aria-hidden="true">
     <div class="tip-top">
       <div class="tip-title">
-        <b id="tipName">—</b>
-        <span id="tipMeta">—</span>
+        <div>
+          <b id="tipName">—</b>
+          <span id="tipMeta">—</span>
+        </div>
       </div>
       <button class="tip-close" id="tipClose" aria-label="Close">
         <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;">
@@ -951,7 +904,6 @@
       const path = document.getElementById('sbTogglePath');
 
       function syncIcon(){
-        if (!path) return;
         path.setAttribute('d', sidebar.classList.contains('collapsed')
           ? 'M10 7l5 5-5 5'
           : 'M14 7l-5 5 5 5'
@@ -959,7 +911,7 @@
       }
       syncIcon();
 
-      btn?.addEventListener('click', () => {
+      btn.addEventListener('click', () => {
         sidebar.classList.toggle('collapsed');
         localStorage.setItem(key, sidebar.classList.contains('collapsed') ? '1' : '0');
         syncIcon();
@@ -1008,20 +960,24 @@
     function isPassive(c){ return normLower(c?.skill_type) === 'passive'; }
 
     function isMeta(c){
-      // missing fields => treated as "no" => goes to Non-Meta
       return normLower(c?.[currentMetaMode] || 'no') === 'yes';
     }
 
     function matchesQuery(c){
       if (!query) return true;
       const blob = [
-        c?.name,
-        c?.skill_type,
-        c?.skill,
-        c?.description,
-        c?.role,
+        c?.name, c?.skill_type, c?.skill, c?.description, c?.role,
       ].map(safeText).join(' ').toLowerCase();
       return blob.includes(query);
+    }
+
+    function escapeHtml(str){
+      return safeText(str)
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'",'&#039;');
     }
 
     function cardHTML(c){
@@ -1041,11 +997,8 @@
              data-meta="${isMeta(c) ? 'yes' : 'no'}"
              tabindex="0">
           <div class="thumb">
-            <span class="badge ${isPassive(c) ? 'passive' : 'active'}">${isPassive(c) ? 'Passive' : 'Active'}</span>
-            <img src="${img}"
-                 alt="${escapeHtml(name)}"
-                 referrerpolicy="no-referrer"
-                 crossorigin="anonymous">
+            <span class="type-dot ${isPassive(c) ? 'passive' : 'active'}" title="Type color"></span>
+            <img src="${img}" alt="${escapeHtml(name)}" referrerpolicy="no-referrer" crossorigin="anonymous">
           </div>
           <div class="name">${escapeHtml(name)}</div>
           <div class="subline">${escapeHtml(role)}</div>
@@ -1070,23 +1023,12 @@
              data-meta="${isMeta(c) ? 'yes' : 'no'}"
              tabindex="0">
           <div class="miniimg">
-            <img src="${img}"
-                 alt="${escapeHtml(name)}"
-                 referrerpolicy="no-referrer"
-                 crossorigin="anonymous">
+            <span class="miniDot ${isPassive(c) ? 'passive' : 'active'}" title="Type color"></span>
+            <img src="${img}" alt="${escapeHtml(name)}" referrerpolicy="no-referrer" crossorigin="anonymous">
           </div>
           <small title="${escapeHtml(name)}">${escapeHtml(name)}</small>
         </div>
       `;
-    }
-
-    function escapeHtml(str){
-      return safeText(str)
-        .replaceAll('&','&amp;')
-        .replaceAll('<','&lt;')
-        .replaceAll('>','&gt;')
-        .replaceAll('"','&quot;')
-        .replaceAll("'",'&#039;');
     }
 
     async function loadCharacters(){
@@ -1101,7 +1043,6 @@
 
       const meta = [];
       const non = [];
-
       for (const c of list){
         (isMeta(c) ? meta : non).push(c);
       }
@@ -1113,7 +1054,6 @@
       nonMetaSub.textContent = `${non.length.toLocaleString()} character${non.length===1?'':'s'} • Always shown`;
       countChip.textContent = `${list.length.toLocaleString()} shown / ${ALL.length.toLocaleString()} total`;
 
-      // Role overview (all characters, not filtered by meta; but keep query filter so it matches what you're searching)
       const roleGroups = {};
       for (const c of list){
         const role = safeText(c?.role || 'Other') || 'Other';
@@ -1164,7 +1104,7 @@
     });
 
     /***********************
-     * Tooltip logic (fixed + reliable)
+     * Tooltip logic (color-only; no active/passive text)
      ***********************/
     const tip = document.getElementById('tip');
     const tipName = document.getElementById('tipName');
@@ -1179,7 +1119,7 @@
 
       const name = el.getAttribute('data-name') || '—';
       const role = el.getAttribute('data-role') || 'Other';
-      const skillType = el.getAttribute('data-skilltype') || '—';
+      const skillType = (el.getAttribute('data-skilltype') || '').toLowerCase();
       const skill = el.getAttribute('data-skill') || '';
       const desc = el.getAttribute('data-desc') || '';
       const meta = (el.getAttribute('data-meta') || 'no') === 'yes';
@@ -1187,42 +1127,38 @@
       tipName.textContent = name;
       tipMeta.textContent = `${role} • ${meta ? 'Meta' : 'Non-Meta'} • ${currentMetaMode === 'meta' ? 'BR' : 'CS'}`;
 
-      const dotColor = (skillType.toLowerCase() === 'passive') ? 'var(--passive)' : 'var(--active)';
-      const label = (skillType.toLowerCase() === 'passive') ? 'Passive Skill' : 'Active Skill';
+      const dotColor = (skillType === 'passive') ? 'var(--passive)' : 'var(--active)';
 
-      const body = [
-        `<div class="pill"><span class="dot" style="background:${dotColor}"></span>${label}</div>`,
-        skill ? `<b>${escapeHtml(skillType)}:</b> ${escapeHtml(skill)}` : `<b>${escapeHtml(skillType)}:</b> <span class="muted">No skill text</span>`,
-        desc ? `<div style="margin-top:8px;">${escapeHtml(desc)}</div>` : `<div style="margin-top:8px;" class="muted">No description</div>`
-      ].join('');
+      tipBody.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <span class="dot" style="background:${dotColor}; box-shadow:none;"></span>
+          <span class="muted" style="font-size:.82rem;">Type color</span>
+        </div>
+        <div>${skill ? `<b>Skill:</b> ${skill}` : `<span class="muted">No skill text</span>`}</div>
+        <div style="margin-top:8px;">${desc ? desc : `<span class="muted">No description</span>`}</div>
+      `;
 
-      tipBody.innerHTML = body;
-
-      // Position near the element, clamp to viewport
+      // Position near element and clamp
       const rect = el.getBoundingClientRect();
       const margin = 10;
 
       tip.classList.add('show');
       tip.setAttribute('aria-hidden','false');
 
-      // Need dimensions after display
       requestAnimationFrame(() => {
         const tr = tip.getBoundingClientRect();
-
         let left = rect.left + rect.width/2 - tr.width/2;
         let top = rect.bottom + 10;
 
-        // If too low, show above
         if (top + tr.height > window.innerHeight - margin){
           top = rect.top - tr.height - 10;
         }
-        // Clamp
+
         left = Math.max(margin, Math.min(left, window.innerWidth - tr.width - margin));
         top  = Math.max(margin, Math.min(top,  window.innerHeight - tr.height - margin));
 
         tip.style.left = left + 'px';
         tip.style.top  = top + 'px';
-
         tipOpen = true;
       });
     }
@@ -1233,17 +1169,9 @@
       tipOpen = false;
     }
 
-    tipClose.addEventListener('click', (e) => {
-      e.stopPropagation();
-      closeTip();
-    });
+    tipClose.addEventListener('click', (e) => { e.stopPropagation(); closeTip(); });
+    tip.addEventListener('click', (e) => e.stopPropagation());
 
-    tip.addEventListener('click', (e) => {
-      // prevent outside click handler from closing immediately when interacting inside tooltip
-      e.stopPropagation();
-    });
-
-    // Click handling (meta grid, non-meta grid, role minis)
     function onAnyClick(e){
       const card = e.target.closest('.char-card, .mini');
       if (!card){
@@ -1258,7 +1186,6 @@
     nonMetaGrid.addEventListener('click', onAnyClick);
     byRole.addEventListener('click', onAnyClick);
 
-    // Keyboard open (Enter/Space)
     function onAnyKey(e){
       const card = e.target.closest?.('.char-card, .mini');
       if (!card) return;
@@ -1271,13 +1198,9 @@
     nonMetaGrid.addEventListener('keydown', onAnyKey);
     byRole.addEventListener('keydown', onAnyKey);
 
-    // Close on outside click / Esc
     document.addEventListener('click', () => { if (tipOpen) closeTip(); });
     window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && tipOpen) closeTip(); });
-
-    // Reposition tip on resize/scroll (so it doesn't feel "broken")
     window.addEventListener('resize', () => { if (tipOpen) closeTip(); });
-    document.querySelector('.content')?.addEventListener('scroll', () => { if (tipOpen) closeTip(); }, { passive:true });
 
     /***********************
      * Init
@@ -1291,7 +1214,7 @@
       const username = email ? email.split('@')[0] : 'PlayerOne';
       document.getElementById('gamertag').textContent = username;
 
-      document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
+      document.getElementById('logoutBtn').addEventListener('click', (e) => {
         e.preventDefault();
         logout();
       });
