@@ -32,8 +32,9 @@
       --sb-w: 260px;
       --sb-w-collapsed: 82px;
 
-      --active:#4dd3ff;   /* color only */
-      --passive:#ff59c7;  /* color only */
+      --active:#4dd3ff;   /* skill-type color */
+      --passive:#ff59c7;  /* skill-type color */
+      --metaDot:#ffbd59;  /* meta indicator dot */
     }
 
     *{box-sizing:border-box}
@@ -49,7 +50,7 @@
         radial-gradient(900px 620px at 50% 110%, rgba(255,119,51,.10), transparent 60%),
         linear-gradient(180deg, var(--bg), var(--bg2));
       overflow-x:hidden;
-      overflow-y:auto; /* page scroll */
+      overflow-y:auto;
     }
 
     body::before, body::after{
@@ -79,7 +80,6 @@
     }
     select option{ background:#0b1020; color:var(--ink); }
 
-    /* Layout */
     .app{
       display:flex;
       gap:18px;
@@ -105,8 +105,6 @@
       flex-direction:column;
       transition: width .18s ease;
       flex: 0 0 auto;
-
-      /* make sidebar usable while page scrolls */
       position: sticky;
       top: 18px;
       height: calc(100vh - 36px);
@@ -215,7 +213,7 @@
       padding:10px 8px;
     }
 
-    /* Main (no fixed height; BODY scrolls) */
+    /* Main */
     .main{
       flex:1;
       display:flex;
@@ -224,7 +222,6 @@
       gap: 14px;
     }
 
-    /* Topbar */
     .topbar{
       background: var(--panel);
       border: 1px solid var(--line);
@@ -320,7 +317,7 @@
       box-shadow: 0 0 0 3px rgba(255,77,77,.10);
     }
 
-    /* Content (no internal scroll; BODY scrolls) */
+    /* Content */
     .content{
       display:flex;
       flex-direction:column;
@@ -422,6 +419,8 @@
       border-radius: 18px;
       background: rgba(255,255,255,.04);
     }
+
+    /* Legend: only skill-type dots (meta legend removed per request) */
     .legend{
       display:flex;
       align-items:center;
@@ -446,16 +445,6 @@
       border-radius:50%;
       display:inline-block;
       box-shadow: 0 0 0 3px rgba(255,255,255,.06);
-    }
-    /* legend: color-only (no active/passive text) */
-    .chip.colors-only{
-      padding: 7px 10px;
-      gap: 8px;
-    }
-    .dots{
-      display:inline-flex;
-      gap:8px;
-      align-items:center;
     }
 
     .section-head{
@@ -519,7 +508,7 @@
       background: rgba(255,255,255,.02);
     }
 
-    /* Color-only indicator (no text) */
+    /* Skill-type dot (keep titles, remove Active/Passive words from card) */
     .type-dot{
       position:absolute;
       left:8px;
@@ -528,13 +517,27 @@
       height:12px;
       border-radius:50%;
       border:1px solid rgba(255,255,255,.25);
-      background: rgba(255,255,255,.15);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
       box-shadow: 0 0 0 3px rgba(0,0,0,.18);
     }
     .type-dot.active{ background: var(--active); }
     .type-dot.passive{ background: var(--passive); }
+
+    /* Meta dot added on cards (so no need meta in legend) */
+    .meta-dot{
+      position:absolute;
+      right:8px;
+      top:8px;
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      background: var(--metaDot);
+      border:1px solid rgba(255,255,255,.25);
+      box-shadow: 0 0 0 3px rgba(0,0,0,.18);
+      display:none;
+    }
+    .char-card.is-meta .meta-dot{ display:block; }
 
     .name{
       font-size:.84rem;
@@ -619,7 +622,7 @@
       object-position: center top;
       display:block;
     }
-    .mini .miniDot{
+    .miniDot{
       position:absolute;
       left:6px;
       top:6px;
@@ -629,8 +632,22 @@
       border:1px solid rgba(255,255,255,.25);
       box-shadow: 0 0 0 3px rgba(0,0,0,.18);
     }
-    .mini .miniDot.active{ background: var(--active); }
-    .mini .miniDot.passive{ background: var(--passive); }
+    .miniDot.active{ background: var(--active); }
+    .miniDot.passive{ background: var(--passive); }
+
+    .miniMeta{
+      position:absolute;
+      right:6px;
+      top:6px;
+      width:8px;
+      height:8px;
+      border-radius:50%;
+      background: var(--metaDot);
+      border:1px solid rgba(255,255,255,.25);
+      box-shadow: 0 0 0 3px rgba(0,0,0,.18);
+      display:none;
+    }
+    .mini.is-meta .miniMeta{ display:block; }
 
     .mini small{
       width:100%;
@@ -782,7 +799,7 @@
             <div class="hero-content">
               <div class="hero-title">
                 <h2>Character Skills</h2>
-                <div class="hero-sub">Meta toggle + full roster (non-meta always visible) • Click any card for details</div>
+                <div class="hero-sub">Meta toggle + full roster • Click any card for details</div>
               </div>
               <div class="hero-actions">
                 <a class="btn" href="character-comparison.html" title="Compare characters">Compare</a>
@@ -793,23 +810,18 @@
 
           <div class="card-inner">
             <div class="controls-row">
-              <!-- Color-only legend (no active/passive text) -->
+              <!-- Skill-type legend (keep titles); META legend removed -->
               <div class="legend">
-                <span class="chip colors-only" title="Skill color keys">
-                  <span class="dots">
-                    <span class="dot" style="background:var(--active)" title="Type A"></span>
-                    <span class="dot" style="background:var(--passive)" title="Type B"></span>
-                  </span>
-                </span>
-                <span class="chip" title="Meta">
-                  <span class="dot" style="background:var(--brand)"></span> Meta
+                <span class="chip" title="Skill type colors">
+                  <span class="dot" style="background:var(--active)"></span> Active
+                  <span class="dot" style="background:var(--passive); margin-left:10px;"></span> Passive
                 </span>
               </div>
 
               <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                 <span class="muted" style="font-weight:800;">Show Meta For:</span>
-                <button class="btn brand" id="toggleModeBtn" type="button">Battle Royale</button>
-                <span class="chip" id="countChip">—</span>
+                <button class="btn brand" id="toggleModeBtn" type="button" title="Toggle meta mode">Battle Royale</button>
+                <span class="chip" id="countChip" title="Visible count">—</span>
               </div>
             </div>
 
@@ -858,7 +870,7 @@
           <span id="tipMeta">—</span>
         </div>
       </div>
-      <button class="tip-close" id="tipClose" aria-label="Close">
+      <button class="tip-close" id="tipClose" aria-label="Close" title="Close">
         <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;">
           <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
@@ -980,6 +992,7 @@
         .replaceAll("'",'&#039;');
     }
 
+    // IMPORTANT: remove Active/Passive TEXT from card (only dots) — done here.
     function cardHTML(c){
       const name = safeText(c?.name || '—');
       const img = safeText(c?.image_url || '');
@@ -987,7 +1000,7 @@
       const skType = isPassive(c) ? 'Passive' : 'Active';
 
       return `
-        <div class="char-card"
+        <div class="char-card ${isMeta(c) ? 'is-meta' : ''}"
              data-name="${escapeHtml(name)}"
              data-role="${escapeHtml(role)}"
              data-skilltype="${escapeHtml(skType)}"
@@ -995,9 +1008,11 @@
              data-desc="${escapeHtml(safeText(c?.description || ''))}"
              data-img="${escapeHtml(img)}"
              data-meta="${isMeta(c) ? 'yes' : 'no'}"
-             tabindex="0">
+             tabindex="0"
+             title="${escapeHtml(name)}">
           <div class="thumb">
-            <span class="type-dot ${isPassive(c) ? 'passive' : 'active'}" title="Type color"></span>
+            <span class="type-dot ${isPassive(c) ? 'passive' : 'active'}" title="${escapeHtml(skType)}"></span>
+            <span class="meta-dot" title="Meta"></span>
             <img src="${img}" alt="${escapeHtml(name)}" referrerpolicy="no-referrer" crossorigin="anonymous">
           </div>
           <div class="name">${escapeHtml(name)}</div>
@@ -1013,7 +1028,7 @@
       const skType = isPassive(c) ? 'Passive' : 'Active';
 
       return `
-        <div class="mini"
+        <div class="mini ${isMeta(c) ? 'is-meta' : ''}"
              data-name="${escapeHtml(name)}"
              data-role="${escapeHtml(role)}"
              data-skilltype="${escapeHtml(skType)}"
@@ -1021,9 +1036,11 @@
              data-desc="${escapeHtml(safeText(c?.description || ''))}"
              data-img="${escapeHtml(img)}"
              data-meta="${isMeta(c) ? 'yes' : 'no'}"
-             tabindex="0">
+             tabindex="0"
+             title="${escapeHtml(name)}">
           <div class="miniimg">
-            <span class="miniDot ${isPassive(c) ? 'passive' : 'active'}" title="Type color"></span>
+            <span class="miniDot ${isPassive(c) ? 'passive' : 'active'}" title="${escapeHtml(skType)}"></span>
+            <span class="miniMeta" title="Meta"></span>
             <img src="${img}" alt="${escapeHtml(name)}" referrerpolicy="no-referrer" crossorigin="anonymous">
           </div>
           <small title="${escapeHtml(name)}">${escapeHtml(name)}</small>
@@ -1104,7 +1121,7 @@
     });
 
     /***********************
-     * Tooltip logic (color-only; no active/passive text)
+     * Tooltip logic (KEEP "Active/Passive" titles here)
      ***********************/
     const tip = document.getElementById('tip');
     const tipName = document.getElementById('tipName');
@@ -1124,21 +1141,22 @@
       const desc = el.getAttribute('data-desc') || '';
       const meta = (el.getAttribute('data-meta') || 'no') === 'yes';
 
-      tipName.textContent = name;
-      tipMeta.textContent = `${role} • ${meta ? 'Meta' : 'Non-Meta'} • ${currentMetaMode === 'meta' ? 'BR' : 'CS'}`;
-
+      const readableSkillType = (skillType === 'passive') ? 'Passive' : 'Active';
       const dotColor = (skillType === 'passive') ? 'var(--passive)' : 'var(--active)';
+
+      tipName.textContent = name;
+      tipMeta.textContent = `${role} • ${meta ? 'Meta' : 'Non-Meta'} • ${currentMetaMode === 'meta' ? 'BR' : 'CS'} • ${readableSkillType}`;
 
       tipBody.innerHTML = `
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
           <span class="dot" style="background:${dotColor}; box-shadow:none;"></span>
-          <span class="muted" style="font-size:.82rem;">Type color</span>
+          <span class="muted" style="font-size:.82rem;">${readableSkillType} Skill</span>
+          ${meta ? `<span class="dot" style="background:var(--metaDot); box-shadow:none; margin-left:10px;"></span><span class="muted" style="font-size:.82rem;">Meta</span>` : ``}
         </div>
         <div>${skill ? `<b>Skill:</b> ${skill}` : `<span class="muted">No skill text</span>`}</div>
         <div style="margin-top:8px;">${desc ? desc : `<span class="muted">No description</span>`}</div>
       `;
 
-      // Position near element and clamp
       const rect = el.getBoundingClientRect();
       const margin = 10;
 
