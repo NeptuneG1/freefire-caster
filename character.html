@@ -991,6 +991,13 @@
         .replaceAll('"','&quot;')
         .replaceAll("'",'&#039;');
     }
+   
+    function tidyText(s){
+      return (s ?? '')
+        .toString()
+        .replace(/\s+/g, ' ')  // collapse spaces/tabs/newlines into single spaces
+        .trim();              // remove leading/trailing spaces
+    }
 
     // IMPORTANT: remove Active/Passive TEXT from card (only dots) — done here.
     function cardHTML(c){
@@ -1137,8 +1144,12 @@
       const name = el.getAttribute('data-name') || '—';
       const role = el.getAttribute('data-role') || 'Other';
       const skillType = (el.getAttribute('data-skilltype') || '').toLowerCase();
-      const skill = el.getAttribute('data-skill') || '';
-      const desc = el.getAttribute('data-desc') || '';
+      const skillRaw = el.getAttribute('data-skill') || '';
+      const descRaw  = el.getAttribute('data-desc') || '';
+      
+      const skill = escapeHtml(tidyText(skillRaw));
+      const desc  = escapeHtml(tidyText(descRaw));
+      
       const meta = (el.getAttribute('data-meta') || 'no') === 'yes';
 
       const readableSkillType = (skillType === 'passive') ? 'Passive' : 'Active';
