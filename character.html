@@ -32,14 +32,12 @@
       --sb-w: 260px;
       --sb-w-collapsed: 82px;
 
-      --active:#4dd3ff;   /* skill-type color */
-      --passive:#ff59c7;  /* skill-type color */
-      --metaDot:#ffbd59;  /* meta indicator dot */
+      --skill-active:#4dd3ff;
+      --skill-passive:#ff59c7;
     }
 
     *{box-sizing:border-box}
-    html,body{height:100%}
-
+    html,body{min-height:100%}
     body{
       margin:0;
       font-family: Roboto, system-ui, -apple-system, Segoe UI, Arial;
@@ -50,7 +48,7 @@
         radial-gradient(900px 620px at 50% 110%, rgba(255,119,51,.10), transparent 60%),
         linear-gradient(180deg, var(--bg), var(--bg2));
       overflow-x:hidden;
-      overflow-y:auto;
+      overflow-y:auto; /* IMPORTANT: page scrolls */
     }
 
     body::before, body::after{
@@ -61,8 +59,8 @@
       border-radius:50%;
       border:10px solid rgba(77,211,255,.14);
       transform: translate(-45%, -35%);
+      filter: blur(.2px);
       pointer-events:none;
-      z-index:0;
     }
     body::after{
       inset: -120px 0 auto auto;
@@ -72,7 +70,6 @@
     }
 
     a{color:inherit}
-
     select{
       color-scheme: dark;
       background: rgba(0,0,0,.28);
@@ -80,15 +77,15 @@
     }
     select option{ background:#0b1020; color:var(--ink); }
 
+    /* Layout */
     .app{
+      min-height: 100vh;
       display:flex;
       gap:18px;
       padding:18px;
       max-width: 1440px;
       margin: 0 auto;
-      position:relative;
-      z-index:1;
-      align-items:flex-start;
+      align-items:flex-start; /* allow page height to grow */
     }
 
     /* Sidebar */
@@ -103,11 +100,11 @@
       overflow:hidden;
       display:flex;
       flex-direction:column;
-      transition: width .18s ease;
-      flex: 0 0 auto;
       position: sticky;
       top: 18px;
       height: calc(100vh - 36px);
+      transition: width .18s ease;
+      flex:0 0 auto;
     }
     .sidebar.collapsed{ width: var(--sb-w-collapsed); }
 
@@ -157,8 +154,6 @@
       flex-direction:column;
       gap:8px;
       overflow:auto;
-      min-height:0;
-      flex:1;
     }
     .nav::-webkit-scrollbar{width:10px}
     .nav::-webkit-scrollbar-thumb{background: rgba(255,255,255,.08); border-radius:10px}
@@ -222,6 +217,7 @@
       gap: 14px;
     }
 
+    /* Topbar */
     .topbar{
       background: var(--panel);
       border: 1px solid var(--line);
@@ -233,8 +229,10 @@
       display:flex;
       align-items:center;
       gap:12px;
+      position: sticky;
+      top: 18px;
+      z-index: 20;
     }
-
     .search{
       flex:1;
       display:flex;
@@ -255,6 +253,13 @@
       font-size: .95rem;
     }
     .search input::placeholder{color: rgba(170,177,197,.75)}
+
+    .top-actions{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex:0 0 auto;
+    }
 
     .icon-btn{
       width:42px;height:42px;border-radius:14px;
@@ -278,7 +283,6 @@
       background: rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.10);
       max-width: 260px;
-      flex: 0 0 auto;
     }
     .avatar{
       width:28px;height:28px;border-radius:10px;
@@ -290,7 +294,7 @@
       display:block;
       font-size:.92rem;
       font-family: Orbitron, sans-serif;
-      color: var(--brand);
+      color:var(--brand);
       white-space: nowrap;
       overflow:hidden;
       text-overflow: ellipsis;
@@ -309,7 +313,6 @@
       transition:.2s ease;
       cursor:pointer;
       white-space:nowrap;
-      flex:0 0 auto;
     }
     .logout:hover{
       border-color: rgba(255,77,77,.35);
@@ -317,14 +320,8 @@
       box-shadow: 0 0 0 3px rgba(255,77,77,.10);
     }
 
-    /* Content */
-    .content{
-      display:flex;
-      flex-direction:column;
-      gap:14px;
-    }
-
-    .panel-card{
+    /* Cards */
+    .card{
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: var(--radius-lg);
@@ -337,7 +334,7 @@
 
     .hero{
       position:relative;
-      height: 170px;
+      height: 150px;
       border-bottom: 1px solid var(--line);
       background:
         linear-gradient(90deg, rgba(0,0,0,.55), rgba(0,0,0,.10)),
@@ -359,7 +356,7 @@
     }
     .hero-title h2{
       font-family: Orbitron, sans-serif;
-      font-size: 1.55rem;
+      font-size: 1.45rem;
       color: var(--brand);
       text-shadow: 0 0 18px rgba(255,189,89,.20);
       margin:0;
@@ -367,112 +364,109 @@
       overflow:hidden;
       text-overflow: ellipsis;
     }
-    .hero-sub{
-      margin-top:6px;
-      color: rgba(244,246,255,.80);
-      font-size: .9rem;
-    }
 
-    .hero-actions{
+    /* Controls */
+    .controls{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap;
+      margin-bottom: 10px;
+    }
+    .controls-left{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      min-width:0;
+    }
+    .controls-right{
       display:flex;
       gap:8px;
-      flex: 0 0 auto;
       align-items:center;
+      flex-wrap:wrap;
     }
 
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      color: rgba(244,246,255,.86);
+      font-weight:800;
+      font-size:.82rem;
+      white-space:nowrap;
+    }
+    .dot{
+      width:9px;height:9px;border-radius:50%;
+      display:inline-block;
+      box-shadow: 0 0 0 3px rgba(255,255,255,.06);
+    }
+    .dot.active{ background: var(--skill-active); }
+    .dot.passive{ background: var(--skill-passive); }
+    .dot.meta{ background: var(--brand); }
+
     .btn{
-      padding: 10px 12px;
+      padding: 9px 12px;
       border-radius: 12px;
       border: 1px solid rgba(255,255,255,.10);
       background: rgba(0,0,0,.20);
       color: rgba(244,246,255,.88);
       cursor:pointer;
-      font-weight:800;
-      font-size:.84rem;
+      font-weight:900;
+      font-size:.82rem;
       transition:.2s ease;
       white-space:nowrap;
       text-decoration:none;
       display:inline-flex;
       align-items:center;
       justify-content:center;
-      gap:8px;
     }
     .btn:hover{
       background: rgba(0,0,0,.28);
       box-shadow: 0 0 0 3px rgba(77,211,255,.10);
       border-color: rgba(77,211,255,.22);
-      transform: translateY(-1px);
     }
     .btn.brand{
-      background: linear-gradient(135deg, rgba(255,189,89,.18), rgba(255,119,51,.12));
-      border-color: rgba(255,189,89,.22);
+      background: linear-gradient(135deg, rgba(255,189,89,.18), rgba(255,119,51,.10));
+      border-color: rgba(255,189,89,.20);
+    }
+    .btn.brand:hover{
+      box-shadow: 0 0 0 3px rgba(255,189,89,.12);
+      border-color: rgba(255,189,89,.28);
     }
 
-    .controls-row{
-      display:flex;
-      flex-wrap:wrap;
-      gap:10px;
-      align-items:center;
-      justify-content:space-between;
-      padding: 12px 14px;
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 18px;
-      background: rgba(255,255,255,.04);
-    }
-
-    /* Legend: only skill-type dots (meta legend removed per request) */
-    .legend{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .chip{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding: 7px 10px;
-      border-radius: 999px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.16);
-      color: rgba(244,246,255,.88);
-      font-weight:800;
-      font-size:.82rem;
-      white-space:nowrap;
-    }
-    .dot{
-      width:10px; height:10px;
-      border-radius:50%;
-      display:inline-block;
-      box-shadow: 0 0 0 3px rgba(255,255,255,.06);
-    }
-
-    .section-head{
-      display:flex;
-      align-items:flex-end;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-top: 4px;
-    }
-    .section-head h3{
-      margin:0;
+    .section-title{
+      margin: 16px 0 10px 0;
       font-family: Orbitron, sans-serif;
       letter-spacing:.4px;
-      color: rgba(244,246,255,.94);
-      font-size: 1.05rem;
+      font-size: 1.02rem;
+      color: rgba(244,246,255,.92);
     }
-    .section-head small{ color: var(--muted); font-size:.85rem; }
+    .section-title .hint{
+      font-family: Roboto, system-ui, -apple-system, Segoe UI, Arial;
+      color: var(--muted);
+      font-weight:700;
+      font-size: .82rem;
+      margin-left: 8px;
+      letter-spacing: 0;
+    }
 
+    /* Grids */
     .grid{
-      margin-top: 10px;
       display:grid;
       grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
       gap: 12px;
     }
 
+    /* Character card */
     .char-card{
-      padding: 10px 10px 8px 10px;
+      position:relative;
+      padding: 10px;
       border-radius: 16px;
       background: rgba(255,255,255,.05);
       border: 1px solid rgba(255,255,255,.09);
@@ -482,7 +476,6 @@
       flex-direction:column;
       gap:8px;
       min-width:0;
-      user-select:none;
     }
     .char-card:hover{
       background: rgba(255,255,255,.08);
@@ -490,235 +483,225 @@
       border-color: rgba(255,189,89,.18);
     }
 
-    .thumb{
+    .char-thumb{
       width:100%;
       aspect-ratio: 3 / 4;
       border-radius: 14px;
       background: rgba(0,0,0,.18);
-      border: 1px solid rgba(255,255,255,.10);
+      border: 2px solid rgba(255,255,255,.10);
       overflow:hidden;
+      display:grid;
+      place-items:center;
       position:relative;
     }
-    .thumb img{
+
+    /* IMPORTANT: align image to top to avoid cutting the top */
+    .char-thumb img{
       width:100%;
       height:100%;
       object-fit: cover;
-      object-position: center top; /* keep top visible */
+      object-position: top center;
       display:block;
       background: rgba(255,255,255,.02);
     }
 
-    /* Skill-type dot (keep titles, remove Active/Passive words from card) */
-    .type-dot{
-      position:absolute;
-      left:8px;
-      top:8px;
-      width:12px;
-      height:12px;
-      border-radius:50%;
-      border:1px solid rgba(255,255,255,.25);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      box-shadow: 0 0 0 3px rgba(0,0,0,.18);
-    }
-    .type-dot.active{ background: var(--active); }
-    .type-dot.passive{ background: var(--passive); }
+    /* skill color border */
+    .char-card.active-skill .char-thumb{ border-color: rgba(77,211,255,.95); }
+    .char-card.passive-skill .char-thumb{ border-color: rgba(255,89,199,.95); }
 
-    /* Meta dot added on cards (so no need meta in legend) */
+    /* meta dot on the card (top-right) */
     .meta-dot{
       position:absolute;
-      right:8px;
-      top:8px;
-      width:10px;
-      height:10px;
+      top:10px; right:10px;
+      width:10px; height:10px;
       border-radius:50%;
-      background: var(--metaDot);
-      border:1px solid rgba(255,255,255,.25);
-      box-shadow: 0 0 0 3px rgba(0,0,0,.18);
+      background: var(--brand);
+      box-shadow: 0 0 0 3px rgba(0,0,0,.35);
+      border: 1px solid rgba(255,255,255,.22);
       display:none;
     }
     .char-card.is-meta .meta-dot{ display:block; }
 
-    .name{
-      font-size:.84rem;
+    .char-name{
+      font-size:.82rem;
       font-weight:900;
       color: rgba(244,246,255,.92);
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
       text-align:center;
-    }
-    .subline{
-      text-align:center;
-      font-size:.74rem;
-      color: var(--muted);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
+      padding: 0 2px;
     }
 
-    /* Role overview */
+    /* Overview by Role */
     .role-wrap{
-      display:grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      display:flex;
+      flex-direction:column;
       gap: 12px;
-      margin-top: 10px;
+      margin-top: 18px;
     }
-    @media (max-width: 980px){
-      .role-wrap{ grid-template-columns: 1fr; }
-      .userchip{display:none;}
-    }
-
-    .role-card{
-      padding: 12px;
+    .role-group{
       border-radius: 18px;
       background: rgba(255,255,255,.04);
       border: 1px solid rgba(255,255,255,.10);
+      overflow:hidden;
     }
-    .role-title{
+    .role-head{
+      padding: 12px 12px;
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:10px;
-      margin-bottom:10px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
     }
-    .role-title b{
+    .role-head b{
       font-family: Orbitron, sans-serif;
       letter-spacing:.4px;
       color: var(--brand);
-      font-size: .98rem;
-    }
-    .role-title span{
-      color: var(--muted);
-      font-size:.82rem;
-      white-space:nowrap;
-    }
-    .role-mini{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-    }
-    .mini{
-      width:62px;
-      display:flex;
-      flex-direction:column;
-      gap:4px;
-      align-items:center;
-      cursor:pointer;
-      user-select:none;
-    }
-    .mini .miniimg{
-      width:62px;
-      height:86px;
-      border-radius: 12px;
-      background: rgba(0,0,0,.18);
-      border:1px solid rgba(255,255,255,.10);
-      overflow:hidden;
-      position:relative;
-    }
-    .mini .miniimg img{
-      width:100%; height:100%;
-      object-fit: cover;
-      object-position: center top;
-      display:block;
-    }
-    .miniDot{
-      position:absolute;
-      left:6px;
-      top:6px;
-      width:10px;
-      height:10px;
-      border-radius:50%;
-      border:1px solid rgba(255,255,255,.25);
-      box-shadow: 0 0 0 3px rgba(0,0,0,.18);
-    }
-    .miniDot.active{ background: var(--active); }
-    .miniDot.passive{ background: var(--passive); }
-
-    .miniMeta{
-      position:absolute;
-      right:6px;
-      top:6px;
-      width:8px;
-      height:8px;
-      border-radius:50%;
-      background: var(--metaDot);
-      border:1px solid rgba(255,255,255,.25);
-      box-shadow: 0 0 0 3px rgba(0,0,0,.18);
-      display:none;
-    }
-    .mini.is-meta .miniMeta{ display:block; }
-
-    .mini small{
-      width:100%;
-      text-align:center;
-      color: rgba(244,246,255,.80);
-      font-size:.7rem;
-      line-height:1.05rem;
+      font-size: .95rem;
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
     }
-
-    /* Tooltip */
-    .tip{
-      position: fixed;
-      z-index: 9999;
-      width: min(340px, calc(100vw - 24px));
-      background: rgba(14, 18, 28, .94);
-      border: 1px solid rgba(255,189,89,.28);
-      border-radius: 16px;
-      box-shadow: 0 26px 80px rgba(0,0,0,.65);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      padding: 10px 10px 12px 10px;
-      display:none;
+    .role-head span{
+      color: var(--muted);
+      font-size:.78rem;
+      font-weight:700;
+      white-space:nowrap;
     }
-    .tip.show{ display:block; }
+    .role-grid{
+      padding: 12px;
+      display:flex;
+      flex-wrap:wrap;
+      gap: 8px;
+      justify-content:flex-start;
+    }
+    .mini{
+      width: 72px;
+      display:flex;
+      flex-direction:column;
+      gap: 6px;
+      align-items:center;
+    }
+    .mini .mini-thumb{
+      width:72px;
+      height:96px;
+      border-radius: 12px;
+      overflow:hidden;
+      border:2px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+    }
+    .mini.active-skill .mini-thumb{ border-color: rgba(77,211,255,.95); }
+    .mini.passive-skill .mini-thumb{ border-color: rgba(255,89,199,.95); }
+    .mini .mini-thumb img{
+      width:100%; height:100%;
+      object-fit:cover;
+      object-position: top center;
+      display:block;
+    }
+    .mini .mini-name{
+      font-size:.72rem;
+      color: rgba(244,246,255,.80);
+      text-align:center;
+      line-height: 1.05rem;
+      word-break: break-word;
+    }
 
-    .tip-top{
+    /* Modal (Info popup) */
+    .modal{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.62);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+      z-index: 1000;
+    }
+    .modal.show{display:flex;}
+
+    .modal-card{
+      width: min(560px, 100%);
+      background: rgba(14, 18, 28, .92);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 22px;
+      box-shadow: 0 26px 80px rgba(0,0,0,.65);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .modal-top{
       display:flex;
       align-items:flex-start;
       justify-content:space-between;
-      gap:10px;
-      margin-bottom:8px;
+      gap:12px;
+      padding: 14px 14px 10px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
     }
-    .tip-title{ min-width:0; display:flex; gap:10px; align-items:flex-start; }
-    .tip-title b{
-      display:block;
+    .modal-top h3{
+      margin:0;
       font-family: Orbitron, sans-serif;
-      letter-spacing:.4px;
+      letter-spacing:.6px;
       color: var(--brand);
-      font-size: 1.02rem;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width: 230px;
+      font-size: 1.15rem;
+      line-height: 1.25rem;
     }
-    .tip-title span{
-      display:block;
+    .modal-top p{
+      margin:6px 0 0 0;
       color: var(--muted);
       font-size:.82rem;
-      margin-top:2px;
+      font-weight:700;
+      letter-spacing:.2px;
+      white-space:normal;
     }
-    .tip-close{
-      width:34px;height:34px;border-radius:12px;
-      background: rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.10);
-      display:grid;place-items:center;
-      cursor:pointer;
-      flex:0 0 auto;
-    }
-    .tip-close:hover{ background: rgba(255,255,255,.09); }
 
-    .tip-body{
-      color: rgba(244,246,255,.88);
-      font-size: .9rem;
-      line-height: 1.28rem;
-      white-space: pre-wrap;
-      word-break: break-word;
+    /* FIX: no weird large gaps — keep content packed */
+    .modal-body{
+      padding: 12px 14px 14px 14px;
+      display:flex;
+      flex-direction:column;
+      gap: 10px;             /* small, consistent spacing */
+      justify-content:flex-start; /* IMPORTANT */
     }
-    .muted{ color: var(--muted); }
+
+    .badge-row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin: 0;
+      padding: 0;
+    }
+
+    .info-block{
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 16px;
+      padding: 10px 12px;
+    }
+    .info-block b{
+      display:block;
+      margin:0 0 6px 0;
+      color: rgba(244,246,255,.92);
+      font-size: .92rem;
+      font-weight:900;
+    }
+    .info-block .txt{
+      margin:0;
+      color: rgba(244,246,255,.86);
+      font-size: .92rem;
+      line-height: 1.28rem;
+      white-space: normal; /* no preserved newlines */
+    }
+
+    @media (max-width: 980px){
+      .sidebar{display:none;} /* simple mobile: hide sidebar */
+      .app{padding:12px;}
+      .topbar{top:12px;}
+    }
   </style>
 </head>
 
@@ -759,9 +742,49 @@
           <span class="nav-label">Weapons</span>
         </a>
 
+        <a class="nav-item" href="map.html" data-page="map.html" title="Map">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M10 6 4 8v14l6-2 4 2 6-2V6l-6 2-4-2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Map</span>
+        </a>
+
+        <a class="nav-item" href="split-view.html" data-page="split-view.html" title="Split View">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16M4 12h16M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Split View</span>
+        </a>
+
+        <a class="nav-item" href="clash-draft.html" data-page="clash-draft.html" title="Clash Squad Draft">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h10M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Draft</span>
+        </a>
+
+        <a class="nav-item" href="clash-data.html" data-page="clash-data.html" title="Clash Squad Data">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19V5m0 14h16M8 17v-6m4 6V7m4 10v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Data</span>
+        </a>
+
+        <a class="nav-item" href="clash-compare.html" data-page="clash-compare.html" title="Clash Squad Comparison">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M10 3v18M14 3v18M4 7h6M14 17h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Comparison</span>
+        </a>
+
+        <a class="nav-item" href="clash-report.html" data-page="clash-report.html" title="Clash Squad Team Report">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Team Report</span>
+        </a>
+
+        <a class="nav-item" href="clash-store.html" data-page="clash-store.html" title="Clash Squad Store">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16l-1 14H5L4 7Zm3 0 1-3h8l1 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Store</span>
+        </a>
+
         <a class="nav-item" href="br_team2.html" data-page="br_team2.html" title="BR Data">
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M6 20V10m6 10V4m6 16v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
           <span class="nav-label">BR Data</span>
+        </a>
+
+        <a class="nav-item" href="ff-update.html" data-page="ff-update.html" title="Free Fire Update">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2v6m0 14v-6M4.9 4.9l4.2 4.2m10.8 10.8-4.2-4.2M2 12h6m14 0h-6M4.9 19.1l4.2-4.2m10.8-10.8-4.2 4.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Free Fire Update</span>
         </a>
       </nav>
     </aside>
@@ -779,104 +802,94 @@
           <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;opacity:.85">
             <path d="M21 21l-4.3-4.3m1.3-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
-          <input id="pageSearch" placeholder="Search characters (name, skill, role)..." />
+          <input id="searchInput" placeholder="Search pages..." />
         </div>
 
-        <div class="userchip">
-          <div class="avatar"></div>
-          <div class="usertext">
-            <b id="gamertag">PlayerOne</b>
-            <span id="userEmail" class="muted">loading…</span>
+        <div class="top-actions">
+          <div class="userchip">
+            <div class="avatar"></div>
+            <div class="usertext">
+              <b id="gamertag">PlayerOne</b>
+              <span id="userEmail" class="muted">loading…</span>
+            </div>
           </div>
-        </div>
 
-        <a class="logout" href="#" id="logoutBtn">Logout</a>
+          <a class="logout" href="#" id="logoutBtn">Logout</a>
+        </div>
       </header>
 
-      <section class="content">
-        <div class="panel-card">
-          <div class="hero">
-            <div class="hero-content">
-              <div class="hero-title">
-                <h2>Character Skills</h2>
-                <div class="hero-sub">Meta toggle + full roster • Click any card for details</div>
-              </div>
-              <div class="hero-actions">
-                <a class="btn" href="character-comparison.html" title="Compare characters">Compare</a>
-                <a class="btn brand" href="dashboard.html" title="Back to Dashboard">Dashboard</a>
-              </div>
+      <section class="card">
+        <div class="hero">
+          <div class="hero-content">
+            <div class="hero-title">
+              <h2>Character Gallery</h2>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-inner">
+          <div class="controls">
+            <div class="controls-left">
+              <span class="pill"><span class="dot active"></span>Active Skill</span>
+              <span class="pill"><span class="dot passive"></span>Passive Skill</span>
+              <span class="pill"><span class="dot meta"></span>Meta</span>
+            </div>
+
+            <div class="controls-right">
+              <span class="pill" style="border-color: rgba(255,189,89,.18)">
+                Show Meta For:
+                <button class="btn brand" id="toggleModeBtn" type="button">Battle Royale</button>
+              </span>
+              <a class="btn" href="dashboard.html">← Dashboard</a>
+              <a class="btn" href="character-comparison.html">Compare</a>
             </div>
           </div>
 
-          <div class="card-inner">
-            <div class="controls-row">
-              <!-- Skill-type legend (keep titles); META legend removed -->
-              <div class="legend">
-                <span class="chip" title="Skill type colors">
-                  <span class="dot" style="background:var(--active)"></span> Active
-                  <span class="dot" style="background:var(--passive); margin-left:10px;"></span> Passive
-                </span>
-              </div>
+          <div class="section-title" id="metaTitle">Meta Characters <span class="hint" id="metaHint">(Battle Royale)</span></div>
+          <div class="grid" id="metaGrid"></div>
 
-              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                <span class="muted" style="font-weight:800;">Show Meta For:</span>
-                <button class="btn brand" id="toggleModeBtn" type="button" title="Toggle meta mode">Battle Royale</button>
-                <span class="chip" id="countChip" title="Visible count">—</span>
-              </div>
-            </div>
+          <div class="section-title" style="margin-top:18px;">Non-Meta Characters</div>
+          <div class="grid" id="nonMetaGrid"></div>
 
-            <!-- META -->
-            <div style="margin-top:14px;">
-              <div class="section-head">
-                <h3 id="metaTitle">Meta Characters (Battle Royale)</h3>
-                <small class="muted" id="metaSub">—</small>
-              </div>
-              <div class="grid" id="metaGrid"><div class="muted">Loading meta characters…</div></div>
-            </div>
+          <div class="section-title" style="margin-top:22px;">Overview by Role</div>
+          <div class="role-wrap" id="compactByRole"></div>
 
-            <!-- NON META -->
-            <div style="margin-top:18px;">
-              <div class="section-head">
-                <h3>Non-Meta Characters</h3>
-                <small class="muted" id="nonMetaSub">—</small>
-              </div>
-              <div class="grid" id="nonMetaGrid"><div class="muted">Loading non-meta characters…</div></div>
-            </div>
-
-            <!-- ROLE OVERVIEW -->
-            <div style="margin-top:18px;">
-              <div class="section-head">
-                <h3>Overview by Role</h3>
-                <small class="muted">All characters, grouped. Click a mini card for details.</small>
-              </div>
-              <div class="role-wrap" id="byRole"><div class="muted">Building role overview…</div></div>
-            </div>
-
-            <div class="muted" style="font-size:.8rem; padding: 14px 2px 0 2px;">
-              Free Fire Caster © 2025 — Neptune
-            </div>
+          <div class="muted" style="font-size:.8rem; padding: 14px 2px 2px 2px;">
+            Free Fire Caster © 2025 — Neptune
           </div>
         </div>
       </section>
     </main>
   </div>
 
-  <!-- Global Tooltip -->
-  <div class="tip" id="tip" role="dialog" aria-hidden="true">
-    <div class="tip-top">
-      <div class="tip-title">
-        <div>
-          <b id="tipName">—</b>
-          <span id="tipMeta">—</span>
+  <!-- Info Modal (Popup) -->
+  <div class="modal" id="infoModal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="Character Info">
+      <div class="modal-top">
+        <div style="min-width:0">
+          <h3 id="infoName">—</h3>
+          <p id="infoSub">—</p>
+        </div>
+        <button class="icon-btn" id="infoClose" aria-label="Close" title="Close">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <!-- FIXED spacing: no "space-between", no empty filler rows -->
+      <div class="modal-body">
+        <div class="badge-row" id="infoBadges"></div>
+
+        <div class="info-block">
+          <b id="infoSkillTitle">Skill: —</b>
+          <p class="txt" id="infoSkillDesc">—</p>
+        </div>
+
+        <div class="info-block">
+          <b>Role</b>
+          <p class="txt" id="infoRole">—</p>
         </div>
       </div>
-      <button class="tip-close" id="tipClose" aria-label="Close" title="Close">
-        <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;">
-          <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-      </button>
     </div>
-    <div class="tip-body" id="tipBody">—</div>
   </div>
 
   <script>
@@ -903,7 +916,7 @@
     }
 
     /***********************
-     * Sidebar collapse + active nav
+     * Sidebar collapse + active nav + nav search
      ***********************/
     const sidebar = document.getElementById('sidebar');
 
@@ -916,6 +929,7 @@
       const path = document.getElementById('sbTogglePath');
 
       function syncIcon(){
+        if (!path) return;
         path.setAttribute('d', sidebar.classList.contains('collapsed')
           ? 'M10 7l5 5-5 5'
           : 'M14 7l-5 5 5 5'
@@ -923,7 +937,7 @@
       }
       syncIcon();
 
-      btn.addEventListener('click', () => {
+      btn?.addEventListener('click', () => {
         sidebar.classList.toggle('collapsed');
         localStorage.setItem(key, sidebar.classList.contains('collapsed') ? '1' : '0');
         syncIcon();
@@ -938,298 +952,260 @@
       });
     })();
 
+    document.getElementById('searchInput')?.addEventListener('input', (e) => {
+      const q = (e.target.value || '').toLowerCase().trim();
+      document.querySelectorAll('#nav .nav-item').forEach(a => {
+        const txt = a.textContent.toLowerCase();
+        a.style.display = (!q || txt.includes(q)) ? '' : 'none';
+      });
+    });
+
     /***********************
-     * Data + helpers
+     * Character Data + Rendering
      ***********************/
     const CHAR_URL = 'https://neptuneg1.github.io/freefire-caster/character.json';
-
-    let ALL = [];
-    let currentMetaMode = 'meta'; // 'meta' or 'cs_meta'
-    let query = '';
+    let allCharacters = [];
+    let currentMetaMode = 'meta'; // default BR
 
     const metaGrid = document.getElementById('metaGrid');
     const nonMetaGrid = document.getElementById('nonMetaGrid');
-    const byRole = document.getElementById('byRole');
-
+    const compactByRole = document.getElementById('compactByRole');
     const metaTitle = document.getElementById('metaTitle');
-    const metaSub = document.getElementById('metaSub');
-    const nonMetaSub = document.getElementById('nonMetaSub');
-    const countChip = document.getElementById('countChip');
-
-    const roleIcons = {
-      Attack: "⚔️",
-      Support: "🛡️",
-      Info: "📡",
-      Heal: "💊",
-      Defense: "🧱",
-      Scout: "👁️",
-      Other: "❓"
-    };
+    const metaHint = document.getElementById('metaHint');
+    const toggleModeBtn = document.getElementById('toggleModeBtn');
 
     function safeText(v){ return (v ?? '').toString(); }
-    function norm(v){ return safeText(v).trim(); }
-    function normLower(v){ return norm(v).toLowerCase(); }
-    function isPassive(c){ return normLower(c?.skill_type) === 'passive'; }
+
+    // Aggressively remove weird spacing/newlines so popup doesn't look "gappy"
+    function tidy(v){
+      return safeText(v)
+        .replace(/[\u200B-\u200D\uFEFF]/g, '')          // zero-width chars
+        .replace(/\s*\n+\s*/g, ' ')                     // newlines -> space
+        .replace(/\s{2,}/g, ' ')                        // multiple spaces -> 1
+        .trim();
+    }
+
+    function isPassive(c){
+      return tidy(c?.skill_type).toLowerCase() === 'passive';
+    }
 
     function isMeta(c){
-      return normLower(c?.[currentMetaMode] || 'no') === 'yes';
+      return tidy(c?.[currentMetaMode] || 'no').toLowerCase() === 'yes';
     }
 
-    function matchesQuery(c){
-      if (!query) return true;
-      const blob = [
-        c?.name, c?.skill_type, c?.skill, c?.description, c?.role,
-      ].map(safeText).join(' ').toLowerCase();
-      return blob.includes(query);
+    function modeLabel(){
+      return currentMetaMode === 'meta' ? 'BR' : 'CS';
     }
 
-    function escapeHtml(str){
-      return safeText(str)
-        .replaceAll('&','&amp;')
-        .replaceAll('<','&lt;')
-        .replaceAll('>','&gt;')
-        .replaceAll('"','&quot;')
-        .replaceAll("'",'&#039;');
-    }
-   
-    function tidyText(s){
-      return (s ?? '')
-        .toString()
-        .replace(/\s+/g, ' ')  // collapse spaces/tabs/newlines into single spaces
-        .trim();              // remove leading/trailing spaces
+    function setModeUI(){
+      const isBR = currentMetaMode === 'meta';
+      toggleModeBtn.textContent = isBR ? 'Battle Royale' : 'Clash Squad';
+      metaTitle.textContent = 'Meta Characters';
+      metaHint.textContent = isBR ? '(Battle Royale)' : '(Clash Squad)';
     }
 
-    // IMPORTANT: remove Active/Passive TEXT from card (only dots) — done here.
-    function cardHTML(c){
-      const name = safeText(c?.name || '—');
-      const img = safeText(c?.image_url || '');
-      const role = safeText(c?.role || 'Other') || 'Other';
-      const skType = isPassive(c) ? 'Passive' : 'Active';
+    function makeCard(c){
+      const card = document.createElement('div');
+      const passive = isPassive(c);
+      const meta = isMeta(c);
 
-      return `
-        <div class="char-card ${isMeta(c) ? 'is-meta' : ''}"
-             data-name="${escapeHtml(name)}"
-             data-role="${escapeHtml(role)}"
-             data-skilltype="${escapeHtml(skType)}"
-             data-skill="${escapeHtml(safeText(c?.skill || ''))}"
-             data-desc="${escapeHtml(safeText(c?.description || ''))}"
-             data-img="${escapeHtml(img)}"
-             data-meta="${isMeta(c) ? 'yes' : 'no'}"
-             tabindex="0"
-             title="${escapeHtml(name)}">
-          <div class="thumb">
-            <span class="type-dot ${isPassive(c) ? 'passive' : 'active'}" title="${escapeHtml(skType)}"></span>
-            <span class="meta-dot" title="Meta"></span>
-            <img src="${img}" alt="${escapeHtml(name)}" referrerpolicy="no-referrer" crossorigin="anonymous">
-          </div>
-          <div class="name">${escapeHtml(name)}</div>
-          <div class="subline">${escapeHtml(role)}</div>
-        </div>
-      `;
-    }
+      card.className = 'char-card ' + (passive ? 'passive-skill' : 'active-skill') + (meta ? ' is-meta' : '');
+      card.setAttribute('tabindex','0');
 
-    function miniHTML(c){
-      const name = safeText(c?.name || '—');
-      const img = safeText(c?.image_url || '');
-      const role = safeText(c?.role || 'Other') || 'Other';
-      const skType = isPassive(c) ? 'Passive' : 'Active';
+      const thumb = document.createElement('div');
+      thumb.className = 'char-thumb';
 
-      return `
-        <div class="mini ${isMeta(c) ? 'is-meta' : ''}"
-             data-name="${escapeHtml(name)}"
-             data-role="${escapeHtml(role)}"
-             data-skilltype="${escapeHtml(skType)}"
-             data-skill="${escapeHtml(safeText(c?.skill || ''))}"
-             data-desc="${escapeHtml(safeText(c?.description || ''))}"
-             data-img="${escapeHtml(img)}"
-             data-meta="${isMeta(c) ? 'yes' : 'no'}"
-             tabindex="0"
-             title="${escapeHtml(name)}">
-          <div class="miniimg">
-            <span class="miniDot ${isPassive(c) ? 'passive' : 'active'}" title="${escapeHtml(skType)}"></span>
-            <span class="miniMeta" title="Meta"></span>
-            <img src="${img}" alt="${escapeHtml(name)}" referrerpolicy="no-referrer" crossorigin="anonymous">
-          </div>
-          <small title="${escapeHtml(name)}">${escapeHtml(name)}</small>
-        </div>
-      `;
-    }
+      const img = document.createElement('img');
+      img.src = c.image_url || '';
+      img.alt = tidy(c.name) || 'Character';
+      img.loading = 'lazy';
+      img.referrerPolicy = 'no-referrer';
 
-    async function loadCharacters(){
-      const res = await fetch(CHAR_URL, { cache: 'no-store' });
-      if (!res.ok) throw new Error('Failed to load character.json');
-      const data = await res.json();
-      ALL = Array.isArray(data) ? data : [];
-    }
+      const metaDot = document.createElement('span');
+      metaDot.className = 'meta-dot';
 
-    function render(){
-      const list = ALL.filter(matchesQuery);
+      thumb.appendChild(img);
+      thumb.appendChild(metaDot);
 
-      const meta = [];
-      const non = [];
-      for (const c of list){
-        (isMeta(c) ? meta : non).push(c);
-      }
+      const name = document.createElement('div');
+      name.className = 'char-name';
+      name.textContent = tidy(c.name) || '—';
 
-      metaGrid.innerHTML = meta.length ? meta.map(cardHTML).join('') : `<div class="muted">No meta characters found.</div>`;
-      nonMetaGrid.innerHTML = non.length ? non.map(cardHTML).join('') : `<div class="muted">No non-meta characters found.</div>`;
+      card.appendChild(thumb);
+      card.appendChild(name);
 
-      metaSub.textContent = `${meta.length.toLocaleString()} character${meta.length===1?'':'s'} • Based on: ${currentMetaMode === 'meta' ? 'BR Meta' : 'CS Meta'}`;
-      nonMetaSub.textContent = `${non.length.toLocaleString()} character${non.length===1?'':'s'} • Always shown`;
-      countChip.textContent = `${list.length.toLocaleString()} shown / ${ALL.length.toLocaleString()} total`;
-
-      const roleGroups = {};
-      for (const c of list){
-        const role = safeText(c?.role || 'Other') || 'Other';
-        (roleGroups[role] ||= []).push(c);
-      }
-
-      const roleOrder = Object.keys(roleGroups).sort((a,b) => a.localeCompare(b));
-      byRole.innerHTML = roleOrder.length
-        ? roleOrder.map(role => {
-            const icon = roleIcons[role] || "🔸";
-            const chars = roleGroups[role] || [];
-            return `
-              <div class="role-card">
-                <div class="role-title">
-                  <b>${icon} ${escapeHtml(role)}</b>
-                  <span>${chars.length.toLocaleString()} char${chars.length===1?'':'s'}</span>
-                </div>
-                <div class="role-mini">
-                  ${chars.map(miniHTML).join('')}
-                </div>
-              </div>
-            `;
-          }).join('')
-        : `<div class="muted">No roles to show.</div>`;
-    }
-
-    /***********************
-     * Meta toggle
-     ***********************/
-    const toggleModeBtn = document.getElementById('toggleModeBtn');
-    toggleModeBtn.addEventListener('click', () => {
-      currentMetaMode = (currentMetaMode === 'meta') ? 'cs_meta' : 'meta';
-      toggleModeBtn.textContent = (currentMetaMode === 'meta') ? 'Battle Royale' : 'Clash Squad';
-      metaTitle.textContent = (currentMetaMode === 'meta')
-        ? 'Meta Characters (Battle Royale)'
-        : 'Meta Characters (Clash Squad)';
-      closeTip();
-      render();
-    });
-
-    /***********************
-     * Search
-     ***********************/
-    document.getElementById('pageSearch').addEventListener('input', (e) => {
-      query = (e.target.value || '').toLowerCase().trim();
-      closeTip();
-      render();
-    });
-
-    /***********************
-     * Tooltip logic (KEEP "Active/Passive" titles here)
-     ***********************/
-    const tip = document.getElementById('tip');
-    const tipName = document.getElementById('tipName');
-    const tipMeta = document.getElementById('tipMeta');
-    const tipBody = document.getElementById('tipBody');
-    const tipClose = document.getElementById('tipClose');
-
-    let tipOpen = false;
-
-    function openTipFromEl(el){
-      if (!el) return;
-
-      const name = el.getAttribute('data-name') || '—';
-      const role = el.getAttribute('data-role') || 'Other';
-      const skillType = (el.getAttribute('data-skilltype') || '').toLowerCase();
-      const skillRaw = el.getAttribute('data-skill') || '';
-      const descRaw  = el.getAttribute('data-desc') || '';
-      
-      const skill = escapeHtml(tidyText(skillRaw));
-      const desc  = escapeHtml(tidyText(descRaw));
-      
-      const meta = (el.getAttribute('data-meta') || 'no') === 'yes';
-
-      const readableSkillType = (skillType === 'passive') ? 'Passive' : 'Active';
-      const dotColor = (skillType === 'passive') ? 'var(--passive)' : 'var(--active)';
-
-      tipName.textContent = name;
-      tipMeta.textContent = `${role} • ${meta ? 'Meta' : 'Non-Meta'} • ${currentMetaMode === 'meta' ? 'BR' : 'CS'} • ${readableSkillType}`;
-
-      tipBody.innerHTML = `
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-          <span class="dot" style="background:${dotColor}; box-shadow:none;"></span>
-          <span class="muted" style="font-size:.82rem;">${readableSkillType} Skill</span>
-          ${meta ? `<span class="dot" style="background:var(--metaDot); box-shadow:none; margin-left:10px;"></span><span class="muted" style="font-size:.82rem;">Meta</span>` : ``}
-        </div>
-        <div>${skill ? `<b>Skill:</b> ${skill}` : `<span class="muted">No skill text</span>`}</div>
-        <div style="margin-top:8px;">${desc ? desc : `<span class="muted">No description</span>`}</div>
-      `;
-
-      const rect = el.getBoundingClientRect();
-      const margin = 10;
-
-      tip.classList.add('show');
-      tip.setAttribute('aria-hidden','false');
-
-      requestAnimationFrame(() => {
-        const tr = tip.getBoundingClientRect();
-        let left = rect.left + rect.width/2 - tr.width/2;
-        let top = rect.bottom + 10;
-
-        if (top + tr.height > window.innerHeight - margin){
-          top = rect.top - tr.height - 10;
+      card.addEventListener('click', () => openInfo(c, meta));
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openInfo(c, meta);
         }
+      });
 
-        left = Math.max(margin, Math.min(left, window.innerWidth - tr.width - margin));
-        top  = Math.max(margin, Math.min(top,  window.innerHeight - tr.height - margin));
+      return card;
+    }
 
-        tip.style.left = left + 'px';
-        tip.style.top  = top + 'px';
-        tipOpen = true;
+    function renderGrids(){
+      metaGrid.innerHTML = '';
+      nonMetaGrid.innerHTML = '';
+      compactByRole.innerHTML = '';
+
+      const chars = Array.isArray(allCharacters) ? allCharacters.slice() : [];
+      // stable sort by name
+      chars.sort((a,b) => tidy(a?.name).localeCompare(tidy(b?.name)));
+
+      const metas = [];
+      const nonmetas = [];
+
+      for (const c of chars){
+        (isMeta(c) ? metas : nonmetas).push(c);
+      }
+
+      metas.forEach(c => metaGrid.appendChild(makeCard(c)));
+      nonmetas.forEach(c => nonMetaGrid.appendChild(makeCard(c)));
+
+      // Compact by role (all chars)
+      const roleGroups = {};
+      for (const c of chars){
+        const role = tidy(c.role) || 'Other';
+        if (!roleGroups[role]) roleGroups[role] = [];
+        roleGroups[role].push(c);
+      }
+
+      const roles = Object.keys(roleGroups).sort((a,b) => a.localeCompare(b));
+      roles.forEach(role => {
+        const group = document.createElement('div');
+        group.className = 'role-group';
+
+        const head = document.createElement('div');
+        head.className = 'role-head';
+
+        const left = document.createElement('b');
+        left.textContent = role;
+
+        const right = document.createElement('span');
+        right.textContent = `${roleGroups[role].length} char${roleGroups[role].length===1?'':'s'}`;
+
+        head.appendChild(left);
+        head.appendChild(right);
+
+        const rg = document.createElement('div');
+        rg.className = 'role-grid';
+
+        roleGroups[role].forEach(c => {
+          const passive = isPassive(c);
+
+          const mini = document.createElement('div');
+          mini.className = 'mini ' + (passive ? 'passive-skill' : 'active-skill');
+
+          const mt = document.createElement('div');
+          mt.className = 'mini-thumb';
+
+          const img = document.createElement('img');
+          img.src = c.image_url || '';
+          img.alt = tidy(c.name) || 'Character';
+          img.loading = 'lazy';
+          img.referrerPolicy = 'no-referrer';
+
+          mt.appendChild(img);
+
+          const mn = document.createElement('div');
+          mn.className = 'mini-name';
+          mn.textContent = tidy(c.name) || '—';
+
+          mini.appendChild(mt);
+          mini.appendChild(mn);
+
+          mini.addEventListener('click', () => openInfo(c, isMeta(c)));
+
+          rg.appendChild(mini);
+        });
+
+        group.appendChild(head);
+        group.appendChild(rg);
+        compactByRole.appendChild(group);
       });
     }
 
-    function closeTip(){
-      tip.classList.remove('show');
-      tip.setAttribute('aria-hidden','true');
-      tipOpen = false;
+    async function loadCharacters(){
+      metaGrid.innerHTML = '<div class="muted">Loading…</div>';
+      nonMetaGrid.innerHTML = '';
+      const res = await fetch(CHAR_URL, { cache: 'no-store' });
+      const data = await res.json();
+      allCharacters = Array.isArray(data) ? data : [];
+      renderGrids();
     }
 
-    tipClose.addEventListener('click', (e) => { e.stopPropagation(); closeTip(); });
-    tip.addEventListener('click', (e) => e.stopPropagation());
+    /***********************
+     * Popup (Modal) — fixed spacing + reliable close
+     ***********************/
+    const infoModal = document.getElementById('infoModal');
+    const infoClose = document.getElementById('infoClose');
+    const infoName = document.getElementById('infoName');
+    const infoSub = document.getElementById('infoSub');
+    const infoBadges = document.getElementById('infoBadges');
+    const infoSkillTitle = document.getElementById('infoSkillTitle');
+    const infoSkillDesc = document.getElementById('infoSkillDesc');
+    const infoRole = document.getElementById('infoRole');
 
-    function onAnyClick(e){
-      const card = e.target.closest('.char-card, .mini');
-      if (!card){
-        if (tipOpen) closeTip();
-        return;
-      }
-      e.stopPropagation();
-      openTipFromEl(card);
+    function badgeDot(cls, label){
+      const el = document.createElement('span');
+      el.className = 'pill';
+      const d = document.createElement('span');
+      d.className = 'dot ' + cls;
+      el.appendChild(d);
+      el.appendChild(document.createTextNode(label));
+      return el;
     }
 
-    metaGrid.addEventListener('click', onAnyClick);
-    nonMetaGrid.addEventListener('click', onAnyClick);
-    byRole.addEventListener('click', onAnyClick);
+    function openInfo(c, metaFlag){
+      const name = tidy(c?.name) || '—';
+      const role = tidy(c?.role) || 'N/A';
+      const st = tidy(c?.skill_type) || '—';
+      const skill = tidy(c?.skill) || '—';
+      const desc = tidy(c?.description) || '—';
 
-    function onAnyKey(e){
-      const card = e.target.closest?.('.char-card, .mini');
-      if (!card) return;
-      if (e.key === 'Enter' || e.key === ' '){
-        e.preventDefault();
-        openTipFromEl(card);
-      }
+      infoName.textContent = name;
+
+      // Example: "TEAM WORK • Meta • BR • Active"
+      const chips = [];
+      if (role && role !== 'N/A') chips.push(role.toUpperCase());
+      if (metaFlag) chips.push('META');
+      chips.push(modeLabel());
+      if (st) chips.push(st);
+      infoSub.textContent = chips.join(' • ');
+
+      infoBadges.innerHTML = '';
+      infoBadges.appendChild(badgeDot(isPassive(c) ? 'passive' : 'active', isPassive(c) ? 'Passive Skill' : 'Active Skill'));
+      if (metaFlag) infoBadges.appendChild(badgeDot('meta', 'Meta'));
+
+      infoSkillTitle.textContent = 'Skill: ' + (skill || '—');
+      // Keep this single paragraph, no extra blank lines
+      infoSkillDesc.textContent = (st ? (st + ' — ') : '') + (desc || '—');
+
+      infoRole.textContent = role;
+
+      infoModal.classList.add('show');
+      infoModal.setAttribute('aria-hidden','false');
     }
-    metaGrid.addEventListener('keydown', onAnyKey);
-    nonMetaGrid.addEventListener('keydown', onAnyKey);
-    byRole.addEventListener('keydown', onAnyKey);
 
-    document.addEventListener('click', () => { if (tipOpen) closeTip(); });
-    window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && tipOpen) closeTip(); });
-    window.addEventListener('resize', () => { if (tipOpen) closeTip(); });
+    function closeInfo(){
+      infoModal.classList.remove('show');
+      infoModal.setAttribute('aria-hidden','true');
+    }
+
+    infoClose?.addEventListener('click', closeInfo);
+    infoModal?.addEventListener('click', (e) => { if (e.target === infoModal) closeInfo(); });
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && infoModal.classList.contains('show')) closeInfo(); });
+
+    /***********************
+     * Meta mode toggle
+     ***********************/
+    toggleModeBtn?.addEventListener('click', async () => {
+      currentMetaMode = (currentMetaMode === 'meta') ? 'cs_meta' : 'meta';
+      setModeUI();
+      renderGrids();
+    });
 
     /***********************
      * Init
@@ -1243,20 +1219,13 @@
       const username = email ? email.split('@')[0] : 'PlayerOne';
       document.getElementById('gamertag').textContent = username;
 
-      document.getElementById('logoutBtn').addEventListener('click', (e) => {
+      document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
         e.preventDefault();
         logout();
       });
 
-      try{
-        await loadCharacters();
-        render();
-      }catch(err){
-        console.error(err);
-        metaGrid.innerHTML = `<div class="muted">Failed to load character.json</div>`;
-        nonMetaGrid.innerHTML = `<div class="muted">Failed to load character.json</div>`;
-        byRole.innerHTML = `<div class="muted">Failed to load character.json</div>`;
-      }
+      setModeUI();
+      await loadCharacters();
     });
   </script>
 </body>
