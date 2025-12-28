@@ -697,6 +697,18 @@
       white-space: normal; /* no preserved newlines */
     }
 
+    /* Empty state (created dynamically too, but styled here) */
+    .empty-msg{
+      grid-column: 1 / -1;
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px dashed rgba(255,255,255,.12);
+      background: rgba(0,0,0,.16);
+      color: var(--muted);
+      font-weight: 800;
+      text-align: center;
+    }
+
     @media (max-width: 980px){
       .sidebar{display:none;} /* simple mobile: hide sidebar */
       .app{padding:12px;}
@@ -802,7 +814,8 @@
           <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;opacity:.85">
             <path d="M21 21l-4.3-4.3m1.3-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
-          <input id="searchInput" placeholder="Search pages..." />
+          <!-- FIX: This now searches CHARACTERS on this page -->
+          <input id="searchInput" placeholder="Search characters (name / role / skill)..." />
         </div>
 
         <div class="top-actions">
@@ -833,6 +846,7 @@
               <span class="pill"><span class="dot active"></span>Active Skill</span>
               <span class="pill"><span class="dot passive"></span>Passive Skill</span>
               <span class="pill"><span class="dot meta"></span>Meta</span>
+              <span class="pill" id="searchCountPill" style="display:none;"></span>
             </div>
 
             <div class="controls-right">
@@ -916,7 +930,7 @@
     }
 
     /***********************
-     * Sidebar collapse + active nav + nav search
+     * Sidebar collapse + active nav
      ***********************/
     const sidebar = document.getElementById('sidebar');
 
@@ -952,20 +966,13 @@
       });
     })();
 
-    document.getElementById('searchInput')?.addEventListener('input', (e) => {
-      const q = (e.target.value || '').toLowerCase().trim();
-      document.querySelectorAll('#nav .nav-item').forEach(a => {
-        const txt = a.textContent.toLowerCase();
-        a.style.display = (!q || txt.includes(q)) ? '' : 'none';
-      });
-    });
-
     /***********************
      * Character Data + Rendering
      ***********************/
     const CHAR_URL = 'https://neptuneg1.github.io/freefire-caster/character.json';
     let allCharacters = [];
     let currentMetaMode = 'meta'; // default BR
+    let currentSearchTerm = '';
 
     const metaGrid = document.getElementById('metaGrid');
     const nonMetaGrid = document.getElementById('nonMetaGrid');
@@ -973,6 +980,7 @@
     const metaTitle = document.getElementById('metaTitle');
     const metaHint = document.getElementById('metaHint');
     const toggleModeBtn = document.getElementById('toggleModeBtn');
+    const searchCountPill = document.getElementById('searchCountPill');
 
     function safeText(v){ return (v ?? '').toString(); }
 
@@ -1004,6 +1012,28 @@
       metaHint.textContent = isBR ? '(Battle Royale)' : '(Clash Squad)';
     }
 
+    function makeSearchBlob(c){
+      const parts = [
+        tidy(c?.name),
+        tidy(c?.role),
+        tidy(c?.skill_type),
+        tidy(c?.skill),
+        tidy(c?.description)
+      ].filter(Boolean);
+      return parts.join(' ').toLowerCase();
+    }
+
+    function ensureEmptyMsg(grid){
+      let msg = grid.querySelector('.empty-msg');
+      if (!msg){
+        msg = document.createElement('div');
+        msg.className = 'empty-msg';
+        msg.textContent = 'No matches.';
+        grid.appendChild(msg);
+      }
+      return msg;
+    }
+
     function makeCard(c){
       const card = document.createElement('div');
       const passive = isPassive(c);
@@ -1011,6 +1041,9 @@
 
       card.className = 'char-card ' + (passive ? 'passive-skill' : 'active-skill') + (meta ? ' is-meta' : '');
       card.setAttribute('tabindex','0');
+
+      // SEARCH DATA
+      card.dataset.search = makeSearchBlob(c);
 
       const thumb = document.createElement('div');
       thumb.className = 'char-thumb';
@@ -1045,18 +1078,65 @@
       return card;
     }
 
+    function applyCharacterSearch(term){
+      const q = (term || '').toLowerCase().trim();
+
+      // Filter meta + non-meta cards
+      const allCards = [
+        ...metaGrid.querySelectorAll('.char-card'),
+        ...nonMetaGrid.querySelectorAll('.char-card')
+      ];
+
+      let visibleCards = 0;
+      allCards.forEach(el => {
+        const hit = !q || (el.dataset.search || '').includes(q);
+        el.style.display = hit ? '' : 'none';
+        if (hit) visibleCards++;
+      });
+
+      // Empty messages
+      const metaVisible = [...metaGrid.querySelectorAll('.char-card')].some(c => c.style.display !== 'none');
+      const nonMetaVisible = [...nonMetaGrid.querySelectorAll('.char-card')].some(c => c.style.display !== 'none');
+      ensureEmptyMsg(metaGrid).style.display = metaVisible ? 'none' : '';
+      ensureEmptyMsg(nonMetaGrid).style.display = nonMetaVisible ? 'none' : '';
+
+      // Filter role minis + hide empty role groups
+      document.querySelectorAll('#compactByRole .role-group').forEach(group => {
+        const minis = [...group.querySelectorAll('.mini')];
+        let groupHits = 0;
+
+        minis.forEach(mini => {
+          const blob = mini.dataset.search || '';
+          const hit = !q || blob.includes(q);
+          mini.style.display = hit ? '' : 'none';
+          if (hit) groupHits++;
+        });
+
+        group.style.display = groupHits ? '' : 'none';
+      });
+
+      // Small UI hint for count
+      if (q) {
+        searchCountPill.style.display = '';
+        searchCountPill.textContent = `Showing: ${visibleCards} match${visibleCards===1?'':'es'}`;
+      } else {
+        searchCountPill.style.display = 'none';
+        searchCountPill.textContent = '';
+        // Ensure groups show again
+        document.querySelectorAll('#compactByRole .role-group').forEach(g => g.style.display = '');
+      }
+    }
+
     function renderGrids(){
       metaGrid.innerHTML = '';
       nonMetaGrid.innerHTML = '';
       compactByRole.innerHTML = '';
 
       const chars = Array.isArray(allCharacters) ? allCharacters.slice() : [];
-      // stable sort by name
       chars.sort((a,b) => tidy(a?.name).localeCompare(tidy(b?.name)));
 
       const metas = [];
       const nonmetas = [];
-
       for (const c of chars){
         (isMeta(c) ? metas : nonmetas).push(c);
       }
@@ -1064,7 +1144,7 @@
       metas.forEach(c => metaGrid.appendChild(makeCard(c)));
       nonmetas.forEach(c => nonMetaGrid.appendChild(makeCard(c)));
 
-      // Compact by role (all chars)
+      // role groups (all chars)
       const roleGroups = {};
       for (const c of chars){
         const role = tidy(c.role) || 'Other';
@@ -1098,6 +1178,9 @@
           const mini = document.createElement('div');
           mini.className = 'mini ' + (passive ? 'passive-skill' : 'active-skill');
 
+          // SEARCH DATA
+          mini.dataset.search = makeSearchBlob(c);
+
           const mt = document.createElement('div');
           mt.className = 'mini-thumb';
 
@@ -1125,10 +1208,13 @@
         group.appendChild(rg);
         compactByRole.appendChild(group);
       });
+
+      // Apply current search after re-render
+      applyCharacterSearch(currentSearchTerm);
     }
 
     async function loadCharacters(){
-      metaGrid.innerHTML = '<div class="muted">Loading…</div>';
+      metaGrid.innerHTML = '<div class="empty-msg">Loading…</div>';
       nonMetaGrid.innerHTML = '';
       const res = await fetch(CHAR_URL, { cache: 'no-store' });
       const data = await res.json();
@@ -1180,9 +1266,7 @@
       if (metaFlag) infoBadges.appendChild(badgeDot('meta', 'Meta'));
 
       infoSkillTitle.textContent = 'Skill: ' + (skill || '—');
-      // Keep this single paragraph, no extra blank lines
       infoSkillDesc.textContent = (st ? (st + ' — ') : '') + (desc || '—');
-
       infoRole.textContent = role;
 
       infoModal.classList.add('show');
@@ -1201,10 +1285,19 @@
     /***********************
      * Meta mode toggle
      ***********************/
-    toggleModeBtn?.addEventListener('click', async () => {
+    toggleModeBtn?.addEventListener('click', () => {
       currentMetaMode = (currentMetaMode === 'meta') ? 'cs_meta' : 'meta';
       setModeUI();
       renderGrids();
+    });
+
+    /***********************
+     * FIX: Top search now filters characters on the page
+     ***********************/
+    const topSearch = document.getElementById('searchInput');
+    topSearch?.addEventListener('input', (e) => {
+      currentSearchTerm = (e.target.value || '');
+      applyCharacterSearch(currentSearchTerm);
     });
 
     /***********************
