@@ -3,397 +3,1864 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Character Skills</title>
+  <title>Free Fire Dashboard</title>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <!-- Supabase JS v2 (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root{
+      --bg:#07090f;
+      --bg2:#0b1020;
+      --panel: rgba(20, 26, 38, .72);
+      --panel2: rgba(14, 18, 28, .70);
+      --line: rgba(255,255,255,.08);
+      --ink:#f4f6ff;
+      --muted:#aab1c5;
+
+      --brand:#ffbd59;
+      --brand2:#ff7733;
+      --accent:#4dd3ff;
+
+      --radius:16px;
+      --radius-lg:22px;
+      --shadow: 0 22px 70px rgba(0,0,0,.55);
+
+      --sb-w: 260px;
+      --sb-w-collapsed: 82px;
+
+      /* Build panel sizing (slightly bigger) */
+      --slotTop: 74px;   /* big row height */
+      --slotBot: 56px;   /* bottom row slot size */
+      --slotGap: 10px;   /* spacing */
+      --slotRad: 14px;   /* rounding */
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: Roboto, system-ui, -apple-system, Segoe UI, Arial;
+      color:var(--ink);
+      background:
+        radial-gradient(900px 500px at 18% 12%, rgba(77,211,255,.15), transparent 60%),
+        radial-gradient(700px 420px at 85% 18%, rgba(255,189,89,.12), transparent 60%),
+        radial-gradient(900px 620px at 50% 110%, rgba(255,119,51,.10), transparent 60%),
+        linear-gradient(180deg, var(--bg), var(--bg2));
+      overflow-x:hidden;
+    }
+
+    body::before, body::after{
+      content:"";
+      position:fixed;
+      inset:auto auto 0 0;
+      width:520px; height:520px;
+      border-radius:50%;
+      border:10px solid rgba(77,211,255,.14);
+      transform: translate(-45%, -35%);
+      filter: blur(.2px);
+      pointer-events:none;
+    }
+    body::after{
+      inset: -120px 0 auto auto;
+      width:420px; height:420px;
+      border:10px solid rgba(77,211,255,.10);
+      transform: translate(38%, 0%);
+    }
+
+    a{color:inherit}
+
+    .app{
+      height:100%;
+      display:flex;
+      gap:18px;
+      padding:18px;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+
+    /* Sidebar */
+    .sidebar{
+      width: var(--sb-w);
+      background: var(--panel2);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      position:relative;
+      transition: width .18s ease;
+    }
+    .sidebar.collapsed{ width: var(--sb-w-collapsed); }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:16px 16px 10px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .brand-left{display:flex;align-items:center;gap:10px;min-width:0;}
+    .logo{
+      width:36px;height:36px;border-radius:12px;
+      background: linear-gradient(135deg, rgba(255,189,89,.25), rgba(77,211,255,.18));
+      border:1px solid rgba(255,255,255,.10);
+      display:grid;place-items:center;
+      font-family: Orbitron, sans-serif;
+      letter-spacing:.5px;
+      color:var(--brand);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      flex:0 0 auto;
+    }
+    .brand h1{
+      margin:0;
+      font-family: Orbitron, sans-serif;
+      font-size: 1.05rem;
+      letter-spacing:.6px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 150px;
+    }
+    .brand small{
+      display:block;
+      color: var(--muted);
+      font-size:.78rem;
+      margin-top:2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 150px;
+    }
+
+    .nav{
+      padding: 12px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      overflow:auto;
+    }
+    .nav::-webkit-scrollbar{width:10px}
+    .nav::-webkit-scrollbar-thumb{background: rgba(255,255,255,.08); border-radius:10px}
+    .nav::-webkit-scrollbar-track{background: transparent}
+
+    .nav-item{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 10px;
+      border-radius: 12px;
+      border:1px solid transparent;
+      color: var(--muted);
+      text-decoration:none;
+      transition: .2s ease;
+      cursor:pointer;
+      min-width:0;
+    }
+    .nav-item:hover{
+      background: rgba(255,255,255,.05);
+      border-color: rgba(255,255,255,.08);
+      color: var(--ink);
+    }
+    .nav-item.active{
+      background: linear-gradient(135deg, rgba(255,189,89,.14), rgba(77,211,255,.09));
+      border-color: rgba(255,189,89,.22);
+      color: var(--ink);
+    }
+    .nav-ico{
+      width:26px;height:26px;border-radius:10px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.08);
+      display:grid;place-items:center;
+      flex: 0 0 auto;
+    }
+    .nav-ico svg{width:14px;height:14px;opacity:.9}
+    .nav-label{
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      min-width:0;
+    }
+
+    .sidebar.collapsed .brand h1,
+    .sidebar.collapsed .brand small,
+    .sidebar.collapsed .nav-label{display:none;}
+    .sidebar.collapsed .brand{justify-content:center;}
+    .sidebar.collapsed .brand-left{justify-content:center;}
+    .sidebar.collapsed .nav-item{
+      justify-content:center;
+      gap:0;
+      padding:10px 8px;
+    }
+
+    /* Main */
+    .main{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      min-width: 0;
+      gap: 14px;
+    }
+
+    /* Topbar */
+    .topbar{
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      padding: 12px 14px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+
+    .burger{display:none;}
+
+    .search{
+      flex:1;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 10px 12px;
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 14px;
+      min-width: 0;
+    }
+    .search input{
+      width:100%;
+      background: transparent;
+      border:0;
+      outline:none;
+      color: var(--ink);
+      font-size: .95rem;
+    }
+    .search input::placeholder{color: rgba(170,177,197,.75)}
+
+    .top-actions{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex:0 0 auto;
+    }
+
+    .icon-btn{
+      width:42px;height:42px;border-radius:14px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      display:grid;place-items:center;
+      cursor:pointer;
+      transition:.2s ease;
+      color: var(--ink);
+      flex:0 0 auto;
+    }
+    .icon-btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.08)}
+    .icon-btn svg{width:18px;height:18px;opacity:.92}
+
+    .userchip{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      max-width: 260px;
+    }
+    .avatar{
+      width:28px;height:28px;border-radius:10px;
+      background: linear-gradient(135deg, rgba(255,189,89,.30), rgba(77,211,255,.18));
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .usertext{min-width:0}
+    .usertext b{
+      display:block;
+      font-size:.92rem;
+      font-family: Orbitron, sans-serif;
+      color: var(--brand);
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      max-width: 170px;
+    }
+    .usertext span{display:block; font-size:.78rem; color: var(--muted)}
+
+    .logout{
+      color: rgba(255,255,255,.70);
+      text-decoration:none;
+      font-size:.85rem;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.04);
+      transition:.2s ease;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .logout:hover{
+      border-color: rgba(255,77,77,.35);
+      color: #ff8d8d;
+      box-shadow: 0 0 0 3px rgba(255,77,77,.10);
+    }
+
+    /* Content */
+    .content{
+      min-height: 0;
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      gap: 14px;
+    }
+
+    .card{
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      overflow:hidden;
+    }
+    .card-inner{padding:14px}
+
+    .hero{
+      position:relative;
+      height: 170px;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(90deg, rgba(0,0,0,.55), rgba(0,0,0,.10)),
+        url('https://i.imgur.com/qXFpizS.jpg') center/cover no-repeat;
+    }
+    .hero::after{
+      content:"";
+      position:absolute; inset:0;
+      background: radial-gradient(420px 220px at 55% 45%, rgba(255,189,89,.16), transparent 60%);
+      pointer-events:none;
+    }
+    .hero-content{
+      position:absolute;
+      left:16px; right:16px; bottom:14px;
+      display:flex;
+      align-items:flex-end;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .hero-title h2{
+      font-family: Orbitron, sans-serif;
+      font-size: 1.55rem;
+      color: var(--brand);
+      text-shadow: 0 0 18px rgba(255,189,89,.20);
+      margin:0;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Horizontal Quick View */
+    .quickbar{
+      display:grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .qv-item{
+      padding: 10px 12px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.09);
+      transition: .2s ease;
+      min-width:0;
+      cursor:pointer;
+      position:relative;
+    }
+    .qv-item:hover{
+      background: rgba(255,255,255,.07);
+      transform: translateY(-1px);
+    }
+    .qv-item:focus{
+      outline:none;
+      box-shadow: 0 0 0 3px rgba(77,211,255,.12);
+      border-color: rgba(77,211,255,.22);
+    }
+
+    .qv-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:10px;
+      min-width:0;
+    }
+    .qv-title{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      min-width:0;
+      font-weight:700;
+      color: rgba(244,246,255,.92);
+      letter-spacing:.2px;
+      font-size:.9rem;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .qv-count{
+      font-size:.75rem;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      color: rgba(244,246,255,.78);
+      flex:0 0 auto;
+    }
+    .qv-edit{
+      width:28px;height:28px;border-radius:10px;
+      background: rgba(0,0,0,.18);
+      border:1px solid rgba(255,255,255,.10);
+      display:grid;place-items:center;
+      opacity:.65;
+      transition:.18s ease;
+      flex:0 0 auto;
+    }
+    .qv-item:hover .qv-edit{opacity:1; border-color: rgba(255,189,89,.18);}
+    .qv-edit svg{width:14px;height:14px;opacity:.92}
+
+    .qv-body{
+      display:flex;
+      align-items:flex-start;
+      gap:10px;
+      min-width:0;
+    }
+    .qv-thumb{
+      width:54px;
+      height:54px;
+      border-radius: 14px;
+      background: rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+      flex:0 0 auto;
+      display:grid;
+      place-items:center;
+    }
+    .qv-thumb img{
+      width:100%;
+      height:100%;
+      object-fit: contain;
+      display:block;
+      background: rgba(255,255,255,.02);
+    }
+
+    .qv-meta{
+      min-width:0;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      flex:1;
+    }
+    .qv-meta b{
+      font-size:.95rem;
+      font-weight:800;
+      color: rgba(244,246,255,.92);
+      white-space:normal;
+      overflow:visible;
+      word-break:break-word;
+      line-height:1.15rem;
+    }
+    .qv-meta span{
+      color: var(--muted);
+      font-size:.84rem;
+      white-space:normal;
+      overflow:visible;
+      word-break:break-word;
+      line-height:1.22rem;
+    }
+
+    /* Layout: left build + right summary */
+    .dash-grid{
+      display:grid;
+      grid-template-columns: minmax(0, 1fr) 380px;
+      gap: 14px;
+      align-items:start;
+      margin-top: 10px;
+    }
+    @media (max-width: 980px){
+      .dash-grid{grid-template-columns: 1fr;}
+      .quickbar{grid-template-columns: 1fr;}
+    }
+
+    /* Under-QuickView: Build Panel (replicate) */
+    .buildbar{
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,.08);
+    }
+
+    .build-panel{
+      display:flex;
+      flex-direction:column;
+      gap: var(--slotGap);
+    }
+
+    .bp-top{
+      display:flex;
+      align-items:stretch;
+      gap: var(--slotGap);
+    }
+
+    .bp-bottom{
+      display:flex;
+      align-items:center;
+      gap: var(--slotGap);
+      flex-wrap:wrap;
+    }
+
+    .bp-slot{
+      width: var(--slotBot);
+      height: var(--slotBot);
+      border-radius: var(--slotRad);
+      background: rgba(0,0,0,.22);
+      border: 1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+      position:relative;
+      cursor:pointer;
+      transition: .18s ease;
+      display:grid;
+      place-items:center;
+      box-shadow: 0 0 0 0 rgba(77,211,255,.0);
+    }
+
+    .bp-slot:hover{
+      transform: translateY(-1px);
+      background: rgba(255,255,255,.06);
+      border-color: rgba(77,211,255,.18);
+      box-shadow: 0 0 0 3px rgba(77,211,255,.10);
+    }
+
+    .bp-slot img{
+      width:100%;
+      height:100%;
+      display:block;
+      background: rgba(255,255,255,.02);
+    }
+
+    /* Big Active */
+    .bp-active{
+      width: var(--slotTop);
+      height: var(--slotTop);
+      border-radius: calc(var(--slotRad) + 2px);
+      border-color: rgba(255,189,89,.22);
+      background: linear-gradient(135deg, rgba(255,189,89,.10), rgba(0,0,0,.22));
+      flex: 0 0 auto;
+    }
+    .bp-active:hover{
+      border-color: rgba(255,189,89,.30);
+      box-shadow: 0 0 0 3px rgba(255,189,89,.10);
+    }
+
+    /* Weapons wide box (top-right) */
+    .bp-weapons{
+      flex:1;
+      height: var(--slotTop);
+      border-radius: calc(var(--slotRad) + 2px);
+      background: rgba(0,0,0,.22);
+      border: 1px solid rgba(255,255,255,.10);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: var(--slotGap);
+      padding: var(--slotGap);
+      min-width: 220px; /* increased width baseline */
+    }
+
+    .bp-mini{
+      flex: 1;
+      height: 100%;
+      border-radius: var(--slotRad);
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+      position:relative;
+      cursor:pointer;
+      transition:.18s ease;
+      display:grid;
+      place-items:center;
+    }
+    .bp-mini:hover{
+      transform: translateY(-1px);
+      background: rgba(255,255,255,.08);
+      border-color: rgba(77,211,255,.18);
+      box-shadow: 0 0 0 3px rgba(77,211,255,.10);
+    }
+    .bp-mini img{
+      width:100%;
+      height:100%;
+      object-fit: contain;
+      display:block;
+      background: rgba(255,255,255,.02);
+    }
+
+    /* object-fit rules */
+    .bp-active img,
+    .bp-slot[data-type="character"] img{ object-fit: cover; }
+    .bp-slot[data-type="pet"] img,
+    .bp-slot[data-type="loadout"] img{ object-fit: contain; }
+
+    /* hover badges (hidden by default for "exact" look) */
+    .bp-slot::after,
+    .bp-mini::after{
+      content: attr(data-badge);
+      position:absolute;
+      left:6px;
+      bottom:6px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      font-size: .62rem;
+      font-weight: 900;
+      letter-spacing:.3px;
+      background: rgba(0,0,0,.60);
+      border: 1px solid rgba(255,255,255,.12);
+      color: rgba(244,246,255,.88);
+      opacity:0;
+      transform: translateY(2px);
+      transition:.16s ease;
+      pointer-events:none;
+      max-width: calc(100% - 12px);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .bp-slot:hover::after,
+    .bp-mini:hover::after{
+      opacity:1;
+      transform: translateY(0);
+    }
+
+    /* Summary panel */
+    .build-summary{
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.09);
+      min-width:0;
+    }
+    .build-summary h4{
+      margin:0 0 10px 0;
+      font-family: Orbitron, sans-serif;
+      letter-spacing:.5px;
+      color: var(--brand);
+      font-size: 1.0rem;
+    }
+
+    .sum-item{
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.18);
+      border-radius: 14px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .sum-head{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin-bottom:8px;
+      min-width:0;
+    }
+    .sum-ico{
+      width:42px;height:42px;
+      border-radius: 12px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      overflow:hidden;
+      flex:0 0 auto;
+      display:grid;place-items:center;
+    }
+    .sum-ico img{width:100%;height:100%;object-fit:contain;background:rgba(255,255,255,.02)}
+    .sum-title{min-width:0}
+    .sum-title b{
+      display:block;
+      font-size:.95rem;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .sum-title small{
+      display:block;
+      color: var(--muted);
+      font-size:.78rem;
+      margin-top:2px;
+    }
+
+    /* IMPORTANT: make long BR/CS + weapon text show */
+    .sum-desc{
+      color: rgba(244,246,255,.88);
+      font-size:.86rem;
+      line-height:1.28rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* Modal Picker */
+    .modal{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.62);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+      z-index: 1000;
+    }
+    .modal.show{display:flex;}
+    .modal-card{
+      width: min(1040px, 100%);
+      max-height: min(84vh, 820px);
+      background: rgba(14, 18, 28, .92);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 22px;
+      box-shadow: 0 26px 80px rgba(0,0,0,.65);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+    .modal-top{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      padding: 14px 14px 10px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .modal-top h3{
+      margin:0;
+      font-family: Orbitron, sans-serif;
+      letter-spacing:.6px;
+      color: var(--brand);
+      font-size: 1.05rem;
+    }
+    .modal-top p{
+      margin:6px 0 0 0;
+      color: var(--muted);
+      font-size:.85rem;
+    }
+
+    .modal-controls{
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .modal-row{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .modal-controls input{
+      flex:1;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.12);
+      outline:none;
+      color: var(--ink);
+      font-size:.95rem;
+      min-width: 220px;
+    }
+    .modal-controls select{
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.12);
+      outline:none;
+      color: var(--ink);
+      font-size:.92rem;
+      min-width: 220px;
+    }
+    .modal-count{
+      flex:0 0 auto;
+      font-size:.78rem;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.20);
+      color: rgba(244,246,255,.80);
+      white-space:nowrap;
+    }
+
+    .filter-pills{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+    }
+    .pill-btn{
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      color: rgba(244,246,255,.86);
+      cursor:pointer;
+      font-weight:800;
+      font-size:.82rem;
+      transition:.18s ease;
+      white-space:nowrap;
+    }
+    .pill-btn:hover{
+      background: rgba(0,0,0,.28);
+      border-color: rgba(77,211,255,.22);
+      box-shadow: 0 0 0 3px rgba(77,211,255,.10);
+    }
+    .pill-btn.active{
+      background: linear-gradient(135deg, rgba(255,189,89,.18), rgba(255,119,51,.10));
+      border-color: rgba(255,189,89,.25);
+      color: rgba(244,246,255,.95);
+    }
+
+    .modal-grid{
+      padding: 14px;
+      overflow:auto;
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+      gap: 12px;
+    }
+    .modal-grid::-webkit-scrollbar{width:10px}
+    .modal-grid::-webkit-scrollbar-thumb{background: rgba(255,255,255,.10); border-radius:10px}
+    .modal-grid::-webkit-scrollbar-track{background: transparent}
+
+    .pick-card{
+      padding: 10px 10px 8px 10px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.09);
+      cursor:pointer;
+      transition:.18s ease;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      min-width:0;
+    }
+    .pick-card:hover{
+      background: rgba(255,255,255,.08);
+      transform: translateY(-1px);
+      border-color: rgba(255,189,89,.18);
+    }
+    .pick-thumb{
+      width:100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 14px;
+      background: rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+      display:grid;
+      place-items:center;
+    }
+    .pick-thumb img{
+      width:100%;
+      height:100%;
+      object-fit: contain;
+      display:block;
+      background: rgba(255,255,255,.02);
+    }
+    .pick-name{
+      font-size:.82rem;
+      font-weight:800;
+      color: rgba(244,246,255,.92);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      text-align:center;
+    }
+
+    /* Mobile / Responsive */
+    @media (max-width: 980px){
+      .burger{display:grid}
+      #sbToggle{display:none}
+
+      .sidebar{
+        position: fixed;
+        top: 18px; bottom: 18px; left: 18px;
+        transform: translateX(-110%);
+        transition: .22s ease;
+        z-index: 30;
+      }
+      .sidebar.open{transform: translateX(0)}
+      .backdrop{
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.55);
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+        opacity:0;
+        pointer-events:none;
+        transition:.22s ease;
+        z-index: 25;
+      }
+      .backdrop.show{opacity:1; pointer-events:auto;}
+      .app{padding: 14px;}
+
+      .modal-controls input{min-width: 0; width:100%;}
+      .modal-controls select{min-width: 0; width:100%;}
+    }
+  </style>
+</head>
+
+<body>
+  <div class="backdrop" id="backdrop"></div>
+
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-left">
+          <div class="logo">FF</div>
+          <div class="brand-text">
+            <h1>Free Fire</h1>
+            <small class="muted">Caster Dashboard</small>
+          </div>
+        </div>
+      </div>
+
+      <nav class="nav" id="nav">
+        <a class="nav-item active" href="dashboard.html" data-page="dashboard.html" title="Dashboard">
+          <span class="nav-ico">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M4 13h7V4H4v9Zm9 7h7V4h-7v16ZM4 20h7v-5H4v5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </span>
+          <span class="nav-label">Dashboard</span>
+        </a>
+
+        <a class="nav-item" href="char.html" data-page="char.html" title="Character Skills">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4 0-7 2-7 4v2h14v-2c0-2-3-4-7-4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Character Skills</span>
+        </a>
+
+        <a class="nav-item" href="pet.html" data-page="pet.html" title="Pets">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M7 14c-1.7 0-3-1.3-3-3S5.3 8 7 8s3 1.3 3 3-1.3 3-3 3Zm10 0c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3ZM7 20c-2.8 0-5-1.8-5-4v-1h6v1c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2v-1h6v1c0 2.2-2.2 4-5 4H7Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Pets</span>
+        </a>
+
+        <a class="nav-item" href="weapon.html" data-page="weapon.html" title="Weapons">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M3 21l6-6m0 0 2 2 8-8-2-2-8 8Zm0 0-2-2 4-4 2 2-4 4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Weapons</span>
+        </a>
+
+        <a class="nav-item" href="map.html" data-page="map.html" title="Map">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M10 6 4 8v14l6-2 4 2 6-2V6l-6 2-4-2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Map</span>
+        </a>
+
+        <a class="nav-item" href="split-view.html" data-page="split-view.html" title="Split View">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16M4 12h16M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Split View</span>
+        </a>
+
+        <a class="nav-item" href="clash-draft.html" data-page="clash-draft.html" title="Clash Squad Draft">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h10M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Draft</span>
+        </a>
+
+        <a class="nav-item" href="clash-data.html" data-page="clash-data.html" title="Clash Squad Data">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19V5m0 14h16M8 17v-6m4 6V7m4 10v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Data</span>
+        </a>
+
+        <a class="nav-item" href="clash-compare.html" data-page="clash-compare.html" title="Clash Squad Comparison">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M10 3v18M14 3v18M4 7h6M14 17h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Comparison</span>
+        </a>
+
+        <a class="nav-item" href="clash-report.html" data-page="clash-report.html" title="Clash Squad Team Report">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Team Report</span>
+        </a>
+
+        <a class="nav-item" href="clash-store.html" data-page="clash-store.html" title="Clash Squad Store">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16l-1 14H5L4 7Zm3 0 1-3h8l1 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Clash Squad Store</span>
+        </a>
+
+        <a class="nav-item" href="br_team2.html" data-page="br_team2.html" title="BR Data">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M6 20V10m6 10V4m6 16v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">BR Data</span>
+        </a>
+
+        <a class="nav-item" href="ff-update.html" data-page="ff-update.html" title="Free Fire Update">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2v6m0 14v-6M4.9 4.9l4.2 4.2m10.8 10.8-4.2-4.2M2 12h6m14 0h-6M4.9 19.1l4.2-4.2m10.8-10.8-4.2 4.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Free Fire Update</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <header class="topbar">
+        <!-- mobile menu -->
+        <button class="burger icon-btn" id="burger" aria-label="Open menu" title="Menu">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+
+        <!-- desktop collapse (next to search) -->
+        <button class="icon-btn" id="sbToggle" aria-label="Collapse sidebar" title="Collapse sidebar">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path id="sbTogglePath" d="M14 7l-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;opacity:.85">
+            <path d="M21 21l-4.3-4.3m1.3-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <input id="searchInput" placeholder="Search pages..." />
+        </div>
+
+        <div class="top-actions">
+          <div class="userchip">
+            <div class="avatar"></div>
+            <div class="usertext">
+              <b id="gamertag">PlayerOne</b>
+              <span id="userEmail" class="muted">loading…</span>
+            </div>
+          </div>
+
+          <a class="logout" href="#" id="logoutBtn">Logout</a>
+        </div>
+      </header>
+
+      <section class="content">
+        <div class="card">
+          <div class="hero">
+            <div class="hero-content">
+              <div class="hero-title">
+                <h2>Free Fire Dashboard</h2>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-inner">
+            <div class="dash-grid">
+              <!-- LEFT -->
+              <div>
+                <div class="quickbar">
+                  <!-- Character -->
+                  <div class="qv-item" data-open="character" role="button" tabindex="0" aria-label="Choose Character">
+                    <div class="qv-head">
+                      <div class="qv-title">
+                        Character
+                        <span class="qv-count" id="charCount">—</span>
+                      </div>
+                      <div class="qv-edit" aria-hidden="true" title="Choose Character">
+                        <svg viewBox="0 0 24 24" fill="none">
+                          <path d="M4 20h4l10.5-10.5a2.8 2.8 0 0 0 0-4L17.5 4a2.8 2.8 0 0 0-4 0L3 14.5V18a2 2 0 0 0 2 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                          <path d="M13.5 6.5 17.5 10.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                      </div>
+                    </div>
+                    <div class="qv-body">
+                      <div class="qv-thumb"><img id="charThumb" alt="Character" /></div>
+                      <div class="qv-meta">
+                        <b id="charName">—</b>
+                        <span id="charDesc">—</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Pet -->
+                  <div class="qv-item" data-open="pet" role="button" tabindex="0" aria-label="Choose Pet">
+                    <div class="qv-head">
+                      <div class="qv-title">
+                        Pet
+                        <span class="qv-count" id="petCount">—</span>
+                      </div>
+                      <div class="qv-edit" aria-hidden="true" title="Choose Pet">
+                        <svg viewBox="0 0 24 24" fill="none">
+                          <path d="M4 20h4l10.5-10.5a2.8 2.8 0 0 0 0-4L17.5 4a2.8 2.8 0 0 0-4 0L3 14.5V18a2 2 0 0 0 2 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                          <path d="M13.5 6.5 17.5 10.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                      </div>
+                    </div>
+                    <div class="qv-body">
+                      <div class="qv-thumb"><img id="petThumb" alt="Pet" /></div>
+                      <div class="qv-meta">
+                        <b id="petName">—</b>
+                        <span id="petDesc">—</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Weapon (Quick View = Weapon 1) -->
+                  <div class="qv-item" data-open="weapon" role="button" tabindex="0" aria-label="Choose Weapon">
+                    <div class="qv-head">
+                      <div class="qv-title">
+                        Weapon
+                        <span class="qv-count" id="weaponCount">—</span>
+                      </div>
+                      <div class="qv-edit" aria-hidden="true" title="Choose Weapon">
+                        <svg viewBox="0 0 24 24" fill="none">
+                          <path d="M4 20h4l10.5-10.5a2.8 2.8 0 0 0 0-4L17.5 4a2.8 2.8 0 0 0-4 0L3 14.5V18a2 2 0 0 0 2 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                          <path d="M13.5 6.5 17.5 10.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                      </div>
+                    </div>
+                    <div class="qv-body">
+                      <div class="qv-thumb"><img id="weaponThumb" alt="Weapon" /></div>
+                      <div class="qv-meta">
+                        <b id="weaponName">—</b>
+                        <span id="weaponDesc">—</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Build Panel (replicate layout) -->
+                <div class="buildbar">
+                  <div class="build-panel" id="buildPanel">
+                    <div class="bp-top">
+                      <!-- Active -->
+                      <div class="bp-slot bp-active" data-build-slot="active" data-type="character" data-badge="Active" title="Active Character">
+                        <img id="bpActiveImg" alt="Active Character" />
+                      </div>
+
+                      <!-- Weapons wide box -->
+                      <div class="bp-weapons" title="Weapons">
+                        <div class="bp-mini" data-build-slot="weapon0" data-type="weapon" data-badge="Weapon 1" title="Weapon 1">
+                          <img id="bpWeapon1Img" alt="Weapon 1" />
+                        </div>
+                        <div class="bp-mini" data-build-slot="weapon1" data-type="weapon" data-badge="Weapon 2" title="Weapon 2">
+                          <img id="bpWeapon2Img" alt="Weapon 2" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="bp-bottom">
+                      <!-- Passives -->
+                      <div class="bp-slot" data-build-slot="passive0" data-type="character" data-badge="Passive 1" title="Passive 1">
+                        <img id="bpPassive1Img" alt="Passive 1" />
+                      </div>
+                      <div class="bp-slot" data-build-slot="passive1" data-type="character" data-badge="Passive 2" title="Passive 2">
+                        <img id="bpPassive2Img" alt="Passive 2" />
+                      </div>
+                      <div class="bp-slot" data-build-slot="passive2" data-type="character" data-badge="Passive 3" title="Passive 3">
+                        <img id="bpPassive3Img" alt="Passive 3" />
+                      </div>
+
+                      <!-- Pet -->
+                      <div class="bp-slot" data-build-slot="pet" data-type="pet" data-badge="Pet" title="Pet">
+                        <img id="bpPetImg" alt="Pet" />
+                      </div>
+
+                      <!-- Loadout -->
+                      <div class="bp-slot" data-build-slot="loadout" data-type="loadout" data-badge="Loadout" title="Loadout">
+                        <img id="bpLoadoutImg" alt="Loadout" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="muted" style="font-size:.8rem; padding: 10px 2px 0 2px;">
+                  Free Fire Caster © 2025 — Neptune
+                </div>
+              </div>
+
+              <!-- RIGHT: Combined Description -->
+              <div class="build-summary" id="buildSummary">
+                <h4>Current Build</h4>
+                <div class="muted" style="font-size:.85rem;">Select slots to see combined details.</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Picker Modal -->
+  <div class="modal" id="pickerModal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="Picker">
+      <div class="modal-top">
+        <div>
+          <h3 id="pickerTitle">Select</h3>
+          <p id="pickerSub">Click an item to apply it.</p>
+        </div>
+        <button class="icon-btn" id="pickerClose" aria-label="Close picker" title="Close">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <!-- Search + Filters -->
+      <div class="modal-controls">
+        <div class="modal-row">
+          <input id="pickerSearch" placeholder="Search..." />
+          <!-- used for Pets/Weapons (category) -->
+          <select id="pickerFilterSelect" style="display:none"></select>
+          <div class="modal-count" id="pickerCount">—</div>
+        </div>
+        <!-- used for Characters (meta/skill type) -->
+        <div class="filter-pills" id="pickerFilterPills" style="display:none"></div>
+      </div>
+
+      <div class="modal-grid" id="pickerGrid"></div>
+    </div>
+  </div>
+
   <script>
+    /***********************
+     * Supabase Auth
+     ***********************/
     const client = supabase.createClient(
       'https://gkugecflfddkpitlrmws.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
     );
 
-    client.auth.getSession().then(({ data: { session } }) => {
+    async function ensureSession(){
+      const { data: { session } } = await client.auth.getSession();
       if (!session) {
         window.location.href = "index.html";
-      } else {
-        const userInfo = document.getElementById("user-info");
-        if (userInfo && session.user?.email) {
-          userInfo.textContent = "Logged in as: " + session.user.email;
-        }
+        return null;
       }
+      return session;
+    }
+
+    async function logout(){
+      await client.auth.signOut();
+      window.location.href = "index.html";
+    }
+
+    /***********************
+     * Sidebar + Topbar UX
+     ***********************/
+    const sidebar = document.getElementById('sidebar');
+    const burger = document.getElementById('burger');
+    const backdrop = document.getElementById('backdrop');
+
+    function openSidebar(){
+      sidebar.classList.add('open');
+      backdrop.classList.add('show');
+    }
+    function closeSidebar(){
+      sidebar.classList.remove('open');
+      backdrop.classList.remove('show');
+    }
+
+    burger?.addEventListener('click', () => {
+      if (sidebar.classList.contains('open')) closeSidebar();
+      else openSidebar();
+    });
+    backdrop?.addEventListener('click', closeSidebar);
+
+    // desktop collapse toggle (in header)
+    (function initSidebarCollapse(){
+      const key = 'ff_sidebar_collapsed_v1';
+      const saved = localStorage.getItem(key);
+      if (saved === '1') sidebar.classList.add('collapsed');
+
+      const btn = document.getElementById('sbToggle');
+      const path = document.getElementById('sbTogglePath');
+
+      function syncIcon(){
+        if (!path) return;
+        path.setAttribute('d', sidebar.classList.contains('collapsed')
+          ? 'M10 7l5 5-5 5'
+          : 'M14 7l-5 5 5 5'
+        );
+      }
+
+      syncIcon();
+
+      btn?.addEventListener('click', () => {
+        sidebar.classList.toggle('collapsed');
+        localStorage.setItem(key, sidebar.classList.contains('collapsed') ? '1' : '0');
+        syncIcon();
+      });
+    })();
+
+    // highlight active nav based on filename
+    (function setActiveNav(){
+      const here = (location.pathname.split('/').pop() || 'dashboard.html').toLowerCase();
+      document.querySelectorAll('.nav-item').forEach(a => {
+        const page = (a.getAttribute('data-page') || '').toLowerCase();
+        a.classList.toggle('active', page === here);
+      });
+    })();
+
+    // sidebar search filters nav items
+    document.getElementById('searchInput')?.addEventListener('input', (e) => {
+      const q = (e.target.value || '').toLowerCase().trim();
+      document.querySelectorAll('#nav .nav-item').forEach(a => {
+        const txt = a.textContent.toLowerCase();
+        a.style.display = (!q || txt.includes(q)) ? '' : 'none';
+      });
     });
 
-    function logout() {
-      client.auth.signOut().then(() => {
-        window.location.href = "index.html";
-      });
-    }
-  </script>
+    /***********************
+     * Data
+     ***********************/
+    const DATA = {
+      character: { url:'https://neptuneg1.github.io/freefire-caster/character.json', items:[], selected:0 },
+      pet:       { url:'https://neptuneg1.github.io/freefire-caster/pet.json',       items:[], selected:0 },
+      weapon:    { url:'https://neptuneg1.github.io/freefire-caster/weapon.json',    items:[], selected:0 },
+      loadout:   { url:'https://neptuneg1.github.io/freefire-caster/loadout.json',   items:[], selected:0 },
+    };
 
-  
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto&display=swap" rel="stylesheet">
-  <style>
-    body {
-      margin: 0;
-      font-family: 'Roboto', sans-serif;
-      background: #0e0e0e;
-      color: #f5f5f5;
-    }
+    // filter state per popup
+    const FILTER_STATE = {
+      character: 'all', // all | brmeta | csmeta | active | passive
+      pet: 'all',       // all | <category>
+      weapon: 'all',    // all | <category>
+      loadout: 'all'
+    };
 
-    header {
-      background: #1f1f1f;
-      padding: 20px;
-      text-align: center;
-      border-bottom: 3px solid #ffbd59;
-    }
+    // Build panel state
+    const BUILD = {
+      active: 0,
+      passives: [0,0,0],
+      pet: 0,
+      loadout: 0,
+      weapons: [0,0]
+    };
 
-    header h1 {
-      font-family: 'Orbitron', sans-serif;
-      color: #ffbd59;
-      margin: 0;
-      font-size: 2rem;
-    }
+    function safeText(v){ return (v ?? '').toString(); }
+    function norm(v){ return safeText(v).trim(); }
+    function normLower(v){ return norm(v).toLowerCase(); }
 
-    #user-info {
-      font-size: 0.9rem;
-      text-align: center;
-      color: #ccc;
-      margin-top: 4px;
+    function pickImg(item){
+      return item?.image_url || item?.icon || item?.img || 'https://i.imgur.com/qXFpizS.jpg';
     }
 
-    .legend {
-      text-align: center;
-      margin-top: 10px;
+    function getCategory(type, item){
+      if (!item) return 'Other';
+      if (type === 'pet'){
+        return norm(item.category || item.type || item.pet_type || item.group || item.role || 'Other') || 'Other';
+      }
+      if (type === 'weapon'){
+        return norm(item.category || item.type || item.weapon_type || item.class || item.group || 'Other') || 'Other';
+      }
+      return 'Other';
     }
 
-    .legend span {
-      font-weight: bold;
-      margin: 0 10px;
+    function buildDesc(type, item){
+      if (!item) return '—';
+
+      if (type === 'character'){
+        const skill = safeText(item.skill || '');
+        const d = safeText(item.description || '');
+        return (skill ? skill : '—') + (d ? `\n${d}` : '');
+      }
+
+      if (type === 'pet'){
+        const skill = safeText(item.skill || item.ability || '');
+        const d = safeText(item.description || '');
+        return (skill ? skill : '—') + (d ? `\n${d}` : '');
+      }
+
+      if (type === 'weapon'){
+        const parts = [];
+        const cat = safeText(item.category || item.type || item.class || '');
+        const sp  = safeText(item.special || item.unique || item.passive || item.effect || '');
+        const d   = safeText(item.description || item.desc || '');
+
+        if (cat) parts.push(cat);
+        if (sp)  parts.push(sp);
+        if (d)   parts.push(d);
+
+        if (!parts.length){
+          const statKeys = ["damage","rate","range","accuracy","magazine","reload","armor_pen","move_speed"];
+          const statParts = statKeys
+            .filter(k => item[k] !== undefined && item[k] !== null && String(item[k]).trim() !== '')
+            .map(k => `${k.toUpperCase()}: ${item[k]}`);
+          if (statParts.length) parts.push(statParts.join(" • "));
+        }
+
+        return parts.join("\n") || '—';
+      }
+
+      // loadout
+      const d = safeText(item.description || '');
+      const br = safeText(item.br || '');
+      const cs = safeText(item.cs || '');
+
+      if (d) return d;
+      const parts = [];
+      if (br) parts.push(`BR:\n${br}`);
+      if (cs) parts.push(`CS:\n${cs}`);
+      return parts.join("\n\n") || '—';
     }
 
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-      gap: 12px;
-      padding: 40px;
-      max-width: 1300px;
-      margin: auto;
+    async function loadJson(url){
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error('Fetch failed: ' + url);
+      return await res.json();
     }
 
-    .card {
-      position: relative;
-      cursor: pointer;
-      outline: none;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
+    /***********************
+     * Quick View render
+     ***********************/
+    function applyQuickView(type){
+      const state = DATA[type];
+      const item = state.items[state.selected] || state.items[0];
+      if (!item) return;
 
-    .card img {
-      width: 80%;
-      aspect-ratio: 3/4;
-      object-fit: cover;
-      border-radius: 8px;
-      border: 2px solid #ffbd59;
-    }
+      const img = pickImg(item);
+      const name = safeText(item.name || '—');
+      const desc = buildDesc(type, item);
 
-    .card img.active {
-      border-color: #00d2ff;
-    }
-
-    .card img.passive {
-      border-color: #ff59c7;
-    }
-
-    .char-name {
-      margin-top: 6px;
-      text-align: center;
-      font-size: 0.85rem;
-      color: #ffbd59;
-      font-weight: bold;
-      word-break: break-word;
-    }
-
-    .tooltip {
-      display: none;
-      position: fixed;
-      background: #1c1c1c;
-      padding: 10px;
-      border: 1px solid #ffbd59;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      color: #fff;
-      width: 220px;
-      word-break: break-word;
-      white-space: normal;
-      z-index: 9999;
-      box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
-    }
-
-    .tooltip.active {
-      display: block;
-    }
-
-    @media (hover: hover) {
-      .card:hover .tooltip {
-        display: block;
-        position: absolute;
-        bottom: 110%;
-        left: 50%;
-        transform: translateX(-50%);
+      if (type === 'character'){
+        document.getElementById('charThumb').src = img;
+        document.getElementById('charName').textContent = name;
+        document.getElementById('charDesc').textContent = desc || '—';
+      } else if (type === 'pet'){
+        document.getElementById('petThumb').src = img;
+        document.getElementById('petName').textContent = name;
+        document.getElementById('petDesc').textContent = desc || '—';
+      } else if (type === 'weapon'){
+        document.getElementById('weaponThumb').src = img;
+        document.getElementById('weaponName').textContent = name;
+        document.getElementById('weaponDesc').textContent = desc || '—';
       }
     }
 
-    .nav-buttons {
-      text-align: center;
-      margin: 20px 0;
+    function setCounts(){
+      document.getElementById('charCount').textContent = DATA.character.items.length ? DATA.character.items.length.toLocaleString() : '—';
+      document.getElementById('petCount').textContent = DATA.pet.items.length ? DATA.pet.items.length.toLocaleString() : '—';
+      document.getElementById('weaponCount').textContent = DATA.weapon.items.length ? DATA.weapon.items.length.toLocaleString() : '—';
     }
 
-    .nav-buttons a,
-    .logout-btn {
-      display: inline-block;
-      background: #ffbd59;
-      color: #1c1c1c;
-      padding: 10px 20px;
-      font-weight: bold;
-      border-radius: 6px;
-      text-decoration: none;
-      margin: 0 10px;
-      transition: background 0.2s;
+    /***********************
+     * Build panel render
+     ***********************/
+    function firstIndex(items, predicate){
+      const i = (items || []).findIndex(predicate);
+      return i >= 0 ? i : 0;
     }
 
-    .nav-buttons a:hover,
-    .logout-btn:hover {
-      background: #e0a84f;
+    function initBuildDefaults(){
+      const chars = DATA.character.items || [];
+      const pets = DATA.pet.items || [];
+      const weapons = DATA.weapon.items || [];
+      const loadouts = DATA.loadout.items || [];
+
+      // active = first non-passive
+      BUILD.active = firstIndex(chars, c => normLower(c?.skill_type || '') !== 'passive');
+
+      // passives = first 3 passives
+      const passiveIdx = chars
+        .map((c, idx) => ({c, idx}))
+        .filter(x => normLower(x.c?.skill_type || '') === 'passive')
+        .map(x => x.idx);
+
+      BUILD.passives = [
+        passiveIdx[0] ?? 0,
+        passiveIdx[1] ?? passiveIdx[0] ?? 0,
+        passiveIdx[2] ?? passiveIdx[1] ?? passiveIdx[0] ?? 0
+      ];
+
+      BUILD.pet = pets.length ? 0 : 0;
+      BUILD.loadout = loadouts.length ? 0 : 0;
+
+      BUILD.weapons = [
+        weapons.length ? 0 : 0,
+        weapons.length > 1 ? 1 : (weapons.length ? 0 : 0)
+      ];
+
+      applyBuildSlots();
     }
 
-    .logout-btn {
-      cursor: pointer;
-      border: none;
+    function applyBuildSlots(){
+      const chars = DATA.character.items || [];
+      const pets = DATA.pet.items || [];
+      const weapons = DATA.weapon.items || [];
+      const loadouts = DATA.loadout.items || [];
+
+      const active = chars[BUILD.active] || chars[0];
+      const p1 = chars[BUILD.passives[0]] || chars[0];
+      const p2 = chars[BUILD.passives[1]] || chars[0];
+      const p3 = chars[BUILD.passives[2]] || chars[0];
+      const pet = pets[BUILD.pet] || pets[0];
+      const loadout = loadouts[BUILD.loadout] || loadouts[0];
+
+      const w1 = weapons[BUILD.weapons[0]] || weapons[0];
+      const w2 = weapons[BUILD.weapons[1]] || weapons[0];
+
+      document.getElementById('bpActiveImg').src   = active ? pickImg(active) : '';
+      document.getElementById('bpPassive1Img').src = p1 ? pickImg(p1) : '';
+      document.getElementById('bpPassive2Img').src = p2 ? pickImg(p2) : '';
+      document.getElementById('bpPassive3Img').src = p3 ? pickImg(p3) : '';
+      document.getElementById('bpPetImg').src      = pet ? pickImg(pet) : '';
+      document.getElementById('bpLoadoutImg').src  = loadout ? pickImg(loadout) : '';
+      document.getElementById('bpWeapon1Img').src  = w1 ? pickImg(w1) : '';
+      document.getElementById('bpWeapon2Img').src  = w2 ? pickImg(w2) : '';
+
+      // keep quickview weapon synced to Weapon 1 (optional, but feels natural)
+      if (weapons.length){
+        DATA.weapon.selected = BUILD.weapons[0];
+        applyQuickView('weapon');
+      }
+
+      renderBuildSummary();
     }
 
-    /* Compact overview styles */
-    .compact-role-container {
-      max-width: 1300px;
-      margin: 0 auto 60px;
-      padding: 0 40px;
-    }
+    function renderBuildSummary(){
+      const box = document.getElementById('buildSummary');
+      if (!box) return;
 
-    .role-group {
-      margin-bottom: 30px;
-      padding: 10px 15px;
-      background: #1a1a1a;
-      border-radius: 8px;
-      border: 1px solid #333;
-    }
+      const chars = DATA.character.items || [];
+      const pets = DATA.pet.items || [];
+      const weapons = DATA.weapon.items || [];
+      const loadouts = DATA.loadout.items || [];
 
-    .role-title {
-      color: #ffbd59;
-      font-weight: bold;
-      font-size: 1.1rem;
-      margin: 10px 0;
-    }
+      const active = chars[BUILD.active] || chars[0];
+      const p1 = chars[BUILD.passives[0]] || chars[0];
+      const p2 = chars[BUILD.passives[1]] || chars[0];
+      const p3 = chars[BUILD.passives[2]] || chars[0];
 
-    .grid.compact {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: flex-start;
-    }
+      const pet = pets[BUILD.pet] || pets[0];
+      const loadout = loadouts[BUILD.loadout] || loadouts[0];
 
-    .grid.compact .card {
-      width: 70px;
-      height: 100px;
-      padding: 4px;
-      box-sizing: border-box;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    .grid.compact .card img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      border: 2px solid transparent;
-      border-radius: 6px;
-      transition: transform 0.2s ease;
-    }
+      const w1 = weapons[BUILD.weapons[0]] || weapons[0];
+      const w2 = weapons[BUILD.weapons[1]] || weapons[0];
 
-    .grid.compact .card img.active {
-      border-color: #00d2ff;
-    }
+      const blocks = [
+        { label:"Active", type:"character", item: active },
+        { label:"Passive 1", type:"character", item: p1 },
+        { label:"Passive 2", type:"character", item: p2 },
+        { label:"Passive 3", type:"character", item: p3 },
+        { label:"Pet", type:"pet", item: pet },
+        { label:"Loadout", type:"loadout", item: loadout },
+        { label:"Weapon 1", type:"weapon", item: w1 },
+        { label:"Weapon 2", type:"weapon", item: w2 },
+      ];
 
-    .grid.compact .card img.passive {
-      border-color: #ff59c7;
-    }
-
-    .grid.compact .char-name,
-    .grid.compact .tooltip {
-      display: none;
-    }
-
-    .compact-name {
-      text-align: center;
-      font-size: 0.7rem;
-      color: #ccc;
-      margin-top: 4px;
-      word-break: break-word;
-      line-height: 1.1;
-      max-width: 72px;
-    }
-
-    
-    .grid.compact .card img:hover {
-      transform: scale(1.05);
-    }
-    
-  </style>
-</head>
-<body>
-  <header>
-    <h1>Character Gallery</h1>
-    <p id="user-info">Checking login...</p>
-  </header>
-
-  <div class="legend">
-    <span style="color: #00d2ff;">■ Active Skill</span>
-    <span style="color: #ff59c7;">■ Passive Skill</span>
-  </div>
-
-  <div class="nav-buttons">
-    <a href="dashboard.html">← Back to Dashboard</a>
-    <a href="character-comparison.html">➤ Compare Characters</a>
-    <button class="logout-btn" onclick="logout()">Logout</button>
-  </div>
-
-  <!-- Main full grid -->
-  <div class="grid" id="characterGrid">
-    <p>Loading characters...</p>
-  </div>
-
-  <!-- Compact overview section -->
-  <h2 style="text-align:center; margin-top: 40px; color:#ffbd59;">Overview by Role</h2>
-  <div id="compactByRole" class="compact-role-container"></div>
-
-  <script>
-    fetch('https://neptuneg1.github.io/freefire-caster/character.json')
-      .then(res => res.json())
-      .then(characters => {
-        // Populate full character grid
-        const container = document.getElementById('characterGrid');
-        container.innerHTML = characters.map((c, i) => `
-          <div class="card" tabindex="0" onclick="toggleTooltip(event, ${i})">
-            <img src="${c.image_url}" alt="${c.name}" class="${c.skill_type === 'Passive' ? 'passive' : 'active'}" />
-            <div class="char-name">${c.name}</div>
-            <div class="tooltip" id="tooltip-${i}">
-              <strong>${c.name}</strong><br>
-              <em>${c.skill_type} Skill:</em> ${c.skill}<br>
-              ${c.description}<br>
-              <strong>Role:</strong> ${c.role || 'N/A'}
+      box.innerHTML = `
+        <h4>Current Build</h4>
+        ${blocks.map(b => {
+          const name = safeText(b.item?.name || '—');
+          const img = b.item ? pickImg(b.item) : '';
+          const desc = buildDesc(b.type, b.item);
+          return `
+            <div class="sum-item">
+              <div class="sum-head">
+                <div class="sum-ico">${img ? `<img src="${img}" alt="">` : ''}</div>
+                <div class="sum-title">
+                  <b>${b.label}: ${name}</b>
+                  <small>${(b.type || '').toUpperCase()}</small>
+                </div>
+              </div>
+              <div class="sum-desc">${(desc || '—').replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
             </div>
-          </div>
+          `;
+        }).join("")}
+      `;
+    }
+
+    /***********************
+     * Picker Modal
+     ***********************/
+    const modal = document.getElementById('pickerModal');
+    const pickerTitle = document.getElementById('pickerTitle');
+    const pickerSub = document.getElementById('pickerSub');
+    const pickerSearch = document.getElementById('pickerSearch');
+    const pickerCount = document.getElementById('pickerCount');
+    const pickerGrid = document.getElementById('pickerGrid');
+    const pickerClose = document.getElementById('pickerClose');
+    const pickerFilterSelect = document.getElementById('pickerFilterSelect');
+    const pickerFilterPills = document.getElementById('pickerFilterPills');
+
+    let currentPickerType = 'character';
+
+    // where to apply selection
+    let PICK_TARGET = { kind:'quickview', type:'character', slot:null };
+
+    function openPicker(type, target){
+      currentPickerType = type;
+      PICK_TARGET = target || { kind:'quickview', type, slot:null };
+
+      // force defaults for build character slots
+      if (PICK_TARGET.kind === 'build' && type === 'character'){
+        if (PICK_TARGET.slot === 'active') FILTER_STATE.character = 'active';
+        if (String(PICK_TARGET.slot || '').startsWith('passive')) FILTER_STATE.character = 'passive';
+      }
+
+      const label = type === 'character' ? 'Character'
+                  : type === 'pet' ? 'Pet'
+                  : type === 'weapon' ? 'Weapon'
+                  : 'Loadout';
+
+      let titleLabel = `Select ${label}`;
+      if (PICK_TARGET.kind === 'build'){
+        if (PICK_TARGET.slot === 'active') titleLabel = 'Select Active Character';
+        if (String(PICK_TARGET.slot || '').startsWith('passive')) titleLabel = 'Select Passive Character';
+        if (PICK_TARGET.slot === 'pet') titleLabel = 'Select Pet';
+        if (String(PICK_TARGET.slot || '').startsWith('weapon')) titleLabel = 'Select Weapon';
+        if (PICK_TARGET.slot === 'loadout') titleLabel = 'Select Loadout';
+      }
+
+      pickerTitle.textContent = titleLabel;
+      pickerSub.textContent = `Click an item to apply it.`;
+      pickerSearch.value = '';
+
+      setupPickerFilters();
+      renderPickerGrid();
+
+      modal.classList.add('show');
+      modal.setAttribute('aria-hidden','false');
+      setTimeout(() => pickerSearch.focus(), 0);
+    }
+
+    function closePicker(){
+      modal.classList.remove('show');
+      modal.setAttribute('aria-hidden','true');
+    }
+
+    function setupPickerFilters(){
+      pickerFilterSelect.onchange = null;
+
+      if (currentPickerType === 'character'){
+        pickerFilterSelect.style.display = 'none';
+        pickerFilterPills.style.display = 'flex';
+
+        const options = [
+          { id:'all', label:'All' },
+          { id:'brmeta', label:'BR Meta' },
+          { id:'csmeta', label:'CS Meta' },
+          { id:'active', label:'Active' },
+          { id:'passive', label:'Passive' },
+        ];
+
+        pickerFilterPills.innerHTML = options.map(opt => `
+          <button class="pill-btn ${FILTER_STATE.character === opt.id ? 'active' : ''}" data-f="${opt.id}">
+            ${opt.label}
+          </button>
         `).join('');
 
-        // Grouped compact overview
-        // Bottom compact overview (grouped by role with icons)
-      const compactByRole = document.getElementById('compactByRole');
-      const roleGroups = {};
-      const roleIcons = {
-        Attack: "⚔️",
-        Support: "🛡️",
-        Info: "📡",
-        Heal: "💊",
-        Defense: "🛡️",
-        Scout: "👁️",
-        Other: "❓"
-      };
-      
-      characters.forEach(c => {
-        const role = c.role || 'Other';
-        if (!roleGroups[role]) roleGroups[role] = [];
-        roleGroups[role].push(c);
+        pickerFilterPills.querySelectorAll('button').forEach(btn => {
+          btn.addEventListener('click', () => {
+            FILTER_STATE.character = btn.getAttribute('data-f') || 'all';
+            pickerFilterPills.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+            renderPickerGrid();
+          });
+        });
+
+      } else if (currentPickerType === 'pet' || currentPickerType === 'weapon') {
+        pickerFilterPills.style.display = 'none';
+        pickerFilterSelect.style.display = 'inline-flex';
+
+        const items = DATA[currentPickerType].items || [];
+        const cats = Array.from(new Set(items.map(it => getCategory(currentPickerType, it)).filter(Boolean)))
+          .sort((a,b) => a.localeCompare(b));
+
+        const stateKey = currentPickerType;
+        const current = FILTER_STATE[stateKey] || 'all';
+
+        pickerFilterSelect.innerHTML = [
+          `<option value="all">All</option>`,
+          ...cats.map(c => `<option value="${c}">${c}</option>`)
+        ].join('');
+
+        pickerFilterSelect.value = cats.includes(current) ? current : 'all';
+        FILTER_STATE[stateKey] = pickerFilterSelect.value;
+
+        pickerFilterSelect.onchange = () => {
+          FILTER_STATE[stateKey] = pickerFilterSelect.value || 'all';
+          renderPickerGrid();
+        };
+      } else {
+        // loadout: no category filter
+        pickerFilterPills.style.display = 'none';
+        pickerFilterSelect.style.display = 'none';
+      }
+    }
+
+    function passesTypeFilter(it){
+      if (!it) return false;
+
+      if (currentPickerType === 'character'){
+        const f = FILTER_STATE.character || 'all';
+        if (f === 'all') return true;
+
+        if (f === 'brmeta') return normLower(it.meta || 'no') === 'yes';
+        if (f === 'csmeta') return normLower(it.cs_meta || 'no') === 'yes';
+        if (f === 'active') return normLower(it.skill_type || '') !== 'passive';
+        if (f === 'passive') return normLower(it.skill_type || '') === 'passive';
+        return true;
+      }
+
+      if (currentPickerType === 'pet'){
+        const f = FILTER_STATE.pet || 'all';
+        if (f === 'all') return true;
+        return getCategory('pet', it) === f;
+      }
+
+      if (currentPickerType === 'weapon'){
+        const fw = FILTER_STATE.weapon || 'all';
+        if (fw === 'all') return true;
+        return getCategory('weapon', it) === fw;
+      }
+
+      // loadout
+      return true;
+    }
+
+    function renderPickerGrid(){
+      const state = DATA[currentPickerType];
+      const q = (pickerSearch.value || '').toLowerCase().trim();
+      const all = state.items || [];
+
+      const filtered = all.filter(it => {
+        if (!passesTypeFilter(it)) return false;
+        if (!q) return true;
+
+        const name = safeText(it?.name).toLowerCase();
+        const skill = safeText(it?.skill || it?.type || it?.ability || it?.category || it?.br || it?.cs || '').toLowerCase();
+        const desc = safeText(it?.description || it?.special || it?.desc || '').toLowerCase();
+        return name.includes(q) || skill.includes(q) || desc.includes(q);
       });
-      
-      compactByRole.innerHTML = Object.entries(roleGroups).map(([role, chars]) => {
-        const icon = roleIcons[role] || "🔸";
+
+      pickerCount.textContent = `${filtered.length.toLocaleString()} item${filtered.length===1?'':'s'}`;
+
+      pickerGrid.innerHTML = filtered.map(it => {
+        const idx = all.indexOf(it);
+        const img = pickImg(it);
+        const name = safeText(it?.name || '—');
+        const tip = buildDesc(currentPickerType, it);
+        const safeTip = safeText(tip).replace(/"/g,'&quot;');
         return `
-          <div class="role-group">
-            <div class="role-title">${icon} ${role}</div>
-            <div class="grid compact">
-              ${chars.map(c => `
-                <div class="card" tabindex="0">
-                  <img src="${c.image_url}" alt="${c.name}" class="${c.skill_type === 'Passive' ? 'passive' : 'active'}" />
-                    <div class="compact-name">${c.name}</div>
-                </div>
-              `).join('')}
-            </div>
+          <div class="pick-card" data-idx="${idx}" title="${name}${safeTip ? ' — ' + safeTip : ''}">
+            <div class="pick-thumb"><img src="${img}" alt="${name}" /></div>
+            <div class="pick-name">${name}</div>
           </div>
         `;
       }).join('');
-
-      })
-      .catch(() => {
-        document.getElementById('characterGrid').innerHTML = '<p>Error loading character data.</p>';
-      });
-
-    function toggleTooltip(event, index) {
-      const cards = document.querySelectorAll('.card');
-      cards.forEach((card, i) => {
-        const tooltip = card.querySelector('.tooltip');
-
-        if (i === index) {
-          const isActive = card.classList.contains('active');
-          card.classList.toggle('active');
-
-          if (!isActive) {
-            tooltip.classList.add('active');
-            tooltip.style.display = 'block';
-
-            requestAnimationFrame(() => {
-              const rect = card.getBoundingClientRect();
-              const tooltipRect = tooltip.getBoundingClientRect();
-
-              let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
-              let top = rect.bottom + 10;
-
-              if (left < 10) left = 30;
-              if (left + tooltipRect.width > window.innerWidth - 10) {
-                left = window.innerWidth - tooltipRect.width - 30;
-              }
-              if (top + tooltipRect.height > window.innerHeight - 10) {
-                top = rect.top - tooltipRect.height - 10;
-              }
-
-              tooltip.style.position = 'fixed';
-              tooltip.style.left = `${left}px`;
-              tooltip.style.top = `${Math.max(top, 10)}px`;
-            });
-          } else {
-            tooltip.classList.remove('active');
-            tooltip.style.display = 'none';
-          }
-        } else {
-          card.classList.remove('active');
-          const t = card.querySelector('.tooltip');
-          if (t) {
-            t.classList.remove('active');
-            t.style.display = 'none';
-          }
-        }
-      });
-
-      event.stopPropagation();
     }
 
-    document.body.addEventListener('click', () => {
-      document.querySelectorAll('.card').forEach(card => {
-        card.classList.remove('active');
-        const t = card.querySelector('.tooltip');
-        if (t) {
-          t.classList.remove('active');
-          t.style.display = 'none';
+    pickerClose?.addEventListener('click', closePicker);
+    modal?.addEventListener('click', (e) => { if (e.target === modal) closePicker(); });
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modal.classList.contains('show')) closePicker(); });
+    pickerSearch?.addEventListener('input', renderPickerGrid);
+
+    pickerGrid?.addEventListener('click', (e) => {
+      const card = e.target.closest('.pick-card');
+      if (!card) return;
+      const idx = Number(card.getAttribute('data-idx'));
+      if (Number.isNaN(idx)) return;
+
+      if (PICK_TARGET.kind === 'quickview'){
+        DATA[currentPickerType].selected = idx;
+        applyQuickView(currentPickerType);
+      } else if (PICK_TARGET.kind === 'build'){
+        if (currentPickerType === 'character'){
+          if (PICK_TARGET.slot === 'active'){
+            BUILD.active = idx;
+          } else if (String(PICK_TARGET.slot || '').startsWith('passive')){
+            const n = Number(String(PICK_TARGET.slot).replace('passive',''));
+            if (!Number.isNaN(n) && n >= 0 && n < 3) BUILD.passives[n] = idx;
+          }
+        } else if (currentPickerType === 'pet' && PICK_TARGET.slot === 'pet'){
+          BUILD.pet = idx;
+        } else if (currentPickerType === 'loadout' && PICK_TARGET.slot === 'loadout'){
+          BUILD.loadout = idx;
+        } else if (currentPickerType === 'weapon' && String(PICK_TARGET.slot || '').startsWith('weapon')){
+          const n = Number(String(PICK_TARGET.slot).replace('weapon',''));
+          if (!Number.isNaN(n) && n >= 0 && n < 2) BUILD.weapons[n] = idx;
+        }
+        applyBuildSlots();
+      }
+
+      closePicker();
+    });
+
+    // Quick View openers (whole cards)
+    document.querySelectorAll('.qv-item[data-open]').forEach(el => {
+      const type = el.getAttribute('data-open');
+      el.addEventListener('click', () => openPicker(type, { kind:'quickview', type, slot:null }));
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openPicker(type, { kind:'quickview', type, slot:null });
         }
       });
+    });
+
+    // Build panel click handling
+    document.getElementById('buildPanel')?.addEventListener('click', (e) => {
+      const mini = e.target.closest('.bp-mini');
+      if (mini){
+        const slot = mini.getAttribute('data-build-slot'); // weapon0/weapon1
+        openPicker('weapon', { kind:'build', type:'weapon', slot });
+        return;
+      }
+
+      const slotEl = e.target.closest('.bp-slot');
+      if (!slotEl) return;
+
+      const slot = slotEl.getAttribute('data-build-slot');
+      const dtype = slotEl.getAttribute('data-type');
+
+      if (dtype === 'character'){
+        openPicker('character', { kind:'build', type:'character', slot });
+      } else if (dtype === 'pet'){
+        openPicker('pet', { kind:'build', type:'pet', slot:'pet' });
+      } else if (dtype === 'loadout'){
+        openPicker('loadout', { kind:'build', type:'loadout', slot:'loadout' });
+      }
+    });
+
+    /***********************
+     * Init
+     ***********************/
+    window.addEventListener('DOMContentLoaded', async () => {
+      const session = await ensureSession();
+      if (!session) return;
+
+      const email = session.user?.email || '';
+      document.getElementById('userEmail').textContent = email || 'signed in';
+      const username = email ? email.split('@')[0] : 'PlayerOne';
+      document.getElementById('gamertag').textContent = username;
+
+      document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        logout();
+      });
+
+      try{
+        const [chars, pets, weapons, loadouts] = await Promise.all([
+          loadJson(DATA.character.url),
+          loadJson(DATA.pet.url),
+          loadJson(DATA.weapon.url),
+          loadJson(DATA.loadout.url),
+        ]);
+
+        DATA.character.items = Array.isArray(chars) ? chars : [];
+        DATA.pet.items = Array.isArray(pets) ? pets : [];
+        DATA.weapon.items = Array.isArray(weapons) ? weapons : [];
+        DATA.loadout.items = Array.isArray(loadouts) ? loadouts : [];
+
+        setCounts();
+
+        DATA.character.selected = 0;
+        DATA.pet.selected = 0;
+        DATA.weapon.selected = 0;
+
+        applyQuickView('character');
+        applyQuickView('pet');
+        applyQuickView('weapon');
+
+        initBuildDefaults();
+      }catch(err){
+        console.error(err);
+        setCounts();
+      }
     });
   </script>
 </body>
