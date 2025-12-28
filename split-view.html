@@ -5,18 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Split View — Characters & Weapons</title>
 
-  <!-- Fonts (same as your Character theme) -->
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
 
   <style>
     :root{
-      /* Match Character page theme */
       --bg:#07090f;
       --bg2:#0b1020;
       --panel: rgba(20, 26, 38, .72);
       --panel2: rgba(14, 18, 28, .70);
       --line: rgba(255,255,255,.08);
-      --stroke: rgba(255,255,255,.10);
       --ink:#f4f6ff;
       --muted:#aab1c5;
 
@@ -24,7 +21,6 @@
       --brand2:#ff7733;
       --accent:#4dd3ff;
 
-      --radius:16px;
       --radius-lg:22px;
       --shadow: 0 22px 70px rgba(0,0,0,.55);
 
@@ -54,7 +50,6 @@
       border-radius:50%;
       border:10px solid rgba(77,211,255,.14);
       transform: translate(-45%, -35%);
-      filter: blur(.2px);
       pointer-events:none;
     }
     body::after{
@@ -64,20 +59,21 @@
       transform: translate(38%, 0%);
     }
 
-    /* App shell */
+    /* Full-bleed layout (NO side margins) */
     .app{
       height:100vh;
       display:flex;
       flex-direction:column;
-      gap:14px;
-      padding:18px;
-      max-width: 1440px;
-      margin:0 auto;
+      gap:12px;
+      padding: 12px 0 0 0;  /* ✅ no left/right padding */
+      margin:0;            /* ✅ no centering */
+      max-width:none;      /* ✅ allow full width */
     }
 
-    /* Topbar (same vibe as character.html topbar) */
+    /* Topbar (full width) */
     .topbar{
       height:var(--header-h);
+      margin: 0 12px; /* keep only a small topbar inset; remove if you want absolute edge */
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: var(--radius-lg);
@@ -92,12 +88,7 @@
       flex:0 0 auto;
     }
 
-    .title{
-      display:flex;
-      flex-direction:column;
-      min-width:0;
-      gap:2px;
-    }
+    .title{display:flex; flex-direction:column; min-width:0; gap:2px;}
     .title h1{
       margin:0;
       font-family: Orbitron, sans-serif;
@@ -107,7 +98,6 @@
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
-      max-width: 520px;
       text-shadow: 0 0 18px rgba(255,189,89,.14);
     }
     .title small{
@@ -117,11 +107,9 @@
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
-      max-width: 520px;
     }
 
     .actions{display:flex; align-items:center; gap:10px; flex:0 0 auto}
-
     .btn{
       padding: 9px 12px;
       border-radius: 12px;
@@ -158,18 +146,22 @@
       border-color: rgba(255,189,89,.28);
     }
 
-    /* Workspace card */
+    /* Workspace goes edge-to-edge */
     .workspace{
       flex:1;
       min-height:0;
+      width:100%;
+      border-top: 1px solid rgba(255,255,255,.06);
       background: var(--panel2);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-lg);
       box-shadow: var(--shadow);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
       overflow:hidden;
       display:flex;
+      border-radius: 0;     /* ✅ no rounding so it hits the edges */
+      border-left: 0;
+      border-right: 0;
+      border-bottom: 0;
     }
 
     iframe{
@@ -178,10 +170,9 @@
       background: transparent;
       width:100%;
     }
-    .left{flex:0 0 40%}   /* 2/5 */
-    .right{flex:0 0 60%}  /* 3/5 */
+    .left{flex:0 0 40%}
+    .right{flex:0 0 60%}
 
-    /* Divider styled like theme */
     .divider{
       width:var(--divider-w);
       cursor:col-resize;
@@ -217,6 +208,10 @@
       opacity:.95;
     }
     .divider.dragging{filter:brightness(1.12)}
+
+    /* Optional: if you want the header also to touch edges, uncomment:
+    .topbar{ margin:0; border-radius:0; border-left:0; border-right:0; }
+    */
   </style>
 </head>
 <body>
@@ -235,7 +230,6 @@
     </header>
 
     <div class="workspace" id="workspace">
-      <!-- adjust filenames if needed -->
       <iframe class="left"  id="paneLeft"  src="character.html" title="Characters"></iframe>
       <div class="divider"  id="divider"   title="Drag to resize (double-click to reset)"></div>
       <iframe class="right" id="paneRight" src="weapon.html"    title="Weapons"></iframe>
@@ -255,7 +249,7 @@
 
       const storeKey = 'ff_split_ratio_v2';
       let isDragging = false;
-      let leftRatio  = parseFloat(localStorage.getItem(storeKey) || '0.40'); // 2/5 default
+      let leftRatio  = parseFloat(localStorage.getItem(storeKey) || '0.40');
 
       function applyWidthsByRatio(ratio){
         const rect = work.getBoundingClientRect();
@@ -268,10 +262,6 @@
         right.style.flex = `0 0 ${rightW}px`;
       }
 
-      function clampX(x, rect){
-        return Math.max(MIN, Math.min(x, rect.width - DIV_W - MIN));
-      }
-
       function startDrag(e){
         isDragging = true;
         divider.classList.add('dragging');
@@ -282,7 +272,7 @@
         if(!isDragging) return;
         const rect = work.getBoundingClientRect();
         let x = e.clientX - rect.left;
-        x = clampX(x, rect);
+        x = Math.max(MIN, Math.min(x, rect.width - DIV_W - MIN));
         leftRatio = x / rect.width;
         applyWidthsByRatio(leftRatio);
       }
@@ -295,12 +285,10 @@
       }
 
       function resetSplit(){
-        leftRatio = 0.40; // 2/5
+        leftRatio = 0.40;
         applyWidthsByRatio(leftRatio);
         localStorage.setItem(storeKey, String(leftRatio));
       }
-
-      function handleResize(){ applyWidthsByRatio(leftRatio); }
 
       divider.addEventListener('pointerdown', startDrag);
       window.addEventListener('pointermove', onDrag);
@@ -309,9 +297,8 @@
 
       reset.addEventListener('click', resetSplit);
       divider.addEventListener('dblclick', resetSplit);
-      window.addEventListener('resize', handleResize);
+      window.addEventListener('resize', () => applyWidthsByRatio(leftRatio));
 
-      // initial
       applyWidthsByRatio(leftRatio);
     })();
   </script>
