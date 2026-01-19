@@ -1,1517 +1,1502 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Free Fire Dashboard</title>
-
-  <!-- Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
-
-  <!-- Supabase JS v2 (CDN) -->
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Free Fire Match Data Uploader</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
   <style>
     :root{
-      --bg:#07090f;
-      --bg2:#0b1020;
+      --bg:#07090f; --bg2:#0b1020;
       --panel: rgba(20, 26, 38, .72);
       --panel2: rgba(14, 18, 28, .70);
-      --line: rgba(255,255,255,.08);
-      --ink:#f4f6ff;
-      --muted:#aab1c5;
-
-      --brand:#ffbd59;
-      --brand2:#ff7733;
-      --accent:#4dd3ff;
-
-      --radius:16px;
-      --radius-lg:22px;
+      --line: rgba(255,255,255,.10);
+      --ink:#f4f6ff; --muted:#aab1c5;
+      --brand:#ffbd59; --brand2:#ff7733; --accent:#4dd3ff;
+      --radius:16px; --radius-lg:22px;
       --shadow: 0 22px 70px rgba(0,0,0,.55);
-
-      --sb-w: 260px;
-      --sb-w-collapsed: 82px;
+      --good:#71d083; --bad:#ff6b6b;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+      --sans: system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
     }
-
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
-      margin:0;
-      font-family: Roboto, system-ui, -apple-system, Segoe UI, Arial;
-      color:var(--ink);
+      margin:0; color:var(--ink);
       background:
-        radial-gradient(900px 500px at 18% 12%, rgba(77,211,255,.15), transparent 60%),
-        radial-gradient(700px 420px at 85% 18%, rgba(255,189,89,.12), transparent 60%),
-        radial-gradient(900px 620px at 50% 110%, rgba(255,119,51,.10), transparent 60%),
+        radial-gradient(1200px 700px at 15% -10%, rgba(77,211,255,.18), transparent 60%),
+        radial-gradient(900px 600px at 90% 0%, rgba(255,189,89,.20), transparent 55%),
+        radial-gradient(900px 600px at 80% 110%, rgba(255,119,51,.16), transparent 55%),
         linear-gradient(180deg, var(--bg), var(--bg2));
+      font-family:var(--sans);
       overflow-x:hidden;
     }
-
-    body::before, body::after{
-      content:"";
-      position:fixed;
-      inset:auto auto 0 0;
-      width:520px; height:520px;
-      border-radius:50%;
-      border:10px solid rgba(77,211,255,.14);
-      transform: translate(-45%, -35%);
-      filter: blur(.2px);
-      pointer-events:none;
+    header{
+      position:sticky; top:0; z-index:50;
+      backdrop-filter: blur(12px);
+      background: linear-gradient(180deg, rgba(7,9,15,.80), rgba(7,9,15,.55));
+      border-bottom:1px solid var(--line);
     }
-    body::after{
-      inset: -120px 0 auto auto;
-      width:420px; height:420px;
-      border:10px solid rgba(77,211,255,.10);
-      transform: translate(38%, 0%);
-    }
-
-    a{color:inherit}
-
-    .app{
-      height:100%;
-      display:flex;
-      gap:18px;
-      padding:18px;
-      max-width: 1440px;
-      margin: 0 auto;
-    }
-
-    /* Sidebar */
-    .sidebar{
-      width: var(--sb-w);
-      background: var(--panel2);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      overflow:hidden;
-      display:flex;
-      flex-direction:column;
-      position:relative;
-      transition: width .18s ease;
-    }
-    .sidebar.collapsed{ width: var(--sb-w-collapsed); }
-
-    .brand{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      padding:16px 16px 10px 16px;
-      border-bottom: 1px solid var(--line);
-    }
-    .brand-left{display:flex;align-items:center;gap:10px;min-width:0;}
-    .logo{
-      width:36px;height:36px;border-radius:12px;
-      background: linear-gradient(135deg, rgba(255,189,89,.25), rgba(77,211,255,.18));
-      border:1px solid rgba(255,255,255,.10);
-      display:grid;place-items:center;
-      font-family: Orbitron, sans-serif;
-      letter-spacing:.5px;
-      color:var(--brand);
-      box-shadow: 0 10px 30px rgba(0,0,0,.35);
-      flex:0 0 auto;
-    }
-    .brand h1{
-      margin:0;
-      font-family: Orbitron, sans-serif;
-      font-size: 1.05rem;
-      letter-spacing:.6px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width: 150px;
-    }
-    .brand small{
-      display:block;
-      color: var(--muted);
-      font-size:.78rem;
-      margin-top:2px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width: 150px;
-    }
-
-    .nav{
-      padding: 12px;
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-      overflow:auto;
-    }
-    .nav::-webkit-scrollbar{width:10px}
-    .nav::-webkit-scrollbar-thumb{background: rgba(255,255,255,.08); border-radius:10px}
-    .nav::-webkit-scrollbar-track{background: transparent}
-
-    .nav-item{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      padding:10px 10px;
-      border-radius: 12px;
-      border:1px solid transparent;
-      color: var(--muted);
-      text-decoration:none;
-      transition: .2s ease;
-      cursor:pointer;
-      min-width:0;
-    }
-    .nav-item:hover{
-      background: rgba(255,255,255,.05);
-      border-color: rgba(255,255,255,.08);
-      color: var(--ink);
-    }
-    .nav-item.active{
-      background: linear-gradient(135deg, rgba(255,189,89,.14), rgba(77,211,255,.09));
-      border-color: rgba(255,189,89,.22);
-      color: var(--ink);
-    }
-    .nav-ico{
-      width:26px;height:26px;border-radius:10px;
-      background: rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.08);
-      display:grid;place-items:center;
-      flex: 0 0 auto;
-    }
-    .nav-ico svg{width:14px;height:14px;opacity:.9}
-    .nav-label{
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      min-width:0;
-    }
-
-    .sidebar.collapsed .brand h1,
-    .sidebar.collapsed .brand small,
-    .sidebar.collapsed .nav-label{display:none;}
-    .sidebar.collapsed .brand{justify-content:center;}
-    .sidebar.collapsed .brand-left{justify-content:center;}
-    .sidebar.collapsed .nav-item{
-      justify-content:center;
-      gap:0;
-      padding:10px 8px;
-    }
-
-    /* Main */
-    .main{
-      flex:1;
-      display:flex;
-      flex-direction:column;
-      min-width: 0;
-      gap: 14px;
-    }
-
-    /* Topbar */
-    .topbar{
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      padding: 12px 14px;
-      display:flex;
-      align-items:center;
-      gap:12px;
-    }
-
-    .search{
-      flex:1;
-      display:flex;
-      align-items:center;
-      gap:10px;
-      padding: 10px 12px;
-      background: rgba(0,0,0,.22);
-      border:1px solid rgba(255,255,255,.10);
-      border-radius: 14px;
-      min-width: 0;
-    }
-    .search input{
-      width:100%;
-      background: transparent;
-      border:0;
-      outline:none;
-      color: var(--ink);
-      font-size: .95rem;
-    }
-    .search input::placeholder{color: rgba(170,177,197,.75)}
-
-    .top-actions{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex:0 0 auto;
-    }
-
-    .icon-btn{
-      width:42px;height:42px;border-radius:14px;
-      background: rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.10);
-      display:grid;place-items:center;
-      cursor:pointer;
-      transition:.2s ease;
-      color: var(--ink);
-      flex:0 0 auto;
-    }
-    .icon-btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.08)}
-    .icon-btn svg{width:18px;height:18px;opacity:.92}
-
-    .userchip{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      padding: 8px 10px;
-      border-radius: 999px;
-      background: rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.10);
-      max-width: 260px;
-    }
-    .avatar{
-      width:28px;height:28px;border-radius:10px;
-      background: linear-gradient(135deg, rgba(255,189,89,.30), rgba(77,211,255,.18));
-      border:1px solid rgba(255,255,255,.10);
-    }
-    .usertext{min-width:0}
-    .usertext b{
-      display:block;
-      font-size:.92rem;
-      font-family: Orbitron, sans-serif;
-      color: var(--brand);
-      white-space: nowrap;
-      overflow:hidden;
-      text-overflow: ellipsis;
-      max-width: 170px;
-    }
-    .usertext span{display:block; font-size:.78rem; color: var(--muted)}
-
-    .logout{
-      color: rgba(255,255,255,.70);
-      text-decoration:none;
-      font-size:.85rem;
-      padding: 8px 10px;
-      border-radius: 10px;
-      border:1px solid rgba(255,255,255,.08);
+    .wrap{max-width:1280px;margin:0 auto;padding:14px 16px}
+    .topbar{display:flex;gap:12px;align-items:center;justify-content:space-between}
+    .brand{display:flex;align-items:center;gap:12px}
+    .fflogo{
+      width:44px;height:44px;border-radius:14px;
+      object-fit:contain;
       background: rgba(255,255,255,.04);
-      transition:.2s ease;
+      border:1px solid rgba(255,255,255,.10);
+      box-shadow: 0 14px 40px rgba(0,0,0,.30);
+      padding:6px;
+    }
+    h1{font-size:16px;margin:0;letter-spacing:.3px}
+    .sub{font-size:12px;color:var(--muted);margin-top:2px}
+    .actions{display:flex;gap:10px;flex-wrap:wrap}
+    .btn, input, select, textarea{font-family:inherit}
+    .btn{
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.03);
+      color:var(--ink);
+      padding:10px 12px;
+      border-radius:12px;
       cursor:pointer;
-      white-space:nowrap;
+      transition: transform .08s ease, border-color .2s ease, background .2s ease;
+      user-select:none;
     }
-    .logout:hover{
-      border-color: rgba(255,77,77,.35);
-      color: #ff8d8d;
-      box-shadow: 0 0 0 3px rgba(255,77,77,.10);
+    .btn:hover{border-color: rgba(255,255,255,.16); background: rgba(255,255,255,.05)}
+    .btn:active{transform: translateY(1px)}
+    .btn.primary{
+      border-color: rgba(255,189,89,.35);
+      background: linear-gradient(180deg, rgba(255,189,89,.16), rgba(255,119,51,.10));
+    }
+    .btn.good{
+      border-color: rgba(113,208,131,.35);
+      background: linear-gradient(180deg, rgba(113,208,131,.16), rgba(113,208,131,.08));
+    }
+    .btn.bad{
+      border-color: rgba(255,107,107,.35);
+      background: linear-gradient(180deg, rgba(255,107,107,.16), rgba(255,107,107,.08));
     }
 
-    /* Content */
-    .content{
-      min-height: 0;
-      flex:1;
-      display:flex;
-      flex-direction:column;
-      gap: 14px;
-    }
+    main{max-width:1280px;margin:0 auto;padding:16px}
+    .grid{display:grid;grid-template-columns: 1.05fr .95fr;gap:14px}
+    @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
 
-    /* Cards */
     .card{
-      background: var(--panel);
-      border: 1px solid var(--line);
+      background: linear-gradient(180deg, var(--panel), var(--panel2));
+      border:1px solid var(--line);
       border-radius: var(--radius-lg);
       box-shadow: var(--shadow);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
       overflow:hidden;
     }
-    .card-inner{padding:14px}
+    .card .hd{
+      padding:14px 14px 10px;
+      border-bottom:1px solid var(--line);
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+    }
+    .card .hd h2{font-size:14px;margin:0;letter-spacing:.25px}
+    .card .bd{padding:14px}
 
-    /* Hero */
-    .hero{
-      position:relative;
-      height: 170px;
-      border-bottom: 1px solid var(--line);
-      background:
-        linear-gradient(90deg, rgba(0,0,0,.55), rgba(0,0,0,.10)),
-        url('https://i.imgur.com/qXFpizS.jpg') center/cover no-repeat;
-    }
-    .hero::after{
-      content:"";
-      position:absolute; inset:0;
-      background: radial-gradient(420px 220px at 55% 45%, rgba(255,189,89,.16), transparent 60%);
-      pointer-events:none;
-    }
-    .hero-content{
-      position:absolute;
-      left:16px; right:16px; bottom:14px;
-      display:flex;
-      align-items:flex-end;
-      justify-content: space-between;
-      gap: 12px;
-    }
-    .hero-title h2{
-      font-family: Orbitron, sans-serif;
-      font-size: 1.55rem;
-      color: var(--brand);
-      text-shadow: 0 0 18px rgba(255,189,89,.20);
-      margin:0;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow: ellipsis;
-    }
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .row + .row{margin-top:10px}
 
-    /* Horizontal Quick View */
-    .quickbar{
-      display:grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
-    }
+    .field{display:flex;flex-direction:column;gap:6px;min-width:220px;flex:1}
+    label{font-size:12px;color:var(--muted)}
 
-    .qv-item{
-      padding: 10px 12px;
-      border-radius: 18px;
-      background: rgba(255,255,255,.05);
-      border: 1px solid rgba(255,255,255,.09);
-      transition: .2s ease;
-      min-width:0;
-    }
-    .qv-item:hover{
-      background: rgba(255,255,255,.07);
-      transform: translateY(-1px);
-    }
-
-    .qv-head{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      margin-bottom:10px;
-      min-width:0;
-    }
-    .qv-title{
-      display:flex;
-      align-items:center;
-      gap:8px;
-      min-width:0;
-      font-weight:700;
-      color: rgba(244,246,255,.92);
-      letter-spacing:.2px;
-      font-size:.9rem;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .qv-count{
-      font-size:.75rem;
-      padding: 4px 8px;
-      border-radius: 999px;
+    input[type="text"], input[type="password"], input[type="url"], select, textarea{
+      width:100%;
       border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.18);
-      color: rgba(244,246,255,.78);
-      flex:0 0 auto;
-    }
-    .qv-actions{
-      display:flex;
-      align-items:center;
-      gap:8px;
-      flex:0 0 auto;
-    }
-    .qv-btn{
-      padding: 8px 10px;
+      background: rgba(0,0,0,.25);
+      color: var(--ink);
       border-radius: 12px;
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.20);
-      color: rgba(244,246,255,.88);
-      cursor:pointer;
-      font-weight:700;
-      font-size:.82rem;
-      transition:.2s ease;
-      white-space:nowrap;
-    }
-    .qv-btn:hover{
-      background: rgba(0,0,0,.28);
-      box-shadow: 0 0 0 3px rgba(77,211,255,.10);
-      border-color: rgba(77,211,255,.22);
-    }
-
-    .qv-body{
-      display:flex;
-      align-items:flex-start;
-      gap:10px;
-      min-width:0;
-    }
-    .qv-thumb{
-      width:54px;
-      height:54px;
-      border-radius: 14px;
-      background: rgba(0,0,0,.18);
-      border: 1px solid rgba(255,255,255,.10);
-      overflow:hidden;
-      flex:0 0 auto;
-      display:grid;
-      place-items:center;
-    }
-    .qv-thumb img{
-      width:100%;
-      height:100%;
-      object-fit: contain;
-      display:block;
-      background: rgba(255,255,255,.02);
-    }
-
-    .qv-meta{
-      min-width:0;
-      display:flex;
-      flex-direction:column;
-      gap:6px;
-      flex:1;
-    }
-    .qv-meta b{
-      font-size:.95rem;
-      font-weight:800;
-      color: rgba(244,246,255,.92);
-      white-space:normal;
-      overflow:visible;
-      text-overflow:unset;
-      word-break:break-word;
-      line-height:1.15rem;
-    }
-    .qv-meta span{
-      color: var(--muted);
-      font-size:.84rem;
-      white-space:normal;
-      overflow:visible;
-      text-overflow:unset;
-      word-break:break-word;
-      line-height:1.22rem;
-    }
-
-    /* make loadout desc feel clickable for details */
-    .tap-more{
-      cursor:pointer;
-      position:relative;
-    }
-    .tap-more:hover{
-      color: rgba(244,246,255,.92);
-    }
-
-    /* Modal Picker */
-    .modal{
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,.62);
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      padding: 18px;
-      z-index: 1000;
-    }
-    .modal.show{display:flex;}
-    .modal-card{
-      width: min(1040px, 100%);
-      max-height: min(84vh, 820px);
-      background: rgba(14, 18, 28, .92);
-      border: 1px solid rgba(255,255,255,.10);
-      border-radius: 22px;
-      box-shadow: 0 26px 80px rgba(0,0,0,.65);
-      overflow:hidden;
-      display:flex;
-      flex-direction:column;
-    }
-    .modal-top{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:12px;
-      padding: 14px 14px 10px 14px;
-      border-bottom: 1px solid rgba(255,255,255,.08);
-    }
-    .modal-top h3{
-      margin:0;
-      font-family: Orbitron, sans-serif;
-      letter-spacing:.6px;
-      color: var(--brand);
-      font-size: 1.05rem;
-    }
-    .modal-top p{
-      margin:6px 0 0 0;
-      color: var(--muted);
-      font-size:.85rem;
-    }
-
-    .modal-controls{
-      padding: 12px 14px;
-      border-bottom: 1px solid rgba(255,255,255,.08);
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-    }
-    .modal-row{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .modal-controls input{
-      flex:1;
-      padding: 10px 12px;
-      border-radius: 14px;
-      background: rgba(0,0,0,.22);
-      border:1px solid rgba(255,255,255,.12);
+      padding:10px 10px;
       outline:none;
-      color: var(--ink);
-      font-size:.95rem;
-      min-width: 220px;
     }
-    .modal-controls select{
-      padding: 10px 12px;
-      border-radius: 14px;
-      background: rgba(0,0,0,.22);
+
+    /* ✅ Prevent white-on-white dropdowns (options) */
+    select{
+      color-scheme: dark;
+      background: rgba(0,0,0,.25);
+      color: var(--ink);
+    }
+    select option, select optgroup{
+      background-color: #0b1020;
+      color: var(--ink);
+    }
+
+    textarea{
+      font-family: var(--mono);
+      min-height: 260px;
+      resize: vertical;
+      line-height:1.35;
+    }
+    input:focus, textarea:focus, select:focus{
+      border-color: rgba(77,211,255,.45);
+      box-shadow: 0 0 0 3px rgba(77,211,255,.12);
+    }
+    .hint{font-size:12px;color:var(--muted);line-height:1.3}
+    .pill{
+      font-size:12px; padding:6px 10px; border-radius:999px;
       border:1px solid rgba(255,255,255,.12);
-      outline:none;
-      color: var(--ink);
-      font-size:.92rem;
-      min-width: 220px;
-    }
-    .modal-count{
-      flex:0 0 auto;
-      font-size:.78rem;
-      padding: 6px 10px;
-      border-radius: 999px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.20);
-      color: rgba(244,246,255,.80);
-      white-space:nowrap;
-    }
-
-    .filter-pills{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      align-items:center;
-    }
-    .pill-btn{
-      padding: 8px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.18);
-      color: rgba(244,246,255,.86);
-      cursor:pointer;
-      font-weight:800;
-      font-size:.82rem;
-      transition:.18s ease;
-      white-space:nowrap;
-    }
-    .pill-btn:hover{
-      background: rgba(0,0,0,.28);
-      border-color: rgba(77,211,255,.22);
-      box-shadow: 0 0 0 3px rgba(77,211,255,.10);
-    }
-    .pill-btn.active{
-      background: linear-gradient(135deg, rgba(255,189,89,.18), rgba(255,119,51,.10));
-      border-color: rgba(255,189,89,.25);
-      color: rgba(244,246,255,.95);
-    }
-
-    .modal-grid{
-      padding: 14px;
-      overflow:auto;
-      display:grid;
-      grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-      gap: 12px;
-    }
-    .modal-grid::-webkit-scrollbar{width:10px}
-    .modal-grid::-webkit-scrollbar-thumb{background: rgba(255,255,255,.10); border-radius:10px}
-    .modal-grid::-webkit-scrollbar-track{background: transparent}
-
-    .pick-card{
-      padding: 10px 10px 8px 10px;
-      border-radius: 16px;
-      background: rgba(255,255,255,.05);
-      border: 1px solid rgba(255,255,255,.09);
-      cursor:pointer;
-      transition:.18s ease;
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-      min-width:0;
-    }
-    .pick-card:hover{
-      background: rgba(255,255,255,.08);
-      transform: translateY(-1px);
-      border-color: rgba(255,189,89,.18);
-    }
-    .pick-thumb{
-      width:100%;
-      aspect-ratio: 1 / 1;
-      border-radius: 14px;
-      background: rgba(0,0,0,.18);
-      border: 1px solid rgba(255,255,255,.10);
-      overflow:hidden;
-      display:grid;
-      place-items:center;
-    }
-    .pick-thumb img{
-      width:100%;
-      height:100%;
-      object-fit: contain;
-      display:block;
-      background: rgba(255,255,255,.02);
-    }
-    .pick-name{
-      font-size:.82rem;
-      font-weight:800;
-      color: rgba(244,246,255,.92);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      text-align:center;
-    }
-
-    /* Loadout Details Modal content */
-    .ld-wrap{
-      padding: 14px;
-      overflow:auto;
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-    }
-    .ld-head{
-      display:flex;
-      gap:12px;
-      align-items:center;
-      padding: 12px;
-      border-radius: 18px;
-      background: rgba(255,255,255,.05);
-      border: 1px solid rgba(255,255,255,.10);
-    }
-    .ld-img{
-      width:64px;height:64px;border-radius: 16px;
-      background: rgba(0,0,0,.22);
-      border:1px solid rgba(255,255,255,.10);
-      overflow:hidden;
-      flex: 0 0 auto;
-    }
-    .ld-img img{width:100%;height:100%;object-fit:contain;display:block;}
-    .ld-title{
-      min-width:0;
-      display:flex;
-      flex-direction:column;
-      gap:2px;
-    }
-    .ld-title b{
-      font-family: Orbitron, sans-serif;
-      color: var(--brand);
-      letter-spacing:.4px;
-      font-size: 1.02rem;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width: 720px;
-    }
-    .ld-title span{
-      color: var(--muted);
-      font-size:.85rem;
-    }
-
-    details.ld-block{
-      border-radius: 18px;
       background: rgba(255,255,255,.04);
-      border: 1px solid rgba(255,255,255,.10);
+      color:var(--ink);
+      display:inline-flex;gap:8px;align-items:center;
+    }
+    .dot{width:8px;height:8px;border-radius:50%}
+    .dot.good{background:var(--good)}
+    .dot.bad{background:var(--bad)}
+    .dot.neutral{background:var(--accent)}
+
+    .split{display:grid;grid-template-columns: 1fr 1fr;gap:10px}
+    @media (max-width: 980px){ .split{grid-template-columns:1fr} }
+
+    .tablewrap{
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 14px;
       overflow:hidden;
+      background: rgba(0,0,0,.22);
     }
-    details.ld-block > summary{
-      list-style:none;
-      cursor:pointer;
-      padding: 12px 12px;
-      font-weight:900;
-      color: rgba(244,246,255,.92);
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    thead th{
+      position: sticky; top: 0;
+      background: rgba(7,9,15,.92);
+      border-bottom:1px solid rgba(255,255,255,.10);
+      padding:10px 10px;
+      text-align:left;
+      white-space:nowrap;
+      z-index:2;
     }
-    details.ld-block > summary::-webkit-details-marker{display:none;}
-    .ld-pill{
-      font-size:.72rem;
-      padding: 4px 8px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.18);
-      color: rgba(244,246,255,.78);
-      flex:0 0 auto;
-    }
-    .ld-text{
-      padding: 0 12px 12px 12px;
-      color: rgba(244,246,255,.86);
-      line-height: 1.35rem;
-      white-space: pre-wrap; /* preserve newlines */
+    tbody td{
+      border-top:1px solid rgba(255,255,255,.06);
+      padding:8px 10px;
+      vertical-align:top;
+      max-width: 380px;
       word-break: break-word;
-      font-size: .92rem;
+      color: rgba(244,246,255,.92);
+    }
+    tbody tr:hover td{background: rgba(255,255,255,.03)}
+
+    .small{font-size:11px;color:var(--muted)}
+    .kbd{
+      font-family:var(--mono);
+      font-size:11px;
+      padding:3px 7px;border-radius:8px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.25);
+      color: rgba(244,246,255,.88);
     }
 
-    @media (max-width: 1200px){
-      .quickbar{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .colbox{
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:14px;
+      background: rgba(0,0,0,.18);
+      overflow:hidden;
     }
-    @media (max-width: 980px){
-      .quickbar{ grid-template-columns: 1fr; }
-      .modal-controls input{min-width: 0; width:100%;}
-      .modal-controls select{min-width: 0; width:100%;}
+    .colbox .colhd{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:10px 12px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
     }
+    .colbox .colbd{max-height: 260px;overflow:auto}
+    .colrow{
+      display:grid;
+      grid-template-columns: 26px 1fr 1fr;
+      gap:10px;
+      padding:8px 12px;
+      border-top:1px solid rgba(255,255,255,.06);
+      align-items:center;
+    }
+    .colrow:first-child{border-top:0}
+    .colrow input[type="text"]{padding:8px 9px;border-radius:10px}
+    .colrow .k{font-family:var(--mono);font-size:11px;color:rgba(244,246,255,.90)}
+    .status{
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      font-size:12px;
+      color: rgba(244,246,255,.92);
+      line-height:1.35;
+      white-space:pre-wrap;
+    }
+    .progress{
+      height:10px;border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      overflow:hidden;
+      margin-top:10px;
+    }
+    .bar{
+      height:100%;
+      width:0%;
+      background: linear-gradient(90deg, rgba(77,211,255,.75), rgba(255,189,89,.72), rgba(255,119,51,.72));
+      transition: width .2s ease;
+    }
+
+    .checkrow{
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+      padding:10px 12px;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:14px;
+      background: rgba(0,0,0,.18);
+    }
+    .checkrow input{width:auto}
   </style>
 </head>
-
 <body>
-  <div class="backdrop" id="backdrop"></div>
-
-  <div class="app">
-    <!-- SIDEBAR -->
-    <aside class="sidebar" id="sidebar">
+<header>
+  <div class="wrap">
+    <div class="topbar">
       <div class="brand">
-        <div class="brand-left">
-          <div class="logo">FF</div>
-          <div class="brand-text">
-            <h1>Free Fire</h1>
-            <small class="muted">Caster Dashboard</small>
-          </div>
-        </div>
-      </div>
-
-      <nav class="nav" id="nav">
-        <a class="nav-item active" href="dashboard.html" data-page="dashboard.html" title="Dashboard">
-          <span class="nav-ico">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M4 13h7V4H4v9Zm9 7h7V4h-7v16ZM4 20h7v-5H4v5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-          </span>
-          <span class="nav-label">Dashboard</span>
-        </a>
-
-        <a class="nav-item" href="char.html" data-page="char.html" title="Character Skills">
-          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4 0-7 2-7 4v2h14v-2c0-2-3-4-7-4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          <span class="nav-label">Character Skills</span>
-        </a>
-
-        <a class="nav-item" href="pet.html" data-page="pet.html" title="Pets">
-          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M7 14c-1.7 0-3-1.3-3-3S5.3 8 7 8s3 1.3 3 3-1.3 3-3 3Zm10 0c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3ZM7 20c-2.8 0-5-1.8-5-4v-1h6v1c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2v-1h6v1c0 2.2-2.2 4-5 4H7Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          <span class="nav-label">Pets</span>
-        </a>
-
-        <a class="nav-item" href="weapon.html" data-page="weapon.html" title="Weapons">
-          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M3 21l6-6m0 0 2 2 8-8-2-2-8 8Zm0 0-2-2 4-4 2 2-4 4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          <span class="nav-label">Weapons</span>
-        </a>
-
-        <a class="nav-item" href="map.html" data-page="map.html" title="Map">
-          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M10 6 4 8v14l6-2 4 2 6-2V6l-6 2-4-2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          <span class="nav-label">Map</span>
-        </a>
-
-        <a class="nav-item" href="split-view.html" data-page="split-view.html" title="Split View">
-          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16M4 12h16M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          <span class="nav-label">Split View</span>
-        </a>
-
-        <a class="nav-item" href="clash-draft.html" data-page="clash-draft.html" title="Clash Squad Draft">
-          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h10M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          <span class="nav-label">Clash Squad Draft</span>
-        </a>
-
-        <a class="nav-item" href="clash-data.html" data-page="clash-data.html" title="Clash Squad Data">
-          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19V5m0 14h16M8 17v-6m4 6V7m4 10v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          <span class="nav-label">Clash Squad Data</span>
-        </a>
-
-        <a class="nav-item" href="clash-compare.html" data-page="clash-compare.html" title="Clash Squad Comparison">
-          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M10 3v18M14 3v18M4 7h6M14 17h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          <span class="nav-label">Clash Squad Comparison</span>
-        </a>
-
-        <a class="nav-item" href="clash-report.html" data-page="clash-report.html" title="Clash Squad Team Report">
-          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          <span class="nav-label">Clash Squad Team Report</span>
-        </a>
-
-        <a class="nav-item" href="clash-store.html" data-page="clash-store.html" title="Clash Squad Store">
-          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16l-1 14H5L4 7Zm3 0 1-3h8l1 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          <span class="nav-label">Clash Squad Store</span>
-        </a>
-
-        <a class="nav-item" href="br_team2.html" data-page="br_team2.html" title="BR Data">
-          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M6 20V10m6 10V4m6 16v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          <span class="nav-label">BR Data</span>
-        </a>
-
-        <a class="nav-item" href="ff-update.html" data-page="ff-update.html" title="Free Fire Update">
-          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2v6m0 14v-6M4.9 4.9l4.2 4.2m10.8 10.8-4.2-4.2M2 12h6m14 0h-6M4.9 19.1l4.2-4.2m10.8-10.8-4.2 4.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-          <span class="nav-label">Free Fire Update</span>
-        </a>
-      </nav>
-    </aside>
-
-    <!-- MAIN -->
-    <main class="main">
-      <header class="topbar">
-        <button class="icon-btn" id="sbToggle" aria-label="Collapse sidebar" title="Collapse sidebar">
-          <svg viewBox="0 0 24 24" fill="none">
-            <path id="sbTogglePath" d="M14 7l-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-
-        <div class="search">
-          <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;opacity:.85">
-            <path d="M21 21l-4.3-4.3m1.3-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-          <input id="searchInput" placeholder="Search pages..." />
-        </div>
-
-        <div class="top-actions">
-          <div class="userchip">
-            <div class="avatar"></div>
-            <div class="usertext">
-              <b id="gamertag">PlayerOne</b>
-              <span id="userEmail" class="muted">loading…</span>
-            </div>
-          </div>
-
-          <a class="logout" href="#" id="logoutBtn">Logout</a>
-        </div>
-      </header>
-
-      <section class="content">
-        <div class="card">
-          <div class="hero">
-            <div class="hero-content">
-              <div class="hero-title">
-                <h2>Free Fire Dashboard</h2>
-              </div>
-            </div>
-          </div>
-
-          <div class="card-inner">
-            <div class="quickbar">
-              <!-- Character -->
-              <div class="qv-item">
-                <div class="qv-head">
-                  <div class="qv-title">
-                    Character
-                    <span class="qv-count" id="charCount">—</span>
-                  </div>
-                  <div class="qv-actions">
-                    <button class="qv-btn" data-open="character">Choose</button>
-                  </div>
-                </div>
-                <div class="qv-body">
-                  <div class="qv-thumb"><img id="charThumb" alt="Character" /></div>
-                  <div class="qv-meta">
-                    <b id="charName">—</b>
-                    <span id="charDesc">—</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Pet -->
-              <div class="qv-item">
-                <div class="qv-head">
-                  <div class="qv-title">
-                    Pet
-                    <span class="qv-count" id="petCount">—</span>
-                  </div>
-                  <div class="qv-actions">
-                    <button class="qv-btn" data-open="pet">Choose</button>
-                  </div>
-                </div>
-                <div class="qv-body">
-                  <div class="qv-thumb"><img id="petThumb" alt="Pet" /></div>
-                  <div class="qv-meta">
-                    <b id="petName">—</b>
-                    <span id="petDesc">—</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Weapon -->
-              <div class="qv-item">
-                <div class="qv-head">
-                  <div class="qv-title">
-                    Weapon
-                    <span class="qv-count" id="weaponCount">—</span>
-                  </div>
-                  <div class="qv-actions">
-                    <button class="qv-btn" data-open="weapon">Choose</button>
-                  </div>
-                </div>
-                <div class="qv-body">
-                  <div class="qv-thumb"><img id="weaponThumb" alt="Weapon" /></div>
-                  <div class="qv-meta">
-                    <b id="weaponName">—</b>
-                    <span id="weaponDesc">—</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Loadout -->
-              <div class="qv-item">
-                <div class="qv-head">
-                  <div class="qv-title">
-                    Loadout
-                    <span class="qv-count" id="loadoutCount">—</span>
-                  </div>
-                  <div class="qv-actions">
-                    <button class="qv-btn" data-open="loadout">Choose</button>
-                    <button class="qv-btn" id="loadoutDetailsBtn" title="View full BR/CS details">Details</button>
-                  </div>
-                </div>
-                <div class="qv-body">
-                  <div class="qv-thumb"><img id="loadoutThumb" alt="Loadout" /></div>
-                  <div class="qv-meta">
-                    <b id="loadoutName">—</b>
-                    <span id="loadoutDesc" class="tap-more" title="Click to view full details">—</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="muted" style="font-size:.8rem; padding: 10px 2px 0 2px;">
-              Free Fire Caster © 2025 — Neptune
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
-  </div>
-
-  <!-- Picker Modal -->
-  <div class="modal" id="pickerModal" aria-hidden="true">
-    <div class="modal-card" role="dialog" aria-modal="true" aria-label="Picker">
-      <div class="modal-top">
+        <img
+          class="fflogo"
+          src="https://upload.wikimedia.org/wikipedia/en/7/7d/Garena_Free_Fire_logo.png"
+          alt="Free Fire"
+          onerror="this.style.display='none'"
+        />
         <div>
-          <h3 id="pickerTitle">Select</h3>
-          <p id="pickerSub">Click an item to apply it to Quick View.</p>
+          <h1>Free Fire Match Data Uploader</h1>
+          <div class="sub">Paste / upload JSON, flatten & explode arrays, preview table, then insert/upsert into Supabase.</div>
         </div>
-        <button class="icon-btn" id="pickerClose" aria-label="Close picker" title="Close">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        </button>
       </div>
-
-      <div class="modal-controls">
-        <div class="modal-row">
-          <input id="pickerSearch" placeholder="Search..." />
-          <select id="pickerFilterSelect" style="display:none"></select>
-          <div class="modal-count" id="pickerCount">—</div>
-        </div>
-        <div class="filter-pills" id="pickerFilterPills" style="display:none"></div>
-      </div>
-
-      <div class="modal-grid" id="pickerGrid"></div>
-    </div>
-  </div>
-
-  <!-- Loadout Details Modal -->
-  <div class="modal" id="loadoutModal" aria-hidden="true">
-    <div class="modal-card" role="dialog" aria-modal="true" aria-label="Loadout Details">
-      <div class="modal-top">
-        <div>
-          <h3 id="loadoutModalTitle">Loadout Details</h3>
-          <p id="loadoutModalSub">Full BR / CS details for your selected loadout.</p>
-        </div>
-        <button class="icon-btn" id="loadoutClose" aria-label="Close loadout details" title="Close">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        </button>
-      </div>
-
-      <div class="ld-wrap">
-        <div class="ld-head">
-          <div class="ld-img"><img id="ldImg" alt="Loadout" /></div>
-          <div class="ld-title">
-            <b id="ldName">—</b>
-            <span id="ldHint">BR and CS effects (full text)</span>
-          </div>
-        </div>
-
-        <details class="ld-block" open>
-          <summary>
-            BR
-            <span class="ld-pill">Battle Royale</span>
-          </summary>
-          <div class="ld-text" id="ldBR">—</div>
-        </details>
-
-        <details class="ld-block" open>
-          <summary>
-            CS
-            <span class="ld-pill">Clash Squad</span>
-          </summary>
-          <div class="ld-text" id="ldCS">—</div>
-        </details>
+      <div class="actions">
+        <button class="btn" id="btnSample">Load sample</button>
+        <button class="btn bad" id="btnClear">Clear</button>
       </div>
     </div>
   </div>
+</header>
 
-  <script>
-    /***********************
-     * Supabase Auth
-     ***********************/
-    const client = supabase.createClient(
-      'https://gkugecflfddkpitlrmws.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
+<main>
+  <div class="grid">
+
+    <!-- LEFT -->
+    <section class="card">
+      <div class="hd">
+        <h2>1) JSON Input</h2>
+        <div class="pill" id="pillState"><span class="dot neutral"></span><span id="pillText">Waiting for JSON</span></div>
+      </div>
+      <div class="bd">
+        <div class="row">
+          <div class="field" style="min-width:280px">
+            <label>Paste JSON</label>
+            <textarea id="jsonText" placeholder='Paste JSON here (array or object)…'></textarea>
+            <div class="hint">
+              If your JSON is a big object, set <span class="kbd">Records array path</span> to where the rows live (example: <span class="kbd">data.matches</span>).
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field" style="min-width:260px;flex:1.2">
+            <label>Records array path (optional)</label>
+            <input id="pathText" type="text" placeholder="e.g. data.matches"/>
+            <div class="hint">Leave blank to auto-detect the first array of objects.</div>
+          </div>
+          <div class="field" style="min-width:160px;flex:.6">
+            <label>Max preview rows</label>
+            <select id="maxRows">
+              <option value="50">50</option>
+              <option value="200">200</option>
+              <option value="500">500</option>
+              <option value="2000" selected>2000</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field" style="min-width:220px;flex:.8">
+            <label>Flatten arrays of objects</label>
+            <select id="arrMode">
+              <option value="keep">Keep as JSON</option>
+              <option value="index" selected>Explode to columns with [index] (teams[0].tag)</option>
+            </select>
+            <div class="hint">Index mode is good for small fixed arrays. For stats tables, use “Explode dataset”.</div>
+          </div>
+
+          <div class="field" style="min-width:260px;flex:1.2">
+            <label>Explode paths (editable, comma-separated)</label>
+            <input id="explodePaths" type="text" value="team_stats" placeholder="e.g. team_stats"/>
+            <div class="hint">If Auto-detect is OFF, these are used as the dataset choices.</div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field" style="min-width:220px;flex:1">
+            <label>Explode dataset (recommended)</label>
+            <select id="explodePick">
+              <option value="">(No explode) Base records</option>
+              <option value="__input__" selected>Use explode paths input (sequential; may multiply rows)</option>
+            </select>
+            <div class="hint">
+              Pick one explode path to generate a clean table (player_stats, circle_info, spector_info, etc).
+              <br/>Sequential explode can multiply rows if you select multiple arrays.
+            </div>
+          </div>
+
+          <div class="field" style="min-width:220px;flex:1">
+            <label>Auto-detect explode paths</label>
+            <div class="checkrow">
+              <input id="autoExplode" type="checkbox" />
+              <div>
+                <div style="font-size:12px">Detect arrays-of-objects and auto-fill explode paths</div>
+                <div class="small">If unchecked, we use your explode paths input as the dropdown choices.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Default columns -->
+        <div class="row">
+          <div class="field">
+            <label>Default Mode column value</label>
+            <select id="defMode">
+              <option value="BR" selected>BR</option>
+              <option value="CS">CS</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Default Tournament column value</label>
+            <input id="defTournament" type="text" placeholder="e.g. FFWS Global Finals 2025"/>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Default Stage column value</label>
+            <input id="defStage" type="text" placeholder="e.g. Finals / Group Stage"/>
+          </div>
+          <div class="field">
+            <label>Default Year column value</label>
+            <input id="defYear" type="text" placeholder="e.g. 2026"/>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>Default Week column value</label>
+            <input id="defWeek" type="text" placeholder="e.g. W1 / Week 1 / 1"/>
+          </div>
+          <div class="field">
+            <label>Default Day column value</label>
+            <input id="defDay" type="text" placeholder="e.g. D1 / Day 1 / 1"/>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>Default Match Number column value</label>
+            <input id="defMatchNumber" type="text" placeholder="e.g. 1"/>
+          </div>
+          <div class="field">
+            <label>Default match_id column value</label>
+            <input id="defMatchId" type="text" placeholder="e.g. 1725487677733611520"/>
+          </div>
+        </div>
+
+        <div class="hint">
+          Default columns apply to every row: <span class="kbd">Mode</span>, <span class="kbd">Tournament</span>, <span class="kbd">Stage</span>, <span class="kbd">Year</span>, <span class="kbd">Week</span>, <span class="kbd">Day</span>, <span class="kbd">MatchNumber</span>, <span class="kbd">match_id</span>.
+          <br/><br/>
+          <b>Auto-rename for DB is ON:</b> keys like <span class="kbd">player_stats.account_id</span> become <span class="kbd">player_stats_account_id</span>.
+          <br/>
+          <b>skill_ids breakdown is ON:</b> arrays named <span class="kbd">skill_ids</span> become separate columns (skill_ids[0], skill_ids[1], …).
+        </div>
+
+        <div class="row">
+          <div class="field" style="min-width:260px">
+            <label>Load JSON file</label>
+            <input id="fileInput" type="file" accept=".json,application/json"/>
+          </div>
+          <div class="field" style="min-width:260px">
+            <label>Fetch JSON from URL</label>
+            <div class="row" style="gap:8px;flex-wrap:nowrap">
+              <input id="fetchUrl" type="url" placeholder="https://example.com/data.json"/>
+              <button class="btn" id="btnFetch">Fetch</button>
+            </div>
+            <div class="hint">CORS must allow the browser to fetch. If it fails, fetch server-side (proxy/Edge Function).</div>
+          </div>
+        </div>
+
+        <div class="row" style="justify-content:flex-end">
+          <button class="btn primary" id="btnParse">Parse & Build Table</button>
+        </div>
+
+        <div class="status" id="parseStatus">No data parsed yet.</div>
+      </div>
+    </section>
+
+    <!-- RIGHT -->
+    <section class="card">
+      <div class="hd">
+        <h2>2) Preview & Upload</h2>
+        <div class="pill"><span class="dot neutral"></span><span id="metaText">0 rows • 0 cols</span></div>
+      </div>
+      <div class="bd">
+
+        <div class="split">
+          <div class="colbox">
+            <div class="colhd">
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <div style="font-size:12px">Columns</div>
+                <div class="small">Include/rename before upload</div>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button class="btn" id="btnAll">All</button>
+                <button class="btn" id="btnNone">None</button>
+              </div>
+            </div>
+            <div class="colbd" id="colList">
+              <div class="small" style="padding:10px 12px;color:var(--muted)">No columns yet.</div>
+            </div>
+          </div>
+
+          <div>
+            <div class="row">
+              <div class="field">
+                <label>Supabase URL</label>
+                <input id="sbUrl" type="text" placeholder="https://xxxx.supabase.co"/>
+              </div>
+            </div>
+            <div class="row">
+              <div class="field">
+                <label>Supabase anon key</label>
+                <input id="sbKey" type="password" placeholder="anon public key"/>
+                <div class="hint">Don’t put a Service Role key in frontend. Use an Edge Function if you need private writes.</div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="field" style="flex:1">
+                <label>Table name</label>
+                <input id="sbTable" type="text" placeholder='e.g. ff_player_stats_raw'/>
+              </div>
+              <div class="field" style="flex:.8">
+                <label>Mode</label>
+                <select id="sbMode">
+                  <option value="insert">Insert</option>
+                  <option value="upsert" selected>Upsert</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label>On conflict (Upsert only)</label>
+                <input id="sbConflict" type="text" placeholder="e.g. match_id,player_stats.account_id"/>
+                <div class="hint">You can type original keys; we auto-map to DB-safe names (dots → underscores).</div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="field" style="flex:.7">
+                <label>Chunk size</label>
+                <select id="sbChunk">
+                  <option value="100">100</option>
+                  <option value="250">250</option>
+                  <option value="500" selected>500</option>
+                  <option value="1000">1000</option>
+                </select>
+              </div>
+              <div class="field" style="flex:1.3">
+                <label>Upload rows</label>
+                <select id="sbRows">
+                  <option value="all" selected>All parsed rows</option>
+                  <option value="preview">Preview rows only</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="field" style="min-width:220px">
+                <label>Auto timestamps</label>
+                <div class="checkrow">
+                  <input id="autoTimestamps" type="checkbox" checked />
+                  <div>
+                    <div style="font-size:12px">Add <span class="kbd">created_at</span> & <span class="kbd">updated_at</span> on upload</div>
+                    <div class="small">If your table doesn’t have these columns, uncheck this.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row" style="justify-content:flex-end">
+              <button class="btn good" id="btnUpload">Upload to Supabase</button>
+            </div>
+
+            <div class="progress"><div class="bar" id="bar"></div></div>
+            <div class="status" id="upStatus">Ready.</div>
+          </div>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div class="tablewrap" style="max-height:360px; overflow:auto">
+          <table id="table">
+            <thead><tr id="theadRow"></tr></thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+
+        <div class="row" style="justify-content:flex-end;margin-top:10px">
+          <button class="btn" id="btnCSV">Download CSV (selected cols)</button>
+          <button class="btn" id="btnJSON">Download JSON rows</button>
+        </div>
+
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  function setPill(state, text){
+    const pill = $("pillState");
+    const dot = pill.querySelector(".dot");
+    dot.classList.remove("good","bad","neutral");
+    dot.classList.add(state);
+    $("pillText").textContent = text;
+  }
+
+  function safeString(v){
+    if (v === null || v === undefined) return "";
+    if (typeof v === "string") return v;
+    if (typeof v === "number" || typeof v === "boolean") return String(v);
+    return JSON.stringify(v);
+  }
+
+  function isPlainObject(x){
+    return x && typeof x === "object" && !Array.isArray(x);
+  }
+
+  function parseYearMaybe(v){
+    const s = (v ?? "").toString().trim();
+    if(!s) return null;
+    return /^[0-9]{4}$/.test(s) ? parseInt(s, 10) : s;
+  }
+
+  function toDbSafeKey(key){
+    let s = String(key ?? "").trim();
+    if(!s) return s;
+    s = s.replace(/\[(\d+)\]/g, "_$1_");
+    s = s.replace(/\./g, "_");
+    s = s.replace(/[^a-zA-Z0-9_]/g, "_");
+    s = s.replace(/_+/g, "_");
+    s = s.replace(/^_+|_+$/g, "");
+    if(/^\d/.test(s)) s = "c_" + s;
+    if(!s) s = "col";
+    return s;
+  }
+
+  function isPrimitive(x){
+    return x === null || x === undefined || ["string","number","boolean"].includes(typeof x);
+  }
+
+  function shouldExplodePrimitiveArrayKey(key){
+    const last = String(key || "").split(".").pop();
+    return last === "skill_ids" || last === "skillIds";
+  }
+
+  function getByPath(root, path){
+    if(!path) return root;
+    const parts = path.replace(/\[(\d+)\]/g, ".$1").split(".").filter(Boolean);
+    let cur = root;
+    for(const p of parts){
+      if(cur == null) return undefined;
+      cur = cur[p];
+    }
+    return cur;
+  }
+
+  function setByPath(root, path, value){
+    const parts = path.replace(/\[(\d+)\]/g, ".$1").split(".").filter(Boolean);
+    if(!parts.length) return;
+    let cur = root;
+    for(let i=0;i<parts.length-1;i++){
+      const p = parts[i];
+      if(cur[p] == null || typeof cur[p] !== "object") cur[p] = {};
+      cur = cur[p];
+    }
+    cur[parts[parts.length-1]] = value;
+  }
+
+  function deleteByPath(root, path){
+    const parts = path.replace(/\[(\d+)\]/g, ".$1").split(".").filter(Boolean);
+    if(!parts.length) return;
+    let cur = root;
+    for(let i=0;i<parts.length-1;i++){
+      const p = parts[i];
+      if(cur == null || typeof cur !== "object") return;
+      cur = cur[p];
+    }
+    if(cur && typeof cur === "object"){
+      delete cur[parts[parts.length-1]];
+    }
+  }
+
+  function deepCloneJSON(x){
+    return JSON.parse(JSON.stringify(x));
+  }
+
+  function findFirstArrayOfObjects(root){
+    const q = [{v: root, path: ""}];
+    const seen = new Set();
+    while(q.length){
+      const {v, path} = q.shift();
+      if(!v || typeof v !== "object") continue;
+      if(seen.has(v)) continue;
+      seen.add(v);
+
+      if(Array.isArray(v) && v.length && isPlainObject(v[0])){
+        return {arr: v, path: path || "(root)"};
+      }
+      if(Array.isArray(v)){
+        for(let i=0;i<Math.min(v.length, 6);i++){
+          q.push({v: v[i], path: path ? `${path}[${i}]` : `[${i}]`});
+        }
+      }else{
+        for(const k of Object.keys(v)){
+          q.push({v: v[k], path: path ? `${path}.${k}` : k});
+        }
+      }
+    }
+    return {arr: null, path: ""};
+  }
+
+  function detectArrayObjectPaths(records, opts={}){
+    const maxDepth = opts.maxDepth ?? 7;
+    const maxPaths = opts.maxPaths ?? 80;
+    const sampleN  = opts.sampleN  ?? 10;
+
+    const paths = new Set();
+    const sample = (records || []).slice(0, sampleN).filter(isPlainObject);
+
+    function visit(node, path, depth){
+      if(paths.size >= maxPaths) return;
+      if(depth > maxDepth) return;
+      if(node == null || typeof node !== "object") return;
+
+      if(Array.isArray(node)){
+        for(let i=0;i<Math.min(node.length, 3);i++){
+          visit(node[i], path, depth+1);
+        }
+        return;
+      }
+
+      for(const [k, v] of Object.entries(node)){
+        const nextPath = path ? `${path}.${k}` : k;
+
+        if(Array.isArray(v)){
+          const firstObj = v.find(isPlainObject);
+          if(firstObj){
+            paths.add(nextPath);
+            visit(firstObj, nextPath, depth+1);
+          } else {
+            for(let i=0;i<Math.min(v.length, 3);i++){
+              visit(v[i], nextPath, depth+1);
+            }
+          }
+        } else if(isPlainObject(v)){
+          visit(v, nextPath, depth+1);
+        }
+      }
+    }
+
+    for(const rec of sample) visit(rec, "", 0);
+
+    const out = Array.from(paths);
+    out.sort((a,b)=>{
+      const ap = a.includes("player_stats") ? 0 : 1;
+      const bp = b.includes("player_stats") ? 0 : 1;
+      if(ap !== bp) return ap - bp;
+      return a.localeCompare(b);
+    });
+    return out;
+  }
+
+  function flattenObject(obj, prefix="", out={}, arrMode="keep"){
+    for(const [k, v] of Object.entries(obj || {})){
+      const key = prefix ? `${prefix}.${k}` : k;
+
+      if (v === null || v === undefined){
+        out[key] = null;
+      } else if (Array.isArray(v)){
+        if (v.length === 0){
+          out[key] = [];
+        } else if (v.every(isPrimitive)){
+          if(shouldExplodePrimitiveArrayKey(key)){
+            const cap = 50;
+            v.slice(0, cap).forEach((item, idx) => {
+              out[`${key}[${idx}]`] = item;
+            });
+            if(v.length > cap){
+              out[`${key}_truncated`] = v.length;
+            }
+          } else {
+            out[key] = v.map(x => x==null ? "" : String(x)).join(" | ");
+          }
+        } else if (v.every(isPlainObject) && arrMode === "index"){
+          v.forEach((item, idx)=>{
+            flattenObject(item, `${key}[${idx}]`, out, arrMode);
+          });
+        } else {
+          out[key] = v;
+        }
+      } else if (isPlainObject(v)){
+        flattenObject(v, key, out, arrMode);
+      } else {
+        out[key] = v;
+      }
+    }
+    return out;
+  }
+
+  function explodeObjects(records, explodePaths){
+    let current = records;
+    for(const rawP of explodePaths){
+      const p = rawP.trim();
+      if(!p) continue;
+
+      const next = [];
+      for(const rec of current){
+        if(!isPlainObject(rec)){
+          next.push(rec);
+          continue;
+        }
+        const arr = getByPath(rec, p);
+        if(!Array.isArray(arr) || !arr.length){
+          next.push(rec);
+          continue;
+        }
+
+        const firstObj = arr.find(isPlainObject);
+        if(!firstObj){
+          next.push(rec);
+          continue;
+        }
+
+        for(const item of arr.filter(isPlainObject)){
+          const cloned = deepCloneJSON(rec);
+          deleteByPath(cloned, p);
+          setByPath(cloned, p, item);
+          next.push(cloned);
+        }
+      }
+      current = next;
+    }
+    return current;
+  }
+
+  function toCSV(rows, cols){
+    const esc = (s) => {
+      const str = s == null ? "" : String(s);
+      if(/[",\n\r]/.test(str)) return `"${str.replace(/"/g,'""')}"`;
+      return str;
+    };
+    const header = cols.map(esc).join(",");
+    const lines = rows.map(r => cols.map(c => esc(r[c])).join(","));
+    return [header, ...lines].join("\n");
+  }
+
+  function downloadText(filename, content, mime="text/plain"){
+    const blob = new Blob([content], {type:mime});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 800);
+  }
+
+  function inferMatchIdFromRaw(raw){
+    if(!raw) return null;
+    if(raw.match_id) return String(raw.match_id);
+    if(raw.matchId)  return String(raw.matchId);
+    const m1 = getByPath(raw, "match.match_id"); if(m1) return String(m1);
+    const m2 = getByPath(raw, "match.matchId");  if(m2) return String(m2);
+    const v1 = getByPath(raw, "data.match_id");  if(v1) return String(v1);
+    const v2 = getByPath(raw, "data.matchId");   if(v2) return String(v2);
+    const v3 = getByPath(raw, "data.matches[0].match_id"); if(v3) return String(v3);
+    const v4 = getByPath(raw, "data.matches[0].matchId");  if(v4) return String(v4);
+    return null;
+  }
+
+  function inferMatchIdFromRecord(rec){
+    if(!rec || typeof rec !== "object") return null;
+    if(rec.match_id) return String(rec.match_id);
+    if(rec.matchId) return String(rec.matchId);
+    const a = getByPath(rec, "match.match_id"); if(a) return String(a);
+    const b = getByPath(rec, "match.matchId");  if(b) return String(b);
+    return null;
+  }
+
+  function explodePathsInputList(){
+    return ($("explodePaths").value || "")
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean);
+  }
+
+  // -----------------------------
+  // App state
+  // -----------------------------
+  let RAW = null;
+  let BASE_RECORDS = [];
+  let DETECTED_PATHS = [];
+
+  let ROWS = [];
+  let COLS = [];
+  let COLCFG = {};
+
+  function updateMeta(){
+    $("metaText").textContent = `${ROWS.length} rows • ${COLS.length} cols`;
+  }
+
+  function getSelectedCols(){
+    const keys = [];
+    const names = [];
+    for(const c of COLS){
+      const cfg = COLCFG[c];
+      if(cfg && cfg.include){
+        keys.push(c);
+        names.push(cfg.name || toDbSafeKey(c));
+      }
+    }
+    return {keys, names};
+  }
+
+  function renderColList(){
+    const box = $("colList");
+    box.innerHTML = "";
+
+    if(!COLS.length){
+      box.innerHTML = `<div class="small" style="padding:10px 12px;color:var(--muted)">No columns yet.</div>`;
+      return;
+    }
+
+    for(const c of COLS){
+      const cfg = COLCFG[c] ?? (COLCFG[c] = { include:true, name: toDbSafeKey(c) });
+
+      const row = document.createElement("div");
+      row.className = "colrow";
+      row.innerHTML = `
+        <input type="checkbox" ${cfg.include ? "checked":""} aria-label="include"/>
+        <div class="k" title="${c}">${c}</div>
+        <input type="text" value="${cfg.name}" aria-label="rename"/>
+      `;
+
+      const cb = row.querySelector('input[type="checkbox"]');
+      const inp = row.querySelector('input[type="text"]');
+
+      cb.addEventListener("change", ()=>{
+        COLCFG[c].include = cb.checked;
+        renderTable();
+      });
+
+      inp.addEventListener("input", ()=>{
+        const val = (inp.value || "").trim();
+        COLCFG[c].name = val ? val : toDbSafeKey(c);
+        renderTable();
+      });
+
+      box.appendChild(row);
+    }
+  }
+
+  function renderTable(){
+    const {keys, names} = getSelectedCols();
+    const max = parseInt($("maxRows").value,10);
+    const previewRows = ROWS.slice(0, max);
+
+    const thRow = $("theadRow");
+    const tb = $("tbody");
+
+    if(!keys.length){
+      thRow.innerHTML = `<th style="color:rgba(244,246,255,.65)">(No columns selected)</th>`;
+      tb.innerHTML = "";
+      return;
+    }
+
+    thRow.innerHTML = "";
+    for(const n of names){
+      const th = document.createElement("th");
+      th.textContent = n;
+      thRow.appendChild(th);
+    }
+
+    tb.innerHTML = "";
+    for(const r of previewRows){
+      const tr = document.createElement("tr");
+      for(const k of keys){
+        const td = document.createElement("td");
+        td.textContent = safeString(r[k]);
+        tr.appendChild(td);
+      }
+      tb.appendChild(tr);
+    }
+  }
+
+  function setStatus(el, msg, isError=false){
+    $(el).textContent = msg;
+    if(el === "upStatus"){
+      // small visual cue
+      $(el).style.borderColor = isError ? "rgba(255,107,107,.35)" : "rgba(255,255,255,.10)";
+    }
+  }
+
+  function injectDefaultsIntoRecords(records){
+    const modeVal = ($("defMode").value ?? "").trim();
+    const tVal = ($("defTournament").value ?? "").trim();
+    const sVal = ($("defStage").value ?? "").trim();
+    const yVal = parseYearMaybe($("defYear").value);
+
+    const wVal = ($("defWeek").value ?? "").trim();
+    const dVal = ($("defDay").value ?? "").trim();
+    const mnVal = ($("defMatchNumber").value ?? "").trim(); // ✅ MatchNumber
+
+    const midVal = ($("defMatchId").value ?? "").trim();
+
+    return records.map(r=>{
+      if(!isPlainObject(r)) return r;
+
+      if(!("Mode" in r)) r.Mode = modeVal || null;
+      if(!("Tournament" in r)) r.Tournament = tVal || null;
+      if(!("Stage" in r)) r.Stage = sVal || null;
+      if(!("Year" in r)) r.Year = yVal;
+
+      if(!("Week" in r)) r.Week = wVal || null;
+      if(!("Day" in r)) r.Day = dVal || null;
+      if(!("MatchNumber" in r)) r.MatchNumber = mnVal || null; // ✅ MatchNumber
+
+      if(!("match_id" in r) || r.match_id == null || r.match_id === ""){
+        const inferred = inferMatchIdFromRecord(r);
+        r.match_id = inferred || midVal || null;
+      }
+
+      return r;
+    });
+  }
+
+  function renderExplodePickOptions(paths){
+    const sel = $("explodePick");
+    const current = sel.value;
+
+    while(sel.options.length > 2) sel.remove(2);
+
+    for(const p of (paths || [])){
+      const opt = document.createElement("option");
+      opt.value = p;
+      opt.textContent = `Explode: ${p}`;
+      sel.appendChild(opt);
+    }
+
+    const values = new Set(Array.from(sel.options).map(o => o.value));
+    if(values.has(current)){
+      sel.value = current;
+      return;
+    }
+    sel.value = "";
+  }
+
+  function rebuildDataset(){
+    if(!BASE_RECORDS || !BASE_RECORDS.length){
+      ROWS = []; COLS = []; COLCFG = {};
+      updateMeta();
+      renderColList();
+      renderTable();
+      return;
+    }
+
+    const arrMode = $("arrMode").value || "keep";
+    const pick = $("explodePick").value || "";
+    let explodePaths = [];
+
+    if(pick === "__input__"){
+      explodePaths = explodePathsInputList();
+    } else if(pick){
+      explodePaths = [pick];
+    } else {
+      explodePaths = [];
+    }
+
+    let shaped = BASE_RECORDS;
+    if(explodePaths.length){
+      try{
+        shaped = explodeObjects(BASE_RECORDS, explodePaths);
+      }catch(err){
+        setPill("bad","Explode failed");
+        setStatus("parseStatus", `Explode error:\n${err.message}`, true);
+        return;
+      }
+    }
+
+    const flat = [];
+    for(const rec of shaped){
+      if(isPlainObject(rec)){
+        flat.push(flattenObject(rec, "", {}, arrMode));
+      }else{
+        flat.push({value: rec});
+      }
+    }
+
+    const colSet = new Set();
+    for(const r of flat) Object.keys(r).forEach(k => colSet.add(k));
+
+    // ✅ always include defaults in columns
+    ["match_id","Mode","Tournament","Stage","Year","Week","Day","MatchNumber"].forEach(k => colSet.add(k));
+
+    const cols = Array.from(colSet);
+    const common = ["match_id","Mode","Tournament","Stage","Year","Week","Day","MatchNumber"];
+    cols.sort((a,b)=>{
+      const ia = common.indexOf(a), ib = common.indexOf(b);
+      if(ia !== -1 || ib !== -1){
+        return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+      }
+      return a.localeCompare(b);
+    });
+
+    ROWS = flat;
+    COLS = cols;
+
+    COLCFG = {};
+    for(const c of COLS){
+      COLCFG[c] = { include:true, name: toDbSafeKey(c) };
+    }
+
+    updateMeta();
+    renderColList();
+    renderTable();
+
+    const label = pick === "" ? "(base)" : (pick === "__input__" ? "(sequential input)" : `(explode: ${pick})`);
+    setPill("good","Parsed");
+    setStatus("parseStatus",
+`Parsed OK.
+Base rows: ${BASE_RECORDS.length}
+Current rows: ${ROWS.length} ${label}
+Columns: ${COLS.length}
+Explode choices: ${DETECTED_PATHS.length ? DETECTED_PATHS.join(", ") : "(none)"}
+Preview shows up to ${$("maxRows").value} rows.`
+    );
+  }
+
+  function buildFromJSON(){
+    const txt = $("jsonText").value.trim();
+    if(!txt){
+      setPill("bad", "No JSON");
+      setStatus("parseStatus", "Paste JSON first.", true);
+      return;
+    }
+
+    try{
+      RAW = JSON.parse(txt);
+    }catch(e){
+      setPill("bad", "Invalid JSON");
+      setStatus("parseStatus", "JSON parse error:\n" + e.message, true);
+      return;
+    }
+
+    const inferred = inferMatchIdFromRaw(RAW);
+    if(inferred && !$("defMatchId").value.trim()){
+      $("defMatchId").value = inferred;
+    }
+
+    const path = $("pathText").value.trim();
+    let records = null;
+    let usedPath = "";
+
+    if(path){
+      const v = getByPath(RAW, path);
+      if(!Array.isArray(v)){
+        setPill("bad", "Path not array");
+        setStatus("parseStatus", `Path "${path}" did not resolve to an array.\nTip: use dot paths like data.matches`, true);
+        return;
+      }
+      records = v;
+      usedPath = path;
+    }else{
+      if(Array.isArray(RAW)) { records = RAW; usedPath = "(root array)"; }
+      else{
+        const found = findFirstArrayOfObjects(RAW);
+        records = found.arr;
+        usedPath = found.path || "(none)";
+      }
+    }
+
+    if(!records || !records.length){
+      setPill("bad", "No records");
+      setStatus("parseStatus", `Could not find rows to tabulate.\nTry setting Records array path.\nAuto-detected: ${usedPath}`, true);
+      return;
+    }
+
+    BASE_RECORDS = injectDefaultsIntoRecords(records.filter(r => r != null && isPlainObject(r)));
+
+    if($("autoExplode").checked){
+      DETECTED_PATHS = detectArrayObjectPaths(BASE_RECORDS, {maxDepth: 7, maxPaths: 80, sampleN: 10});
+      if(DETECTED_PATHS.length){
+        $("explodePaths").value = DETECTED_PATHS.join(", ");
+      }
+      renderExplodePickOptions(DETECTED_PATHS);
+    } else {
+      DETECTED_PATHS = explodePathsInputList();
+      renderExplodePickOptions(DETECTED_PATHS);
+    }
+
+    setPill("good", "Parsed base");
+    setStatus("parseStatus",
+`Base parsed OK.
+Base rows: ${BASE_RECORDS.length}
+Records path: ${usedPath}
+
+Choose "Explode dataset" to preview/upload player_stats, team_stats, etc (or use sequential input).`
     );
 
-    async function ensureSession(){
-      const { data: { session } } = await client.auth.getSession();
-      if (!session) {
-        window.location.href = "index.html";
-        return null;
-      }
-      return session;
-    }
+    rebuildDataset();
+  }
 
-    async function logout(){
-      await client.auth.signOut();
-      window.location.href = "index.html";
-    }
+  // -----------------------------
+  // Supabase upload
+  // -----------------------------
+  function setProgress(pct){
+    $("bar").style.width = `${Math.max(0, Math.min(100, pct))}%`;
+  }
 
-    /***********************
-     * Sidebar
-     ***********************/
-    const sidebar = document.getElementById('sidebar');
+  function buildUploadRows(limitMode){
+    const {keys, names} = getSelectedCols();
+    const sourceRows = (limitMode === "preview")
+      ? ROWS.slice(0, parseInt($("maxRows").value,10))
+      : ROWS;
 
-    (function initSidebarCollapse(){
-      const key = 'ff_sidebar_collapsed_v1';
-      const saved = localStorage.getItem(key);
-      if (saved === '1') sidebar.classList.add('collapsed');
+    const addTimestamps = $("autoTimestamps").checked;
+    const nowIso = new Date().toISOString();
 
-      const btn = document.getElementById('sbToggle');
-      const path = document.getElementById('sbTogglePath');
-
-      function syncIcon(){
-        if (!path) return;
-        path.setAttribute('d', sidebar.classList.contains('collapsed')
-          ? 'M10 7l5 5-5 5'
-          : 'M14 7l-5 5 5 5'
-        );
+    return sourceRows.map(r=>{
+      const o = {};
+      for(let i=0;i<keys.length;i++){
+        const srcKey = keys[i];
+        const dbKey = names[i];
+        o[dbKey] = r[srcKey];
       }
 
-      syncIcon();
-
-      btn?.addEventListener('click', () => {
-        sidebar.classList.toggle('collapsed');
-        localStorage.setItem(key, sidebar.classList.contains('collapsed') ? '1' : '0');
-        syncIcon();
-      });
-    })();
-
-    (function setActiveNav(){
-      const here = (location.pathname.split('/').pop() || 'dashboard.html').toLowerCase();
-      document.querySelectorAll('.nav-item').forEach(a => {
-        const page = (a.getAttribute('data-page') || '').toLowerCase();
-        a.classList.toggle('active', page === here);
-      });
-    })();
-
-    document.getElementById('searchInput')?.addEventListener('input', (e) => {
-      const q = (e.target.value || '').toLowerCase().trim();
-      document.querySelectorAll('#nav .nav-item').forEach(a => {
-        const txt = a.textContent.toLowerCase();
-        a.style.display = (!q || txt.includes(q)) ? '' : 'none';
-      });
+      if(addTimestamps){
+        if(!("created_at" in o) || o.created_at == null || o.created_at === "") o.created_at = nowIso;
+        o.updated_at = nowIso;
+      }
+      return o;
     });
+  }
 
-    /***********************
-     * Data
-     ***********************/
-    const DATA = {
-      character: { url:'https://neptuneg1.github.io/freefire-caster/character.json', items:[], selected:0 },
-      pet:       { url:'https://neptuneg1.github.io/freefire-caster/pet.json',       items:[], selected:0 },
-      weapon:    { url:'https://neptuneg1.github.io/freefire-caster/weapon.json',    items:[], selected:0 },
-      loadout:   { url:'https://neptuneg1.github.io/freefire-caster/loadout.json',   items:[], selected:0 },
-    };
+  function resolveOnConflict(raw){
+    const typed = (raw || "")
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean);
 
-    const FILTER_STATE = {
-      character: 'all',
-      pet: 'all',
-      weapon: 'all',
-      loadout: 'all'
-    };
+    if(!typed.length) return "";
 
-    function safeText(v){ return (v ?? '').toString(); }
-    function norm(v){ return safeText(v).trim(); }
-    function normLower(v){ return norm(v).toLowerCase(); }
+    const dbNames = new Set(Object.values(COLCFG).map(x => x?.name).filter(Boolean));
 
-    function pickImg(item){
-      return item?.image_url || item?.icon || item?.img || 'https://i.imgur.com/qXFpizS.jpg';
+    return typed.map(col=>{
+      if(COLCFG[col]?.name) return COLCFG[col].name;
+      if(dbNames.has(col)) return col;
+      return toDbSafeKey(col);
+    }).join(",");
+  }
+
+  async function uploadToSupabase(){
+    if(!ROWS.length){
+      setStatus("upStatus", "No rows to upload. Parse JSON first.", true);
+      setProgress(0);
+      return;
     }
 
-    function getCategory(type, item){
-      if (!item) return 'Other';
-      if (type === 'pet'){
-        return norm(item.category || item.type || item.pet_type || item.group || item.role || 'Other') || 'Other';
-      }
-      return norm(item.category || item.type || item.weapon_type || item.class || item.group || 'Other') || 'Other';
+    const url = $("sbUrl").value.trim();
+    const key = $("sbKey").value.trim();
+    const table = $("sbTable").value.trim();
+    const mode = $("sbMode").value;
+    const onConflictInput = $("sbConflict").value.trim();
+    const chunkSize = parseInt($("sbChunk").value,10);
+    const rowMode = $("sbRows").value;
+
+    if(!url || !key || !table){
+      setStatus("upStatus", "Missing Supabase URL / anon key / table name.", true);
+      setProgress(0);
+      return;
     }
 
-    function buildDesc(type, item){
-      if (!item) return '—';
-
-      if (type === 'character'){
-        const skill = safeText(item.skill || '');
-        const d = safeText(item.description || '');
-        return (skill ? skill : '—') + (d ? ` — ${d}` : '');
-      }
-
-      if (type === 'pet'){
-        const skill = safeText(item.skill || item.ability || '');
-        const d = safeText(item.description || '');
-        return (skill ? skill : '—') + (d ? ` — ${d}` : '');
-      }
-
-      if (type === 'weapon'){
-        const t = safeText(item.type || item.category || '');
-        const d = safeText(item.description || item.special || item.desc || '');
-        return (t ? t : '—') + (d ? ` — ${d}` : '');
-      }
-
-      // loadout: show only headline (quick view), full in modal
-      if (type === 'loadout'){
-        const details = item.details || {};
-        const br = safeText(details.br || '');
-        const cs = safeText(details.cs || '');
-
-        const headLine = (txt, max=170) => {
-          const t = safeText(txt).trim();
-          if (!t) return '';
-          const first = (t.split('\n').find(l => l.trim()) || t).trim();
-          return first.length > max ? first.slice(0, max-1) + '…' : first;
-        };
-
-        const brHead = headLine(br);
-        const csHead = headLine(cs);
-
-        const parts = [];
-        if (brHead) parts.push(`BR: ${brHead}`);
-        if (csHead) parts.push(`CS: ${csHead}`);
-
-        return parts.join('  ') || '—';
-      }
-
-      return '—';
+    const onConflict = resolveOnConflict(onConflictInput);
+    if(mode === "upsert" && !onConflict){
+      setStatus("upStatus", "Upsert requires an On conflict column(s).", true);
+      setProgress(0);
+      return;
     }
 
-    async function loadJson(url){
-      const res = await fetch(url, { cache: 'no-store' });
-      if (!res.ok) throw new Error('Fetch failed: ' + url);
-      return await res.json();
+    setStatus("upStatus", "Preparing rows…");
+    setProgress(0);
+
+    const sb = supabase.createClient(url, key);
+
+    const rows = buildUploadRows(rowMode);
+    const total = rows.length;
+    if(!total){
+      setStatus("upStatus", "Nothing to upload after column selection.", true);
+      setProgress(0);
+      return;
     }
 
-    /***********************
-     * Quick View render
-     ***********************/
-    function applyQuickView(type){
-      const state = DATA[type];
-      const item = state.items[state.selected] || state.items[0];
-      if (!item) return;
-
-      const img = pickImg(item);
-      const name = safeText(item.name || '—');
-      const desc = buildDesc(type, item);
-
-      if (type === 'character'){
-        document.getElementById('charThumb').src = img;
-        document.getElementById('charName').textContent = name;
-        document.getElementById('charDesc').textContent = desc || '—';
-      } else if (type === 'pet'){
-        document.getElementById('petThumb').src = img;
-        document.getElementById('petName').textContent = name;
-        document.getElementById('petDesc').textContent = desc || '—';
-      } else if (type === 'weapon'){
-        document.getElementById('weaponThumb').src = img;
-        document.getElementById('weaponName').textContent = name;
-        document.getElementById('weaponDesc').textContent = desc || '—';
-      } else if (type === 'loadout'){
-        document.getElementById('loadoutThumb').src = img;
-        document.getElementById('loadoutName').textContent = name;
-        document.getElementById('loadoutDesc').textContent = desc || '—';
-      }
+    const chunks = [];
+    for(let i=0;i<rows.length;i+=chunkSize){
+      chunks.push(rows.slice(i, i+chunkSize));
     }
 
-    function setCounts(){
-      document.getElementById('charCount').textContent = DATA.character.items.length ? DATA.character.items.length.toLocaleString() : '—';
-      document.getElementById('petCount').textContent = DATA.pet.items.length ? DATA.pet.items.length.toLocaleString() : '—';
-      document.getElementById('weaponCount').textContent = DATA.weapon.items.length ? DATA.weapon.items.length.toLocaleString() : '—';
-      document.getElementById('loadoutCount').textContent = DATA.loadout.items.length ? DATA.loadout.items.length.toLocaleString() : '—';
-    }
+    let ok = 0;
+    let failed = 0;
 
-    /***********************
-     * Picker Modal
-     ***********************/
-    const modal = document.getElementById('pickerModal');
-    const pickerTitle = document.getElementById('pickerTitle');
-    const pickerSub = document.getElementById('pickerSub');
-    const pickerSearch = document.getElementById('pickerSearch');
-    const pickerCount = document.getElementById('pickerCount');
-    const pickerGrid = document.getElementById('pickerGrid');
-    const pickerClose = document.getElementById('pickerClose');
-    const pickerFilterSelect = document.getElementById('pickerFilterSelect');
-    const pickerFilterPills = document.getElementById('pickerFilterPills');
+    for(let i=0;i<chunks.length;i++){
+      const batch = chunks[i];
+      setStatus("upStatus", `Uploading ${i+1}/${chunks.length}…
+Batch size: ${batch.length}
+Uploaded: ${ok}/${total} • Failed: ${failed}
 
-    let currentPickerType = 'character';
-
-    function openPicker(type){
-      currentPickerType = type;
-      const label =
-        type === 'character' ? 'Character' :
-        type === 'pet' ? 'Pet' :
-        type === 'weapon' ? 'Weapon' :
-        'Loadout';
-
-      pickerTitle.textContent = `Select ${label}`;
-      pickerSub.textContent = `Click a ${label.toLowerCase()} to apply it to Quick View.`;
-      pickerSearch.value = '';
-
-      setupPickerFilters();
-      renderPickerGrid();
-
-      modal.classList.add('show');
-      modal.setAttribute('aria-hidden','false');
-      setTimeout(() => pickerSearch.focus(), 0);
-    }
-
-    function closePicker(){
-      modal.classList.remove('show');
-      modal.setAttribute('aria-hidden','true');
-    }
-
-    function setupPickerFilters(){
-      pickerFilterSelect.onchange = null;
-
-      if (currentPickerType === 'character'){
-        pickerFilterSelect.style.display = 'none';
-        pickerFilterPills.style.display = 'flex';
-
-        const options = [
-          { id:'all', label:'All' },
-          { id:'brmeta', label:'BR Meta' },
-          { id:'csmeta', label:'CS Meta' },
-          { id:'active', label:'Active' },
-          { id:'passive', label:'Passive' },
-        ];
-
-        pickerFilterPills.innerHTML = options.map(opt => `
-          <button class="pill-btn ${FILTER_STATE.character === opt.id ? 'active' : ''}" data-f="${opt.id}">
-            ${opt.label}
-          </button>
-        `).join('');
-
-        pickerFilterPills.querySelectorAll('button').forEach(btn => {
-          btn.addEventListener('click', () => {
-            FILTER_STATE.character = btn.getAttribute('data-f') || 'all';
-            pickerFilterPills.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
-            renderPickerGrid();
-          });
-        });
-
-      } else if (currentPickerType === 'pet' || currentPickerType === 'weapon') {
-        pickerFilterPills.style.display = 'none';
-        pickerFilterSelect.style.display = 'inline-flex';
-
-        const items = DATA[currentPickerType].items || [];
-        const cats = Array.from(new Set(items.map(it => getCategory(currentPickerType, it)).filter(Boolean)))
-          .sort((a,b) => a.localeCompare(b));
-
-        const stateKey = currentPickerType;
-        const current = FILTER_STATE[stateKey] || 'all';
-
-        pickerFilterSelect.innerHTML = [
-          `<option value="all">All</option>`,
-          ...cats.map(c => `<option value="${c}">${c}</option>`)
-        ].join('');
-
-        pickerFilterSelect.value = cats.includes(current) ? current : 'all';
-        FILTER_STATE[stateKey] = pickerFilterSelect.value;
-
-        pickerFilterSelect.onchange = () => {
-          FILTER_STATE[stateKey] = pickerFilterSelect.value || 'all';
-          renderPickerGrid();
-        };
-      } else {
-        pickerFilterPills.style.display = 'none';
-        pickerFilterSelect.style.display = 'none';
-      }
-    }
-
-    function passesTypeFilter(it){
-      if (!it) return false;
-
-      if (currentPickerType === 'character'){
-        const f = FILTER_STATE.character || 'all';
-        if (f === 'all') return true;
-        if (f === 'brmeta') return normLower(it.meta || 'no') === 'yes';
-        if (f === 'csmeta') return normLower(it.cs_meta || 'no') === 'yes';
-        if (f === 'active') return normLower(it.skill_type || '') !== 'passive';
-        if (f === 'passive') return normLower(it.skill_type || '') === 'passive';
-        return true;
-      }
-
-      if (currentPickerType === 'pet'){
-        const f = FILTER_STATE.pet || 'all';
-        if (f === 'all') return true;
-        return getCategory('pet', it) === f;
-      }
-
-      if (currentPickerType === 'weapon'){
-        const fw = FILTER_STATE.weapon || 'all';
-        if (fw === 'all') return true;
-        return getCategory('weapon', it) === fw;
-      }
-
-      return true;
-    }
-
-    function renderPickerGrid(){
-      const state = DATA[currentPickerType];
-      const q = (pickerSearch.value || '').toLowerCase().trim();
-      const all = state.items || [];
-
-      const filtered = all.filter(it => {
-        if (!passesTypeFilter(it)) return false;
-        if (!q) return true;
-
-        const name = safeText(it?.name).toLowerCase();
-        const dbr = safeText(it?.details?.br || '');
-        const dcs = safeText(it?.details?.cs || '');
-
-        const skill = safeText(it?.skill || it?.type || it?.ability || it?.category || '').toLowerCase();
-        const desc = safeText(it?.description || it?.special || it?.desc || dbr || dcs).toLowerCase();
-        const detailsBlob = (dbr + ' ' + dcs).toLowerCase();
-
-        return name.includes(q) || skill.includes(q) || desc.includes(q) || detailsBlob.includes(q);
-      });
-
-      pickerCount.textContent = `${filtered.length.toLocaleString()} item${filtered.length===1?'':'s'}`;
-
-      pickerGrid.innerHTML = filtered.map(it => {
-        const idx = all.indexOf(it);
-        const img = pickImg(it);
-        const name = safeText(it?.name || '—');
-        const tip = buildDesc(currentPickerType, it);
-        return `
-          <div class="pick-card" data-idx="${idx}" title="${name}${tip ? ' — ' + tip : ''}">
-            <div class="pick-thumb"><img src="${img}" alt="${name}" /></div>
-            <div class="pick-name">${name}</div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    pickerClose?.addEventListener('click', closePicker);
-    modal?.addEventListener('click', (e) => { if (e.target === modal) closePicker(); });
-    window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modal.classList.contains('show')) closePicker(); });
-    pickerSearch?.addEventListener('input', renderPickerGrid);
-
-    pickerGrid?.addEventListener('click', (e) => {
-      const card = e.target.closest('.pick-card');
-      if (!card) return;
-      const idx = Number(card.getAttribute('data-idx'));
-      if (Number.isNaN(idx)) return;
-
-      DATA[currentPickerType].selected = idx;
-      applyQuickView(currentPickerType);
-      closePicker();
-    });
-
-    document.querySelectorAll('[data-open]').forEach(btn => {
-      btn.addEventListener('click', () => openPicker(btn.getAttribute('data-open')));
-    });
-
-    /***********************
-     * Loadout Details Modal
-     ***********************/
-    const loadoutModal = document.getElementById('loadoutModal');
-    const loadoutClose = document.getElementById('loadoutClose');
-    const loadoutDetailsBtn = document.getElementById('loadoutDetailsBtn');
-    const loadoutDescEl = document.getElementById('loadoutDesc');
-
-    function getSelectedLoadout(){
-      const list = DATA.loadout.items || [];
-      const idx = Number(DATA.loadout.selected || 0);
-      return list[idx] || list[0] || null;
-    }
-
-    function openLoadoutDetails(){
-      const it = getSelectedLoadout();
-      if (!it) return;
-
-      document.getElementById('ldImg').src = pickImg(it);
-      document.getElementById('ldName').textContent = safeText(it.name || '—');
-
-      const br = safeText(it?.details?.br || '—').trim() || '—';
-      const cs = safeText(it?.details?.cs || '—').trim() || '—';
-
-      document.getElementById('ldBR').textContent = br;
-      document.getElementById('ldCS').textContent = cs;
-
-      loadoutModal.classList.add('show');
-      loadoutModal.setAttribute('aria-hidden','false');
-    }
-
-    function closeLoadoutDetails(){
-      loadoutModal.classList.remove('show');
-      loadoutModal.setAttribute('aria-hidden','true');
-    }
-
-    loadoutDetailsBtn?.addEventListener('click', openLoadoutDetails);
-    loadoutDescEl?.addEventListener('click', openLoadoutDetails);
-    loadoutClose?.addEventListener('click', closeLoadoutDetails);
-    loadoutModal?.addEventListener('click', (e) => { if (e.target === loadoutModal) closeLoadoutDetails(); });
-
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && loadoutModal.classList.contains('show')) closeLoadoutDetails();
-    });
-
-    /***********************
-     * Init
-     ***********************/
-    window.addEventListener('DOMContentLoaded', async () => {
-      const session = await ensureSession();
-      if (!session) return;
-
-      const email = session.user?.email || '';
-      document.getElementById('userEmail').textContent = email || 'signed in';
-      const username = email ? email.split('@')[0] : 'PlayerOne';
-      document.getElementById('gamertag').textContent = username;
-
-      document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        logout();
-      });
+${mode === "upsert" ? `onConflict: ${onConflict}` : ""}`);
+      setProgress(Math.round((i / chunks.length) * 100));
 
       try{
-        const [chars, pets, weapons, loadouts] = await Promise.all([
-          loadJson(DATA.character.url),
-          loadJson(DATA.pet.url),
-          loadJson(DATA.weapon.url),
-          loadJson(DATA.loadout.url),
-        ]);
+        let res;
+        if(mode === "insert"){
+          res = await sb.from(table).insert(batch);
+        }else{
+          res = await sb.from(table).upsert(batch, { onConflict: onConflict.replace(/\s+/g,"") });
+        }
 
-        DATA.character.items = Array.isArray(chars) ? chars : [];
-        DATA.pet.items = Array.isArray(pets) ? pets : [];
-        DATA.weapon.items = Array.isArray(weapons) ? weapons : [];
-        DATA.loadout.items = Array.isArray(loadouts) ? loadouts : [];
+        // ✅ show full JSON error in UI + console
+        const error = res.error;
+        if (error) {
+          console.error(error);
+          setStatus("upStatus", "Supabase error:\n" + JSON.stringify(error, null, 2), true);
+          setProgress(Math.round(((i+1)/chunks.length)*100));
+          return;
+        }
 
-        setCounts();
-
-        DATA.character.selected = 0;
-        DATA.pet.selected = 0;
-        DATA.weapon.selected = 0;
-        DATA.loadout.selected = 0;
-
-        applyQuickView('character');
-        applyQuickView('pet');
-        applyQuickView('weapon');
-        applyQuickView('loadout');
-      }catch(err){
-        console.error(err);
-        setCounts();
+        ok += batch.length;
+      }catch(e){
+        failed += batch.length;
+        setStatus("upStatus", `Network/runtime error on batch ${i+1}:\n${e.message}`, true);
+        setProgress(Math.round(((i+1)/chunks.length)*100));
+        return;
       }
+    }
+
+    setProgress(100);
+    setStatus("upStatus", `Done ✅
+Uploaded: ${ok}/${total}
+Failed: ${failed}
+Mode: ${mode}${mode==="upsert" ? ` (onConflict: ${onConflict})` : ""}`);
+  }
+
+  // -----------------------------
+  // Events
+  // -----------------------------
+  $("btnParse").addEventListener("click", buildFromJSON);
+
+  $("btnClear").addEventListener("click", ()=>{
+    $("jsonText").value = "";
+    $("pathText").value = "";
+    $("explodePaths").value = "team_stats";
+    $("explodePick").value = "";
+    $("fetchUrl").value = "";
+    $("arrMode").value = "keep";
+    $("maxRows").value = "2000";
+
+    $("autoExplode").checked = false;
+
+    $("defMode").value = "BR";
+    $("defTournament").value = "";
+    $("defStage").value = "";
+
+    $("defYear").value = String(new Date().getFullYear());
+    $("defWeek").value = "";
+    $("defDay").value = "";
+    $("defMatchNumber").value = "";   // ✅
+    $("defMatchId").value = "";
+
+    $("autoTimestamps").checked = true;
+
+    RAW = null;
+    BASE_RECORDS = [];
+    DETECTED_PATHS = [];
+    ROWS = []; COLS = []; COLCFG = {};
+
+    $("colList").innerHTML = `<div class="small" style="padding:10px 12px;color:var(--muted)">No columns yet.</div>`;
+    $("theadRow").innerHTML = "";
+    $("tbody").innerHTML = "";
+    updateMeta();
+    setPill("neutral","Waiting for JSON");
+    setStatus("parseStatus","No data parsed yet.");
+    setStatus("upStatus","Ready.");
+    setProgress(0);
+
+    renderExplodePickOptions(explodePathsInputList());
+  });
+
+  $("btnSample").addEventListener("click", ()=>{
+    const sample = {
+      data: {
+        matches: [
+          {
+            match_id: "1725487677733611520",
+            map_id: 4,
+            team_stats: [
+              {
+                team_name: "ABC",
+                player_stats: [
+                  { account_id: 111, nickname: "A1", kills: 3, damage: 812, skill_ids:[101,202,303] },
+                  { account_id: 222, nickname: "A2", kills: 2, damage: 540, skill_ids:[404,505] }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    };
+    $("jsonText").value = JSON.stringify(sample, null, 2);
+    $("pathText").value = "data.matches";
+    $("arrMode").value = "keep";
+    $("maxRows").value = "2000";
+
+    $("autoExplode").checked = false;
+
+    $("defMode").value = "BR";
+    $("defTournament").value = "Sample Cup";
+    $("defStage").value = "Finals";
+    $("defYear").value = String(new Date().getFullYear());
+    $("defWeek").value = "W1";
+    $("defDay").value = "D1";
+    $("defMatchNumber").value = "1"; // ✅
+    $("defMatchId").value = "1725487677733611520";
+
+    $("explodePaths").value = "team_stats";
+    renderExplodePickOptions(explodePathsInputList());
+
+    setPill("neutral","Sample loaded");
+    setStatus("parseStatus","Sample loaded. Click Parse & Build Table.");
+  });
+
+  $("fileInput").addEventListener("change", async (e)=>{
+    const f = e.target.files?.[0];
+    if(!f) return;
+    try{
+      const txt = await f.text();
+      $("jsonText").value = txt;
+      setPill("neutral", "File loaded");
+      setStatus("parseStatus", `Loaded file: ${f.name}\nClick Parse & Build Table.`);
+    }catch(err){
+      setPill("bad","File read failed");
+      setStatus("parseStatus", "Could not read file:\n" + err.message, true);
+    } finally {
+      e.target.value = "";
+    }
+  });
+
+  $("btnFetch").addEventListener("click", async ()=>{
+    const url = $("fetchUrl").value.trim();
+    if(!url){
+      setStatus("parseStatus","Enter a URL first.", true);
+      return;
+    }
+    setPill("neutral","Fetching…");
+    setStatus("parseStatus","Fetching JSON from URL…");
+    try{
+      const res = await fetch(url, {cache:"no-store"});
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      const txt = await res.text();
+      $("jsonText").value = txt;
+      setPill("neutral","Fetched");
+      setStatus("parseStatus","Fetched OK. Click Parse & Build Table.");
+    }catch(e){
+      setPill("bad","Fetch failed");
+      setStatus("parseStatus",
+`Fetch failed:
+${e.message}
+
+This is often CORS.
+If so, fetch server-side (proxy/Edge Function) then paste the JSON here.`, true);
+    }
+  });
+
+  $("btnAll").addEventListener("click", ()=>{
+    for(const c of COLS){ COLCFG[c].include = true; }
+    renderColList(); renderTable();
+  });
+
+  $("btnNone").addEventListener("click", ()=>{
+    for(const c of COLS){ COLCFG[c].include = false; }
+    renderColList(); renderTable();
+  });
+
+  $("maxRows").addEventListener("change", ()=>{
+    if(ROWS.length) renderTable();
+  });
+
+  $("explodePick").addEventListener("change", ()=>{
+    if(BASE_RECORDS.length) rebuildDataset();
+  });
+
+  $("arrMode").addEventListener("change", ()=>{
+    if(BASE_RECORDS.length) rebuildDataset();
+  });
+
+  $("autoExplode").addEventListener("change", ()=>{
+    if(!$("jsonText").value.trim()) return;
+    buildFromJSON();
+  });
+
+  $("explodePaths").addEventListener("change", ()=>{
+    if(!$("autoExplode").checked){
+      renderExplodePickOptions(explodePathsInputList());
+      if(BASE_RECORDS.length) rebuildDataset();
+    }
+  });
+
+  $("btnUpload").addEventListener("click", uploadToSupabase);
+
+  $("btnCSV").addEventListener("click", ()=>{
+    if(!ROWS.length){ alert("Parse JSON first."); return; }
+    const {keys, names} = getSelectedCols();
+    if(!keys.length){ alert("No columns selected."); return; }
+    const rowMode = $("sbRows").value;
+    const rows = buildUploadRows(rowMode);
+
+    const cols = names;
+    const normalized = rows.map(r=>{
+      const out = {};
+      for(const c of cols){
+        const v = r[c];
+        out[c] = (Array.isArray(v) || isPlainObject(v)) ? safeString(v) : v;
+      }
+      return out;
     });
-  </script>
+
+    const csv = toCSV(normalized, cols);
+    downloadText("table_export.csv", csv, "text/csv");
+  });
+
+  $("btnJSON").addEventListener("click", ()=>{
+    if(!ROWS.length){ alert("Parse JSON first."); return; }
+    const rowMode = $("sbRows").value;
+    const rows = buildUploadRows(rowMode);
+    downloadText("rows_export.json", JSON.stringify(rows, null, 2), "application/json");
+  });
+
+  // init defaults
+  (function initDefaults(){
+    $("defYear").value = String(new Date().getFullYear());
+    $("autoExplode").checked = false;
+    renderExplodePickOptions(explodePathsInputList());
+    updateMeta();
+    setPill("neutral","Waiting for JSON");
+  })();
+</script>
 </body>
 </html>
