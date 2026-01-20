@@ -369,7 +369,7 @@
     .controls{
       display:flex;
       gap:10px;
-      align-items:center;
+      align-items:flex-start;
       justify-content:space-between;
       flex-wrap:wrap;
       margin-bottom: 10px;
@@ -377,15 +377,18 @@
     .controls-left{
       display:flex;
       gap:10px;
-      align-items:center;
+      align-items:flex-start;
       flex-wrap:wrap;
       min-width:0;
+      flex: 1 1 auto;
     }
     .controls-right{
       display:flex;
       gap:8px;
       align-items:center;
       flex-wrap:wrap;
+      flex: 0 0 auto;
+      justify-content:flex-end;
     }
 
     .pill{
@@ -401,14 +404,41 @@
       font-size:.82rem;
       white-space:nowrap;
     }
+
     .dot{
       width:9px;height:9px;border-radius:50%;
       display:inline-block;
       box-shadow: 0 0 0 3px rgba(255,255,255,.06);
     }
-    .dot.active{ background: var(--skill-active); }
-    .dot.passive{ background: var(--skill-passive); }
+    .dot.active{ background: var(--skill-active); }   /* used in modal badges/legend only */
+    .dot.passive{ background: var(--skill-passive); } /* used in modal badges/legend only */
     .dot.meta{ background: var(--brand); }
+
+    .border-swatch{
+      width:14px;height:14px;border-radius:6px;
+      background: rgba(0,0,0,.10);
+      border:2px solid rgba(255,255,255,.14);
+      box-shadow: 0 0 0 3px rgba(255,255,255,.05);
+      display:inline-block;
+    }
+    .border-swatch.active{ border-color: rgba(77,211,255,.95); }
+    .border-swatch.passive{ border-color: rgba(255,89,199,.95); }
+
+    /* ✅ legend container */
+    .legend{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+      min-width:0;
+    }
+    .legend .pill{
+      padding: 7px 9px;
+      font-size: .78rem;
+      font-weight:900;
+      border-color: rgba(255,255,255,.10);
+      background: rgba(0,0,0,.14);
+    }
 
     .btn{
       padding: 9px 12px;
@@ -494,8 +524,6 @@
       place-items:center;
       position:relative;
     }
-
-    /* align image to top */
     .char-thumb img{
       width:100%;
       height:100%;
@@ -505,7 +533,7 @@
       background: rgba(255,255,255,.02);
     }
 
-    /* ✅ keep skill color border */
+    /* keep active/passive border */
     .char-card.active-skill .char-thumb{ border-color: rgba(77,211,255,.95); }
     .char-card.passive-skill .char-thumb{ border-color: rgba(255,89,199,.95); }
 
@@ -533,7 +561,7 @@
       padding: 0 2px;
     }
 
-    /* ✅ NEW: role dot row (replaces role breakdown) */
+    /* Role dot on each card */
     .card-dots{
       display:flex;
       justify-content:center;
@@ -549,7 +577,7 @@
       background: rgba(255,255,255,.18);
     }
 
-    /* Modal (Info popup) */
+    /* Modal */
     .modal{
       position: fixed;
       inset: 0;
@@ -679,7 +707,7 @@
           <span class="nav-label">Dashboard</span>
         </a>
 
-        <a class="nav-item" href="character.html" data-page="character.html" title="Character Skills">
+        <a class="nav-item active" href="character.html" data-page="character.html" title="Character Skills">
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4 0-7 2-7 4v2h14v-2c0-2-3-4-7-4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
           <span class="nav-label">Character Skills</span>
         </a>
@@ -791,7 +819,8 @@
         <div class="card-inner">
           <div class="controls">
             <div class="controls-left">
-              <!-- ✅ Removed category breakdown pills (kept only search count) -->
+              <!-- ✅ Legends -->
+              <div class="legend" id="legendRow"></div>
               <span class="pill" id="searchCountPill" style="display:none;"></span>
             </div>
 
@@ -934,6 +963,7 @@
     const toggleModeBtn = document.getElementById('toggleModeBtn');
     const searchCountPill = document.getElementById('searchCountPill');
     const toggleDescLangBtn = document.getElementById('toggleDescLangBtn');
+    const legendRow = document.getElementById('legendRow');
 
     function safeText(v){ return (v ?? '').toString(); }
 
@@ -1003,7 +1033,7 @@
     }
 
     /***********************
-     * ✅ Role dots (colors)
+     * Role dots + legends
      ***********************/
     const ROLE_COLOR_OVERRIDES = {
       attack: '#ff5a5a',
@@ -1014,6 +1044,11 @@
       teamwork: '#ffbd59',
       healing: '#ff59c7',
     };
+
+    // Legend order (you can reorder anytime)
+    const ROLE_LEGEND_ORDER = [
+      'attack','support','survival','defense','info','teamwork','healing'
+    ];
 
     function roleColor(roleRaw){
       const key = tidy(roleRaw).toLowerCase();
@@ -1027,16 +1062,55 @@
       return `hsl(${hue} 70% 60%)`;
     }
 
+    function makeLegendPill(innerNodes){
+      const p = document.createElement('span');
+      p.className = 'pill';
+      innerNodes.forEach(n => p.appendChild(n));
+      return p;
+    }
+
+    function textNode(t){ return document.createTextNode(t); }
+
+    function renderLegends(){
+      if (!legendRow) return;
+      legendRow.innerHTML = '';
+
+      // Meta
+      {
+        const d = document.createElement('span');
+        d.className = 'dot meta';
+        legendRow.appendChild(makeLegendPill([d, textNode('Meta')]));
+      }
+
+      // Skill borders (active/passive)
+      {
+        const b = document.createElement('span');
+        b.className = 'border-swatch active';
+        legendRow.appendChild(makeLegendPill([b, textNode('Active Border')]));
+      }
+      {
+        const b = document.createElement('span');
+        b.className = 'border-swatch passive';
+        legendRow.appendChild(makeLegendPill([b, textNode('Passive Border')]));
+      }
+
+      // Role dots
+      ROLE_LEGEND_ORDER.forEach(k => {
+        const d = document.createElement('span');
+        d.className = 'role-dot';
+        d.style.background = ROLE_COLOR_OVERRIDES[k] || 'rgba(255,255,255,.18)';
+        const label = k.toUpperCase();
+        legendRow.appendChild(makeLegendPill([d, textNode(label)]));
+      });
+    }
+
     function makeCard(c){
       const card = document.createElement('div');
       const passive = isPassive(c);
       const meta = isMeta(c);
 
-      // keep active/passive border behavior via these classes
       card.className = 'char-card ' + (passive ? 'passive-skill' : 'active-skill') + (meta ? ' is-meta' : '');
       card.setAttribute('tabindex','0');
-
-      // search blob
       card.dataset.search = makeSearchBlob(c);
 
       const thumb = document.createElement('div');
@@ -1058,11 +1132,11 @@
       name.className = 'char-name';
       name.textContent = tidy(c.name) || '—';
 
-      // ✅ Role dot row (replaces role breakdown)
+      // Role dot row
       const dots = document.createElement('div');
       dots.className = 'card-dots';
-
       const role = tidy(c?.role) || 'Other';
+
       const d = document.createElement('span');
       d.className = 'role-dot';
       d.style.background = roleColor(role);
@@ -1183,7 +1257,9 @@
       infoSub.textContent = chips.join(' • ');
 
       infoBadges.innerHTML = '';
-      infoBadges.appendChild(badgeDot(isPassive(c) ? 'passive' : 'active', isPassive(c) ? 'Passive Skill' : 'Active Skill'));
+      infoBadges.appendChild(
+        badgeDot(isPassive(c) ? 'passive' : 'active', isPassive(c) ? 'Passive Skill' : 'Active Skill')
+      );
       if (metaFlag) infoBadges.appendChild(badgeDot('meta', 'Meta'));
 
       infoSkillTitle.textContent = 'Skill: ' + (skill || '—');
@@ -1259,6 +1335,7 @@
       });
 
       setModeUI();
+      renderLegends();          // ✅ add legends
       await loadCharacters();
     });
   </script>
