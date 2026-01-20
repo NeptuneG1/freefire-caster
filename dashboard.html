@@ -603,7 +603,7 @@
     .tap-more{cursor:pointer}
     .tap-more:hover{color: rgba(244,246,255,.92);}
 
-    /* ✅ Loadout preview: allow line breaks (BR line 1, CS line 2) */
+    /* ✅ Loadout preview: allow BR/CS new lines */
     #loadoutDesc{ white-space: pre-wrap; }
 
     /* Modal */
@@ -627,7 +627,7 @@
       border: 1px solid rgba(255,255,255,.10);
       border-radius: 22px;
       box-shadow: 0 26px 80px rgba(0,0,0,.65);
-      overflow:auto;
+      overflow:hidden;
       display:flex;
       flex-direction:column;
     }
@@ -863,6 +863,18 @@
       font-size: .92rem;
     }
 
+    /* ✅ HARD FIX: ensure loadout modal scrolls (prevents clipping) */
+    #loadoutModal .modal-card{
+      height: min(84vh, 820px);
+      max-height: min(84vh, 820px);
+    }
+    #loadoutModal .modal-top{ flex: 0 0 auto; }
+    #loadoutModal .ld-wrap{
+      flex: 1 1 auto;
+      min-height: 0;     /* critical for flex overflow scrolling */
+      overflow: auto;
+    }
+
     @media (max-width: 1200px){
       .quickbar{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
@@ -870,17 +882,6 @@
       .quickbar{ grid-template-columns: 1fr; }
       .modal-controls input{min-width: 0; width:100%;}
       .modal-controls select{min-width: 0; width:100%;}
-    }
-
-    /* ✅ Make the Loadout modal body scroll instead of clipping */
-    #loadoutModal .modal-card{
-      height: min(84vh, 820px);   /* force a fixed height so inner can scroll */
-    }
-    
-    #loadoutModal .ld-wrap{
-      flex: 1;                    /* take remaining space below header */
-      min-height: 0;              /* required for overflow scrolling in flex */
-      overflow: auto;             /* scroll long BR/CS text */
     }
 
     /* ===== Map Window bar (Dashboard) ===== */
@@ -1385,7 +1386,10 @@
       applyQuickView('weapon');
       applyQuickView('loadout');
 
+      // If picker is open, refresh grid/tooltips
       if (modal?.classList.contains('show')) renderPickerGrid();
+
+      // If loadout modal open
       if (loadoutModal?.classList.contains('show')) openLoadoutDetails();
     }
 
@@ -1497,10 +1501,10 @@
         return (t ? t : '—') + (d ? ` — ${d}` : '');
       }
 
+      /* ✅ UPDATED: Loadout preview uses EN/MS and puts CS on new line */
       if (type === 'loadout'){
         const details = item.details || {};
 
-        // ✅ use the same language toggle logic as the featured card
         const brFull = pickLang(details.br, details.br_ms);
         const csFull = pickLang(details.cs, details.cs_ms);
 
@@ -1518,7 +1522,6 @@
         if (brHead) parts.push(`BR: ${brHead}`);
         if (csHead) parts.push(`CS: ${csHead}`);
 
-        // ✅ newline so CS appears on the next line
         return parts.join('\n') || '—';
       }
 
@@ -1808,7 +1811,7 @@
         const name = safeText(it?.name || '—');
 
         const tip = buildDesc(currentPickerType, it);
-        const tipFlat = safeText(tip).replace(/\n+/g, ' | '); // ✅ avoid multiline in title tooltip
+        const tipFlat = safeText(tip).replace(/\n+/g, ' | '); // ✅ avoid newline in title=
 
         return `
           <div class="pick-card" data-idx="${idx}" title="${name}${tipFlat ? ' — ' + tipFlat : ''}">
@@ -1860,13 +1863,8 @@
       document.getElementById('ldImg').src = pickImg(it);
       document.getElementById('ldName').textContent = safeText(it.name || '—');
 
-      const br = (currentLang === 'ms')
-        ? safeText(it?.details?.br_ms || it?.details?.br || '—').trim() || '—'
-        : safeText(it?.details?.br || it?.details?.br_ms || '—').trim() || '—';
-
-      const cs = (currentLang === 'ms')
-        ? safeText(it?.details?.cs_ms || it?.details?.cs || '—').trim() || '—'
-        : safeText(it?.details?.cs || it?.details?.cs_ms || '—').trim() || '—';
+      const br = pickLang(it?.details?.br, it?.details?.br_ms).trim() || '—';
+      const cs = pickLang(it?.details?.cs, it?.details?.cs_ms).trim() || '—';
 
       document.getElementById('ldBR').textContent = br;
       document.getElementById('ldCS').textContent = cs;
@@ -2216,7 +2214,7 @@
         DATA.weapon.selected = 0;
         DATA.loadout.selected = 0;
 
-        refreshAllText(); // ✅ applies current language + loadout newline formatting
+        refreshAllText(); // ✅ applies current language too
       }catch(err){
         console.error(err);
         setCounts();
