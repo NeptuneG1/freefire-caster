@@ -814,7 +814,6 @@
           <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;opacity:.85">
             <path d="M21 21l-4.3-4.3m1.3-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
-          <!-- FIX: This now searches CHARACTERS on this page -->
           <input id="searchInput" placeholder="Search characters (name / role / skill)..." />
         </div>
 
@@ -854,6 +853,13 @@
                 Show Meta For:
                 <button class="btn brand" id="toggleModeBtn" type="button">Battle Royale</button>
               </span>
+
+              <!-- ✅ NEW: description language toggle -->
+              <span class="pill" style="border-color: rgba(77,211,255,.18)">
+                Description:
+                <button class="btn" id="toggleDescLangBtn" type="button">EN</button>
+              </span>
+
               <a class="btn" href="dashboard.html">← Dashboard</a>
               <a class="btn" href="character-comparison.html">Compare</a>
             </div>
@@ -889,7 +895,6 @@
         </button>
       </div>
 
-      <!-- FIXED spacing: no "space-between", no empty filler rows -->
       <div class="modal-body">
         <div class="badge-row" id="infoBadges"></div>
 
@@ -970,9 +975,14 @@
      * Character Data + Rendering
      ***********************/
     const CHAR_URL = 'https://neptuneg1.github.io/freefire-caster/character.json';
+
     let allCharacters = [];
     let currentMetaMode = 'meta'; // default BR
     let currentSearchTerm = '';
+
+    // ✅ NEW: Description language
+    let currentDescLang = 'en'; // 'en' => description, 'bm' => description_ms
+    let LAST_OPENED_CHAR = null;
 
     const metaGrid = document.getElementById('metaGrid');
     const nonMetaGrid = document.getElementById('nonMetaGrid');
@@ -981,6 +991,7 @@
     const metaHint = document.getElementById('metaHint');
     const toggleModeBtn = document.getElementById('toggleModeBtn');
     const searchCountPill = document.getElementById('searchCountPill');
+    const toggleDescLangBtn = document.getElementById('toggleDescLangBtn');
 
     function safeText(v){ return (v ?? '').toString(); }
 
@@ -1012,13 +1023,30 @@
       metaHint.textContent = isBR ? '(Battle Royale)' : '(Clash Squad)';
     }
 
+    // ✅ NEW: choose which description to show
+    function getActiveDesc(c){
+      const en = tidy(c?.description);
+      const bm = tidy(c?.description_ms);
+
+      if (currentDescLang === 'bm') return bm || en || '—';
+      return en || bm || '—';
+    }
+
+    function syncDescLangUI(){
+      if(!toggleDescLangBtn) return;
+      const isBM = currentDescLang === 'bm';
+      toggleDescLangBtn.textContent = isBM ? 'BM' : 'EN';
+      toggleDescLangBtn.title = isBM ? 'Showing Bahasa Melayu (description_ms)' : 'Showing English (description)';
+    }
+
     function makeSearchBlob(c){
       const parts = [
         tidy(c?.name),
         tidy(c?.role),
         tidy(c?.skill_type),
         tidy(c?.skill),
-        tidy(c?.description)
+        tidy(c?.description),
+        tidy(c?.description_ms) // ✅ include BM in search too
       ].filter(Boolean);
       return parts.join(' ').toLowerCase();
     }
@@ -1245,19 +1273,22 @@
     }
 
     function openInfo(c, metaFlag){
+      LAST_OPENED_CHAR = c;
+
       const name = tidy(c?.name) || '—';
       const role = tidy(c?.role) || 'N/A';
       const st = tidy(c?.skill_type) || '—';
       const skill = tidy(c?.skill) || '—';
-      const desc = tidy(c?.description) || '—';
+      const desc = getActiveDesc(c);
 
       infoName.textContent = name;
 
-      // Example: "TEAM WORK • Meta • BR • Active"
+      // Example: "TEAM WORK • Meta • BR • EN • Active"
       const chips = [];
       if (role && role !== 'N/A') chips.push(role.toUpperCase());
       if (metaFlag) chips.push('META');
       chips.push(modeLabel());
+      chips.push(currentDescLang === 'bm' ? 'BM' : 'EN');
       if (st) chips.push(st);
       infoSub.textContent = chips.join(' • ');
 
@@ -1292,7 +1323,28 @@
     });
 
     /***********************
-     * FIX: Top search now filters characters on the page
+     * ✅ NEW: Description language toggle (EN <-> BM)
+     ***********************/
+    (function initDescLangToggle(){
+      const key = 'ff_char_desc_lang_v1';
+      const saved = localStorage.getItem(key);
+      if (saved === 'bm' || saved === 'en') currentDescLang = saved;
+      syncDescLangUI();
+
+      toggleDescLangBtn?.addEventListener('click', () => {
+        currentDescLang = (currentDescLang === 'en') ? 'bm' : 'en';
+        localStorage.setItem(key, currentDescLang);
+        syncDescLangUI();
+
+        // If modal is open, refresh its description immediately
+        if (infoModal.classList.contains('show') && LAST_OPENED_CHAR) {
+          openInfo(LAST_OPENED_CHAR, isMeta(LAST_OPENED_CHAR));
+        }
+      });
+    })();
+
+    /***********************
+     * Top search filters characters on the page
      ***********************/
     const topSearch = document.getElementById('searchInput');
     topSearch?.addEventListener('input', (e) => {
