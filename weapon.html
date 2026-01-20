@@ -913,6 +913,9 @@
                 <input type="checkbox" id="filterCSOnly" />
               </div>
 
+              <!-- ✅ Translate toggle (EN/MS) -->
+              <button class="btn" id="langToggle" type="button" title="Toggle description language">EN</button>
+
               <button class="btn" id="toggleView" type="button">📃 List View</button>
               <a class="btn" href="dashboard.html">← Dashboard</a>
             </div>
@@ -1069,6 +1072,43 @@
     }
 
     /***********************
+     * Language Toggle (EN/MS)
+     ***********************/
+    const LANG_KEY = 'ff_weapon_lang_v1';
+    let currentLang = (localStorage.getItem(LANG_KEY) || 'en'); // 'en' | 'ms'
+    let LAST_OPENED_WEAPON = null;
+
+    const langToggleBtn = document.getElementById('langToggle');
+
+    function syncLangButton(){
+      if (!langToggleBtn) return;
+      langToggleBtn.textContent = (currentLang === 'ms') ? 'MS' : 'EN';
+      langToggleBtn.title = (currentLang === 'ms')
+        ? 'Showing Bahasa Melayu (description_ms)'
+        : 'Showing English (description)';
+    }
+
+    function pickDescription(w){
+      const en = tidy(w?.description);
+      const ms = tidy(w?.description_ms);
+      if (currentLang === 'ms') return ms || en || '—';
+      return en || ms || '—';
+    }
+
+    syncLangButton();
+
+    langToggleBtn?.addEventListener('click', () => {
+      currentLang = (currentLang === 'en') ? 'ms' : 'en';
+      localStorage.setItem(LANG_KEY, currentLang);
+      syncLangButton();
+
+      // refresh modal instantly if open
+      if (infoModal.classList.contains('show') && LAST_OPENED_WEAPON){
+        openInfo(LAST_OPENED_WEAPON);
+      }
+    });
+
+    /***********************
      * Data + State
      ***********************/
     const WEAPON_URL = 'https://neptuneg1.github.io/freefire-caster/weapon.json';
@@ -1111,7 +1151,8 @@
         tidy(w?.type),
         splitArmory(w?.armory).join(' '),
         tidy(w?.special_attributes),
-        tidy(w?.description)
+        tidy(w?.description),
+        tidy(w?.description_ms) // ✅ include Malay text in search too
       ].filter(Boolean).join(' ').toLowerCase();
     }
 
@@ -1228,7 +1269,6 @@
       if (isListView){
         weaponGrid.classList.add('list-view');
         toggleViewBtn.textContent = '🔳 Grid View';
-        // swap each card into row layout
         [...weaponGrid.querySelectorAll('.wep-card')].forEach(card => {
           const thumb = card._thumb || card.querySelector('.wep-thumb');
           const row = card._row;
@@ -1240,7 +1280,6 @@
       } else {
         weaponGrid.classList.remove('list-view');
         toggleViewBtn.textContent = '📃 List View';
-        // restore grid layout
         [...weaponGrid.querySelectorAll('.wep-card')].forEach(card => {
           const w = card._weapon;
           if (!w) return;
@@ -1250,7 +1289,6 @@
           const cs = isCS(w);
           const price = tidy(w?.price);
 
-          // rebuild grid layout quickly
           const nm = document.createElement('div');
           nm.className = 'wep-name';
           nm.textContent = name;
@@ -1314,7 +1352,6 @@
     function renderWeapons(){
       weaponGrid.innerHTML = '';
 
-      // filter + sort array first
       const type = (currentTypeFilter || '').trim();
       const armory = (currentArmoryFilter || '').toLowerCase().trim();
       const csOnly = !!currentCsOnly;
@@ -1336,7 +1373,6 @@
         filtered.sort((a,b) => {
           const pa = toPriceNum(a?.price);
           const pb = toPriceNum(b?.price);
-          // NaN goes last
           if (!Number.isFinite(pa) && !Number.isFinite(pb)) return tidy(a?.name).localeCompare(tidy(b?.name));
           if (!Number.isFinite(pa)) return 1;
           if (!Number.isFinite(pb)) return -1;
@@ -1360,7 +1396,7 @@
       filtered.forEach(w => weaponGrid.appendChild(makeWeaponCard(w)));
 
       applyViewMode();
-      applyFilters(); // also updates count pill reliably
+      applyFilters();
     }
 
     function populateArmoryOptions(weapons){
@@ -1369,7 +1405,6 @@
         splitArmory(w?.armory).forEach(a => set.add(a));
       });
 
-      // reset
       filterArmory.innerHTML = '<option value="">All</option>';
 
       [...set].sort((a,b) => a.localeCompare(b)).forEach(name => {
@@ -1422,6 +1457,8 @@
     }
 
     function openInfo(w){
+      LAST_OPENED_WEAPON = w;
+
       const name = tidy(w?.name) || '—';
       const type = tidy(w?.type) || '—';
       const cs = isCS(w);
@@ -1432,7 +1469,8 @@
       infoSub.textContent = [
         type ? type.toUpperCase() : null,
         cs ? (price ? `CS ₱${price}` : 'CS') : null,
-        armory.length ? `ARMORY: ${armory.join(', ')}` : null
+        armory.length ? `ARMORY: ${armory.join(', ')}` : null,
+        (currentLang === 'ms' ? 'MS' : 'EN') // ✅ show current language
       ].filter(Boolean).join(' • ');
 
       infoBadges.innerHTML = '';
@@ -1445,7 +1483,7 @@
       infoMag.textContent = tidy(w?.magazine_size) || '—';
 
       infoAttrs.textContent = tidy(w?.special_attributes) || '—';
-      infoDesc.textContent = tidy(w?.description) || '—';
+      infoDesc.textContent = pickDescription(w); // ✅ EN/MS description
 
       infoModal.classList.add('show');
       infoModal.setAttribute('aria-hidden','false');
