@@ -603,6 +603,9 @@
     .tap-more{cursor:pointer}
     .tap-more:hover{color: rgba(244,246,255,.92);}
 
+    /* ✅ Loadout preview: allow line breaks (BR line 1, CS line 2) */
+    #loadoutDesc{ white-space: pre-wrap; }
+
     /* Modal */
     .modal{
       position: fixed;
@@ -1012,7 +1015,7 @@
           <span class="nav-label">Weapons</span>
         </a>
 
-         <a class="nav-item active" href="loadout.html" data-page="loadout.html" title="Loadouts">
+        <a class="nav-item" href="loadout.html" data-page="loadout.html" title="Loadouts">
           <span class="nav-ico">
             <svg viewBox="0 0 24 24" fill="none">
               <path d="M12 2l3 6 6 .8-4.4 4.2 1.2 6-5.8-3.2L6.2 19l1.2-6L3 8.8 9 8l3-6Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1371,10 +1374,7 @@
       applyQuickView('weapon');
       applyQuickView('loadout');
 
-      // If picker is open, refresh grid/tooltips
       if (modal?.classList.contains('show')) renderPickerGrid();
-
-      // If loadout modal open (text not translated usually, but safe)
       if (loadoutModal?.classList.contains('show')) openLoadoutDetails();
     }
 
@@ -1488,8 +1488,10 @@
 
       if (type === 'loadout'){
         const details = item.details || {};
-        const br = safeText(details.br || details.br_ms || '');
-        const cs = safeText(details.cs || details.cs_ms || '');
+
+        // ✅ use the same language toggle logic as the featured card
+        const brFull = pickLang(details.br, details.br_ms);
+        const csFull = pickLang(details.cs, details.cs_ms);
 
         const headLine = (txt, max=170) => {
           const t = safeText(txt).trim();
@@ -1498,14 +1500,15 @@
           return first.length > max ? first.slice(0, max-1) + '…' : first;
         };
 
-        const brHead = headLine(br);
-        const csHead = headLine(cs);
+        const brHead = headLine(brFull);
+        const csHead = headLine(csFull);
 
         const parts = [];
         if (brHead) parts.push(`BR: ${brHead}`);
         if (csHead) parts.push(`CS: ${csHead}`);
 
-        return parts.join('  ') || '—';
+        // ✅ newline so CS appears on the next line
+        return parts.join('\n') || '—';
       }
 
       return '—';
@@ -1792,9 +1795,12 @@
         const idx = all.indexOf(it);
         const img = pickImg(it);
         const name = safeText(it?.name || '—');
+
         const tip = buildDesc(currentPickerType, it);
+        const tipFlat = safeText(tip).replace(/\n+/g, ' | '); // ✅ avoid multiline in title tooltip
+
         return `
-          <div class="pick-card" data-idx="${idx}" title="${name}${tip ? ' — ' + tip : ''}">
+          <div class="pick-card" data-idx="${idx}" title="${name}${tipFlat ? ' — ' + tipFlat : ''}">
             <div class="pick-thumb"><img src="${img}" alt="${name}" /></div>
             <div class="pick-name">${name}</div>
           </div>
@@ -1843,7 +1849,6 @@
       document.getElementById('ldImg').src = pickImg(it);
       document.getElementById('ldName').textContent = safeText(it.name || '—');
 
-      // If you later add br_ms/cs_ms, this will automatically use them when language is MS
       const br = (currentLang === 'ms')
         ? safeText(it?.details?.br_ms || it?.details?.br || '—').trim() || '—'
         : safeText(it?.details?.br || it?.details?.br_ms || '—').trim() || '—';
@@ -2200,7 +2205,7 @@
         DATA.weapon.selected = 0;
         DATA.loadout.selected = 0;
 
-        refreshAllText(); // ✅ applies current language too
+        refreshAllText(); // ✅ applies current language + loadout newline formatting
       }catch(err){
         console.error(err);
         setCounts();
