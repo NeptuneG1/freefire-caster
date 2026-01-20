@@ -863,17 +863,36 @@
       font-size: .92rem;
     }
 
-    /* ✅ HARD FIX: ensure loadout modal scrolls (prevents clipping) */
+    /* ✅ FIX: Loadout modal scroll (100% reliable) */
     #loadoutModal .modal-card{
-      height: min(84vh, 820px);
-      max-height: min(84vh, 820px);
+      /* make header + body layout deterministic */
+      display: grid;
+      grid-template-rows: auto 1fr;
+    
+      /* use dvh so it never gets clipped by browser UI */
+      height: min(860px, calc(100dvh - 36px));
+      max-height: none;            /* stop the old max-height from fighting */
+      overflow: hidden;            /* keep rounded corners clean */
     }
-    #loadoutModal .modal-top{ flex: 0 0 auto; }
+    
+    #loadoutModal .modal-top{
+      grid-row: 1;
+    }
+    
     #loadoutModal .ld-wrap{
-      flex: 1 1 auto;
-      min-height: 0;     /* critical for flex overflow scrolling */
-      overflow: auto;
+      grid-row: 2;
+      min-height: 0;               /* CRITICAL: allows the scroll area to shrink */
+      overflow-y: auto;            /* the actual scroll container */
+      padding-bottom: 28px;        /* ensures last lines aren't visually “cut” */
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
     }
+    
+    /* optional: show a visible scrollbar */
+    #loadoutModal .ld-wrap::-webkit-scrollbar{ width:10px; }
+    #loadoutModal .ld-wrap::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.10); border-radius:10px; }
+    #loadoutModal .ld-wrap::-webkit-scrollbar-track{ background:transparent; }
+
 
     @media (max-width: 1200px){
       .quickbar{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
