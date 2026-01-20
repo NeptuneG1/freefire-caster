@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Loadout Gallery</title>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <!-- Supabase JS v2 (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root{
+      --bg:#07090f;
+      --bg2:#0b1020;
+      --panel: rgba(20, 26, 38, .72);
+      --panel2: rgba(14, 18, 28, .70);
+      --line: rgba(255,255,255,.08);
+      --ink:#f4f6ff;
+      --muted:#aab1c5;
+
+      --brand:#ffbd59;
+      --brand2:#ff7733;
+      --accent:#4dd3ff;
+
+      --radius:16px;
+      --radius-lg:22px;
+      --shadow: 0 22px 70px rgba(0,0,0,.55);
+
+      --sb-w: 260px;
+      --sb-w-collapsed: 82px;
+
+      /* cards */
+      --item-min: 170px;
+      --item-gap: 12px;
+      --item-radius: 16px;
+      --item-pad: 10px;
+      --chip-bg: rgba(0,0,0,.18);
+      --chip-bd: rgba(255,255,255,.12);
+
+      --br:#ffbd59;
+      --cs:#4dd3ff;
+    }
+
+    *{box-sizing:border-box}
+    html,body{min-height:100%}
+    body{
+      margin:0;
+      font-family: Roboto, system-ui, -apple-system, Segoe UI, Arial;
+      color:var(--ink);
+      background:
+        radial-gradient(900px 500px at 18% 12%, rgba(77,211,255,.15), transparent 60%),
+        radial-gradient(700px 420px at 85% 18%, rgba(255,189,89,.12), transparent 60%),
+        radial-gradient(900px 620px at 50% 110%, rgba(255,119,51,.10), transparent 60%),
+        linear-gradient(180deg, var(--bg), var(--bg2));
+      overflow-x:hidden;
+      overflow-y:auto;
+    }
+
+    body::before, body::after{
+      content:"";
+      position:fixed;
+      inset:auto auto 0 0;
+      width:520px; height:520px;
+      border-radius:50%;
+      border:10px solid rgba(77,211,255,.14);
+      transform: translate(-45%, -35%);
+      filter: blur(.2px);
+      pointer-events:none;
+    }
+    body::after{
+      inset: -120px 0 auto auto;
+      width:420px; height:420px;
+      border:10px solid rgba(77,211,255,.10);
+      transform: translate(38%, 0%);
+    }
+
+    a{color:inherit}
+    select, input{ color-scheme: dark; background: rgba(0,0,0,.28); color: var(--ink); }
+    select option{ background:#0b1020; color:var(--ink); }
+
+    /* Layout */
+    .app{
+      min-height: 100vh;
+      display:flex;
+      gap:18px;
+      padding:18px;
+      max-width: 1440px;
+      margin: 0 auto;
+      align-items:flex-start;
+    }
+
+    /* Sidebar */
+    .sidebar{
+      width: var(--sb-w);
+      background: var(--panel2);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      position: sticky;
+      top: 18px;
+      height: calc(100vh - 36px);
+      transition: width .18s ease;
+      flex:0 0 auto;
+    }
+    .sidebar.collapsed{ width: var(--sb-w-collapsed); }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:16px 16px 10px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .brand-left{display:flex;align-items:center;gap:10px;min-width:0;}
+    .logo{
+      width:36px;height:36px;border-radius:12px;
+      background: linear-gradient(135deg, rgba(255,189,89,.25), rgba(77,211,255,.18));
+      border:1px solid rgba(255,255,255,.10);
+      display:grid;place-items:center;
+      font-family: Orbitron, sans-serif;
+      letter-spacing:.5px;
+      color:var(--brand);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      flex:0 0 auto;
+    }
+    .brand h1{
+      margin:0;
+      font-family: Orbitron, sans-serif;
+      font-size: 1.05rem;
+      letter-spacing:.6px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 150px;
+    }
+    .brand small{
+      display:block;
+      color: var(--muted);
+      font-size:.78rem;
+      margin-top:2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 150px;
+    }
+
+    .nav{
+      padding: 12px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      overflow:auto;
+    }
+    .nav::-webkit-scrollbar{width:10px}
+    .nav::-webkit-scrollbar-thumb{background: rgba(255,255,255,.08); border-radius:10px}
+    .nav::-webkit-scrollbar-track{background: transparent}
+
+    .nav-item{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 10px;
+      border-radius: 12px;
+      border:1px solid transparent;
+      color: var(--muted);
+      text-decoration:none;
+      transition: .2s ease;
+      cursor:pointer;
+      min-width:0;
+    }
+    .nav-item:hover{
+      background: rgba(255,255,255,.05);
+      border-color: rgba(255,255,255,.08);
+      color: var(--ink);
+    }
+    .nav-item.active{
+      background: linear-gradient(135deg, rgba(255,189,89,.14), rgba(77,211,255,.09));
+      border-color: rgba(255,189,89,.22);
+      color: var(--ink);
+    }
+    .nav-ico{
+      width:26px;height:26px;border-radius:10px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.08);
+      display:grid;place-items:center;
+      flex: 0 0 auto;
+    }
+    .nav-ico svg{width:14px;height:14px;opacity:.9}
+    .nav-label{
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      min-width:0;
+    }
+
+    .sidebar.collapsed .brand h1,
+    .sidebar.collapsed .brand small,
+    .sidebar.collapsed .nav-label{display:none;}
+    .sidebar.collapsed .brand{justify-content:center;}
+    .sidebar.collapsed .brand-left{justify-content:center;}
+    .sidebar.collapsed .nav-item{
+      justify-content:center;
+      gap:0;
+      padding:10px 8px;
+    }
+
+    /* Main */
+    .main{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      min-width: 0;
+      gap: 14px;
+    }
+
+    /* Topbar */
+    .topbar{
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      padding: 12px 14px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      position: sticky;
+      top: 18px;
+      z-index: 20;
+    }
+    .search{
+      flex:1;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 10px 12px;
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 14px;
+      min-width: 0;
+    }
+    .search input{
+      width:100%;
+      background: transparent;
+      border:0;
+      outline:none;
+      color: var(--ink);
+      font-size: .95rem;
+    }
+    .search input::placeholder{color: rgba(170,177,197,.75)}
+
+    .top-actions{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex:0 0 auto;
+    }
+
+    .icon-btn{
+      width:42px;height:42px;border-radius:14px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      display:grid;place-items:center;
+      cursor:pointer;
+      transition:.2s ease;
+      color: var(--ink);
+      flex:0 0 auto;
+    }
+    .icon-btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.08)}
+    .icon-btn svg{width:18px;height:18px;opacity:.92}
+
+    .userchip{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      max-width: 260px;
+    }
+    .avatar{
+      width:28px;height:28px;border-radius:10px;
+      background: linear-gradient(135deg, rgba(255,189,89,.30), rgba(77,211,255,.18));
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .usertext{min-width:0}
+    .usertext b{
+      display:block;
+      font-size:.92rem;
+      font-family: Orbitron, sans-serif;
+      color:var(--brand);
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      max-width: 170px;
+    }
+    .usertext span{display:block; font-size:.78rem; color: var(--muted)}
+
+    .logout{
+      color: rgba(255,255,255,.70);
+      text-decoration:none;
+      font-size:.85rem;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.04);
+      transition:.2s ease;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .logout:hover{
+      border-color: rgba(255,77,77,.35);
+      color: #ff8d8d;
+      box-shadow: 0 0 0 3px rgba(255,77,77,.10);
+    }
+
+    /* Card shell */
+    .card{
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      overflow:hidden;
+    }
+    .card-inner{padding:14px}
+
+    .hero{
+      position:relative;
+      height: 150px;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(90deg, rgba(0,0,0,.55), rgba(0,0,0,.10)),
+        url('https://i.imgur.com/qXFpizS.jpg') center/cover no-repeat;
+    }
+    .hero::after{
+      content:"";
+      position:absolute; inset:0;
+      background: radial-gradient(420px 220px at 55% 45%, rgba(255,189,89,.16), transparent 60%);
+      pointer-events:none;
+    }
+    .hero-content{
+      position:absolute;
+      left:16px; right:16px; bottom:14px;
+      display:flex;
+      align-items:flex-end;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .hero-title h2{
+      font-family: Orbitron, sans-serif;
+      font-size: 1.45rem;
+      color: var(--brand);
+      text-shadow: 0 0 18px rgba(255,189,89,.20);
+      margin:0;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Controls */
+    .controls{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap;
+      margin-bottom: 10px;
+    }
+    .controls-left{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      min-width:0;
+    }
+    .controls-right{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--chip-bd);
+      background: var(--chip-bg);
+      color: rgba(244,246,255,.86);
+      font-weight:900;
+      font-size:.82rem;
+      white-space:nowrap;
+      cursor: default;
+      user-select:none;
+    }
+    .pill-btn{
+      cursor:pointer;
+      transition:.18s ease;
+    }
+    .pill-btn:hover{
+      background: rgba(0,0,0,.28);
+      box-shadow: 0 0 0 3px rgba(77,211,255,.10);
+      border-color: rgba(77,211,255,.22);
+    }
+    .pill-btn.active{
+      background: linear-gradient(135deg, rgba(255,189,89,.16), rgba(77,211,255,.10));
+      border-color: rgba(255,189,89,.22);
+      color: rgba(244,246,255,.94);
+    }
+
+    .dot{
+      width:9px;height:9px;border-radius:50%;
+      display:inline-block;
+      box-shadow: 0 0 0 3px rgba(255,255,255,.06);
+      background: var(--accent);
+    }
+    .dot.br{ background: var(--br); }
+    .dot.cs{ background: var(--cs); }
+
+    .btn{
+      padding: 9px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.20);
+      color: rgba(244,246,255,.88);
+      cursor:pointer;
+      font-weight:900;
+      font-size:.82rem;
+      transition:.2s ease;
+      white-space:nowrap;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      user-select:none;
+    }
+    .btn:hover{
+      background: rgba(0,0,0,.28);
+      box-shadow: 0 0 0 3px rgba(77,211,255,.10);
+      border-color: rgba(77,211,255,.22);
+    }
+
+    .section-title{
+      margin: 16px 0 10px 0;
+      font-family: Orbitron, sans-serif;
+      letter-spacing:.4px;
+      font-size: 1.02rem;
+      color: rgba(244,246,255,.92);
+    }
+    .section-title .hint{
+      font-family: Roboto, system-ui, -apple-system, Segoe UI, Arial;
+      color: var(--muted);
+      font-weight:700;
+      font-size: .82rem;
+      margin-left: 8px;
+      letter-spacing: 0;
+    }
+
+    /* Grid */
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(var(--item-min), 1fr));
+      gap: var(--item-gap);
+    }
+
+    .item-card{
+      position:relative;
+      padding: var(--item-pad);
+      border-radius: var(--item-radius);
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.09);
+      cursor:pointer;
+      transition:.18s ease;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      min-width:0;
+      overflow:hidden;
+    }
+    .item-card:hover{
+      background: rgba(255,255,255,.08);
+      transform: translateY(-1px);
+      border-color: rgba(255,189,89,.18);
+    }
+
+    .item-thumb{
+      width:100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 14px;
+      background: rgba(0,0,0,.18);
+      border: 2px solid rgba(255,255,255,.10);
+      overflow:hidden;
+      display:grid;
+      place-items:center;
+      position:relative;
+    }
+    .item-thumb img{
+      width:100%;
+      height:100%;
+      object-fit: contain;
+      object-position: center;
+      display:block;
+      background: rgba(255,255,255,.02);
+    }
+
+    .item-name{
+      font-size:.9rem;
+      font-weight:1000;
+      color: rgba(244,246,255,.92);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      text-align:center;
+      padding: 0 2px;
+      letter-spacing:.2px;
+    }
+
+    .item-sub{
+      display:flex;
+      justify-content:center;
+      gap:6px;
+      flex-wrap:wrap;
+      margin-top:-2px;
+    }
+    .chip{
+      font-size:.66rem;
+      font-weight:900;
+      color: rgba(244,246,255,.86);
+      border: 1px solid var(--chip-bd);
+      background: var(--chip-bg);
+      border-radius: 999px;
+      padding: 5px 7px;
+      white-space:nowrap;
+      max-width: 100%;
+    }
+    .chip.brand{
+      border-color: rgba(255,189,89,.26);
+      background: rgba(255,189,89,.12);
+      color: rgba(255,230,190,.95);
+    }
+    .chip.br{
+      border-color: rgba(255,189,89,.26);
+      background: rgba(255,189,89,.10);
+    }
+    .chip.cs{
+      border-color: rgba(77,211,255,.26);
+      background: rgba(77,211,255,.10);
+    }
+
+    .item-mini{
+      color: var(--muted);
+      font-size: .78rem;
+      line-height: 1.1rem;
+      font-weight: 700;
+      overflow:hidden;
+      display:-webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      text-align:left;
+    }
+
+    .empty-msg{
+      grid-column: 1 / -1;
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px dashed rgba(255,255,255,.12);
+      background: rgba(0,0,0,.16);
+      color: var(--muted);
+      font-weight: 800;
+      text-align: center;
+    }
+
+    /* Modal */
+    .modal{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.62);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+      z-index: 1000;
+    }
+    .modal.show{display:flex;}
+
+    .modal-card{
+      width: min(820px, 100%);
+      background: rgba(14, 18, 28, .92);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 22px;
+      box-shadow: 0 26px 80px rgba(0,0,0,.65);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .modal-top{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      padding: 14px 14px 10px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .modal-top h3{
+      margin:0;
+      font-family: Orbitron, sans-serif;
+      letter-spacing:.6px;
+      color: var(--brand);
+      font-size: 1.15rem;
+      line-height: 1.25rem;
+    }
+    .modal-top p{
+      margin:6px 0 0 0;
+      color: var(--muted);
+      font-size:.82rem;
+      font-weight:700;
+      letter-spacing:.2px;
+      white-space:normal;
+    }
+
+    .modal-body{
+      padding: 12px 14px 14px 14px;
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+      justify-content:flex-start;
+    }
+
+    .badge-row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin: 0;
+      padding: 0;
+    }
+
+    .info-block{
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 16px;
+      padding: 10px 12px;
+    }
+    .info-block b{
+      display:block;
+      margin:0 0 6px 0;
+      color: rgba(244,246,255,.92);
+      font-size: .92rem;
+      font-weight:1000;
+    }
+    .info-block .txt{
+      margin:0;
+      color: rgba(244,246,255,.86);
+      font-size: .92rem;
+      line-height: 1.32rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    @media (max-width: 980px){
+      .sidebar{display:none;}
+      .app{padding:12px;}
+      .topbar{top:12px;}
+      :root{ --item-min: 150px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-left">
+          <div class="logo">FF</div>
+          <div class="brand-text">
+            <h1>Free Fire</h1>
+            <small class="muted">Caster Dashboard</small>
+          </div>
+        </div>
+      </div>
+
+      <nav class="nav" id="nav">
+        <a class="nav-item" href="dashboard.html" data-page="dashboard.html" title="Dashboard">
+          <span class="nav-ico">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M4 13h7V4H4v9Zm9 7h7V4h-7v16ZM4 20h7v-5H4v5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </span>
+          <span class="nav-label">Dashboard</span>
+        </a>
+
+        <a class="nav-item" href="character.html" data-page="character.html" title="Character Skills">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4 0-7 2-7 4v2h14v-2c0-2-3-4-7-4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Character Skills</span>
+        </a>
+
+        <a class="nav-item" href="pet.html" data-page="pet.html" title="Pets">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M7 14c-1.7 0-3-1.3-3-3S5.3 8 7 8s3 1.3 3 3-1.3 3-3 3Zm10 0c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3ZM7 20c-2.8 0-5-1.8-5-4v-1h6v1c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2v-1h6v1c0 2.2-2.2 4-5 4H7Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Pets</span>
+        </a>
+
+        <a class="nav-item" href="weapon.html" data-page="weapon.html" title="Weapons">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M3 21l6-6m0 0 2 2 8-8-2-2-8 8Zm0 0-2-2 4-4 2 2-4 4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Weapons</span>
+        </a>
+
+        <!-- ✅ NEW PAGE -->
+        <a class="nav-item active" href="loadout.html" data-page="loadout.html" title="Loadouts">
+          <span class="nav-ico">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M12 2l3 6 6 .8-4.4 4.2 1.2 6-5.8-3.2L6.2 19l1.2-6L3 8.8 9 8l3-6Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span class="nav-label">Loadouts</span>
+        </a>
+
+        <a class="nav-item" href="map.html" data-page="map.html" title="Map">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M10 6 4 8v14l6-2 4 2 6-2V6l-6 2-4-2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Map</span>
+        </a>
+
+        <a class="nav-item" href="split-view.html" data-page="split-view.html" title="Split View">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16M4 12h16M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="nav-label">Split View</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <header class="topbar">
+        <button class="icon-btn" id="sbToggle" aria-label="Collapse sidebar" title="Collapse sidebar">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path id="sbTogglePath" d="M14 7l-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;opacity:.85">
+            <path d="M21 21l-4.3-4.3m1.3-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <input id="searchInput" placeholder="Search loadouts (name / BR / CS)..." />
+        </div>
+
+        <div class="top-actions">
+          <!-- ✅ Language Toggle -->
+          <button class="btn" id="langToggle" type="button" title="Toggle language">EN</button>
+
+          <div class="userchip">
+            <div class="avatar"></div>
+            <div class="usertext">
+              <b id="gamertag">PlayerOne</b>
+              <span id="userEmail" class="muted">loading…</span>
+            </div>
+          </div>
+
+          <a class="logout" href="#" id="logoutBtn">Logout</a>
+        </div>
+      </header>
+
+      <section class="card">
+        <div class="hero">
+          <div class="hero-content">
+            <div class="hero-title">
+              <h2>Loadout Gallery</h2>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-inner">
+          <div class="controls">
+            <div class="controls-left">
+              <span class="pill pill-btn active" id="modeBoth"><span class="dot"></span>Both</span>
+              <span class="pill pill-btn" id="modeBR"><span class="dot br"></span>BR</span>
+              <span class="pill pill-btn" id="modeCS"><span class="dot cs"></span>CS</span>
+              <span class="pill" id="countPill" style="display:none;"></span>
+            </div>
+
+            <div class="controls-right">
+              <button class="btn" id="resetBtn" type="button">Reset</button>
+              <a class="btn" href="dashboard.html">← Dashboard</a>
+            </div>
+          </div>
+
+          <div class="section-title">Loadouts <span class="hint">(click an item for details)</span></div>
+          <div class="grid" id="grid">
+            <div class="empty-msg">Loading…</div>
+          </div>
+
+          <div class="muted" style="font-size:.8rem; padding: 14px 2px 2px 2px;">
+            Free Fire Caster © 2026 — Neptune
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Info Modal -->
+  <div class="modal" id="infoModal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="Loadout Info">
+      <div class="modal-top">
+        <div style="min-width:0">
+          <h3 id="infoName">—</h3>
+          <p id="infoSub">—</p>
+        </div>
+        <button class="icon-btn" id="infoClose" aria-label="Close" title="Close">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="badge-row" id="infoBadges"></div>
+
+        <div class="info-block" id="blockBR" style="display:none;">
+          <b>BR</b>
+          <p class="txt" id="infoBR">—</p>
+        </div>
+
+        <div class="info-block" id="blockCS" style="display:none;">
+          <b>CS</b>
+          <p class="txt" id="infoCS">—</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /***********************
+     * Supabase Auth
+     ***********************/
+    const client = supabase.createClient(
+      'https://gkugecflfddkpitlrmws.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
+    );
+
+    async function ensureSession(){
+      const { data: { session } } = await client.auth.getSession();
+      if (!session) {
+        window.location.href = "index.html";
+        return null;
+      }
+      return session;
+    }
+
+    async function logout(){
+      await client.auth.signOut();
+      window.location.href = "index.html";
+    }
+
+    /***********************
+     * Sidebar collapse + active nav
+     ***********************/
+    const sidebar = document.getElementById('sidebar');
+
+    (function initSidebarCollapse(){
+      const key = 'ff_sidebar_collapsed_v1';
+      const saved = localStorage.getItem(key);
+      if (saved === '1') sidebar.classList.add('collapsed');
+
+      const btn = document.getElementById('sbToggle');
+      const path = document.getElementById('sbTogglePath');
+
+      function syncIcon(){
+        if (!path) return;
+        path.setAttribute('d', sidebar.classList.contains('collapsed')
+          ? 'M10 7l5 5-5 5'
+          : 'M14 7l-5 5 5 5'
+        );
+      }
+      syncIcon();
+
+      btn?.addEventListener('click', () => {
+        sidebar.classList.toggle('collapsed');
+        localStorage.setItem(key, sidebar.classList.contains('collapsed') ? '1' : '0');
+        syncIcon();
+      });
+    })();
+
+    (function setActiveNav(){
+      const here = (location.pathname.split('/').pop() || 'loadout.html').toLowerCase();
+      document.querySelectorAll('.nav-item').forEach(a => {
+        const page = (a.getAttribute('data-page') || '').toLowerCase();
+        a.classList.toggle('active', page === here);
+      });
+    })();
+
+    /***********************
+     * Helpers
+     ***********************/
+    function safeText(v){ return (v ?? '').toString(); }
+    function tidy(v){
+      return safeText(v)
+        .replace(/[\u200B-\u200D\uFEFF]/g, '')
+        .replace(/\s*\n+\s*/g, '\n')
+        .replace(/[ \t]{2,}/g, ' ')
+        .trim();
+    }
+
+    /***********************
+     * Data
+     * - Per your request: we fetch from weapon.json
+     * - If there are no loadout-shaped items in it, we fallback to embedded defaults.
+     ***********************/
+    const DATA_URL = 'https://neptuneg1.github.io/freefire-caster/weapon.json';
+
+    // Default loadouts (with MS translations for BR + CS)
+    const DEFAULT_LOADOUTS = [
+      {
+        id: "enhance_hammer",
+        name: "Enhance Hammer",
+        category: "Loadout",
+        image_url: "https://i.imgur.com/gClc4RN.png",
+        details: {
+          br: "Enhance your or your teammates' weapon on the panel.\n\n- Each enhancement costs 600 FF Coins.\n- Weapons can be enhanced through the panel for 600 FF Coins each, applying to either your own or a teammate's weapon.\n- All attachments on an enhanced weapon are upgraded to the maximum level, with one attachment further boosted to the highest red-tier.\n- Enhanced attachments are permanently fixed to the weapon and cannot be removed.",
+          cs: "Earn tokens via eliminations and enhance weapons / gloo walls during purchase phase.\n\n- A hammer token is granted for every two eliminations.\n- Tokens can be used during the purchase phase to enhance weapons in the CS Store, with the effect shared across the team.\n- Hammer tokens can also be spent to enhance Gloo Walls for your team to carry up to 6 Gloo Walls.",
+          br_ms: "Tingkatkan senjata anda atau rakan sepasukan melalui panel.\n\n- Setiap peningkatan berharga 600 Syiling FF.\n- Senjata boleh ditingkatkan melalui panel pada kos 600 Syiling FF setiap satu, sama ada untuk senjata sendiri atau rakan sepasukan.\n- Semua aksesori pada senjata yang ditingkatkan akan dinaik taraf ke tahap maksimum, dengan satu aksesori lagi dipertingkat ke tahap tertinggi (tier merah).\n- Aksesori yang ditingkatkan akan kekal terpasang pada senjata dan tidak boleh ditanggalkan.",
+          cs_ms: "Kumpul token melalui eliminasi dan tingkatkan senjata / Dinding Gloo semasa fasa pembelian.\n\n- 1 token tukul diberikan bagi setiap 2 eliminasi.\n- Token boleh digunakan semasa fasa pembelian untuk meningkatkan senjata di CS Store, dan kesannya dikongsi kepada seluruh pasukan.\n- Token tukul juga boleh digunakan untuk meningkatkan Dinding Gloo supaya pasukan anda boleh membawa sehingga 6 Dinding Gloo."
+        }
+      },
+      {
+        id: "super_leg_pocket",
+        name: "Super Leg Pocket",
+        category: "Loadout",
+        image_url: "https://i.imgur.com/hVW6fWi.png",
+        details: {
+          br: "Start with extra utility items and inventory advantages.\n\n- Receive bonfire, additional backpack space, extra armor, and other items at the start of the match.",
+          cs: "Start each match with key items and extra protection.\n\n- Receive bonfire, katana, extra armor, and other items at the start of the match.",
+          br_ms: "Mulakan perlawanan dengan item utiliti tambahan dan kelebihan inventori.\n\n- Terima Bonfire, ruang beg tambahan, perisai ekstra, dan item lain pada permulaan perlawanan.",
+          cs_ms: "Mulakan setiap perlawanan dengan item penting dan perlindungan tambahan.\n\n- Terima Bonfire, katana, perisai ekstra, dan item lain pada permulaan perlawanan."
+        }
+      },
+      {
+        id: "tactical_market",
+        name: "Tactical Market",
+        category: "Loadout",
+        image_url: "https://i.imgur.com/OBnERWB.png",
+        details: {
+          br: "Access the market anytime, anywhere (includes Bolt Maker).\n\n- Purchasable items include: Info Box, Arsenal Key, Hit List, Tactical Gadgets, Monster Truck, and the new Bolt Maker.\n- Bolt Maker: up to 5 per match, available within 600s after the match starts.\n- Use the Bolt Maker to create a Lightning Zone that lasts for 30s.\n- Lightning strikes randomly inside the zone once per second, dealing 60 DMG to enemies.\n- Your teammates are immune to the effect.",
+          cs: "Get a tactical panel each round and deploy a chosen gadget.\n\n- Open the panel and choose one gadget to deploy at a target location.\n- Super Bonfire: Heals teammates within 8m over time and provides combat boosts.\n- Smoke Vortex: Generates a swirling smoke field that blocks enemy vision.\n- Cyber Barricade: Deploys large barriers for cover.\n- These gadgets can also be purchased as throwable items from the CS Store.",
+          br_ms: "Akses market bila-bila masa, di mana-mana (termasuk Bolt Maker).\n\n- Item yang boleh dibeli termasuk: Info Box, Arsenal Key, Hit List, Tactical Gadgets, Monster Truck, dan Bolt Maker baharu.\n- Bolt Maker: sehingga 5 kali setiap perlawanan, tersedia dalam 600s selepas perlawanan bermula.\n- Gunakan Bolt Maker untuk mencipta Lightning Zone yang bertahan selama 30s.\n- Kilat menyambar secara rawak dalam zon sekali setiap saat, memberi 60 DMG kepada musuh.\n- Rakan sepasukan anda kebal terhadap kesan tersebut.",
+          cs_ms: "Dapatkan panel taktikal setiap pusingan dan gunakan gajet pilihan.\n\n- Buka panel dan pilih satu gajet untuk diletakkan di lokasi sasaran.\n- Super Bonfire: Menyembuhkan rakan sepasukan dalam 8m dari masa ke masa serta memberi boost pertarungan.\n- Smoke Vortex: Menghasilkan pusaran asap yang menghalang penglihatan musuh.\n- Cyber Barricade: Letakkan penghadang besar untuk perlindungan.\n- Gajet ini juga boleh dibeli sebagai item lempar dari CS Store."
+        }
+      },
+      {
+        id: "team_booster",
+        name: "Team Booster",
+        category: "Loadout",
+        image_url: "https://i.imgur.com/RAG1acC.png",
+        details: {
+          br: "Equip up to 3 unique team boosts and swap anytime.\n\n- You'll have up to 3 boost slots to equip any 3 out of 6 available boosts.\n- Each boost can only be selected once per team and is applied to all teammates.\n- The first slot unlocks automatically at match start; the second and third can be unlocked for 480 and 800 FF coins, respectively.\n- You can swap boosts at any time during the match, and unlocked slots remain active after you're revived.\n\nUnique boosts:\n- HP/EP Recovery: Restore 2 EP and 1 HP every second.\n- Speed Up: Move 7% faster after not firing or not taking damage for 4s.\n- Extra Heal: Receive 10% more healing. The effect disappears 2s after taking out-of-zone damage.\n- Out-Zone Buff: When outside the Safe Zone, EP conversion rate +200% and move 7% faster.\n- Gloo Wall: Increase Gloo Wall's HP by 100.\n- Armor: Restore 3% armor durability every second.",
+          cs: "Helper Bot revives teammates remotely + Secret Bazaar team buffs in CS Store.\n\n- Get a Helper Bot per round.\n- When a teammate is knocked down within 16m, you can release the bot to help them up remotely.\n- The Helper Bot can be destroyed if shot.\n- The Helper Bot takes 7.5s to help up a teammate, reduced to 4s with Thiva's skill.\n- The Secret Bazaar section is available in the CS Store, offering team buffs for purchase.",
+          br_ms: "Lengkapkan sehingga 3 boost pasukan unik dan tukar bila-bila masa.\n\n- Anda mempunyai sehingga 3 slot boost untuk memilih mana-mana 3 daripada 6 boost yang tersedia.\n- Setiap boost hanya boleh dipilih sekali bagi setiap pasukan dan akan digunakan kepada semua rakan sepasukan.\n- Slot pertama dibuka automatik pada permulaan perlawanan; slot kedua dan ketiga boleh dibuka dengan 480 dan 800 Syiling FF.\n- Anda boleh menukar boost pada bila-bila masa, dan slot yang telah dibuka kekal aktif selepas anda dihidupkan semula.\n\nBoost unik:\n- Pemulihan HP/EP: Pulihkan 2 EP dan 1 HP setiap saat.\n- Speed Up: Bergerak 7% lebih laju selepas tidak menembak atau tidak menerima damage selama 4s.\n- Extra Heal: Terima 10% lebih banyak penyembuhan. Kesan hilang 2s selepas menerima damage di luar zon.\n- Out-Zone Buff: Bila di luar Safe Zone, kadar penukaran EP +200% dan bergerak 7% lebih laju.\n- Gloo Wall: Tambah HP Dinding Gloo sebanyak 100.\n- Armor: Pulihkan 3% ketahanan armor setiap saat.",
+          cs_ms: "Helper Bot hidupkan rakan sepasukan dari jauh + buff pasukan Secret Bazaar dalam CS Store.\n\n- Dapatkan 1 Helper Bot setiap pusingan.\n- Apabila rakan sepasukan knock dalam 16m, anda boleh lepaskan bot untuk membantu mereka bangun dari jauh.\n- Helper Bot boleh dimusnahkan jika ditembak.\n- Helper Bot mengambil 7.5s untuk membantu rakan sepasukan bangun, dikurangkan kepada 4s dengan skill Thiva.\n- Bahagian Secret Bazaar tersedia dalam CS Store, menawarkan buff pasukan untuk dibeli."
+        }
+      }
+    ];
+
+    function looksLikeLoadout(x){
+      return x && typeof x === 'object' && x.details && (x.details.br || x.details.cs);
+    }
+
+    /***********************
+     * State
+     ***********************/
+    const LANG_KEY = 'ff_loadout_lang_v1'; // 'en' | 'ms'
+    const MODE_KEY = 'ff_loadout_mode_v1'; // 'both' | 'br' | 'cs'
+
+    let currentLang = (localStorage.getItem(LANG_KEY) || 'en');
+    let currentMode = (localStorage.getItem(MODE_KEY) || 'both');
+    let currentSearch = '';
+
+    let allLoadouts = [];
+    let LAST_OPENED = null;
+
+    const grid = document.getElementById('grid');
+    const countPill = document.getElementById('countPill');
+
+    const searchInput = document.getElementById('searchInput');
+    const langToggle = document.getElementById('langToggle');
+
+    const modeBothBtn = document.getElementById('modeBoth');
+    const modeBRBtn = document.getElementById('modeBR');
+    const modeCSBtn = document.getElementById('modeCS');
+    const resetBtn = document.getElementById('resetBtn');
+
+    function syncLangButton(){
+      langToggle.textContent = (currentLang === 'ms') ? 'MS' : 'EN';
+    }
+
+    function setMode(mode){
+      currentMode = mode;
+      localStorage.setItem(MODE_KEY, currentMode);
+
+      modeBothBtn.classList.toggle('active', currentMode === 'both');
+      modeBRBtn.classList.toggle('active', currentMode === 'br');
+      modeCSBtn.classList.toggle('active', currentMode === 'cs');
+
+      render();
+      // refresh modal if open
+      if (infoModal.classList.contains('show') && LAST_OPENED) openInfo(LAST_OPENED);
+    }
+
+    function pickDetails(item, mode){
+      const d = item?.details || {};
+      const br = tidy(d.br);
+      const cs = tidy(d.cs);
+      const br_ms = tidy(d.br_ms);
+      const cs_ms = tidy(d.cs_ms);
+
+      const useMS = (currentLang === 'ms');
+
+      const out = { br: '', cs: '' };
+      out.br = useMS ? (br_ms || br) : (br || br_ms);
+      out.cs = useMS ? (cs_ms || cs) : (cs || cs_ms);
+
+      if (mode === 'br') return { br: out.br, cs: '' };
+      if (mode === 'cs') return { br: '', cs: out.cs };
+      return out; // both
+    }
+
+    function makeSearchBlob(item){
+      const d = item?.details || {};
+      return [
+        tidy(item?.name),
+        tidy(item?.category),
+        tidy(d.br),
+        tidy(d.cs),
+        tidy(d.br_ms),
+        tidy(d.cs_ms)
+      ].filter(Boolean).join(' ').toLowerCase();
+    }
+
+    function ensureEmptyMsg(){
+      let msg = grid.querySelector('.empty-msg');
+      if (!msg){
+        msg = document.createElement('div');
+        msg.className = 'empty-msg';
+        msg.textContent = 'No loadouts match your filters.';
+        grid.appendChild(msg);
+      }
+      return msg;
+    }
+
+    function makeCard(item){
+      const el = document.createElement('div');
+      el.className = 'item-card';
+      el.tabIndex = 0;
+
+      const imgBox = document.createElement('div');
+      imgBox.className = 'item-thumb';
+      const img = document.createElement('img');
+      img.src = item?.image_url || '';
+      img.alt = tidy(item?.name) || 'Loadout';
+      img.loading = 'lazy';
+      img.referrerPolicy = 'no-referrer';
+      imgBox.appendChild(img);
+
+      const name = document.createElement('div');
+      name.className = 'item-name';
+      name.textContent = tidy(item?.name) || '—';
+
+      const sub = document.createElement('div');
+      sub.className = 'item-sub';
+
+      const cat = tidy(item?.category) || 'Loadout';
+      const chipCat = document.createElement('span');
+      chipCat.className = 'chip brand';
+      chipCat.textContent = cat;
+      sub.appendChild(chipCat);
+
+      const chipMode = document.createElement('span');
+      chipMode.className = 'chip ' + (currentMode === 'cs' ? 'cs' : currentMode === 'br' ? 'br' : '');
+      chipMode.textContent = (currentMode === 'both') ? 'BR + CS' : currentMode.toUpperCase();
+      sub.appendChild(chipMode);
+
+      const mini = document.createElement('div');
+      mini.className = 'item-mini';
+      const picked = pickDetails(item, currentMode);
+      const snippet = (currentMode === 'cs') ? picked.cs : (currentMode === 'br') ? picked.br : (picked.br || picked.cs);
+      mini.textContent = (snippet || '—').split('\n').slice(0, 3).join(' ').trim();
+
+      el.dataset.search = makeSearchBlob(item);
+      el._item = item;
+
+      el.appendChild(imgBox);
+      el.appendChild(name);
+      el.appendChild(sub);
+      el.appendChild(mini);
+
+      el.addEventListener('click', () => openInfo(item));
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openInfo(item);
+        }
+      });
+
+      return el;
+    }
+
+    function applySearch(){
+      const q = (currentSearch || '').toLowerCase().trim();
+      const cards = [...grid.querySelectorAll('.item-card')];
+      let visible = 0;
+
+      cards.forEach(el => {
+        const blob = el.dataset.search || '';
+        const ok = (!q || blob.includes(q));
+        el.style.display = ok ? '' : 'none';
+        if (ok) visible++;
+      });
+
+      const empty = ensureEmptyMsg();
+      empty.style.display = visible ? 'none' : '';
+
+      countPill.style.display = '';
+      countPill.textContent = `Showing: ${visible} item${visible===1?'':'s'}`;
+    }
+
+    function render(){
+      grid.innerHTML = '';
+
+      // build list (search applied later for smoother feel)
+      const list = (Array.isArray(allLoadouts) ? allLoadouts : []);
+      if (!list.length){
+        grid.innerHTML = '<div class="empty-msg">No loadout data found.</div>';
+        countPill.style.display = 'none';
+        return;
+      }
+
+      list.forEach(item => grid.appendChild(makeCard(item)));
+
+      // update mode chips (needs re-render)
+      applySearch();
+    }
+
+    async function loadData(){
+      grid.innerHTML = '<div class="empty-msg">Loading…</div>';
+      try{
+        const res = await fetch(`${DATA_URL}?ts=${Date.now()}`, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        const arr = Array.isArray(data) ? data : [];
+        const extracted = arr.filter(looksLikeLoadout);
+
+        // ✅ Use weapon.json as requested; fallback if no loadouts exist in it
+        allLoadouts = extracted.length ? extracted : DEFAULT_LOADOUTS;
+      }catch(err){
+        console.error('Loadout fetch error:', err);
+        allLoadouts = DEFAULT_LOADOUTS;
+      }
+
+      render();
+    }
+
+    /***********************
+     * Modal
+     ***********************/
+    const infoModal = document.getElementById('infoModal');
+    const infoClose = document.getElementById('infoClose');
+    const infoName = document.getElementById('infoName');
+    const infoSub = document.getElementById('infoSub');
+    const infoBadges = document.getElementById('infoBadges');
+
+    const blockBR = document.getElementById('blockBR');
+    const blockCS = document.getElementById('blockCS');
+    const infoBR = document.getElementById('infoBR');
+    const infoCS = document.getElementById('infoCS');
+
+    function badge(label, cls){
+      const el = document.createElement('span');
+      el.className = 'pill';
+      const d = document.createElement('span');
+      d.className = 'dot ' + (cls || '');
+      el.appendChild(d);
+      el.appendChild(document.createTextNode(label));
+      return el;
+    }
+
+    function openInfo(item){
+      LAST_OPENED = item;
+
+      const name = tidy(item?.name) || '—';
+      const cat = tidy(item?.category) || 'Loadout';
+      infoName.textContent = name;
+      infoSub.textContent = `${cat.toUpperCase()} • ${currentLang === 'ms' ? 'BAHASA MELAYU' : 'ENGLISH'}`;
+
+      infoBadges.innerHTML = '';
+      infoBadges.appendChild(badge(cat, ''));
+      if (currentMode === 'both' || currentMode === 'br') infoBadges.appendChild(badge('BR', 'br'));
+      if (currentMode === 'both' || currentMode === 'cs') infoBadges.appendChild(badge('CS', 'cs'));
+
+      const picked = pickDetails(item, currentMode);
+
+      // show/hide blocks per mode and content
+      const showBR = (currentMode === 'both' || currentMode === 'br') && !!picked.br;
+      const showCS = (currentMode === 'both' || currentMode === 'cs') && !!picked.cs;
+
+      blockBR.style.display = showBR ? '' : 'none';
+      blockCS.style.display = showCS ? '' : 'none';
+
+      infoBR.textContent = picked.br || '—';
+      infoCS.textContent = picked.cs || '—';
+
+      infoModal.classList.add('show');
+      infoModal.setAttribute('aria-hidden','false');
+    }
+
+    function closeInfo(){
+      infoModal.classList.remove('show');
+      infoModal.setAttribute('aria-hidden','true');
+    }
+
+    infoClose?.addEventListener('click', closeInfo);
+    infoModal?.addEventListener('click', (e) => { if (e.target === infoModal) closeInfo(); });
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && infoModal.classList.contains('show')) closeInfo(); });
+
+    /***********************
+     * Events
+     ***********************/
+    searchInput?.addEventListener('input', (e) => {
+      currentSearch = e.target.value || '';
+      applySearch();
+    });
+
+    langToggle?.addEventListener('click', () => {
+      currentLang = (currentLang === 'en') ? 'ms' : 'en';
+      localStorage.setItem(LANG_KEY, currentLang);
+      syncLangButton();
+      render();
+      if (infoModal.classList.contains('show') && LAST_OPENED) openInfo(LAST_OPENED);
+    });
+
+    modeBothBtn?.addEventListener('click', () => setMode('both'));
+    modeBRBtn?.addEventListener('click', () => setMode('br'));
+    modeCSBtn?.addEventListener('click', () => setMode('cs'));
+
+    resetBtn?.addEventListener('click', () => {
+      currentSearch = '';
+      searchInput.value = '';
+      setMode('both');
+      // keep language (usually user preference)
+      applySearch();
+    });
+
+    document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      logout();
+    });
+
+    /***********************
+     * Init
+     ***********************/
+    window.addEventListener('DOMContentLoaded', async () => {
+      syncLangButton();
+      setMode(currentMode); // also sync active pill UI
+
+      const session = await ensureSession();
+      if (!session) return;
+
+      const email = session.user?.email || '';
+      document.getElementById('userEmail').textContent = email || 'signed in';
+      const username = email ? email.split('@')[0] : 'PlayerOne';
+      document.getElementById('gamertag').textContent = username;
+
+      await loadData();
+    });
+  </script>
+</body>
+</html>
