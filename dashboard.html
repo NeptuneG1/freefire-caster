@@ -319,6 +319,29 @@
       box-shadow: 0 0 0 3px rgba(255,77,77,.10);
     }
 
+    /* ✅ Translation button (EN/MS) */
+    .lang-btn{
+      color: rgba(244,246,255,.86);
+      text-decoration:none;
+      font-size:.85rem;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border:1px solid rgba(77,211,255,.18);
+      background: rgba(77,211,255,.06);
+      transition:.2s ease;
+      cursor:pointer;
+      white-space:nowrap;
+      font-weight:900;
+      font-family: Orbitron, sans-serif;
+      letter-spacing:.4px;
+    }
+    .lang-btn:hover{
+      border-color: rgba(77,211,255,.40);
+      box-shadow: 0 0 0 3px rgba(77,211,255,.12);
+      transform: translateY(-1px);
+    }
+    .lang-btn:focus{outline:none; box-shadow: 0 0 0 3px rgba(77,211,255,.12);}
+
     /* Content */
     .content{
       min-height: 0;
@@ -377,11 +400,7 @@
       text-overflow: ellipsis;
     }
 
-    /* ===== Hero Character Carousel Overlay (Aesthetic Only) =====
-       UPDATED:
-       - bigger chips
-       - shows 3 at a time
-       - pauses 3s, then moves ONE chip (replacing the 3rd) */
+    /* ===== Hero Character Carousel Overlay (Aesthetic Only) ===== */
     .hero-carousel{
       position:absolute;
       left:16px; right:16px;
@@ -391,14 +410,11 @@
       display:flex;
       align-items:center;
       justify-content:center;
-
-      /* Aesthetic only */
       pointer-events: none;
     }
 
     .hero-carousel-track{
-      /* size controls */
-      --chip: 150px;     /* slightly bigger */
+      --chip: 150px;
       --gap: 12px;
       --visible: 3;
       width: calc(var(--visible) * var(--chip) + (var(--visible) - 1) * var(--gap));
@@ -411,7 +427,6 @@
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
 
-      /* soft fade edges */
       -webkit-mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent);
       mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent);
 
@@ -1069,6 +1084,9 @@
             </div>
           </div>
 
+          <!-- ✅ Translation toggle -->
+          <button class="lang-btn" id="langBtn" type="button" title="Toggle language">EN</button>
+
           <a class="logout" href="#" id="logoutBtn">Logout</a>
         </div>
       </header>
@@ -1317,6 +1335,49 @@
     }
 
     /***********************
+     * ✅ Language (EN / MS)
+     ***********************/
+    const LANG_KEY = 'ff_lang_v1';
+    let currentLang = (localStorage.getItem(LANG_KEY) || 'en'); // 'en' | 'ms'
+    const langBtn = document.getElementById('langBtn');
+
+    function syncLangButton(){
+      if (!langBtn) return;
+      langBtn.textContent = (currentLang === 'ms') ? 'MS' : 'EN';
+      langBtn.title = (currentLang === 'ms') ? 'Bahasa Melayu' : 'English';
+    }
+
+    function safeText(v){ return (v ?? '').toString(); }
+
+    function pickLang(en, ms){
+      const E = safeText(en).trim();
+      const M = safeText(ms).trim();
+      if (currentLang === 'ms') return M || E || '';
+      return E || M || '';
+    }
+
+    function refreshAllText(){
+      applyQuickView('character');
+      applyQuickView('pet');
+      applyQuickView('weapon');
+      applyQuickView('loadout');
+
+      // If picker is open, refresh grid/tooltips
+      if (modal?.classList.contains('show')) renderPickerGrid();
+
+      // If loadout modal open (text not translated usually, but safe)
+      if (loadoutModal?.classList.contains('show')) openLoadoutDetails();
+    }
+
+    syncLangButton();
+    langBtn?.addEventListener('click', () => {
+      currentLang = (currentLang === 'en') ? 'ms' : 'en';
+      localStorage.setItem(LANG_KEY, currentLang);
+      syncLangButton();
+      refreshAllText();
+    });
+
+    /***********************
      * Sidebar
      ***********************/
     const sidebar = document.getElementById('sidebar');
@@ -1379,7 +1440,6 @@
       loadout: 'all'
     };
 
-    function safeText(v){ return (v ?? '').toString(); }
     function norm(v){ return safeText(v).trim(); }
     function normLower(v){ return norm(v).toLowerCase(); }
 
@@ -1400,26 +1460,27 @@
 
       if (type === 'character'){
         const skill = safeText(item.skill || '');
-        const d = safeText(item.description || '');
+        const d = pickLang(item.description, item.description_ms);
         return (skill ? skill : '—') + (d ? ` — ${d}` : '');
       }
 
       if (type === 'pet'){
         const skill = safeText(item.skill || item.ability || '');
-        const d = safeText(item.description || '');
+        const d = pickLang(item.description, item.description_ms);
         return (skill ? skill : '—') + (d ? ` — ${d}` : '');
       }
 
       if (type === 'weapon'){
         const t = safeText(item.type || item.category || '');
-        const d = safeText(item.description || item.special || item.desc || '');
+        const d = pickLang(item.description, item.description_ms)
+               || safeText(item.special || item.desc || '');
         return (t ? t : '—') + (d ? ` — ${d}` : '');
       }
 
       if (type === 'loadout'){
         const details = item.details || {};
-        const br = safeText(details.br || '');
-        const cs = safeText(details.cs || '');
+        const br = safeText(details.br || details.br_ms || '');
+        const cs = safeText(details.cs || details.cs_ms || '');
 
         const headLine = (txt, max=170) => {
           const t = safeText(txt).trim();
@@ -1484,9 +1545,6 @@
 
     /***********************
      * Hero Carousel (Aesthetic Only)
-     * - shows 3
-     * - pauses 3 seconds
-     * - advances ONE item (replaces the 3rd) each tick
      ***********************/
     const heroCarouselTrack = document.getElementById('heroCarouselTrack');
     let heroCarouselTimer = null;
@@ -1518,15 +1576,12 @@
         return;
       }
 
-      // Build a longer queue so we can "cycle" seamlessly.
       const indices = items.map((_, i) => i);
       const shuffled = shuffleCopy(indices);
 
-      // take up to 24 unique, then repeat the same order again
       const takeN = Math.min(24, shuffled.length);
       const seq = shuffled.slice(0, takeN);
-      const seq2 = seq.slice(); // duplicate list for cycling
-      const finalSeq = seq.concat(seq2);
+      const finalSeq = seq.concat(seq.slice());
 
       heroCarouselTrack.innerHTML = `
         <div class="hero-carousel-strip" id="heroCarouselStrip">
@@ -1546,30 +1601,24 @@
       const strip = document.getElementById('heroCarouselStrip');
       if (!strip) return;
 
-      // Figure out step size from CSS variables (chip + gap)
       const styles = getComputedStyle(heroCarouselTrack);
       const chip = parseFloat(styles.getPropertyValue('--chip')) || 66;
       const gap = parseFloat(styles.getPropertyValue('--gap')) || 12;
       const step = chip + gap;
 
-      // One-at-a-time: every 3 seconds, slide left by 1 chip, then recycle the first chip to the end.
-      const TICK_MS = 3000;      // pause duration
-      const SLIDE_MS = 520;      // movement duration
+      const TICK_MS = 3000;
+      const SLIDE_MS = 520;
 
       heroCarouselTimer = setInterval(() => {
-        // animate one step
         strip.style.transition = `transform ${SLIDE_MS}ms cubic-bezier(.22,.75,.2,1)`;
         strip.style.transform = `translateX(-${step}px)`;
 
-        // after movement finishes: move first child to end, reset transform instantly
         window.setTimeout(() => {
           const first = strip.firstElementChild;
           if (first) strip.appendChild(first);
 
           strip.style.transition = 'none';
           strip.style.transform = 'translateX(0)';
-
-          // force reflow so transition re-applies cleanly next tick
           void strip.offsetHeight;
         }, SLIDE_MS + 20);
       }, TICK_MS);
@@ -1711,14 +1760,21 @@
         if (!q) return true;
 
         const name = safeText(it?.name).toLowerCase();
-        const dbr = safeText(it?.details?.br || '');
-        const dcs = safeText(it?.details?.cs || '');
-
         const skill = safeText(it?.skill || it?.type || it?.ability || it?.category || '').toLowerCase();
-        const desc = safeText(it?.description || it?.special || it?.desc || dbr || dcs).toLowerCase();
-        const detailsBlob = (dbr + ' ' + dcs).toLowerCase();
 
-        return name.includes(q) || skill.includes(q) || desc.includes(q) || detailsBlob.includes(q);
+        // ✅ search both EN + MS too
+        const blob = [
+          safeText(it?.description),
+          safeText(it?.description_ms),
+          safeText(it?.special),
+          safeText(it?.desc),
+          safeText(it?.details?.br),
+          safeText(it?.details?.cs),
+          safeText(it?.details?.br_ms),
+          safeText(it?.details?.cs_ms),
+        ].join(' ').toLowerCase();
+
+        return name.includes(q) || skill.includes(q) || blob.includes(q);
       });
 
       pickerCount.textContent = `${filtered.length.toLocaleString()} item${filtered.length===1?'':'s'}`;
@@ -1778,8 +1834,14 @@
       document.getElementById('ldImg').src = pickImg(it);
       document.getElementById('ldName').textContent = safeText(it.name || '—');
 
-      const br = safeText(it?.details?.br || '—').trim() || '—';
-      const cs = safeText(it?.details?.cs || '—').trim() || '—';
+      // If you later add br_ms/cs_ms, this will automatically use them when language is MS
+      const br = (currentLang === 'ms')
+        ? safeText(it?.details?.br_ms || it?.details?.br || '—').trim() || '—'
+        : safeText(it?.details?.br || it?.details?.br_ms || '—').trim() || '—';
+
+      const cs = (currentLang === 'ms')
+        ? safeText(it?.details?.cs_ms || it?.details?.cs || '—').trim() || '—'
+        : safeText(it?.details?.cs || it?.details?.cs_ms || '—').trim() || '—';
 
       document.getElementById('ldBR').textContent = br;
       document.getElementById('ldCS').textContent = cs;
@@ -1804,7 +1866,6 @@
 
     /***********************
      * Map Image Viewer (Zoom + Pan + Selection)
-     * FIXED: always FIT on open / after hidden preload
      ***********************/
     const mapModal = document.getElementById('mapModal');
     const mapClose = document.getElementById('mapClose');
@@ -1829,7 +1890,6 @@
       { name: 'Solara',   url: 'https://i.imgur.com/IX1oY9Z.jpeg' },
     ];
 
-    // Transform state
     const view = {
       scale: 1,
       tx: 0,
@@ -1841,14 +1901,11 @@
       isLoaded: false,
     };
 
-    // Pointer tracking (drag + pinch)
-    const pointers = new Map(); // pointerId -> {x,y}
-    let dragStart = null; // {x,y, tx,ty}
-    let pinchStart = null; // {dist, scale, cx, cy, ix, iy}
+    const pointers = new Map();
+    let dragStart = null;
+    let pinchStart = null;
 
-    function setStatus(text){
-      mapStatus.textContent = text;
-    }
+    function setStatus(text){ mapStatus.textContent = text; }
 
     function applyTransform(){
       mapImg.style.transform = `translate(${view.tx}px, ${view.ty}px) scale(${view.scale})`;
@@ -1860,17 +1917,15 @@
       const w = view.imgW * view.scale;
       const h = view.imgH * view.scale;
 
-      if (w <= vw) {
-        view.tx = Math.round((vw - w) / 2);
-      } else {
+      if (w <= vw) view.tx = Math.round((vw - w) / 2);
+      else {
         const minTx = vw - w;
         const maxTx = 0;
         view.tx = Math.min(maxTx, Math.max(minTx, view.tx));
       }
 
-      if (h <= vh) {
-        view.ty = Math.round((vh - h) / 2);
-      } else {
+      if (h <= vh) view.ty = Math.round((vh - h) / 2);
+      else {
         const minTy = vh - h;
         const maxTy = 0;
         view.ty = Math.min(maxTy, Math.max(minTy, view.ty));
@@ -1920,9 +1975,7 @@
       setStatus('Fit');
     }
 
-    function resetView(){
-      fitToViewport();
-    }
+    function resetView(){ fitToViewport(); }
 
     function setMapByUrl(url){
       setStatus('Loading…');
@@ -1957,9 +2010,7 @@
       console.error('Map image failed:', mapImg.src);
     });
 
-    mapImgSelect.addEventListener('change', () => {
-      setMapByUrl(mapImgSelect.value);
-    });
+    mapImgSelect.addEventListener('change', () => setMapByUrl(mapImgSelect.value));
 
     mapViewport.addEventListener('wheel', (e) => {
       e.preventDefault();
@@ -2047,9 +2098,6 @@
 
     mapViewport.addEventListener('pointerup', endPointer);
     mapViewport.addEventListener('pointercancel', endPointer);
-    mapViewport.addEventListener('pointerleave', (e) => {
-      if (!mapViewport.hasPointerCapture(e.pointerId)) endPointer(e);
-    });
 
     zoomInBtn.addEventListener('click', () => {
       if (!view.isLoaded) return;
@@ -2135,9 +2183,7 @@
         DATA.weapon.items = Array.isArray(weapons) ? weapons : [];
         DATA.loadout.items = Array.isArray(loadouts) ? loadouts : [];
 
-        // Build the new 3-slot step carousel
         buildHeroCarousel();
-
         setCounts();
 
         DATA.character.selected = 0;
@@ -2145,17 +2191,13 @@
         DATA.weapon.selected = 0;
         DATA.loadout.selected = 0;
 
-        applyQuickView('character');
-        applyQuickView('pet');
-        applyQuickView('weapon');
-        applyQuickView('loadout');
+        refreshAllText(); // ✅ applies current language too
       }catch(err){
         console.error(err);
         setCounts();
       }
     });
 
-    // Clean up carousel timer on page unload
     window.addEventListener('beforeunload', stopHeroCarousel);
   </script>
 </body>
