@@ -515,7 +515,7 @@
 
     .pet-thumb{
       width:100%;
-      aspect-ratio: 1 / 1; /* smaller height vs wide 4:3 */
+      aspect-ratio: 1 / 1;
       border-radius: var(--pet-thumb-radius);
       background: rgba(0,0,0,.18);
       border: 2px solid rgba(255,255,255,.10);
@@ -676,9 +676,7 @@
       .sidebar{display:none;}
       .app{padding:12px;}
       .topbar{top:12px;}
-      :root{
-        --pet-min: 118px; /* even smaller on mobile */
-      }
+      :root{ --pet-min: 118px; }
     }
   </style>
 </head>
@@ -780,7 +778,7 @@
           <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;opacity:.85">
             <path d="M21 21l-4.3-4.3m1.3-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
-          <input id="searchInput" placeholder="Search pets (name / role / skill)..." />
+          <input id="searchInput" placeholder="Search pets (name / role / skill / desc)..." />
         </div>
 
         <div class="top-actions">
@@ -828,6 +826,12 @@
                   <option value="MOVEMENT">MOVEMENT</option>
                 </select>
               </div>
+
+              <!-- ✅ Translation toggle -->
+              <span class="pill" style="border-color: rgba(77,211,255,.18)">
+                Description:
+                <button class="btn" id="toggleDescLangBtn" type="button" title="Toggle description language">EN</button>
+              </span>
 
               <a class="btn" href="dashboard.html">← Dashboard</a>
             </div>
@@ -968,6 +972,48 @@
     }
 
     /***********************
+     * Translation toggle (EN / BM)
+     ***********************/
+    let currentDescLang = 'en'; // 'en' => description, 'bm' => description_ms
+    let LAST_OPENED_PET = null;
+
+    const toggleDescLangBtn = document.getElementById('toggleDescLangBtn');
+
+    function getActiveDesc(p){
+      const en = tidy(p?.description);
+      const bm = tidy(p?.description_ms);
+      if (currentDescLang === 'bm') return bm || en || '—';
+      return en || bm || '—';
+    }
+
+    function syncDescLangUI(){
+      if(!toggleDescLangBtn) return;
+      const isBM = (currentDescLang === 'bm');
+      toggleDescLangBtn.textContent = isBM ? 'BM' : 'EN';
+      toggleDescLangBtn.title = isBM
+        ? 'Showing Bahasa Melayu (description_ms)'
+        : 'Showing English (description)';
+    }
+
+    (function initDescLangToggle(){
+      const key = 'ff_pet_desc_lang_v1';
+      const saved = localStorage.getItem(key);
+      if (saved === 'bm' || saved === 'en') currentDescLang = saved;
+      syncDescLangUI();
+
+      toggleDescLangBtn?.addEventListener('click', () => {
+        currentDescLang = (currentDescLang === 'en') ? 'bm' : 'en';
+        localStorage.setItem(key, currentDescLang);
+        syncDescLangUI();
+
+        // If modal is open, refresh text immediately
+        if (infoModal.classList.contains('show') && LAST_OPENED_PET) {
+          openInfo(LAST_OPENED_PET);
+        }
+      });
+    })();
+
+    /***********************
      * Data + Rendering
      ***********************/
     const PET_URL = 'https://neptuneg1.github.io/freefire-caster/pet.json';
@@ -981,11 +1027,13 @@
     const topSearch = document.getElementById('searchInput');
 
     function makeSearchBlob(p){
+      // ✅ include BM translation in search too
       return [
         tidy(p?.name),
         tidy(p?.role),
         tidy(p?.skill),
-        tidy(p?.description)
+        tidy(p?.description),
+        tidy(p?.description_ms)
       ].filter(Boolean).join(' ').toLowerCase();
     }
 
@@ -997,7 +1045,6 @@
       const name = tidy(p?.name) || 'Unknown Pet';
       const role = tidy(p?.role) || 'N/A';
       const skill = tidy(p?.skill) || '';
-      const desc = tidy(p?.description) || '';
 
       card.dataset.search = makeSearchBlob(p);
       card.dataset.role = role.toUpperCase();
@@ -1137,13 +1184,19 @@
     }
 
     function openInfo(p){
+      LAST_OPENED_PET = p;
+
       const name = tidy(p?.name) || '—';
       const role = tidy(p?.role) || 'N/A';
       const skill = tidy(p?.skill) || '—';
-      const desc = tidy(p?.description) || '—';
+      const desc = getActiveDesc(p);
 
       infoName.textContent = name;
-      infoSub.textContent = [role && role !== 'N/A' ? role.toUpperCase() : null, 'PET'].filter(Boolean).join(' • ');
+      infoSub.textContent = [
+        role && role !== 'N/A' ? role.toUpperCase() : null,
+        'PET',
+        (currentDescLang === 'bm' ? 'BM' : 'EN')
+      ].filter(Boolean).join(' • ');
 
       infoBadges.innerHTML = '';
       infoBadges.appendChild(badgeDot(roleColorVar(role), role && role !== 'N/A' ? role : 'OTHER'));
