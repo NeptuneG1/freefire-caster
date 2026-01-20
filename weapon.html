@@ -747,9 +747,7 @@
       .sidebar{display:none;}
       .app{padding:12px;}
       .topbar{top:12px;}
-      :root{
-        --wep-min: 130px;
-      }
+      :root{ --wep-min: 130px; }
       .grid.list-view .wep-thumb{width: 140px;}
     }
   </style>
@@ -913,7 +911,7 @@
                 <input type="checkbox" id="filterCSOnly" />
               </div>
 
-              <!-- ✅ Translate toggle (EN/MS) -->
+              <!-- ✅ Translate toggle -->
               <button class="btn" id="langToggle" type="button" title="Toggle description language">EN</button>
 
               <button class="btn" id="toggleView" type="button">📃 List View</button>
@@ -1072,43 +1070,6 @@
     }
 
     /***********************
-     * Language Toggle (EN/MS)
-     ***********************/
-    const LANG_KEY = 'ff_weapon_lang_v1';
-    let currentLang = (localStorage.getItem(LANG_KEY) || 'en'); // 'en' | 'ms'
-    let LAST_OPENED_WEAPON = null;
-
-    const langToggleBtn = document.getElementById('langToggle');
-
-    function syncLangButton(){
-      if (!langToggleBtn) return;
-      langToggleBtn.textContent = (currentLang === 'ms') ? 'MS' : 'EN';
-      langToggleBtn.title = (currentLang === 'ms')
-        ? 'Showing Bahasa Melayu (description_ms)'
-        : 'Showing English (description)';
-    }
-
-    function pickDescription(w){
-      const en = tidy(w?.description);
-      const ms = tidy(w?.description_ms);
-      if (currentLang === 'ms') return ms || en || '—';
-      return en || ms || '—';
-    }
-
-    syncLangButton();
-
-    langToggleBtn?.addEventListener('click', () => {
-      currentLang = (currentLang === 'en') ? 'ms' : 'en';
-      localStorage.setItem(LANG_KEY, currentLang);
-      syncLangButton();
-
-      // refresh modal instantly if open
-      if (infoModal.classList.contains('show') && LAST_OPENED_WEAPON){
-        openInfo(LAST_OPENED_WEAPON);
-      }
-    });
-
-    /***********************
      * Data + State
      ***********************/
     const WEAPON_URL = 'https://neptuneg1.github.io/freefire-caster/weapon.json';
@@ -1121,6 +1082,11 @@
     let currentArmoryFilter = '';
     let currentCsOnly = false;
 
+    // ✅ Language toggle (EN / MS)
+    const LANG_KEY = 'ff_weapon_lang_v1';
+    let currentLang = (localStorage.getItem(LANG_KEY) === 'ms') ? 'ms' : 'en';
+    let LAST_OPENED_WEAPON = null;
+
     const weaponGrid = document.getElementById('weaponGrid');
     const countPill = document.getElementById('countPill');
 
@@ -1129,6 +1095,25 @@
     const filterArmory = document.getElementById('filterArmory');
     const filterCSOnly = document.getElementById('filterCSOnly');
     const toggleViewBtn = document.getElementById('toggleView');
+    const langToggleBtn = document.getElementById('langToggle');
+
+    function syncLangButton(){
+      if (!langToggleBtn) return;
+      langToggleBtn.textContent = (currentLang === 'ms') ? 'MS' : 'EN';
+    }
+
+    function pickDescription(w){
+      const en = tidy(w?.description);
+      const ms = tidy(w?.description_ms);
+      if (currentLang === 'ms') return ms || en || '—';
+      return en || ms || '—';
+    }
+
+    // ✅ Show CS price only when CS checkbox is true
+    function csChipLabel(price){
+      const p = tidy(price);
+      return (currentCsOnly && p) ? `CS ₱${p}` : 'CS';
+    }
 
     function typeSortIndex(type){
       const order = [
@@ -1152,7 +1137,7 @@
         splitArmory(w?.armory).join(' '),
         tidy(w?.special_attributes),
         tidy(w?.description),
-        tidy(w?.description_ms) // ✅ include Malay text in search too
+        tidy(w?.description_ms) // ✅ include Malay in search too
       ].filter(Boolean).join(' ').toLowerCase();
     }
 
@@ -1210,7 +1195,7 @@
       if (cs){
         const chipCS = document.createElement('span');
         chipCS.className = 'chip cs';
-        chipCS.textContent = price ? `CS ₱${price}` : 'CS';
+        chipCS.textContent = csChipLabel(price); // ✅ price only when CS checkbox true
         sub.appendChild(chipCS);
       }
 
@@ -1305,7 +1290,7 @@
           if (cs){
             const chipCS = document.createElement('span');
             chipCS.className = 'chip cs';
-            chipCS.textContent = price ? `CS ₱${price}` : 'CS';
+            chipCS.textContent = csChipLabel(price); // ✅ price only when CS checkbox true
             sub.appendChild(chipCS);
           }
 
@@ -1468,7 +1453,7 @@
       infoName.textContent = name;
       infoSub.textContent = [
         type ? type.toUpperCase() : null,
-        cs ? (price ? `CS ₱${price}` : 'CS') : null,
+        cs ? csChipLabel(price) : null, // ✅ respects CS checkbox
         armory.length ? `ARMORY: ${armory.join(', ')}` : null,
         (currentLang === 'ms' ? 'MS' : 'EN') // ✅ show current language
       ].filter(Boolean).join(' • ');
@@ -1483,7 +1468,7 @@
       infoMag.textContent = tidy(w?.magazine_size) || '—';
 
       infoAttrs.textContent = tidy(w?.special_attributes) || '—';
-      infoDesc.textContent = pickDescription(w); // ✅ EN/MS description
+      infoDesc.textContent = pickDescription(w); // ✅ EN/MS toggle
 
       infoModal.classList.add('show');
       infoModal.setAttribute('aria-hidden','false');
@@ -1518,12 +1503,25 @@
 
     filterCSOnly?.addEventListener('change', (e) => {
       currentCsOnly = !!e.target.checked;
-      renderWeapons();
+      renderWeapons(); // ✅ rebuild cards so CS chip label updates everywhere
+      // if modal open, refresh CS chip label in subtitle too
+      if (infoModal.classList.contains('show') && LAST_OPENED_WEAPON) openInfo(LAST_OPENED_WEAPON);
     });
 
     toggleViewBtn?.addEventListener('click', () => {
       isListView = !isListView;
       applyViewMode();
+    });
+
+    // ✅ Language toggle
+    syncLangButton();
+    langToggleBtn?.addEventListener('click', () => {
+      currentLang = (currentLang === 'en') ? 'ms' : 'en';
+      localStorage.setItem(LANG_KEY, currentLang);
+      syncLangButton();
+      if (infoModal.classList.contains('show') && LAST_OPENED_WEAPON){
+        openInfo(LAST_OPENED_WEAPON);
+      }
     });
 
     document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
