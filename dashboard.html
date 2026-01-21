@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- ✅ FIX: iOS safe-area + proper full-height viewport -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Free Fire Dashboard</title>
 
   <!-- Fonts -->
@@ -45,6 +46,14 @@
         radial-gradient(900px 620px at 50% 110%, rgba(255,119,51,.10), transparent 60%),
         linear-gradient(180deg, var(--bg), var(--bg2));
       overflow-x:hidden;
+
+      /* ✅ makes mobile “full height” reliable (address bar, etc.) */
+      min-height: 100dvh;
+      padding:
+        env(safe-area-inset-top)
+        env(safe-area-inset-right)
+        env(safe-area-inset-bottom)
+        env(safe-area-inset-left);
     }
 
     body::before, body::after{
@@ -83,8 +92,9 @@
       color: var(--ink);
     }
 
+    /* ✅ FIX: allow the page to grow & scroll on mobile */
     .app{
-      height:100%;
+      min-height: 100dvh;   /* not height:100% */
       display:flex;
       gap:18px;
       padding:18px;
@@ -105,7 +115,7 @@
       display:flex;
       flex-direction:column;
       position:relative;
-      transition: width .18s ease;
+      transition: width .18s ease, transform .22s ease;
     }
     .sidebar.collapsed{ width: var(--sb-w-collapsed); }
 
@@ -230,6 +240,7 @@
       display:flex;
       align-items:center;
       gap:12px;
+      flex-wrap: nowrap;
     }
 
     .search{
@@ -282,6 +293,7 @@
       background: rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.10);
       max-width: 260px;
+      min-width: 0;
     }
     .avatar{
       width:28px;height:28px;border-radius:10px;
@@ -344,8 +356,6 @@
 
     /* Content */
     .content{
-      min-height: 0;
-      flex:1;
       display:flex;
       flex-direction:column;
       gap: 14px;
@@ -865,34 +875,24 @@
 
     /* ✅ FIX: Loadout modal scroll (100% reliable) */
     #loadoutModal .modal-card{
-      /* make header + body layout deterministic */
       display: grid;
       grid-template-rows: auto 1fr;
-    
-      /* use dvh so it never gets clipped by browser UI */
       height: min(860px, calc(100dvh - 36px));
-      max-height: none;            /* stop the old max-height from fighting */
-      overflow: hidden;            /* keep rounded corners clean */
+      max-height: none;
+      overflow: hidden;
     }
-    
-    #loadoutModal .modal-top{
-      grid-row: 1;
-    }
-    
+    #loadoutModal .modal-top{ grid-row: 1; }
     #loadoutModal .ld-wrap{
       grid-row: 2;
-      min-height: 0;               /* CRITICAL: allows the scroll area to shrink */
-      overflow-y: auto;            /* the actual scroll container */
-      padding-bottom: 28px;        /* ensures last lines aren't visually “cut” */
+      min-height: 0;
+      overflow-y: auto;
+      padding-bottom: 28px;
       overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
     }
-    
-    /* optional: show a visible scrollbar */
     #loadoutModal .ld-wrap::-webkit-scrollbar{ width:10px; }
     #loadoutModal .ld-wrap::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.10); border-radius:10px; }
     #loadoutModal .ld-wrap::-webkit-scrollbar-track{ background:transparent; }
-
 
     @media (max-width: 1200px){
       .quickbar{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1006,10 +1006,71 @@
       max-width:none;
       max-height:none;
     }
+
+    /* =========================
+       ✅ MOBILE FIXES
+       - Sidebar becomes a drawer
+       - Page uses full width
+       - Topbar wraps
+       ========================= */
+    .sb-scrim{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      display:none;
+      z-index: 1100;
+    }
+    body.sb-open .sb-scrim{display:block;}
+
+    @media (max-width: 860px){
+      .app{
+        max-width: none;
+        margin: 0;
+        padding: 12px;
+        gap: 12px;
+      }
+
+      /* drawer mode */
+      .sidebar{
+        position: fixed;
+        top: calc(env(safe-area-inset-top) + 10px);
+        bottom: calc(env(safe-area-inset-bottom) + 10px);
+        left: 10px;
+        width: min(86vw, 320px);
+        z-index: 1200;
+        transform: translateX(calc(-100% - 18px));
+      }
+      .sidebar.open{
+        transform: translateX(0);
+      }
+
+      /* collapsed mode is not used on mobile (drawer wins) */
+      .sidebar.collapsed{ width: min(86vw, 320px); }
+
+      .main{ width:100%; }
+
+      .topbar{
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .search{ order: 2; width: 100%; }
+      .top-actions{
+        order: 3;
+        width: 100%;
+        justify-content: space-between;
+      }
+      .userchip{ max-width:none; flex:1; }
+      .logout, .lang-btn{ padding: 8px 9px; }
+    }
   </style>
 </head>
 
 <body>
+  <!-- ✅ sidebar scrim for mobile drawer -->
+  <div class="sb-scrim" id="sbScrim" aria-hidden="true"></div>
+
   <div class="app">
     <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
@@ -1105,8 +1166,9 @@
     <!-- MAIN -->
     <main class="main">
       <header class="topbar">
-        <button class="icon-btn" id="sbToggle" aria-label="Collapse sidebar" title="Collapse sidebar">
+        <button class="icon-btn" id="sbToggle" aria-label="Sidebar" title="Sidebar">
           <svg viewBox="0 0 24 24" fill="none">
+            <!-- will be swapped in JS for mobile drawer -->
             <path id="sbTogglePath" d="M14 7l-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
@@ -1405,10 +1467,7 @@
       applyQuickView('weapon');
       applyQuickView('loadout');
 
-      // If picker is open, refresh grid/tooltips
       if (modal?.classList.contains('show')) renderPickerGrid();
-
-      // If loadout modal open
       if (loadoutModal?.classList.contains('show')) openLoadoutDetails();
     }
 
@@ -1421,32 +1480,96 @@
     });
 
     /***********************
-     * Sidebar
+     * ✅ Sidebar (Desktop collapse + Mobile drawer)
      ***********************/
     const sidebar = document.getElementById('sidebar');
+    const sbScrim = document.getElementById('sbScrim');
 
-    (function initSidebarCollapse(){
+    const mqMobile = window.matchMedia('(max-width: 860px)');
+    function isMobile(){ return mqMobile.matches; }
+
+    (function initSidebar(){
       const key = 'ff_sidebar_collapsed_v1';
-      const saved = localStorage.getItem(key);
-      if (saved === '1') sidebar.classList.add('collapsed');
-
       const btn = document.getElementById('sbToggle');
       const path = document.getElementById('sbTogglePath');
 
+      function setScrim(open){
+        document.body.classList.toggle('sb-open', !!open);
+        sbScrim?.setAttribute('aria-hidden', open ? 'false' : 'true');
+      }
+
+      function closeDrawer(){
+        sidebar.classList.remove('open');
+        setScrim(false);
+        syncIcon();
+      }
+
       function syncIcon(){
         if (!path) return;
+
+        if (isMobile()){
+          // hamburger when closed, X when open
+          path.setAttribute('d',
+            sidebar.classList.contains('open')
+              ? 'M6 6l12 12M18 6 6 18'
+              : 'M4 6h16M4 12h16M4 18h16'
+          );
+          path.setAttribute('stroke-linejoin', 'round');
+          return;
+        }
+
+        // desktop chevron collapse
         path.setAttribute('d', sidebar.classList.contains('collapsed')
           ? 'M10 7l5 5-5 5'
           : 'M14 7l-5 5 5 5'
         );
       }
 
+      // initial state
+      if (!isMobile()){
+        const saved = localStorage.getItem(key);
+        if (saved === '1') sidebar.classList.add('collapsed');
+      } else {
+        sidebar.classList.remove('collapsed');
+        sidebar.classList.remove('open');
+        setScrim(false);
+      }
       syncIcon();
 
       btn?.addEventListener('click', () => {
+        if (isMobile()){
+          const open = !sidebar.classList.contains('open');
+          sidebar.classList.toggle('open', open);
+          setScrim(open);
+          syncIcon();
+          return;
+        }
+
         sidebar.classList.toggle('collapsed');
         localStorage.setItem(key, sidebar.classList.contains('collapsed') ? '1' : '0');
         syncIcon();
+      });
+
+      sbScrim?.addEventListener('click', closeDrawer);
+
+      // close drawer when clicking any nav item (mobile)
+      document.getElementById('nav')?.addEventListener('click', (e) => {
+        const a = e.target.closest('a.nav-item');
+        if (!a) return;
+        if (isMobile()) closeDrawer();
+      });
+
+      // handle breakpoint changes
+      mqMobile.addEventListener?.('change', () => {
+        if (isMobile()){
+          sidebar.classList.remove('collapsed');
+          closeDrawer();
+        } else {
+          setScrim(false);
+          const saved = localStorage.getItem(key);
+          sidebar.classList.toggle('collapsed', saved === '1');
+          syncIcon();
+        }
       });
     })();
 
@@ -1476,12 +1599,7 @@
       loadout:   { url:'https://neptuneg1.github.io/freefire-caster/loadout.json',   items:[], selected:0 },
     };
 
-    const FILTER_STATE = {
-      character: 'all',
-      pet: 'all',
-      weapon: 'all',
-      loadout: 'all'
-    };
+    const FILTER_STATE = { character:'all', pet:'all', weapon:'all', loadout:'all' };
 
     function norm(v){ return safeText(v).trim(); }
     function normLower(v){ return norm(v).toLowerCase(); }
@@ -1520,10 +1638,8 @@
         return (t ? t : '—') + (d ? ` — ${d}` : '');
       }
 
-      /* ✅ UPDATED: Loadout preview uses EN/MS and puts CS on new line */
       if (type === 'loadout'){
         const details = item.details || {};
-
         const brFull = pickLang(details.br, details.br_ms);
         const csFull = pickLang(details.cs, details.cs_ms);
 
@@ -1807,7 +1923,6 @@
         const name = safeText(it?.name).toLowerCase();
         const skill = safeText(it?.skill || it?.type || it?.ability || it?.category || '').toLowerCase();
 
-        // ✅ search both EN + MS too
         const blob = [
           safeText(it?.description),
           safeText(it?.description_ms),
@@ -1830,7 +1945,7 @@
         const name = safeText(it?.name || '—');
 
         const tip = buildDesc(currentPickerType, it);
-        const tipFlat = safeText(tip).replace(/\n+/g, ' | '); // ✅ avoid newline in title=
+        const tipFlat = safeText(tip).replace(/\n+/g, ' | ');
 
         return `
           <div class="pick-card" data-idx="${idx}" title="${name}${tipFlat ? ' — ' + tipFlat : ''}">
@@ -2233,7 +2348,7 @@
         DATA.weapon.selected = 0;
         DATA.loadout.selected = 0;
 
-        refreshAllText(); // ✅ applies current language too
+        refreshAllText();
       }catch(err){
         console.error(err);
         setCounts();
