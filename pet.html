@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- ✅ better mobile viewport + notch safe areas -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Pet Gallery</title>
 
   <!-- Fonts -->
@@ -40,12 +41,19 @@
       --role-movement:#b58cff;
       --role-other:#ffbd59;
 
-      /* 👇 sizing knobs (smaller cards) */
-      --pet-min: 128px;        /* smaller column min width */
-      --pet-gap: 10px;         /* tighter gaps */
-      --pet-pad: 8px;          /* tighter padding */
-      --pet-radius: 14px;      /* slightly smaller radius */
+      /* sizing knobs */
+      --pet-min: 128px;
+      --pet-gap: 10px;
+      --pet-pad: 8px;
+      --pet-radius: 14px;
       --pet-thumb-radius: 12px;
+
+      /* mobile helpers */
+      --pad: 18px;
+      --pad-m: 12px;
+      --pad-s: 10px;
+      --top-sticky: 18px;
+      --touch: 44px;
     }
 
     *{box-sizing:border-box}
@@ -61,6 +69,9 @@
         linear-gradient(180deg, var(--bg), var(--bg2));
       overflow-x:hidden;
       overflow-y:auto;
+      -webkit-text-size-adjust: 100%;
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
     }
 
     body::before, body::after{
@@ -94,10 +105,27 @@
       min-height: 100vh;
       display:flex;
       gap:18px;
-      padding:18px;
+      padding: var(--pad);
       max-width: 1440px;
       margin: 0 auto;
       align-items:flex-start;
+    }
+
+    /* ✅ mobile scrim for drawer */
+    .scrim{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,.58);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .18s ease;
+      z-index: 180;
+    }
+    .scrim.show{
+      opacity:1;
+      pointer-events:auto;
     }
 
     /* Sidebar */
@@ -113,10 +141,11 @@
       display:flex;
       flex-direction:column;
       position: sticky;
-      top: 18px;
-      height: calc(100vh - 36px);
-      transition: width .18s ease;
+      top: var(--top-sticky);
+      height: calc(100vh - (var(--top-sticky) * 2));
+      transition: width .18s ease, transform .18s ease;
       flex:0 0 auto;
+      z-index: 120;
     }
     .sidebar.collapsed{ width: var(--sb-w-collapsed); }
 
@@ -166,6 +195,7 @@
       flex-direction:column;
       gap:8px;
       overflow:auto;
+      -webkit-overflow-scrolling: touch;
     }
     .nav::-webkit-scrollbar{width:10px}
     .nav::-webkit-scrollbar-thumb{background: rgba(255,255,255,.08); border-radius:10px}
@@ -209,6 +239,7 @@
       min-width:0;
     }
 
+    /* desktop collapsed hides labels */
     .sidebar.collapsed .brand h1,
     .sidebar.collapsed .brand small,
     .sidebar.collapsed .nav-label{display:none;}
@@ -242,7 +273,7 @@
       align-items:center;
       gap:12px;
       position: sticky;
-      top: 18px;
+      top: var(--top-sticky);
       z-index: 20;
     }
     .search{
@@ -282,6 +313,7 @@
       transition:.2s ease;
       color: var(--ink);
       flex:0 0 auto;
+      -webkit-tap-highlight-color: transparent;
     }
     .icon-btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.08)}
     .icon-btn svg{width:18px;height:18px;opacity:.92}
@@ -295,6 +327,7 @@
       background: rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.10);
       max-width: 260px;
+      min-height: 42px;
     }
     .avatar{
       width:28px;height:28px;border-radius:10px;
@@ -325,6 +358,9 @@
       transition:.2s ease;
       cursor:pointer;
       white-space:nowrap;
+      min-height: 42px;
+      display:inline-flex;
+      align-items:center;
     }
     .logout:hover{
       border-color: rgba(255,77,77,.35);
@@ -381,7 +417,7 @@
     .controls{
       display:flex;
       gap:10px;
-      align-items:center;
+      align-items:flex-start;
       justify-content:space-between;
       flex-wrap:wrap;
       margin-bottom: 10px;
@@ -392,12 +428,15 @@
       align-items:center;
       flex-wrap:wrap;
       min-width:0;
+      flex: 1 1 auto;
     }
     .controls-right{
       display:flex;
       gap:8px;
       align-items:center;
       flex-wrap:wrap;
+      flex: 0 0 auto;
+      justify-content:flex-end;
     }
 
     .pill{
@@ -463,6 +502,8 @@
       display:inline-flex;
       align-items:center;
       justify-content:center;
+      min-height: 38px;
+      -webkit-tap-highlight-color: transparent;
     }
     .btn:hover{
       background: rgba(0,0,0,.28);
@@ -486,7 +527,7 @@
       letter-spacing: 0;
     }
 
-    /* ✅ Smaller pet grid/cards */
+    /* Pet grid/cards */
     .grid{
       display:grid;
       grid-template-columns: repeat(auto-fill, minmax(var(--pet-min), 1fr));
@@ -506,6 +547,7 @@
       gap:6px;
       min-width:0;
       overflow:hidden;
+      touch-action: manipulation;
     }
     .pet-card:hover{
       background: rgba(255,255,255,.08);
@@ -583,7 +625,7 @@
       text-align: center;
     }
 
-    /* Modal (Info popup) */
+    /* Modal */
     .modal{
       position: fixed;
       inset: 0;
@@ -600,6 +642,7 @@
 
     .modal-card{
       width: min(560px, 100%);
+      max-height: calc(100vh - 36px);
       background: rgba(14, 18, 28, .92);
       border: 1px solid rgba(255,255,255,.10);
       border-radius: 22px;
@@ -640,6 +683,8 @@
       flex-direction:column;
       gap: 10px;
       justify-content:flex-start;
+      overflow:auto;
+      -webkit-overflow-scrolling: touch;
     }
 
     .badge-row{
@@ -672,19 +717,81 @@
       white-space: normal;
     }
 
+    /* ✅ MOBILE / TABLET: sidebar becomes drawer */
     @media (max-width: 980px){
-      .sidebar{display:none;}
-      .app{padding:12px;}
-      .topbar{top:12px;}
-      :root{ --pet-min: 118px; }
+      :root{ --pad: var(--pad-m); --top-sticky: 12px; --pet-min: 118px; }
+
+      .app{ padding: var(--pad); gap: 0; }
+
+      .sidebar{
+        position: fixed;
+        top: env(safe-area-inset-top);
+        left: env(safe-area-inset-left);
+        height: calc(100vh - env(safe-area-inset-top));
+        width: min(var(--sb-w), 86vw);
+        border-radius: 18px;
+        transform: translateX(-110%);
+        z-index: 220;
+      }
+      .sidebar.mobile-open{ transform: translateX(0); }
+
+      /* ✅ critical: NEVER hide labels in mobile drawer (prevents "icons only") */
+      .sidebar.collapsed{ width: min(var(--sb-w), 86vw); }
+      .sidebar.collapsed .brand h1,
+      .sidebar.collapsed .brand small,
+      .sidebar.collapsed .nav-label{ display: block !important; }
+      .sidebar.collapsed .brand{ justify-content:flex-start !important; }
+      .sidebar.collapsed .brand-left{ justify-content:flex-start !important; }
+      .sidebar.collapsed .nav-item{
+        justify-content:flex-start !important;
+        gap:10px !important;
+        padding:10px 10px !important;
+      }
+
+      .main{ width:100%; }
+      .topbar{
+        top: calc(var(--top-sticky) + env(safe-area-inset-top));
+        padding: 10px 10px;
+        gap: 10px;
+      }
+      .userchip{ max-width: 220px; }
+      .usertext b{ max-width: 120px; }
+    }
+
+    @media (max-width: 640px){
+      .topbar{ flex-wrap: wrap; align-items: stretch; }
+      #sbToggle{ width: var(--touch); height: var(--touch); border-radius: 14px; }
+      .top-actions{ gap:8px; justify-content:flex-end; }
+      .userchip{ padding: 8px 8px; max-width: 180px; }
+      .usertext span{ display:none; }
+      .hero{ height: 120px; }
+      .hero-title h2{ font-size: 1.22rem; }
+      .card-inner{ padding: 12px; }
+      .grid{ gap: 10px; }
+    }
+
+    @media (max-width: 420px){
+      .app{ padding: var(--pad-s); }
+      .topbar{ padding: 10px; border-radius: 18px; }
+      .userchip{ display:none; }
+      :root{ --pet-min: 108px; }
+      .modal{ padding: 12px; }
+      .modal-card{ border-radius: 18px; }
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      *{ transition:none !important; scroll-behavior:auto !important; }
     }
   </style>
 </head>
 
 <body>
+  <!-- ✅ scrim for mobile drawer -->
+  <div class="scrim" id="scrim" aria-hidden="true"></div>
+
   <div class="app">
     <!-- SIDEBAR -->
-    <aside class="sidebar" id="sidebar">
+    <aside class="sidebar" id="sidebar" aria-label="Sidebar Navigation">
       <div class="brand">
         <div class="brand-left">
           <div class="logo">FF</div>
@@ -718,7 +825,7 @@
           <span class="nav-label">Weapons</span>
         </a>
 
-         <a class="nav-item active" href="loadout.html" data-page="loadout.html" title="Loadouts">
+        <a class="nav-item" href="loadout.html" data-page="loadout.html" title="Loadouts">
           <span class="nav-ico">
             <svg viewBox="0 0 24 24" fill="none">
               <path d="M12 2l3 6 6 .8-4.4 4.2 1.2 6-5.8-3.2L6.2 19l1.2-6L3 8.8 9 8l3-6Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -777,7 +884,8 @@
     <!-- MAIN -->
     <main class="main">
       <header class="topbar">
-        <button class="icon-btn" id="sbToggle" aria-label="Collapse sidebar" title="Collapse sidebar">
+        <!-- ✅ mobile: menu; desktop: collapse -->
+        <button class="icon-btn" id="sbToggle" aria-label="Open menu / Collapse sidebar" title="Menu / Collapse">
           <svg viewBox="0 0 24 24" fill="none">
             <path id="sbTogglePath" d="M14 7l-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
@@ -798,7 +906,6 @@
               <span id="userEmail" class="muted">loading…</span>
             </div>
           </div>
-
           <a class="logout" href="#" id="logoutBtn">Logout</a>
         </div>
       </header>
@@ -836,7 +943,6 @@
                 </select>
               </div>
 
-              <!-- ✅ Translation toggle -->
               <span class="pill" style="border-color: rgba(77,211,255,.18)">
                 Description:
                 <button class="btn" id="toggleDescLangBtn" type="button" title="Toggle description language">EN</button>
@@ -899,43 +1005,92 @@
 
     async function ensureSession(){
       const { data: { session } } = await client.auth.getSession();
-      if (!session) {
-        window.location.href = "index.html";
-        return null;
-      }
+      if (!session) { window.location.href = "index.html"; return null; }
       return session;
     }
-
     async function logout(){
       await client.auth.signOut();
       window.location.href = "index.html";
     }
 
     /***********************
-     * Sidebar collapse + active nav
+     * Sidebar: Desktop collapse + Mobile drawer (same as character, with iPhone fix)
      ***********************/
     const sidebar = document.getElementById('sidebar');
+    const scrim = document.getElementById('scrim');
 
-    (function initSidebarCollapse(){
+    function isMobileNav(){ return window.matchMedia('(max-width: 980px)').matches; }
+
+    function openDrawer(){
+      sidebar.classList.add('mobile-open');
+      scrim.classList.add('show');
+      scrim.setAttribute('aria-hidden','false');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeDrawer(){
+      sidebar.classList.remove('mobile-open');
+      scrim.classList.remove('show');
+      scrim.setAttribute('aria-hidden','true');
+      document.body.style.overflow = '';
+    }
+    function toggleDrawer(){
+      if (sidebar.classList.contains('mobile-open')) closeDrawer();
+      else openDrawer();
+    }
+
+    (function initSidebarCollapseOrDrawer(){
       const key = 'ff_sidebar_collapsed_v1';
-      const saved = localStorage.getItem(key);
-      if (saved === '1') sidebar.classList.add('collapsed');
-
       const btn = document.getElementById('sbToggle');
       const path = document.getElementById('sbTogglePath');
 
+      function applyCollapsedPreference(){
+        const saved = localStorage.getItem(key);
+        if (isMobileNav()){
+          // ✅ critical: never keep collapsed on mobile (prevents icons-only)
+          sidebar.classList.remove('collapsed');
+          return;
+        }
+        if (saved === '1') sidebar.classList.add('collapsed');
+        else sidebar.classList.remove('collapsed');
+      }
+
       function syncIcon(){
         if (!path) return;
-        path.setAttribute('d', sidebar.classList.contains('collapsed')
-          ? 'M10 7l5 5-5 5'
-          : 'M14 7l-5 5 5 5'
-        );
+        if (isMobileNav()){
+          // hamburger
+          path.setAttribute('d', 'M4 7h16M4 12h16M4 17h16');
+        } else {
+          // chevron
+          path.setAttribute('d',
+            sidebar.classList.contains('collapsed') ? 'M10 7l5 5-5 5' : 'M14 7l-5 5 5 5'
+          );
+        }
       }
+
+      applyCollapsedPreference();
       syncIcon();
 
       btn?.addEventListener('click', () => {
+        if (isMobileNav()){
+          toggleDrawer();
+          syncIcon();
+          return;
+        }
         sidebar.classList.toggle('collapsed');
         localStorage.setItem(key, sidebar.classList.contains('collapsed') ? '1' : '0');
+        syncIcon();
+      });
+
+      scrim?.addEventListener('click', closeDrawer);
+
+      document.getElementById('nav')?.addEventListener('click', (e) => {
+        const a = e.target.closest('a.nav-item');
+        if (a && isMobileNav()) closeDrawer();
+      });
+
+      window.addEventListener('resize', () => {
+        applyCollapsedPreference();
+        if (!isMobileNav()) closeDrawer();
         syncIcon();
       });
     })();
@@ -959,6 +1114,7 @@
         .replace(/\s{2,}/g, ' ')
         .trim();
     }
+
     function roleKey(role){
       const r = tidy(role).toUpperCase();
       if (r === 'INFO') return 'info';
@@ -985,23 +1141,17 @@
      ***********************/
     let currentDescLang = 'en'; // 'en' => description, 'bm' => description_ms
     let LAST_OPENED_PET = null;
-
     const toggleDescLangBtn = document.getElementById('toggleDescLangBtn');
 
     function getActiveDesc(p){
       const en = tidy(p?.description);
       const bm = tidy(p?.description_ms);
-      if (currentDescLang === 'bm') return bm || en || '—';
-      return en || bm || '—';
+      return (currentDescLang === 'bm') ? (bm || en || '—') : (en || bm || '—');
     }
-
     function syncDescLangUI(){
-      if(!toggleDescLangBtn) return;
       const isBM = (currentDescLang === 'bm');
       toggleDescLangBtn.textContent = isBM ? 'BM' : 'EN';
-      toggleDescLangBtn.title = isBM
-        ? 'Showing Bahasa Melayu (description_ms)'
-        : 'Showing English (description)';
+      toggleDescLangBtn.title = isBM ? 'Showing Bahasa Melayu (description_ms)' : 'Showing English (description)';
     }
 
     (function initDescLangToggle(){
@@ -1014,19 +1164,16 @@
         currentDescLang = (currentDescLang === 'en') ? 'bm' : 'en';
         localStorage.setItem(key, currentDescLang);
         syncDescLangUI();
-
-        // If modal is open, refresh text immediately
-        if (infoModal.classList.contains('show') && LAST_OPENED_PET) {
-          openInfo(LAST_OPENED_PET);
-        }
+        if (infoModal.classList.contains('show') && LAST_OPENED_PET) openInfo(LAST_OPENED_PET);
       });
     })();
 
     /***********************
-     * Data + Rendering
+     * Data + Rendering (optimized)
      ***********************/
     const PET_URL = 'https://neptuneg1.github.io/freefire-caster/pet.json';
     let allPets = [];
+    let cards = []; // cached pet cards
     let currentSearch = '';
     let currentRoleFilter = '';
 
@@ -1036,7 +1183,6 @@
     const topSearch = document.getElementById('searchInput');
 
     function makeSearchBlob(p){
-      // ✅ include BM translation in search too
       return [
         tidy(p?.name),
         tidy(p?.role),
@@ -1099,10 +1245,7 @@
 
       card.addEventListener('click', () => openInfo(p));
       card.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          openInfo(p);
-        }
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openInfo(p); }
       });
 
       return card;
@@ -1123,16 +1266,14 @@
       const q = (currentSearch || '').toLowerCase().trim();
       const role = (currentRoleFilter || '').toUpperCase().trim();
 
-      const cards = [...petGrid.querySelectorAll('.pet-card')];
       let visible = 0;
-
-      cards.forEach(el => {
+      for (const el of cards){
         const blob = el.dataset.search || '';
         const r = (el.dataset.role || '').toUpperCase();
         const hit = (!q || blob.includes(q)) && (!role || r === role);
         el.style.display = hit ? '' : 'none';
         if (hit) visible++;
-      });
+      }
 
       const empty = ensureEmptyMsg();
       empty.style.display = visible ? 'none' : '';
@@ -1143,6 +1284,7 @@
 
     function renderPets(){
       petGrid.innerHTML = '';
+      cards = [];
 
       const pets = Array.isArray(allPets) ? allPets.slice() : [];
       pets.sort((a,b) => tidy(a?.name).localeCompare(tidy(b?.name)));
@@ -1153,24 +1295,28 @@
         return;
       }
 
-      pets.forEach(p => petGrid.appendChild(makePetCard(p)));
+      const frag = document.createDocumentFragment();
+      for (const p of pets){
+        const el = makePetCard(p);
+        cards.push(el);
+        frag.appendChild(el);
+      }
+      petGrid.appendChild(frag);
+
       applyFilters();
     }
 
     async function loadPets(){
       petGrid.innerHTML = '<div class="empty-msg">Loading…</div>';
-
-      const url = `${PET_URL}?ts=${Date.now()}`;
-      const res = await fetch(url, { cache: 'no-store' });
+      const res = await fetch(`${PET_URL}?ts=${Date.now()}`, { cache: 'no-store' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-
       allPets = Array.isArray(data) ? data : [];
       renderPets();
     }
 
     /***********************
-     * Modal (Popup)
+     * Modal
      ***********************/
     const infoModal = document.getElementById('infoModal');
     const infoClose = document.getElementById('infoClose');
@@ -1225,7 +1371,9 @@
 
     infoClose?.addEventListener('click', closeInfo);
     infoModal?.addEventListener('click', (e) => { if (e.target === infoModal) closeInfo(); });
-    window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && infoModal.classList.contains('show')) closeInfo(); });
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && infoModal.classList.contains('show')) closeInfo();
+    });
 
     /***********************
      * Events
@@ -1254,8 +1402,7 @@
 
       const email = session.user?.email || '';
       document.getElementById('userEmail').textContent = email || 'signed in';
-      const username = email ? email.split('@')[0] : 'PlayerOne';
-      document.getElementById('gamertag').textContent = username;
+      document.getElementById('gamertag').textContent = email ? email.split('@')[0] : 'PlayerOne';
 
       try{
         await loadPets();
