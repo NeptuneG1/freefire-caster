@@ -212,6 +212,23 @@
       padding:10px 8px;
     }
 
+    /* ✅ Mobile drawer */
+    .drawer-backdrop{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease;
+      z-index: 900;
+    }
+    .drawer-backdrop.show{
+      opacity: 1;
+      pointer-events: auto;
+    }
+
     /* Main */
     .main{
       flex:1;
@@ -278,24 +295,6 @@
     .icon-btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.08)}
     .icon-btn svg{width:18px;height:18px;opacity:.92}
 
-    /* ✅ consistent Translate toggle (icon button + badge) */
-    #langToggle{ position:relative; }
-    #langToggle svg{ width:18px; height:18px; opacity:.92; }
-    .lang-badge{
-      position:absolute;
-      right:7px;
-      bottom:7px;
-      font-size:.62rem;
-      font-weight:1000;
-      letter-spacing:.4px;
-      padding: 2px 6px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(0,0,0,.30);
-      color: rgba(244,246,255,.92);
-      pointer-events:none;
-    }
-
     .userchip{
       display:flex;
       align-items:center;
@@ -340,29 +339,6 @@
       border-color: rgba(255,77,77,.35);
       color: #ff8d8d;
       box-shadow: 0 0 0 3px rgba(255,77,77,.10);
-    }
-
-    .btn{
-      padding: 9px 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.20);
-      color: rgba(244,246,255,.88);
-      cursor:pointer;
-      font-weight:900;
-      font-size:.82rem;
-      transition:.2s ease;
-      white-space:nowrap;
-      text-decoration:none;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      user-select:none;
-    }
-    .btn:hover{
-      background: rgba(0,0,0,.28);
-      box-shadow: 0 0 0 3px rgba(77,211,255,.10);
-      border-color: rgba(77,211,255,.22);
     }
 
     /* Card shell */
@@ -472,6 +448,29 @@
     .dot.br{ background: var(--br); }
     .dot.cs{ background: var(--cs); }
 
+    .btn{
+      padding: 9px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.20);
+      color: rgba(244,246,255,.88);
+      cursor:pointer;
+      font-weight:900;
+      font-size:.82rem;
+      transition:.2s ease;
+      white-space:nowrap;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      user-select:none;
+    }
+    .btn:hover{
+      background: rgba(0,0,0,.28);
+      box-shadow: 0 0 0 3px rgba(77,211,255,.10);
+      border-color: rgba(77,211,255,.22);
+    }
+
     .section-title{
       margin: 16px 0 10px 0;
       font-family: Orbitron, sans-serif;
@@ -579,7 +578,7 @@
       background: rgba(77,211,255,.10);
     }
 
-    /* show FULL description */
+    /* ✅ UPDATED: show FULL description (no clamp) */
     .item-mini{
       color: var(--muted);
       font-size: .78rem;
@@ -692,43 +691,31 @@
       word-break: break-word;
     }
 
-    /* ✅ burger overlay behavior on mobile */
-    .sb-overlay{
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,.55);
-      backdrop-filter: blur(3px);
-      -webkit-backdrop-filter: blur(3px);
-      display:none;
-      z-index: 90;
-    }
-    .sb-overlay.show{display:block;}
-
+    /* ✅ Mobile drawer overrides (keep sidebar, but as overlay) */
     @media (max-width: 980px){
-      .app{padding:12px;}
+      .app{padding:12px; gap:12px;}
       .topbar{top:12px;}
 
-      /* sidebar becomes drawer */
       .sidebar{
-        display:flex;
         position: fixed;
-        left: 12px;
         top: 12px;
+        left: 12px;
         height: calc(100vh - 24px);
-        z-index: 100;
-        transform: translateX(-120%);
-        transition: transform .2s ease, width .18s ease;
+        z-index: 950;
+        transform: translateX(calc(-100% - 20px));
+        transition: transform .18s ease, width .18s ease;
+        width: min(var(--sb-w), calc(100vw - 24px));
       }
       .sidebar.open{ transform: translateX(0); }
-      .main{ width: 100%; }
+
       :root{ --item-min: 150px; }
     }
   </style>
 </head>
 
 <body>
-  <!-- mobile overlay for drawer sidebar -->
-  <div class="sb-overlay" id="sbOverlay" aria-hidden="true"></div>
+  <!-- ✅ Backdrop for mobile drawer -->
+  <div class="drawer-backdrop" id="drawerBackdrop" aria-hidden="true"></div>
 
   <div class="app">
     <!-- SIDEBAR -->
@@ -825,8 +812,8 @@
     <!-- MAIN -->
     <main class="main">
       <header class="topbar">
-        <!-- ✅ burger / collapse button (desktop collapse, mobile opens drawer) -->
-        <button class="icon-btn" id="sbToggle" aria-label="Open sidebar" title="Menu">
+        <!-- ✅ ONE BUTTON: desktop collapse arrow, mobile burger -->
+        <button class="icon-btn" id="sbToggle" aria-label="Open menu" title="Menu">
           <svg viewBox="0 0 24 24" fill="none">
             <path id="sbTogglePath" d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
@@ -840,13 +827,8 @@
         </div>
 
         <div class="top-actions">
-          <!-- ✅ Translate toggle: consistent with character/pet/weapon -->
-          <button class="icon-btn" id="langToggle" type="button" aria-label="Toggle language" title="Translate">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M4 5h7M4 9h5M13 19l3-7 3 7M14.3 16h3.4M10 20c4-2 6-6 6-11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <span class="lang-badge" id="langBadge">EN</span>
-          </button>
+          <!-- ✅ Language Toggle -->
+          <button class="btn" id="langToggle" type="button" title="Toggle language">EN</button>
 
           <div class="userchip">
             <div class="avatar"></div>
@@ -928,6 +910,102 @@
 
   <script>
     /***********************
+     * Sidebar: desktop collapse + mobile drawer (burger)
+     ***********************/
+    function initSidebarUI(){
+      const sidebar = document.getElementById('sidebar');
+      const btn = document.getElementById('sbToggle');
+      const path = document.getElementById('sbTogglePath');
+      const backdrop = document.getElementById('drawerBackdrop');
+      if (!sidebar || !btn) return;
+
+      const keyCollapsed = 'ff_sidebar_collapsed_v1';
+      const isMobile = () => window.matchMedia('(max-width: 980px)').matches;
+
+      function setPathD(d){ if (path) path.setAttribute('d', d); }
+
+      function syncButtonIcon(){
+        if (isMobile()){
+          // burger icon
+          setPathD('M4 7h16M4 12h16M4 17h16');
+          btn.setAttribute('aria-label', sidebar.classList.contains('open') ? 'Close menu' : 'Open menu');
+          btn.title = 'Menu';
+        } else {
+          // desktop collapse arrow
+          const collapsed = sidebar.classList.contains('collapsed');
+          setPathD(collapsed ? 'M10 7l5 5-5 5' : 'M14 7l-5 5 5 5');
+          btn.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+          btn.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+        }
+      }
+
+      function openDrawer(){
+        sidebar.classList.add('open');
+        if (backdrop){
+          backdrop.classList.add('show');
+          backdrop.setAttribute('aria-hidden','false');
+        }
+        syncButtonIcon();
+      }
+      function closeDrawer(){
+        sidebar.classList.remove('open');
+        if (backdrop){
+          backdrop.classList.remove('show');
+          backdrop.setAttribute('aria-hidden','true');
+        }
+        syncButtonIcon();
+      }
+
+      function applyDesktopPersistedState(){
+        if (!isMobile()){
+          if (localStorage.getItem(keyCollapsed) === '1') sidebar.classList.add('collapsed');
+          else sidebar.classList.remove('collapsed');
+        } else {
+          sidebar.classList.remove('collapsed');
+          closeDrawer();
+        }
+        syncButtonIcon();
+      }
+
+      // initial
+      applyDesktopPersistedState();
+
+      // toggle behavior
+      btn.addEventListener('click', () => {
+        if (isMobile()){
+          sidebar.classList.contains('open') ? closeDrawer() : openDrawer();
+        } else {
+          sidebar.classList.toggle('collapsed');
+          localStorage.setItem(keyCollapsed, sidebar.classList.contains('collapsed') ? '1' : '0');
+          syncButtonIcon();
+        }
+      });
+
+      // click outside to close drawer
+      backdrop?.addEventListener('click', closeDrawer);
+
+      // close drawer when clicking a nav link (mobile)
+      sidebar.querySelectorAll('.nav-item').forEach(a=>{
+        a.addEventListener('click', () => { if (isMobile()) closeDrawer(); });
+      });
+
+      // ESC closes drawer
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && isMobile() && sidebar.classList.contains('open')) closeDrawer();
+      });
+
+      // re-sync on resize/breakpoint changes
+      window.addEventListener('resize', () => applyDesktopPersistedState());
+
+      // active nav
+      const here = (location.pathname.split('/').pop() || 'loadout.html').toLowerCase();
+      document.querySelectorAll('.nav-item').forEach(a => {
+        const page = (a.getAttribute('data-page') || '').toLowerCase();
+        a.classList.toggle('active', page === here);
+      });
+    }
+
+    /***********************
      * Supabase Auth
      ***********************/
     const client = supabase.createClient(
@@ -950,90 +1028,6 @@
     }
 
     /***********************
-     * Sidebar (desktop collapse + mobile drawer burger)
-     ***********************/
-    const sidebar = document.getElementById('sidebar');
-    const sbOverlay = document.getElementById('sbOverlay');
-
-    function isMobile(){
-      return window.matchMedia('(max-width: 980px)').matches;
-    }
-
-    (function initSidebar(){
-      const key = 'ff_sidebar_collapsed_v1';
-      const saved = localStorage.getItem(key);
-
-      // apply desktop collapsed state only when not mobile
-      if (saved === '1' && !isMobile()) sidebar.classList.add('collapsed');
-
-      const btn = document.getElementById('sbToggle');
-      const path = document.getElementById('sbTogglePath');
-
-      function setBurgerIcon(){
-        if (!path) return;
-        // burger icon always on topbar
-        path.setAttribute('d', 'M4 7h16M4 12h16M4 17h16');
-      }
-      setBurgerIcon();
-
-      function openDrawer(){
-        sidebar.classList.add('open');
-        sbOverlay.classList.add('show');
-        sbOverlay.setAttribute('aria-hidden','false');
-      }
-      function closeDrawer(){
-        sidebar.classList.remove('open');
-        sbOverlay.classList.remove('show');
-        sbOverlay.setAttribute('aria-hidden','true');
-      }
-
-      btn?.addEventListener('click', () => {
-        if (isMobile()){
-          // mobile: toggle drawer
-          if (sidebar.classList.contains('open')) closeDrawer();
-          else openDrawer();
-          return;
-        }
-        // desktop: collapse/expand
-        sidebar.classList.toggle('collapsed');
-        localStorage.setItem(key, sidebar.classList.contains('collapsed') ? '1' : '0');
-      });
-
-      // close drawer on overlay click
-      sbOverlay?.addEventListener('click', closeDrawer);
-
-      // close drawer on nav click (mobile)
-      document.getElementById('nav')?.addEventListener('click', (e) => {
-        const a = e.target.closest?.('a');
-        if (a && isMobile()) closeDrawer();
-      });
-
-      // handle resize changes
-      window.addEventListener('resize', () => {
-        if (!isMobile()){
-          closeDrawer();
-          const savedNow = localStorage.getItem(key);
-          sidebar.classList.toggle('collapsed', savedNow === '1');
-        } else {
-          sidebar.classList.remove('collapsed'); // drawer uses full width
-        }
-      });
-
-      // ESC closes drawer
-      window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && isMobile() && sidebar.classList.contains('open')) closeDrawer();
-      });
-    })();
-
-    (function setActiveNav(){
-      const here = (location.pathname.split('/').pop() || 'loadout.html').toLowerCase();
-      document.querySelectorAll('.nav-item').forEach(a => {
-        const page = (a.getAttribute('data-page') || '').toLowerCase();
-        a.classList.toggle('active', page === here);
-      });
-    })();
-
-    /***********************
      * Helpers
      ***********************/
     function safeText(v){ return (v ?? '').toString(); }
@@ -1047,6 +1041,7 @@
 
     /***********************
      * Data
+     * ✅ Use loadout.json
      ***********************/
     const DATA_URL = 'https://neptuneg1.github.io/freefire-caster/loadout.json';
 
@@ -1079,13 +1074,7 @@
     const resetBtn = document.getElementById('resetBtn');
 
     function syncLangButton(){
-      const badge = document.getElementById('langBadge');
-      const label = (currentLang === 'ms') ? 'MS' : 'EN';
-      if (badge) badge.textContent = label;
-
-      // tooltip consistent with other pages
-      langToggle.title = (currentLang === 'ms') ? 'Translate (MS)' : 'Translate (EN)';
-      langToggle.setAttribute('aria-label', 'Toggle language');
+      langToggle.textContent = (currentLang === 'ms') ? 'MS' : 'EN';
     }
 
     function setMode(mode){
@@ -1251,9 +1240,7 @@
         const data = await res.json();
 
         const arr = Array.isArray(data) ? data : [];
-        const extracted = arr.filter(looksLikeLoadout);
-
-        allLoadouts = extracted;
+        allLoadouts = arr.filter(looksLikeLoadout);
       }catch(err){
         console.error('Loadout fetch error:', err);
         allLoadouts = [];
@@ -1359,6 +1346,8 @@
      * Init
      ***********************/
     window.addEventListener('DOMContentLoaded', async () => {
+      initSidebarUI(); // ✅ burger on mobile, collapse on desktop
+
       syncLangButton();
       setMode(currentMode);
 
