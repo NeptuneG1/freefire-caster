@@ -202,15 +202,18 @@
       min-width:0;
     }
 
-    .sidebar.collapsed .brand h1,
-    .sidebar.collapsed .brand small,
-    .sidebar.collapsed .nav-label{display:none;}
-    .sidebar.collapsed .brand{justify-content:center;}
-    .sidebar.collapsed .brand-left{justify-content:center;}
-    .sidebar.collapsed .nav-item{
-      justify-content:center;
-      gap:0;
-      padding:10px 8px;
+    /* ✅ FIX: collapse text hiding ONLY on desktop */
+    @media (min-width: 981px){
+      .sidebar.collapsed .brand h1,
+      .sidebar.collapsed .brand small,
+      .sidebar.collapsed .nav-label{display:none;}
+      .sidebar.collapsed .brand{justify-content:center;}
+      .sidebar.collapsed .brand-left{justify-content:center;}
+      .sidebar.collapsed .nav-item{
+        justify-content:center;
+        gap:0;
+        padding:10px 8px;
+      }
     }
 
     /* Mobile overlay for sidebar */
@@ -686,7 +689,7 @@
       word-break: break-word;
     }
 
-    /* ✅ MOBILE: turn sidebar into a drawer instead of hiding it */
+    /* ✅ MOBILE: sidebar becomes a drawer */
     @media (max-width: 980px){
       :root{ --item-min: 150px; }
 
@@ -709,10 +712,9 @@
         transform: translateX(0);
       }
 
-      /* On mobile, collapsed state doesn’t matter (drawer uses full width) */
+      /* On mobile, collapsed shouldn't affect width */
       .sidebar.collapsed{ width: min(var(--sb-w), calc(100vw - 24px)); }
 
-      /* Make main fill width */
       .main{ width: 100%; }
     }
   </style>
@@ -817,7 +819,6 @@
     <!-- MAIN -->
     <main class="main">
       <header class="topbar">
-        <!-- ✅ burger always visible (desktop collapse / mobile drawer open) -->
         <button class="icon-btn" id="sbToggle" aria-label="Open menu" title="Menu">
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path id="sbTogglePath" d="M14 7l-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -863,9 +864,7 @@
             </div>
 
             <div class="controls-right">
-              <!-- ✅ translate placement + style reverted -->
               <button class="btn" id="langToggle" type="button" title="Toggle language">EN</button>
-
               <button class="btn" id="resetBtn" type="button">Reset</button>
               <a class="btn" href="dashboard.html">← Dashboard</a>
             </div>
@@ -962,6 +961,8 @@
     }
 
     function openDrawer(){
+      // ✅ FIX: ensure labels show on mobile even if collapsed was saved
+      sidebar.classList.remove('collapsed');
       sidebar.classList.add('open');
       setOverlay(true);
       syncBurgerIcon();
@@ -992,9 +993,14 @@
     }
 
     (function initSidebar(){
-      // restore desktop collapsed
+      // restore desktop collapsed (desktop only behavior)
       const saved = localStorage.getItem(DESKTOP_COLLAPSE_KEY);
       if (saved === '1') sidebar.classList.add('collapsed');
+
+      // ✅ FIX: if currently mobile, never keep collapsed
+      if (isMobile()){
+        sidebar.classList.remove('collapsed');
+      }
 
       // click burger
       sbBtn?.addEventListener('click', () => {
@@ -1017,9 +1023,15 @@
 
       // if switching between mobile/desktop, normalize state
       mqMobile.addEventListener('change', () => {
-        // leaving mobile: close drawer + restore body scroll
-        if (!isMobile()){
+        if (isMobile()){
+          // entering mobile: ensure full labels
+          sidebar.classList.remove('collapsed');
+        } else {
+          // leaving mobile: close drawer + restore body scroll
           closeDrawer();
+          // restore collapsed preference
+          const saved2 = localStorage.getItem(DESKTOP_COLLAPSE_KEY);
+          if (saved2 === '1') sidebar.classList.add('collapsed');
         }
         syncBurgerIcon();
       });
@@ -1084,7 +1096,6 @@
     if (!['both','br','cs'].includes(currentMode)) currentMode = 'both';
 
     let currentSearch = '';
-
     let allLoadouts = [];
     let LAST_OPENED = null;
 
@@ -1341,12 +1352,38 @@
     /***********************
      * Events
      ***********************/
+    function debounce(fn, wait=120){
+      let t=null;
+      return (...args)=>{
+        clearTimeout(t);
+        t=setTimeout(()=>fn(...args), wait);
+      };
+    }
     const applySearchDebounced = debounce(applySearch, 90);
 
     searchInput?.addEventListener('input', (e) => {
       currentSearch = e.target.value || '';
       applySearchDebounced();
     });
+
+    const LANG_KEY = 'ff_loadout_lang_v1';
+    const MODE_KEY = 'ff_loadout_mode_v1';
+
+    let currentLang = (localStorage.getItem(LANG_KEY) || 'en');
+    if (currentLang !== 'ms') currentLang = 'en';
+
+    let currentMode = (localStorage.getItem(MODE_KEY) || 'both');
+    if (!['both','br','cs'].includes(currentMode)) currentMode = 'both';
+
+    const langToggle = document.getElementById('langToggle');
+    const modeBothBtn = document.getElementById('modeBoth');
+    const modeBRBtn = document.getElementById('modeBR');
+    const modeCSBtn = document.getElementById('modeCS');
+    const resetBtn = document.getElementById('resetBtn');
+
+    function syncLangButton(){
+      langToggle.textContent = (currentLang === 'ms') ? 'MS' : 'EN';
+    }
 
     langToggle?.addEventListener('click', () => {
       currentLang = (currentLang === 'en') ? 'ms' : 'en';
