@@ -107,9 +107,8 @@
       position: sticky;
       top: 18px;
       height: calc(100vh - 36px);
-      transition: width .18s ease, transform .18s ease;
+      transition: width .18s ease;
       flex:0 0 auto;
-      z-index: 60;
     }
     .sidebar.collapsed{ width: var(--sb-w-collapsed); }
 
@@ -202,31 +201,16 @@
       min-width:0;
     }
 
-    /* ✅ FIX: collapse text hiding ONLY on desktop */
-    @media (min-width: 981px){
-      .sidebar.collapsed .brand h1,
-      .sidebar.collapsed .brand small,
-      .sidebar.collapsed .nav-label{display:none;}
-      .sidebar.collapsed .brand{justify-content:center;}
-      .sidebar.collapsed .brand-left{justify-content:center;}
-      .sidebar.collapsed .nav-item{
-        justify-content:center;
-        gap:0;
-        padding:10px 8px;
-      }
+    .sidebar.collapsed .brand h1,
+    .sidebar.collapsed .brand small,
+    .sidebar.collapsed .nav-label{display:none;}
+    .sidebar.collapsed .brand{justify-content:center;}
+    .sidebar.collapsed .brand-left{justify-content:center;}
+    .sidebar.collapsed .nav-item{
+      justify-content:center;
+      gap:0;
+      padding:10px 8px;
     }
-
-    /* Mobile overlay for sidebar */
-    .sb-overlay{
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,.58);
-      backdrop-filter: blur(2px);
-      -webkit-backdrop-filter: blur(2px);
-      display:none;
-      z-index: 55;
-    }
-    .sb-overlay.show{display:block;}
 
     /* Main */
     .main{
@@ -251,7 +235,7 @@
       gap:12px;
       position: sticky;
       top: 18px;
-      z-index: 40;
+      z-index: 20;
     }
     .search{
       flex:1;
@@ -293,6 +277,24 @@
     }
     .icon-btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.08)}
     .icon-btn svg{width:18px;height:18px;opacity:.92}
+
+    /* ✅ consistent Translate toggle (icon button + badge) */
+    #langToggle{ position:relative; }
+    #langToggle svg{ width:18px; height:18px; opacity:.92; }
+    .lang-badge{
+      position:absolute;
+      right:7px;
+      bottom:7px;
+      font-size:.62rem;
+      font-weight:1000;
+      letter-spacing:.4px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.30);
+      color: rgba(244,246,255,.92);
+      pointer-events:none;
+    }
 
     .userchip{
       display:flex;
@@ -338,6 +340,29 @@
       border-color: rgba(255,77,77,.35);
       color: #ff8d8d;
       box-shadow: 0 0 0 3px rgba(255,77,77,.10);
+    }
+
+    .btn{
+      padding: 9px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.20);
+      color: rgba(244,246,255,.88);
+      cursor:pointer;
+      font-weight:900;
+      font-size:.82rem;
+      transition:.2s ease;
+      white-space:nowrap;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      user-select:none;
+    }
+    .btn:hover{
+      background: rgba(0,0,0,.28);
+      box-shadow: 0 0 0 3px rgba(77,211,255,.10);
+      border-color: rgba(77,211,255,.22);
     }
 
     /* Card shell */
@@ -414,8 +439,8 @@
       gap:8px;
       padding: 8px 10px;
       border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.18);
+      border: 1px solid var(--chip-bd);
+      background: var(--chip-bg);
       color: rgba(244,246,255,.86);
       font-weight:900;
       font-size:.82rem;
@@ -446,29 +471,6 @@
     }
     .dot.br{ background: var(--br); }
     .dot.cs{ background: var(--cs); }
-
-    .btn{
-      padding: 9px 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.20);
-      color: rgba(244,246,255,.88);
-      cursor:pointer;
-      font-weight:900;
-      font-size:.82rem;
-      transition:.2s ease;
-      white-space:nowrap;
-      text-decoration:none;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      user-select:none;
-    }
-    .btn:hover{
-      background: rgba(0,0,0,.28);
-      box-shadow: 0 0 0 3px rgba(77,211,255,.10);
-      border-color: rgba(77,211,255,.22);
-    }
 
     .section-title{
       margin: 16px 0 10px 0;
@@ -556,8 +558,8 @@
       font-size:.66rem;
       font-weight:900;
       color: rgba(244,246,255,.86);
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.18);
+      border: 1px solid var(--chip-bd);
+      background: var(--chip-bg);
       border-radius: 999px;
       padding: 5px 7px;
       white-space:nowrap;
@@ -577,6 +579,7 @@
       background: rgba(77,211,255,.10);
     }
 
+    /* show FULL description */
     .item-mini{
       color: var(--muted);
       font-size: .78rem;
@@ -689,39 +692,42 @@
       word-break: break-word;
     }
 
-    /* ✅ MOBILE: sidebar becomes a drawer */
+    /* ✅ burger overlay behavior on mobile */
+    .sb-overlay{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+      display:none;
+      z-index: 90;
+    }
+    .sb-overlay.show{display:block;}
+
     @media (max-width: 980px){
-      :root{ --item-min: 150px; }
+      .app{padding:12px;}
+      .topbar{top:12px;}
 
-      .app{
-        padding:12px;
-        gap: 12px;
-      }
-      .topbar{ top:12px; }
-
+      /* sidebar becomes drawer */
       .sidebar{
+        display:flex;
         position: fixed;
-        top: 12px;
         left: 12px;
+        top: 12px;
         height: calc(100vh - 24px);
-        width: min(var(--sb-w), calc(100vw - 24px));
-        transform: translateX(calc(-100% - 20px));
-        border-radius: 20px;
+        z-index: 100;
+        transform: translateX(-120%);
+        transition: transform .2s ease, width .18s ease;
       }
-      .sidebar.open{
-        transform: translateX(0);
-      }
-
-      /* On mobile, collapsed shouldn't affect width */
-      .sidebar.collapsed{ width: min(var(--sb-w), calc(100vw - 24px)); }
-
+      .sidebar.open{ transform: translateX(0); }
       .main{ width: 100%; }
+      :root{ --item-min: 150px; }
     }
   </style>
 </head>
 
 <body>
-  <!-- overlay for mobile sidebar -->
+  <!-- mobile overlay for drawer sidebar -->
   <div class="sb-overlay" id="sbOverlay" aria-hidden="true"></div>
 
   <div class="app">
@@ -760,7 +766,7 @@
           <span class="nav-label">Weapons</span>
         </a>
 
-        <a class="nav-item active" href="loadout.html" data-page="loadout.html" title="Loadouts">
+        <a class="nav-item" href="loadout.html" data-page="loadout.html" title="Loadouts">
           <span class="nav-ico">
             <svg viewBox="0 0 24 24" fill="none">
               <path d="M12 2l3 6 6 .8-4.4 4.2 1.2 6-5.8-3.2L6.2 19l1.2-6L3 8.8 9 8l3-6Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -819,20 +825,29 @@
     <!-- MAIN -->
     <main class="main">
       <header class="topbar">
-        <button class="icon-btn" id="sbToggle" aria-label="Open menu" title="Menu">
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path id="sbTogglePath" d="M14 7l-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <!-- ✅ burger / collapse button (desktop collapse, mobile opens drawer) -->
+        <button class="icon-btn" id="sbToggle" aria-label="Open sidebar" title="Menu">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path id="sbTogglePath" d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
         </button>
 
         <div class="search">
-          <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;opacity:.85" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;opacity:.85">
             <path d="M21 21l-4.3-4.3m1.3-5.2a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
           <input id="searchInput" placeholder="Search loadouts (name / BR / CS)..." />
         </div>
 
         <div class="top-actions">
+          <!-- ✅ Translate toggle: consistent with character/pet/weapon -->
+          <button class="icon-btn" id="langToggle" type="button" aria-label="Toggle language" title="Translate">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M4 5h7M4 9h5M13 19l3-7 3 7M14.3 16h3.4M10 20c4-2 6-6 6-11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="lang-badge" id="langBadge">EN</span>
+          </button>
+
           <div class="userchip">
             <div class="avatar"></div>
             <div class="usertext">
@@ -864,7 +879,6 @@
             </div>
 
             <div class="controls-right">
-              <button class="btn" id="langToggle" type="button" title="Toggle language">EN</button>
               <button class="btn" id="resetBtn" type="button">Reset</button>
               <a class="btn" href="dashboard.html">← Dashboard</a>
             </div>
@@ -892,7 +906,7 @@
           <p id="infoSub">—</p>
         </div>
         <button class="icon-btn" id="infoClose" aria-label="Close" title="Close">
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         </button>
       </div>
 
@@ -936,122 +950,86 @@
     }
 
     /***********************
-     * Sidebar: desktop collapse + mobile drawer
+     * Sidebar (desktop collapse + mobile drawer burger)
      ***********************/
     const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sbOverlay');
-    const sbBtn = document.getElementById('sbToggle');
-    const sbPath = document.getElementById('sbTogglePath');
+    const sbOverlay = document.getElementById('sbOverlay');
 
-    const DESKTOP_COLLAPSE_KEY = 'ff_sidebar_collapsed_v1';
-    const mqMobile = window.matchMedia('(max-width: 980px)');
-
-    function isMobile(){ return mqMobile.matches; }
-
-    function setOverlay(show){
-      overlay.classList.toggle('show', !!show);
-      overlay.setAttribute('aria-hidden', show ? 'false' : 'true');
-      document.body.style.overflow = show ? 'hidden' : '';
-    }
-
-    function closeDrawer(){
-      sidebar.classList.remove('open');
-      setOverlay(false);
-      syncBurgerIcon();
-    }
-
-    function openDrawer(){
-      // ✅ FIX: ensure labels show on mobile even if collapsed was saved
-      sidebar.classList.remove('collapsed');
-      sidebar.classList.add('open');
-      setOverlay(true);
-      syncBurgerIcon();
-    }
-
-    function toggleDrawer(){
-      if (sidebar.classList.contains('open')) closeDrawer();
-      else openDrawer();
-    }
-
-    function syncBurgerIcon(){
-      if (!sbPath) return;
-
-      // Mobile: show "X" when open, burger when closed
-      if (isMobile()){
-        sbPath.setAttribute('d', sidebar.classList.contains('open')
-          ? 'M6 6l12 12M18 6 6 18'
-          : 'M4 7h16M4 12h16M4 17h16'
-        );
-        return;
-      }
-
-      // Desktop: show arrows for collapse/expand
-      sbPath.setAttribute('d', sidebar.classList.contains('collapsed')
-        ? 'M10 7l5 5-5 5'
-        : 'M14 7l-5 5 5 5'
-      );
+    function isMobile(){
+      return window.matchMedia('(max-width: 980px)').matches;
     }
 
     (function initSidebar(){
-      // restore desktop collapsed (desktop only behavior)
-      const saved = localStorage.getItem(DESKTOP_COLLAPSE_KEY);
-      if (saved === '1') sidebar.classList.add('collapsed');
+      const key = 'ff_sidebar_collapsed_v1';
+      const saved = localStorage.getItem(key);
 
-      // ✅ FIX: if currently mobile, never keep collapsed
-      if (isMobile()){
-        sidebar.classList.remove('collapsed');
+      // apply desktop collapsed state only when not mobile
+      if (saved === '1' && !isMobile()) sidebar.classList.add('collapsed');
+
+      const btn = document.getElementById('sbToggle');
+      const path = document.getElementById('sbTogglePath');
+
+      function setBurgerIcon(){
+        if (!path) return;
+        // burger icon always on topbar
+        path.setAttribute('d', 'M4 7h16M4 12h16M4 17h16');
+      }
+      setBurgerIcon();
+
+      function openDrawer(){
+        sidebar.classList.add('open');
+        sbOverlay.classList.add('show');
+        sbOverlay.setAttribute('aria-hidden','false');
+      }
+      function closeDrawer(){
+        sidebar.classList.remove('open');
+        sbOverlay.classList.remove('show');
+        sbOverlay.setAttribute('aria-hidden','true');
       }
 
-      // click burger
-      sbBtn?.addEventListener('click', () => {
+      btn?.addEventListener('click', () => {
         if (isMobile()){
-          toggleDrawer();
+          // mobile: toggle drawer
+          if (sidebar.classList.contains('open')) closeDrawer();
+          else openDrawer();
+          return;
+        }
+        // desktop: collapse/expand
+        sidebar.classList.toggle('collapsed');
+        localStorage.setItem(key, sidebar.classList.contains('collapsed') ? '1' : '0');
+      });
+
+      // close drawer on overlay click
+      sbOverlay?.addEventListener('click', closeDrawer);
+
+      // close drawer on nav click (mobile)
+      document.getElementById('nav')?.addEventListener('click', (e) => {
+        const a = e.target.closest?.('a');
+        if (a && isMobile()) closeDrawer();
+      });
+
+      // handle resize changes
+      window.addEventListener('resize', () => {
+        if (!isMobile()){
+          closeDrawer();
+          const savedNow = localStorage.getItem(key);
+          sidebar.classList.toggle('collapsed', savedNow === '1');
         } else {
-          sidebar.classList.toggle('collapsed');
-          localStorage.setItem(DESKTOP_COLLAPSE_KEY, sidebar.classList.contains('collapsed') ? '1' : '0');
-          syncBurgerIcon();
+          sidebar.classList.remove('collapsed'); // drawer uses full width
         }
       });
 
-      // overlay click closes
-      overlay?.addEventListener('click', closeDrawer);
-
-      // ESC closes drawer if open
+      // ESC closes drawer
       window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && isMobile() && sidebar.classList.contains('open')) closeDrawer();
       });
-
-      // if switching between mobile/desktop, normalize state
-      mqMobile.addEventListener('change', () => {
-        if (isMobile()){
-          // entering mobile: ensure full labels
-          sidebar.classList.remove('collapsed');
-        } else {
-          // leaving mobile: close drawer + restore body scroll
-          closeDrawer();
-          // restore collapsed preference
-          const saved2 = localStorage.getItem(DESKTOP_COLLAPSE_KEY);
-          if (saved2 === '1') sidebar.classList.add('collapsed');
-        }
-        syncBurgerIcon();
-      });
-
-      syncBurgerIcon();
     })();
 
     (function setActiveNav(){
       const here = (location.pathname.split('/').pop() || 'loadout.html').toLowerCase();
       document.querySelectorAll('.nav-item').forEach(a => {
         const page = (a.getAttribute('data-page') || '').toLowerCase();
-        const active = page === here;
-        a.classList.toggle('active', active);
-      });
-
-      // mobile: tapping any nav closes drawer
-      document.querySelectorAll('.nav-item').forEach(a=>{
-        a.addEventListener('click', ()=>{
-          if (isMobile()) closeDrawer();
-        });
+        a.classList.toggle('active', page === here);
       });
     })();
 
@@ -1065,13 +1043,6 @@
         .replace(/\s*\n+\s*/g, '\n')
         .replace(/[ \t]{2,}/g, ' ')
         .trim();
-    }
-    function debounce(fn, wait=120){
-      let t=null;
-      return (...args)=>{
-        clearTimeout(t);
-        t=setTimeout(()=>fn(...args), wait);
-      };
     }
 
     /***********************
@@ -1090,12 +1061,9 @@
     const MODE_KEY = 'ff_loadout_mode_v1'; // 'both' | 'br' | 'cs'
 
     let currentLang = (localStorage.getItem(LANG_KEY) || 'en');
-    if (currentLang !== 'ms') currentLang = 'en';
-
     let currentMode = (localStorage.getItem(MODE_KEY) || 'both');
-    if (!['both','br','cs'].includes(currentMode)) currentMode = 'both';
-
     let currentSearch = '';
+
     let allLoadouts = [];
     let LAST_OPENED = null;
 
@@ -1111,7 +1079,13 @@
     const resetBtn = document.getElementById('resetBtn');
 
     function syncLangButton(){
-      langToggle.textContent = (currentLang === 'ms') ? 'MS' : 'EN';
+      const badge = document.getElementById('langBadge');
+      const label = (currentLang === 'ms') ? 'MS' : 'EN';
+      if (badge) badge.textContent = label;
+
+      // tooltip consistent with other pages
+      langToggle.title = (currentLang === 'ms') ? 'Translate (MS)' : 'Translate (EN)';
+      langToggle.setAttribute('aria-label', 'Toggle language');
     }
 
     function setMode(mode){
@@ -1352,38 +1326,10 @@
     /***********************
      * Events
      ***********************/
-    function debounce(fn, wait=120){
-      let t=null;
-      return (...args)=>{
-        clearTimeout(t);
-        t=setTimeout(()=>fn(...args), wait);
-      };
-    }
-    const applySearchDebounced = debounce(applySearch, 90);
-
     searchInput?.addEventListener('input', (e) => {
       currentSearch = e.target.value || '';
-      applySearchDebounced();
+      applySearch();
     });
-
-    const LANG_KEY = 'ff_loadout_lang_v1';
-    const MODE_KEY = 'ff_loadout_mode_v1';
-
-    let currentLang = (localStorage.getItem(LANG_KEY) || 'en');
-    if (currentLang !== 'ms') currentLang = 'en';
-
-    let currentMode = (localStorage.getItem(MODE_KEY) || 'both');
-    if (!['both','br','cs'].includes(currentMode)) currentMode = 'both';
-
-    const langToggle = document.getElementById('langToggle');
-    const modeBothBtn = document.getElementById('modeBoth');
-    const modeBRBtn = document.getElementById('modeBR');
-    const modeCSBtn = document.getElementById('modeCS');
-    const resetBtn = document.getElementById('resetBtn');
-
-    function syncLangButton(){
-      langToggle.textContent = (currentLang === 'ms') ? 'MS' : 'EN';
-    }
 
     langToggle?.addEventListener('click', () => {
       currentLang = (currentLang === 'en') ? 'ms' : 'en';
