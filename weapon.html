@@ -612,7 +612,7 @@
       text-align: center;
     }
 
-    /* ✅ List view (CSS-only switch, no rebuilding DOM) */
+    /* ✅ List view */
     .grid.list-view{
       display:flex;
       flex-direction:column;
@@ -933,9 +933,7 @@
                 <input type="checkbox" id="filterCSOnly" />
               </div>
 
-              <!-- Translate toggle -->
               <button class="btn" id="langToggle" type="button" title="Toggle description language">EN</button>
-
               <button class="btn" id="toggleView" type="button">📃 List View</button>
               <a class="btn" href="dashboard.html">← Dashboard</a>
             </div>
@@ -1007,15 +1005,65 @@
 
   <script>
     /***********************
-     * Supabase Auth
+     * Sidebar UI (RUN FIRST)
      ***********************/
-    const client = supabase.createClient(
-      'https://gkugecflfddkpitlrmws.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
-    );
+    function initSidebarUI(){
+      const sidebar = document.getElementById('sidebar');
+      const btn = document.getElementById('sbToggle');
+      const path = document.getElementById('sbTogglePath');
+      if (!sidebar || !btn) return;
+
+      const key = 'ff_sidebar_collapsed_v1';
+      if (localStorage.getItem(key) === '1') sidebar.classList.add('collapsed');
+
+      function syncIcon(){
+        if (!path) return;
+        path.setAttribute('d',
+          sidebar.classList.contains('collapsed')
+            ? 'M10 7l5 5-5 5'
+            : 'M14 7l-5 5 5 5'
+        );
+      }
+      syncIcon();
+
+      btn.addEventListener('click', () => {
+        sidebar.classList.toggle('collapsed');
+        localStorage.setItem(key, sidebar.classList.contains('collapsed') ? '1' : '0');
+        syncIcon();
+      });
+
+      const here = (location.pathname.split('/').pop() || 'weapon.html').toLowerCase();
+      document.querySelectorAll('.nav-item').forEach(a => {
+        const page = (a.getAttribute('data-page') || '').toLowerCase();
+        a.classList.toggle('active', page === here);
+      });
+    }
+
+    /***********************
+     * Supabase Auth (SAFE INIT)
+     ***********************/
+    const SUPABASE_URL = 'https://gkugecflfddkpitlrmws.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE';
+
+    let client = null;
+    function getClient(){
+      if (client) return client;
+      if (!window.supabase || !supabase.createClient){
+        console.warn('Supabase SDK not loaded. Sidebar will still work, but auth will not.');
+        return null;
+      }
+      client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      return client;
+    }
 
     async function ensureSession(){
-      const { data: { session } } = await client.auth.getSession();
+      const c = getClient();
+      if (!c){
+        // optional: redirect if you want hard auth
+        // window.location.href = "index.html";
+        return null;
+      }
+      const { data: { session } } = await c.auth.getSession();
       if (!session) {
         window.location.href = "index.html";
         return null;
@@ -1024,46 +1072,10 @@
     }
 
     async function logout(){
-      await client.auth.signOut();
+      const c = getClient();
+      if (c) await c.auth.signOut();
       window.location.href = "index.html";
     }
-
-    /***********************
-     * Sidebar collapse + active nav (same logic as pet.html)
-     ***********************/
-    const sidebar = document.getElementById('sidebar');
-
-    (function initSidebarCollapse(){
-      const key = 'ff_sidebar_collapsed_v1';
-      const saved = localStorage.getItem(key);
-      if (saved === '1') sidebar.classList.add('collapsed');
-
-      const btn = document.getElementById('sbToggle');
-      const path = document.getElementById('sbTogglePath');
-
-      function syncIcon(){
-        if (!path) return;
-        path.setAttribute('d', sidebar.classList.contains('collapsed')
-          ? 'M10 7l5 5-5 5'
-          : 'M14 7l-5 5 5 5'
-        );
-      }
-      syncIcon();
-
-      btn?.addEventListener('click', () => {
-        sidebar.classList.toggle('collapsed');
-        localStorage.setItem(key, sidebar.classList.contains('collapsed') ? '1' : '0');
-        syncIcon();
-      });
-    })();
-
-    (function setActiveNav(){
-      const here = (location.pathname.split('/').pop() || 'weapon.html').toLowerCase();
-      document.querySelectorAll('.nav-item').forEach(a => {
-        const page = (a.getAttribute('data-page') || '').toLowerCase();
-        a.classList.toggle('active', page === here);
-      });
-    })();
 
     /***********************
      * Helpers
@@ -1089,14 +1101,8 @@
     }
     function typeSortIndex(type){
       const order = [
-        'Pistol',
-        'Shotgun',
-        'SMG',
-        'Assault Rifle',
-        'Marksman Rifle',
-        'Sniper Rifle',
-        'Light Machine Gun',
-        'Launcher'
+        'Pistol','Shotgun','SMG','Assault Rifle',
+        'Marksman Rifle','Sniper Rifle','Light Machine Gun','Launcher'
       ];
       const i = order.indexOf(type);
       return i === -1 ? order.length : i;
@@ -1122,7 +1128,6 @@
     let currentArmoryFilter = '';
     let currentCsOnly = false;
 
-    // Language toggle (EN / MS)
     const LANG_KEY = 'ff_weapon_lang_v1';
     let currentLang = (localStorage.getItem(LANG_KEY) === 'ms') ? 'ms' : 'en';
     let LAST_OPENED_WEAPON = null;
@@ -1152,7 +1157,6 @@
       return en || ms || '—';
     }
 
-    // Show CS price only when CS checkbox is true
     function csChipLabel(price){
       const p = tidy(price);
       return (currentCsOnly && p) ? `CS ₱${p}` : 'CS';
@@ -1195,7 +1199,6 @@
       el.className = 'wep-card' + (cs ? ' is-cs' : '');
       el.tabIndex = 0;
 
-      // thumb
       const thumb = document.createElement('div');
       thumb.className = 'wep-thumb';
 
@@ -1211,7 +1214,6 @@
       thumb.appendChild(img);
       thumb.appendChild(csDot);
 
-      // body
       const body = document.createElement('div');
       body.className = 'wep-body';
 
@@ -1259,16 +1261,14 @@
       el.appendChild(thumb);
       el.appendChild(body);
 
-      // datasets for fast filtering/sorting
       el.dataset.search = weaponSearchBlob(w);
       el.dataset.name = name.toLowerCase();
       el.dataset.type = type;
       el.dataset.typeidx = String(typeSortIndex(type));
       el.dataset.cs = cs ? '1' : '0';
-      el.dataset.price = Number.isFinite(priceNum) ? String(priceNum) : ''; // empty => no price
+      el.dataset.price = Number.isFinite(priceNum) ? String(priceNum) : '';
       el.dataset.armory = armory.map(a => a.toLowerCase()).join('|');
 
-      // references for quick updates
       el._weapon = w;
       el._chipCS = chipCS;
 
@@ -1296,33 +1296,6 @@
       });
     }
 
-    function renderAllWeaponsOnce(){
-      weaponGrid.innerHTML = '';
-
-      const weapons = Array.isArray(allWeapons) ? allWeapons.slice() : [];
-      if (!weapons.length){
-        weaponGrid.innerHTML = '<div class="empty-msg">No weapons found in weapon.json.</div>';
-        countPill.style.display = 'none';
-        return;
-      }
-
-      // default order: type index then name
-      weapons.sort((a,b)=>{
-        const ia = typeSortIndex(tidy(a?.type));
-        const ib = typeSortIndex(tidy(b?.type));
-        return ia - ib || tidy(a?.name).localeCompare(tidy(b?.name));
-      });
-
-      const frag = document.createDocumentFragment();
-      weapons.forEach(w => frag.appendChild(makeWeaponCard(w)));
-      weaponGrid.appendChild(frag);
-
-      // apply view mode + filters
-      applyViewMode();
-      sortCards();     // ensures correct initial ordering if CS is checked (usually false)
-      applyFilters();
-    }
-
     function applyViewMode(){
       if (isListView){
         weaponGrid.classList.add('list-view');
@@ -1334,7 +1307,7 @@
     }
 
     function sortCards(){
-      const cards = [...weaponGrid.querySelectorAll('.wep-card')].filter(c => c.style.display !== 'none' || true);
+      const cards = [...weaponGrid.querySelectorAll('.wep-card')];
       if (!cards.length) return;
 
       if (currentCsOnly){
@@ -1401,7 +1374,6 @@
       countPill.style.display = '';
       countPill.textContent = `Showing: ${visible} weapon${visible===1?'':'s'}`;
 
-      // keep ordering consistent with CS-only rule
       sortCards();
     }
 
@@ -1416,6 +1388,30 @@
       allWeapons = Array.isArray(data) ? data : [];
       populateArmoryOptions(allWeapons);
       renderAllWeaponsOnce();
+    }
+
+    function renderAllWeaponsOnce(){
+      weaponGrid.innerHTML = '';
+
+      const weapons = Array.isArray(allWeapons) ? allWeapons.slice() : [];
+      if (!weapons.length){
+        weaponGrid.innerHTML = '<div class="empty-msg">No weapons found in weapon.json.</div>';
+        countPill.style.display = 'none';
+        return;
+      }
+
+      weapons.sort((a,b)=>{
+        const ia = typeSortIndex(tidy(a?.type));
+        const ib = typeSortIndex(tidy(b?.type));
+        return ia - ib || tidy(a?.name).localeCompare(tidy(b?.name));
+      });
+
+      const frag = document.createDocumentFragment();
+      weapons.forEach(w => frag.appendChild(makeWeaponCard(w)));
+      weaponGrid.appendChild(frag);
+
+      applyViewMode();
+      applyFilters();
     }
 
     /***********************
@@ -1486,7 +1482,9 @@
 
     infoClose?.addEventListener('click', closeInfo);
     infoModal?.addEventListener('click', (e) => { if (e.target === infoModal) closeInfo(); });
-    window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && infoModal.classList.contains('show')) closeInfo(); });
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && infoModal.classList.contains('show')) closeInfo();
+    });
 
     /***********************
      * Events
@@ -1510,8 +1508,8 @@
 
     filterCSOnly?.addEventListener('change', (e) => {
       currentCsOnly = !!e.target.checked;
-      updateCSChipLabels(); // update all card labels (CS vs CS ₱price)
-      applyFilters();       // also re-sorts when CS-only
+      updateCSChipLabels();
+      applyFilters();
       if (infoModal.classList.contains('show') && LAST_OPENED_WEAPON) openInfo(LAST_OPENED_WEAPON);
     });
 
@@ -1520,7 +1518,6 @@
       applyViewMode();
     });
 
-    // Language toggle
     syncLangButton();
     langToggleBtn?.addEventListener('click', () => {
       currentLang = (currentLang === 'en') ? 'ms' : 'en';
@@ -1540,6 +1537,8 @@
      * Init
      ***********************/
     window.addEventListener('DOMContentLoaded', async () => {
+      initSidebarUI(); // ✅ always works
+
       const session = await ensureSession();
       if (!session) return;
 
