@@ -32,7 +32,6 @@
       --sb-w: 260px;
       --sb-w-collapsed: 82px;
 
-      /* weapon card sizing */
       --wep-min: 140px;
       --wep-gap: 10px;
       --wep-pad: 8px;
@@ -215,6 +214,45 @@
       justify-content:center;
       gap:0;
       padding:10px 8px;
+    }
+
+    /* ✅ Mobile drawer behavior */
+    .drawer-backdrop{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease;
+      z-index: 900;
+    }
+    .drawer-backdrop.show{
+      opacity: 1;
+      pointer-events: auto;
+    }
+    @media (max-width: 980px){
+      .app{padding:12px; gap:12px;}
+      .topbar{top:12px;}
+
+      /* instead of hiding sidebar entirely, make it a drawer */
+      .sidebar{
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        height: calc(100vh - 24px);
+        z-index: 950;
+        transform: translateX(calc(-100% - 20px));
+        transition: transform .18s ease, width .18s ease;
+        width: min(var(--sb-w), calc(100vw - 24px));
+      }
+      .sidebar.open{
+        transform: translateX(0);
+      }
+
+      :root{ --wep-min: 130px; }
+      .grid.list-view .wep-thumb{width: 140px;}
     }
 
     /* Main */
@@ -484,7 +522,7 @@
       letter-spacing: 0;
     }
 
-    /* ✅ Weapon Grid */
+    /* Weapon Grid */
     .grid{
       display:grid;
       grid-template-columns: repeat(auto-fill, minmax(var(--wep-min), 1fr));
@@ -591,7 +629,7 @@
     }
 
     .wep-mini{
-      display:none; /* shown only in list view */
+      display:none;
       color: var(--muted);
       font-size: .78rem;
       line-height: 1.05rem;
@@ -612,7 +650,7 @@
       text-align: center;
     }
 
-    /* ✅ List view */
+    /* List view */
     .grid.list-view{
       display:flex;
       flex-direction:column;
@@ -755,21 +793,16 @@
       color: rgba(244,246,255,.92);
       word-break: break-word;
     }
-
-    @media (max-width: 980px){
-      .sidebar{display:none;}
-      .app{padding:12px;}
-      .topbar{top:12px;}
-      :root{ --wep-min: 130px; }
-      .grid.list-view .wep-thumb{width: 140px;}
-    }
   </style>
 </head>
 
 <body>
+  <!-- ✅ Backdrop for mobile drawer -->
+  <div class="drawer-backdrop" id="drawerBackdrop" aria-hidden="true"></div>
+
   <div class="app">
     <!-- SIDEBAR -->
-    <aside class="sidebar" id="sidebar">
+    <aside class="sidebar" id="sidebar" aria-label="Sidebar Navigation">
       <div class="brand">
         <div class="brand-left">
           <div class="logo">FF</div>
@@ -862,9 +895,10 @@
     <!-- MAIN -->
     <main class="main">
       <header class="topbar">
-        <button class="icon-btn" id="sbToggle" aria-label="Collapse sidebar" title="Collapse sidebar">
+        <!-- ✅ ONE BUTTON: desktop = collapse arrow, mobile = burger -->
+        <button class="icon-btn" id="sbToggle" aria-label="Open menu" title="Menu">
           <svg viewBox="0 0 24 24" fill="none">
-            <path id="sbTogglePath" d="M14 7l-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path id="sbTogglePath" d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
         </button>
 
@@ -1005,33 +1039,97 @@
 
   <script>
     /***********************
-     * Sidebar UI (RUN FIRST)
+     * Sidebar: desktop collapse + mobile drawer (burger)
      ***********************/
     function initSidebarUI(){
       const sidebar = document.getElementById('sidebar');
       const btn = document.getElementById('sbToggle');
       const path = document.getElementById('sbTogglePath');
+      const backdrop = document.getElementById('drawerBackdrop');
       if (!sidebar || !btn) return;
 
-      const key = 'ff_sidebar_collapsed_v1';
-      if (localStorage.getItem(key) === '1') sidebar.classList.add('collapsed');
+      const keyCollapsed = 'ff_sidebar_collapsed_v1';
 
-      function syncIcon(){
-        if (!path) return;
-        path.setAttribute('d',
-          sidebar.classList.contains('collapsed')
-            ? 'M10 7l5 5-5 5'
-            : 'M14 7l-5 5 5 5'
-        );
+      const isMobile = () => window.matchMedia('(max-width: 980px)').matches;
+
+      function setPathD(d){ if (path) path.setAttribute('d', d); }
+
+      function syncButtonIcon(){
+        if (isMobile()){
+          // burger icon
+          setPathD('M4 7h16M4 12h16M4 17h16');
+          btn.setAttribute('aria-label', sidebar.classList.contains('open') ? 'Close menu' : 'Open menu');
+          btn.title = 'Menu';
+        } else {
+          // desktop collapse arrow
+          const collapsed = sidebar.classList.contains('collapsed');
+          setPathD(collapsed ? 'M10 7l5 5-5 5' : 'M14 7l-5 5 5 5');
+          btn.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+          btn.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+        }
       }
-      syncIcon();
 
+      function openDrawer(){
+        sidebar.classList.add('open');
+        if (backdrop){
+          backdrop.classList.add('show');
+          backdrop.setAttribute('aria-hidden','false');
+        }
+        syncButtonIcon();
+      }
+      function closeDrawer(){
+        sidebar.classList.remove('open');
+        if (backdrop){
+          backdrop.classList.remove('show');
+          backdrop.setAttribute('aria-hidden','true');
+        }
+        syncButtonIcon();
+      }
+
+      function applyDesktopPersistedState(){
+        // apply persisted collapse only on desktop
+        if (!isMobile()){
+          if (localStorage.getItem(keyCollapsed) === '1') sidebar.classList.add('collapsed');
+          else sidebar.classList.remove('collapsed');
+        } else {
+          // on mobile, never use collapsed mode; only drawer open/close
+          sidebar.classList.remove('collapsed');
+          closeDrawer();
+        }
+        syncButtonIcon();
+      }
+
+      // initial
+      applyDesktopPersistedState();
+
+      // toggle behavior
       btn.addEventListener('click', () => {
-        sidebar.classList.toggle('collapsed');
-        localStorage.setItem(key, sidebar.classList.contains('collapsed') ? '1' : '0');
-        syncIcon();
+        if (isMobile()){
+          sidebar.classList.contains('open') ? closeDrawer() : openDrawer();
+        } else {
+          sidebar.classList.toggle('collapsed');
+          localStorage.setItem(keyCollapsed, sidebar.classList.contains('collapsed') ? '1' : '0');
+          syncButtonIcon();
+        }
       });
 
+      // click outside to close drawer
+      backdrop?.addEventListener('click', closeDrawer);
+
+      // close drawer when clicking a nav link (mobile)
+      sidebar.querySelectorAll('.nav-item').forEach(a=>{
+        a.addEventListener('click', () => { if (isMobile()) closeDrawer(); });
+      });
+
+      // ESC closes drawer
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && isMobile() && sidebar.classList.contains('open')) closeDrawer();
+      });
+
+      // re-sync on resize/breakpoint changes
+      window.addEventListener('resize', () => applyDesktopPersistedState());
+
+      // active nav
       const here = (location.pathname.split('/').pop() || 'weapon.html').toLowerCase();
       document.querySelectorAll('.nav-item').forEach(a => {
         const page = (a.getAttribute('data-page') || '').toLowerCase();
@@ -1040,30 +1138,15 @@
     }
 
     /***********************
-     * Supabase Auth (SAFE INIT)
+     * Supabase Auth
      ***********************/
-    const SUPABASE_URL = 'https://gkugecflfddkpitlrmws.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE';
-
-    let client = null;
-    function getClient(){
-      if (client) return client;
-      if (!window.supabase || !supabase.createClient){
-        console.warn('Supabase SDK not loaded. Sidebar will still work, but auth will not.');
-        return null;
-      }
-      client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      return client;
-    }
+    const client = supabase.createClient(
+      'https://gkugecflfddkpitlrmws.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE'
+    );
 
     async function ensureSession(){
-      const c = getClient();
-      if (!c){
-        // optional: redirect if you want hard auth
-        // window.location.href = "index.html";
-        return null;
-      }
-      const { data: { session } } = await c.auth.getSession();
+      const { data: { session } } = await client.auth.getSession();
       if (!session) {
         window.location.href = "index.html";
         return null;
@@ -1072,8 +1155,7 @@
     }
 
     async function logout(){
-      const c = getClient();
-      if (c) await c.auth.signOut();
+      await client.auth.signOut();
       window.location.href = "index.html";
     }
 
@@ -1537,7 +1619,7 @@
      * Init
      ***********************/
     window.addEventListener('DOMContentLoaded', async () => {
-      initSidebarUI(); // ✅ always works
+      initSidebarUI(); // ✅ burger on mobile, collapse on desktop
 
       const session = await ensureSession();
       if (!session) return;
