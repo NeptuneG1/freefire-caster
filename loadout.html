@@ -578,7 +578,6 @@
       background: rgba(77,211,255,.10);
     }
 
-    /* ✅ UPDATED: show FULL description (no clamp) */
     .item-mini{
       color: var(--muted);
       font-size: .78rem;
@@ -691,7 +690,7 @@
       word-break: break-word;
     }
 
-    /* ✅ Mobile drawer overrides (keep sidebar, but as overlay) */
+    /* ✅ Mobile drawer overrides */
     @media (max-width: 980px){
       .app{padding:12px; gap:12px;}
       .topbar{top:12px;}
@@ -753,7 +752,7 @@
           <span class="nav-label">Weapons</span>
         </a>
 
-        <a class="nav-item" href="loadout.html" data-page="loadout.html" title="Loadouts">
+        <a class="nav-item active" href="loadout.html" data-page="loadout.html" title="Loadouts">
           <span class="nav-ico">
             <svg viewBox="0 0 24 24" fill="none">
               <path d="M12 2l3 6 6 .8-4.4 4.2 1.2 6-5.8-3.2L6.2 19l1.2-6L3 8.8 9 8l3-6Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -827,9 +826,6 @@
         </div>
 
         <div class="top-actions">
-          <!-- ✅ Language Toggle -->
-          <button class="btn" id="langToggle" type="button" title="Toggle language">EN</button>
-
           <div class="userchip">
             <div class="avatar"></div>
             <div class="usertext">
@@ -861,6 +857,9 @@
             </div>
 
             <div class="controls-right">
+              <!-- ✅ MOVED: Translate button lives here now -->
+              <button class="btn" id="langToggle" type="button" title="Toggle language">EN</button>
+
               <button class="btn" id="resetBtn" type="button">Reset</button>
               <a class="btn" href="dashboard.html">← Dashboard</a>
             </div>
@@ -926,12 +925,10 @@
 
       function syncButtonIcon(){
         if (isMobile()){
-          // burger icon
           setPathD('M4 7h16M4 12h16M4 17h16');
           btn.setAttribute('aria-label', sidebar.classList.contains('open') ? 'Close menu' : 'Open menu');
           btn.title = 'Menu';
         } else {
-          // desktop collapse arrow
           const collapsed = sidebar.classList.contains('collapsed');
           setPathD(collapsed ? 'M10 7l5 5-5 5' : 'M14 7l-5 5 5 5');
           btn.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
@@ -967,10 +964,8 @@
         syncButtonIcon();
       }
 
-      // initial
       applyDesktopPersistedState();
 
-      // toggle behavior
       btn.addEventListener('click', () => {
         if (isMobile()){
           sidebar.classList.contains('open') ? closeDrawer() : openDrawer();
@@ -981,23 +976,18 @@
         }
       });
 
-      // click outside to close drawer
       backdrop?.addEventListener('click', closeDrawer);
 
-      // close drawer when clicking a nav link (mobile)
       sidebar.querySelectorAll('.nav-item').forEach(a=>{
         a.addEventListener('click', () => { if (isMobile()) closeDrawer(); });
       });
 
-      // ESC closes drawer
       window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && isMobile() && sidebar.classList.contains('open')) closeDrawer();
       });
 
-      // re-sync on resize/breakpoint changes
       window.addEventListener('resize', () => applyDesktopPersistedState());
 
-      // active nav
       const here = (location.pathname.split('/').pop() || 'loadout.html').toLowerCase();
       document.querySelectorAll('.nav-item').forEach(a => {
         const page = (a.getAttribute('data-page') || '').toLowerCase();
@@ -1041,7 +1031,6 @@
 
     /***********************
      * Data
-     * ✅ Use loadout.json
      ***********************/
     const DATA_URL = 'https://neptuneg1.github.io/freefire-caster/loadout.json';
 
@@ -1056,7 +1045,11 @@
     const MODE_KEY = 'ff_loadout_mode_v1'; // 'both' | 'br' | 'cs'
 
     let currentLang = (localStorage.getItem(LANG_KEY) || 'en');
+    if (currentLang !== 'ms') currentLang = 'en';
+
     let currentMode = (localStorage.getItem(MODE_KEY) || 'both');
+    if (!['both','br','cs'].includes(currentMode)) currentMode = 'both';
+
     let currentSearch = '';
 
     let allLoadouts = [];
@@ -1346,7 +1339,7 @@
      * Init
      ***********************/
     window.addEventListener('DOMContentLoaded', async () => {
-      initSidebarUI(); // ✅ burger on mobile, collapse on desktop
+      initSidebarUI();
 
       syncLangButton();
       setMode(currentMode);
