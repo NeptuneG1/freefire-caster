@@ -608,12 +608,21 @@
       gap:8px;
       margin-top:-2px;
       margin-bottom:2px;
+      flex-wrap:wrap; /* ✅ allow multiple role dots */
     }
     .role-dot{
       width:8px;height:8px;border-radius:50%;
       box-shadow: 0 0 0 3px rgba(255,255,255,.06);
       border: 1px solid rgba(255,255,255,.14);
       background: rgba(255,255,255,.18);
+    }
+    .more-dot{
+      font-size:.72rem;
+      font-weight:1000;
+      color: rgba(244,246,255,.78);
+      padding: 0 2px;
+      line-height: 1;
+      user-select:none;
     }
 
     /* Modal */
@@ -1259,6 +1268,40 @@
       return `hsl(${hue} 70% 60%)`;
     }
 
+    // ✅ supports multiple roles like "Attack / Support", "Attack, Survival", "Attack & Info", etc.
+    function parseRoles(roleRaw){
+      const raw = tidy(roleRaw);
+      if (!raw) return ['Other'];
+
+      const parts = raw
+        .split(/\/|,|&|\+|\||•|·|\band\b|\bwith\b/gi)
+        .map(s => tidy(s))
+        .filter(Boolean);
+
+      const cleaned = parts.length ? parts : [raw];
+
+      // normalize common synonyms
+      const norm = cleaned.map(r => {
+        const k = tidy(r).toLowerCase();
+        if (k === 'defence') return 'Defense';
+        if (k === 'intel') return 'Info';
+        if (k === 'utility') return 'Support';
+        return r;
+      });
+
+      // unique, keep order
+      const out = [];
+      const seen = new Set();
+      for (const r of norm){
+        const key = tidy(r).toLowerCase();
+        if (!key) continue;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(r);
+      }
+      return out.length ? out : ['Other'];
+    }
+
     function makeLegendPill(innerNodes){
       const p = document.createElement('span');
       p.className = 'pill';
@@ -1328,16 +1371,32 @@
       name.className = 'char-name';
       name.textContent = tidy(c.name) || '—';
 
-      // Role dot row
+      // ✅ Role dot row (supports multiple roles)
       const dots = document.createElement('div');
       dots.className = 'card-dots';
-      const role = tidy(c?.role) || 'Other';
 
-      const d = document.createElement('span');
-      d.className = 'role-dot';
-      d.style.background = roleColor(role);
-      d.title = `Role: ${role}`;
-      dots.appendChild(d);
+      const roles = parseRoles(c?.role);
+      const maxDots = 5;
+      const shown = roles.slice(0, maxDots);
+
+      shown.forEach(r => {
+        const d = document.createElement('span');
+        d.className = 'role-dot';
+        d.style.background = roleColor(r);
+        d.title = `Role: ${r}`;
+        dots.appendChild(d);
+      });
+
+      if (roles.length > maxDots){
+        const more = document.createElement('span');
+        more.className = 'more-dot';
+        more.textContent = `+${roles.length - maxDots}`;
+        more.title = roles.join(', ');
+        dots.appendChild(more);
+      } else {
+        // helpful tooltip if single/multiple
+        dots.title = roles.join(', ');
+      }
 
       card.appendChild(thumb);
       card.appendChild(name);
@@ -1437,7 +1496,7 @@
       LAST_OPENED_CHAR = c;
 
       const name = tidy(c?.name) || '—';
-      const role = tidy(c?.role) || 'N/A';
+      const roles = parseRoles(c?.role);
       const st = tidy(c?.skill_type) || '—';
       const skill = tidy(c?.skill) || '—';
       const desc = getActiveDesc(c);
@@ -1445,7 +1504,7 @@
       infoName.textContent = name;
 
       const chips = [];
-      if (role && role !== 'N/A') chips.push(role.toUpperCase());
+      if (roles?.length) chips.push(roles.join('/').toUpperCase());
       if (metaFlag) chips.push('META');
       chips.push(modeLabel());
       chips.push(currentDescLang === 'bm' ? 'BM' : 'EN');
@@ -1460,7 +1519,7 @@
 
       infoSkillTitle.textContent = 'Skill: ' + (skill || '—');
       infoSkillDesc.textContent = (st ? (st + ' — ') : '') + (desc || '—');
-      infoRole.textContent = role;
+      infoRole.textContent = roles.join(', ');
 
       infoModal.classList.add('show');
       infoModal.setAttribute('aria-hidden','false');
