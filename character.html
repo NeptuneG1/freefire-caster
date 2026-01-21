@@ -1,3 +1,9 @@
+Yep — that’s happening because your sidebar can still have the collapsed class (saved in localStorage), and your CSS hides .nav-label whenever .sidebar.collapsed is present… even on iPhone.
+
+Fix = ignore/remove “collapsed” on mobile, and force labels to show inside the mobile drawer.
+
+Here’s your entire updated file with the fix applied (CSS override + JS logic change):
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -608,7 +614,7 @@
       gap:8px;
       margin-top:-2px;
       margin-bottom:2px;
-      flex-wrap:wrap; /* ✅ allow multiple role dots */
+      flex-wrap:wrap;
     }
     .role-dot{
       width:8px;height:8px;border-radius:50%;
@@ -737,7 +743,7 @@
         gap: 0;
       }
 
-      /* turn sidebar into a drawer instead of hiding it */
+      /* turn sidebar into a drawer */
       .sidebar{
         position: fixed;
         top: env(safe-area-inset-top);
@@ -751,8 +757,26 @@
       }
       .sidebar.mobile-open{ transform: translateX(0); }
 
-      /* collapsed mode doesn't matter on mobile drawer */
-      .sidebar.collapsed{ width: min(var(--sb-w), 86vw); }
+      /* ✅ IMPORTANT: force labels/text visible in mobile drawer even if 'collapsed' was saved */
+      .sidebar.collapsed{
+        width: min(var(--sb-w), 86vw);
+      }
+      .sidebar.collapsed .brand h1,
+      .sidebar.collapsed .brand small,
+      .sidebar.collapsed .nav-label{
+        display:block !important;
+      }
+      .sidebar.collapsed .brand{
+        justify-content:flex-start !important;
+      }
+      .sidebar.collapsed .brand-left{
+        justify-content:flex-start !important;
+      }
+      .sidebar.collapsed .nav-item{
+        justify-content:flex-start !important;
+        gap:10px !important;
+        padding:10px 10px !important;
+      }
 
       .main{ width: 100%; }
 
@@ -777,7 +801,6 @@
         flex-wrap: wrap;
         align-items: stretch;
       }
-      /* row 1: menu + (optional) user actions */
       #sbToggle{ width: var(--touch); height: var(--touch); border-radius: 14px; }
       .top-actions{
         gap:8px;
@@ -792,10 +815,7 @@
         padding: 8px 10px;
       }
 
-      /* make controls stack nicely */
-      .controls{
-        gap:10px;
-      }
+      .controls{ gap:10px; }
       .controls-left,
       .controls-right{
         width:100%;
@@ -827,7 +847,7 @@
       .app{ padding: var(--pad-s); }
       .topbar{ padding: 10px; border-radius: 18px; }
       .search input{ font-size: .92rem; }
-      .userchip{ display:none; } /* keep header clean */
+      .userchip{ display:none; }
       .grid{
         grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
       }
@@ -836,7 +856,6 @@
       .modal-card{ border-radius: 18px; }
     }
 
-    /* ✅ reduce motion for users who prefer it */
     @media (prefers-reduced-motion: reduce){
       *{ transition:none !important; scroll-behavior:auto !important; }
     }
@@ -844,11 +863,9 @@
 </head>
 
 <body>
-  <!-- ✅ scrim for mobile drawer -->
   <div class="scrim" id="scrim" aria-hidden="true"></div>
 
   <div class="app">
-    <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar" aria-label="Sidebar Navigation">
       <div class="brand">
         <div class="brand-left">
@@ -939,10 +956,8 @@
       </nav>
     </aside>
 
-    <!-- MAIN -->
     <main class="main">
       <header class="topbar">
-        <!-- ✅ becomes "menu" on mobile drawer; collapse on desktop -->
         <button class="icon-btn" id="sbToggle" aria-label="Open menu / Collapse sidebar" title="Menu / Collapse">
           <svg viewBox="0 0 24 24" fill="none">
             <path id="sbTogglePath" d="M14 7l-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1015,7 +1030,6 @@
     </main>
   </div>
 
-  <!-- Info Modal (Popup) -->
   <div class="modal" id="infoModal" aria-hidden="true">
     <div class="modal-card" role="dialog" aria-modal="true" aria-label="Character Info">
       <div class="modal-top">
@@ -1078,6 +1092,8 @@
     }
 
     function openDrawer(){
+      // ✅ ensure labels show on mobile by removing collapsed state
+      sidebar.classList.remove('collapsed');
       sidebar.classList.add('mobile-open');
       scrim.classList.add('show');
       scrim.setAttribute('aria-hidden','false');
@@ -1096,8 +1112,11 @@
 
     (function initSidebarCollapseOrDrawer(){
       const key = 'ff_sidebar_collapsed_v1';
+
+      // ✅ Apply saved collapse ONLY on desktop
       const saved = localStorage.getItem(key);
-      if (saved === '1') sidebar.classList.add('collapsed');
+      if (saved === '1' && !isMobileNav()) sidebar.classList.add('collapsed');
+      if (isMobileNav()) sidebar.classList.remove('collapsed');
 
       const btn = document.getElementById('sbToggle');
       const path = document.getElementById('sbTogglePath');
@@ -1105,10 +1124,8 @@
       function syncIcon(){
         if (!path) return;
         if (isMobileNav()){
-          // hamburger
           path.setAttribute('d', 'M4 7h16M4 12h16M4 17h16');
         } else {
-          // chevron for collapse
           path.setAttribute('d', sidebar.classList.contains('collapsed')
             ? 'M10 7l5 5-5 5'
             : 'M14 7l-5 5 5 5'
@@ -1128,18 +1145,23 @@
         syncIcon();
       });
 
-      // close drawer on scrim tap
       scrim?.addEventListener('click', closeDrawer);
 
-      // close drawer when clicking a nav item (mobile)
       document.getElementById('nav')?.addEventListener('click', (e) => {
         const a = e.target.closest('a.nav-item');
         if (a && isMobileNav()) closeDrawer();
       });
 
-      // keep correct icon on resize & ensure drawer closes when leaving mobile
       window.addEventListener('resize', () => {
-        if (!isMobileNav()) closeDrawer();
+        if (isMobileNav()){
+          // ✅ when entering mobile, force expanded drawer labels
+          sidebar.classList.remove('collapsed');
+        } else {
+          // ✅ when returning to desktop, re-apply saved collapse
+          const s = localStorage.getItem(key);
+          sidebar.classList.toggle('collapsed', s === '1');
+          closeDrawer();
+        }
         syncIcon();
       });
     })();
@@ -1161,7 +1183,6 @@
     let currentMetaMode = 'meta'; // default BR
     let currentSearchTerm = '';
 
-    // Description language: en => description, bm => description_ms
     let currentDescLang = 'en';
     let LAST_OPENED_CHAR = null;
 
@@ -1240,9 +1261,6 @@
       return msg;
     }
 
-    /***********************
-     * Role dots + legends
-     ***********************/
     const ROLE_COLOR_OVERRIDES = {
       attack: '#ff5a5a',
       support: '#ffe36b',
@@ -1268,7 +1286,6 @@
       return `hsl(${hue} 70% 60%)`;
     }
 
-    // ✅ supports multiple roles like "Attack / Support", "Attack, Survival", "Attack & Info", etc.
     function parseRoles(roleRaw){
       const raw = tidy(roleRaw);
       if (!raw) return ['Other'];
@@ -1280,7 +1297,6 @@
 
       const cleaned = parts.length ? parts : [raw];
 
-      // normalize common synonyms
       const norm = cleaned.map(r => {
         const k = tidy(r).toLowerCase();
         if (k === 'defence') return 'Defense';
@@ -1289,7 +1305,6 @@
         return r;
       });
 
-      // unique, keep order
       const out = [];
       const seen = new Set();
       for (const r of norm){
@@ -1315,26 +1330,15 @@
       if (!legendRow) return;
       legendRow.innerHTML = '';
 
-      // Meta
-      {
-        const d = document.createElement('span');
-        d.className = 'dot meta';
-        legendRow.appendChild(makeLegendPill([d, textNode('Meta')]));
-      }
+      { const d = document.createElement('span'); d.className = 'dot meta';
+        legendRow.appendChild(makeLegendPill([d, textNode('Meta')])); }
 
-      // Skill borders (active/passive)
-      {
-        const b = document.createElement('span');
-        b.className = 'border-swatch active';
-        legendRow.appendChild(makeLegendPill([b, textNode('Active Border')]));
-      }
-      {
-        const b = document.createElement('span');
-        b.className = 'border-swatch passive';
-        legendRow.appendChild(makeLegendPill([b, textNode('Passive Border')]));
-      }
+      { const b = document.createElement('span'); b.className = 'border-swatch active';
+        legendRow.appendChild(makeLegendPill([b, textNode('Active Border')])); }
 
-      // Role dots
+      { const b = document.createElement('span'); b.className = 'border-swatch passive';
+        legendRow.appendChild(makeLegendPill([b, textNode('Passive Border')])); }
+
       ROLE_LEGEND_ORDER.forEach(k => {
         const d = document.createElement('span');
         d.className = 'role-dot';
@@ -1371,7 +1375,6 @@
       name.className = 'char-name';
       name.textContent = tidy(c.name) || '—';
 
-      // ✅ Role dot row (supports multiple roles)
       const dots = document.createElement('div');
       dots.className = 'card-dots';
 
@@ -1394,7 +1397,6 @@
         more.title = roles.join(', ');
         dots.appendChild(more);
       } else {
-        // helpful tooltip if single/multiple
         dots.title = roles.join(', ');
       }
 
@@ -1470,9 +1472,6 @@
       renderGrids();
     }
 
-    /***********************
-     * Modal (Popup)
-     ***********************/
     const infoModal = document.getElementById('infoModal');
     const infoClose = document.getElementById('infoClose');
     const infoName = document.getElementById('infoName');
@@ -1534,18 +1533,12 @@
     infoModal?.addEventListener('click', (e) => { if (e.target === infoModal) closeInfo(); });
     window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && infoModal.classList.contains('show')) closeInfo(); });
 
-    /***********************
-     * Meta mode toggle
-     ***********************/
     toggleModeBtn?.addEventListener('click', () => {
       currentMetaMode = (currentMetaMode === 'meta') ? 'cs_meta' : 'meta';
       setModeUI();
       renderGrids();
     });
 
-    /***********************
-     * Description language toggle (EN <-> BM)
-     ***********************/
     (function initDescLangToggle(){
       const key = 'ff_char_desc_lang_v1';
       const saved = localStorage.getItem(key);
@@ -1563,18 +1556,12 @@
       });
     })();
 
-    /***********************
-     * Top search
-     ***********************/
     const topSearch = document.getElementById('searchInput');
     topSearch?.addEventListener('input', (e) => {
       currentSearchTerm = (e.target.value || '');
       applyCharacterSearch(currentSearchTerm);
     });
 
-    /***********************
-     * Init
-     ***********************/
     window.addEventListener('DOMContentLoaded', async () => {
       const session = await ensureSession();
       if (!session) return;
@@ -1596,3 +1583,5 @@
   </script>
 </body>
 </html>
+
+If you want, I can also add a tiny “Close” button inside the drawer header on iPhone (some users prefer that over tapping the scrim).
