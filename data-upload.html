@@ -112,7 +112,6 @@
       outline:none;
     }
 
-    /* ✅ Prevent white-on-white dropdowns (options) */
     select{
       color-scheme: dark;
       background: rgba(0,0,0,.25);
@@ -312,9 +311,7 @@
               <option value="keep">Keep as JSON</option>
               <option value="index" selected>Explode to columns with [index] (player_stats[0].account_id)</option>
             </select>
-            <div class="hint">
-              For <span class="kbd">ff_stats_raw</span> schema: pick <span class="kbd">Explode: team_stats</span> + set this to <span class="kbd">index</span>.
-            </div>
+            <div class="hint">For <span class="kbd">ff_stats_raw</span>, keep this on <b>index</b>.</div>
           </div>
 
           <div class="field" style="min-width:260px;flex:1.2">
@@ -332,10 +329,23 @@
               <option value="__input__" selected>Use explode paths input (sequential; may multiply rows)</option>
             </select>
             <div class="hint">
-              For this schema, use <span class="kbd">Explode: team_stats</span> to produce <span class="kbd">one row per team</span>.
+              For <span class="kbd">ff_stats_raw</span>, use <span class="kbd">team_stats</span>.
             </div>
           </div>
 
+          <div class="field" style="min-width:220px;flex:1">
+            <label>Hoist exploded object to root (schema-friendly)</label>
+            <div class="checkrow">
+              <input id="hoistExplode" type="checkbox" checked />
+              <div>
+                <div style="font-size:12px">When exploding <span class="kbd">team_stats</span>, move its fields to root columns</div>
+                <div class="small">This makes <span class="kbd">team_id</span>, <span class="kbd">team_name</span>, <span class="kbd">player_stats[0]…</span> match <span class="kbd">ff_stats_raw</span>.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
           <div class="field" style="min-width:220px;flex:1">
             <label>Auto-detect explode paths</label>
             <div class="checkrow">
@@ -348,83 +358,60 @@
           </div>
         </div>
 
-        <!-- Defaults aligned to schema -->
+        <!-- Defaults (schema: lowercase) -->
         <div class="row">
           <div class="field">
-            <label>Default <b>mode</b> value</label>
+            <label>Default <span class="kbd">mode</span> value</label>
             <select id="defMode">
               <option value="BR" selected>BR</option>
               <option value="CS">CS</option>
             </select>
           </div>
           <div class="field">
-            <label>Default <b>tournament</b> value</label>
+            <label>Default <span class="kbd">tournament</span> value</label>
             <input id="defTournament" type="text" placeholder="e.g. FFWS Global Finals 2025"/>
           </div>
         </div>
 
         <div class="row">
           <div class="field">
-            <label>Default <b>stage</b> value</label>
+            <label>Default <span class="kbd">stage</span> value</label>
             <input id="defStage" type="text" placeholder="e.g. Finals / Group Stage"/>
           </div>
           <div class="field">
-            <label>Default <b>year</b> value</label>
+            <label>Default <span class="kbd">year</span> value</label>
             <input id="defYear" type="text" placeholder="e.g. 2026"/>
           </div>
         </div>
 
         <div class="row">
           <div class="field">
-            <label>Default <b>week</b> value</label>
-            <input id="defWeek" type="text" placeholder="e.g. W1 / Week 1 / 1"/>
+            <label>Default <span class="kbd">week</span> value</label>
+            <input id="defWeek" type="text" placeholder="e.g. 1 (or W1)"/>
           </div>
           <div class="field">
-            <label>Default <b>day</b> value</label>
-            <input id="defDay" type="text" placeholder="e.g. D1 / Day 1 / 1"/>
+            <label>Default <span class="kbd">day</span> value</label>
+            <input id="defDay" type="text" placeholder="e.g. 1 (or D1)"/>
           </div>
         </div>
 
         <div class="row">
           <div class="field">
-            <label>Default <b>matchnumber</b> value</label>
+            <label>Default <span class="kbd">matchnumber</span> value</label>
             <input id="defMatchNumber" type="text" placeholder="e.g. 1"/>
           </div>
           <div class="field">
-            <label>Default <b>match_id</b> value</label>
+            <label>Default <span class="kbd">match_id</span> value</label>
             <input id="defMatchId" type="text" placeholder="e.g. 1725487677733611520"/>
           </div>
         </div>
 
-        <div class="row">
-          <div class="field">
-            <label>Default <b>team_id</b> value (required by schema)</label>
-            <input id="defTeamId" type="text" placeholder="e.g. 12345"/>
-          </div>
-          <div class="field">
-            <label>Default <b>team_name</b> value (optional)</label>
-            <input id="defTeamName" type="text" placeholder="e.g. TEAM FALCONS"/>
-          </div>
-        </div>
-
         <div class="hint">
-          Schema defaults applied to every row:
-          <span class="kbd">match_id</span>,
-          <span class="kbd">team_id</span>,
-          <span class="kbd">mode</span>,
-          <span class="kbd">tournament</span>,
-          <span class="kbd">stage</span>,
-          <span class="kbd">year</span>,
-          <span class="kbd">week</span>,
-          <span class="kbd">day</span>,
-          <span class="kbd">matchnumber</span>.
+          Default columns applied to every row: <span class="kbd">mode</span>, <span class="kbd">tournament</span>, <span class="kbd">stage</span>, <span class="kbd">year</span>, <span class="kbd">week</span>, <span class="kbd">day</span>, <span class="kbd">matchnumber</span>, <span class="kbd">match_id</span>.
           <br/><br/>
-          <b>Auto-rename for DB is ON:</b> keys like <span class="kbd">player_stats[0].account_id</span>
-          become <span class="kbd">player_stats_0_account_id</span> (lowercase).
+          <b>Auto-rename for DB is ON:</b> nested keys become underscores (and lowercased).
           <br/>
           <b>skill_ids breakdown is ON:</b> arrays named <span class="kbd">skill_ids</span> become separate columns (skill_ids[0], skill_ids[1], …).
-          <br/><br/>
-          <b>Schema column filtering is ON:</b> columns not found in your attached schema are auto-unchecked by default.
         </div>
 
         <div class="row">
@@ -493,7 +480,7 @@
             <div class="row">
               <div class="field" style="flex:1">
                 <label>Table name</label>
-                <input id="sbTable" type="text" value="ff_stats_raw" placeholder='e.g. ff_stats_raw'/>
+                <input id="sbTable" type="text" placeholder='e.g. ff_stats_raw' value="ff_stats_raw"/>
               </div>
               <div class="field" style="flex:.8">
                 <label>Mode</label>
@@ -507,8 +494,8 @@
             <div class="row">
               <div class="field">
                 <label>On conflict (Upsert only)</label>
-                <input id="sbConflict" type="text" value="match_id,team_id" placeholder="e.g. match_id,team_id"/>
-                <div class="hint">Your schema includes a unique constraint on <span class="kbd">(match_id, team_id)</span>.</div>
+                <input id="sbConflict" type="text" placeholder="e.g. match_id,team_id" value="match_id,team_id"/>
+                <div class="hint">You can type original keys; we auto-map to DB-safe names.</div>
               </div>
             </div>
 
@@ -601,538 +588,26 @@
     return /^[0-9]{4}$/.test(s) ? parseInt(s, 10) : s;
   }
 
-  // --- schema columns (from your attached schema) ---
-  // Used to auto-uncheck columns that aren't in the table.
-  const SCHEMA_COLS_TXT = `row_id
-match_id
-mode
-tournament
-stage
-year
-week
-day
-matchnumber
-map_id
-game_version
-server_id
-region
-match_start_time
-match_end_time
-duration_seconds
-booyah
-rank
-placement_points
-kill_points
-total_points
-team_id
-team_name
-team_tag
-team_logo_url
-team_country
-team_group
-team_seed
-team_slot
-team_spawn
-team_kills
-team_damage
-team_survival_time
-team_alive_count
-team_elims
-team_assists
-team_headshots
-team_revives
-team_knockdowns
-team_heals
-team_distance
-team_utility
-team_mvp
-team_kill_rank
-team_damage_rank
-team_total_rank
-player_stats_0_account_id
-player_stats_0_nickname
-player_stats_0_kills
-player_stats_0_assists
-player_stats_0_damage
-player_stats_0_headshots
-player_stats_0_knockdowns
-player_stats_0_revives
-player_stats_0_heals
-player_stats_0_survival_time
-player_stats_0_alive_time
-player_stats_0_distance
-player_stats_0_rank
-player_stats_0_is_mvp
-player_stats_0_character_id
-player_stats_0_character_name
-player_stats_0_pet_id
-player_stats_0_pet_name
-player_stats_0_skill_ids_0
-player_stats_0_skill_ids_1
-player_stats_0_skill_ids_2
-player_stats_0_skill_ids_3
-player_stats_0_coordinate_info_x_coordinate
-player_stats_0_coordinate_info_y_coordinate
-player_stats_0_coordinate_info_z_coordinate
-player_stats_0_weapon_usages_0_weapon_id
-player_stats_0_weapon_usages_0_weapon_name
-player_stats_0_weapon_usages_0_weapon_type
-player_stats_0_weapon_usages_0_damage
-player_stats_0_weapon_usages_0_kills
-player_stats_0_weapon_usages_0_headshots
-player_stats_0_weapon_usages_0_shots
-player_stats_0_weapon_usages_0_hits
-player_stats_0_weapon_usages_0_accuracy
-player_stats_0_weapon_usages_0_is_main
-player_stats_0_weapon_usages_1_weapon_id
-player_stats_0_weapon_usages_1_weapon_name
-player_stats_0_weapon_usages_1_weapon_type
-player_stats_0_weapon_usages_1_damage
-player_stats_0_weapon_usages_1_kills
-player_stats_0_weapon_usages_1_headshots
-player_stats_0_weapon_usages_1_shots
-player_stats_0_weapon_usages_1_hits
-player_stats_0_weapon_usages_1_accuracy
-player_stats_0_weapon_usages_1_is_main
-player_stats_0_weapon_usages_2_weapon_id
-player_stats_0_weapon_usages_2_weapon_name
-player_stats_0_weapon_usages_2_weapon_type
-player_stats_0_weapon_usages_2_damage
-player_stats_0_weapon_usages_2_kills
-player_stats_0_weapon_usages_2_headshots
-player_stats_0_weapon_usages_2_shots
-player_stats_0_weapon_usages_2_hits
-player_stats_0_weapon_usages_2_accuracy
-player_stats_0_weapon_usages_2_is_main
-player_stats_0_weapon_usages_3_weapon_id
-player_stats_0_weapon_usages_3_weapon_name
-player_stats_0_weapon_usages_3_weapon_type
-player_stats_0_weapon_usages_3_damage
-player_stats_0_weapon_usages_3_kills
-player_stats_0_weapon_usages_3_headshots
-player_stats_0_weapon_usages_3_shots
-player_stats_0_weapon_usages_3_hits
-player_stats_0_weapon_usages_3_accuracy
-player_stats_0_weapon_usages_3_is_main
-player_stats_0_weapon_usages_4_weapon_id
-player_stats_0_weapon_usages_4_weapon_name
-player_stats_0_weapon_usages_4_weapon_type
-player_stats_0_weapon_usages_4_damage
-player_stats_0_weapon_usages_4_kills
-player_stats_0_weapon_usages_4_headshots
-player_stats_0_weapon_usages_4_shots
-player_stats_0_weapon_usages_4_hits
-player_stats_0_weapon_usages_4_accuracy
-player_stats_0_weapon_usages_4_is_main
-player_stats_0_weapon_usages_5_weapon_id
-player_stats_0_weapon_usages_5_weapon_name
-player_stats_0_weapon_usages_5_weapon_type
-player_stats_0_weapon_usages_5_damage
-player_stats_0_weapon_usages_5_kills
-player_stats_0_weapon_usages_5_headshots
-player_stats_0_weapon_usages_5_shots
-player_stats_0_weapon_usages_5_hits
-player_stats_0_weapon_usages_5_accuracy
-player_stats_0_weapon_usages_5_is_main
-player_stats_0_weapon_usages_6_weapon_id
-player_stats_0_weapon_usages_6_weapon_name
-player_stats_0_weapon_usages_6_weapon_type
-player_stats_0_weapon_usages_6_damage
-player_stats_0_weapon_usages_6_kills
-player_stats_0_weapon_usages_6_headshots
-player_stats_0_weapon_usages_6_shots
-player_stats_0_weapon_usages_6_hits
-player_stats_0_weapon_usages_6_accuracy
-player_stats_0_weapon_usages_6_is_main
-player_stats_0_weapon_usages_7_weapon_id
-player_stats_0_weapon_usages_7_weapon_name
-player_stats_0_weapon_usages_7_weapon_type
-player_stats_0_weapon_usages_7_damage
-player_stats_0_weapon_usages_7_kills
-player_stats_0_weapon_usages_7_headshots
-player_stats_0_weapon_usages_7_shots
-player_stats_0_weapon_usages_7_hits
-player_stats_0_weapon_usages_7_accuracy
-player_stats_0_weapon_usages_7_is_main
-player_stats_0_weapon_usages_8_weapon_id
-player_stats_0_weapon_usages_8_weapon_name
-player_stats_0_weapon_usages_8_weapon_type
-player_stats_0_weapon_usages_8_damage
-player_stats_0_weapon_usages_8_kills
-player_stats_0_weapon_usages_8_headshots
-player_stats_0_weapon_usages_8_shots
-player_stats_0_weapon_usages_8_hits
-player_stats_0_weapon_usages_8_accuracy
-player_stats_0_weapon_usages_8_is_main
-player_stats_1_account_id
-player_stats_1_nickname
-player_stats_1_kills
-player_stats_1_assists
-player_stats_1_damage
-player_stats_1_headshots
-player_stats_1_knockdowns
-player_stats_1_revives
-player_stats_1_heals
-player_stats_1_survival_time
-player_stats_1_alive_time
-player_stats_1_distance
-player_stats_1_rank
-player_stats_1_is_mvp
-player_stats_1_character_id
-player_stats_1_character_name
-player_stats_1_pet_id
-player_stats_1_pet_name
-player_stats_1_skill_ids_0
-player_stats_1_skill_ids_1
-player_stats_1_skill_ids_2
-player_stats_1_skill_ids_3
-player_stats_1_coordinate_info_x_coordinate
-player_stats_1_coordinate_info_y_coordinate
-player_stats_1_coordinate_info_z_coordinate
-player_stats_1_weapon_usages_0_weapon_id
-player_stats_1_weapon_usages_0_weapon_name
-player_stats_1_weapon_usages_0_weapon_type
-player_stats_1_weapon_usages_0_damage
-player_stats_1_weapon_usages_0_kills
-player_stats_1_weapon_usages_0_headshots
-player_stats_1_weapon_usages_0_shots
-player_stats_1_weapon_usages_0_hits
-player_stats_1_weapon_usages_0_accuracy
-player_stats_1_weapon_usages_0_is_main
-player_stats_1_weapon_usages_1_weapon_id
-player_stats_1_weapon_usages_1_weapon_name
-player_stats_1_weapon_usages_1_weapon_type
-player_stats_1_weapon_usages_1_damage
-player_stats_1_weapon_usages_1_kills
-player_stats_1_weapon_usages_1_headshots
-player_stats_1_weapon_usages_1_shots
-player_stats_1_weapon_usages_1_hits
-player_stats_1_weapon_usages_1_accuracy
-player_stats_1_weapon_usages_1_is_main
-player_stats_1_weapon_usages_2_weapon_id
-player_stats_1_weapon_usages_2_weapon_name
-player_stats_1_weapon_usages_2_weapon_type
-player_stats_1_weapon_usages_2_damage
-player_stats_1_weapon_usages_2_kills
-player_stats_1_weapon_usages_2_headshots
-player_stats_1_weapon_usages_2_shots
-player_stats_1_weapon_usages_2_hits
-player_stats_1_weapon_usages_2_accuracy
-player_stats_1_weapon_usages_2_is_main
-player_stats_1_weapon_usages_3_weapon_id
-player_stats_1_weapon_usages_3_weapon_name
-player_stats_1_weapon_usages_3_weapon_type
-player_stats_1_weapon_usages_3_damage
-player_stats_1_weapon_usages_3_kills
-player_stats_1_weapon_usages_3_headshots
-player_stats_1_weapon_usages_3_shots
-player_stats_1_weapon_usages_3_hits
-player_stats_1_weapon_usages_3_accuracy
-player_stats_1_weapon_usages_3_is_main
-player_stats_1_weapon_usages_4_weapon_id
-player_stats_1_weapon_usages_4_weapon_name
-player_stats_1_weapon_usages_4_weapon_type
-player_stats_1_weapon_usages_4_damage
-player_stats_1_weapon_usages_4_kills
-player_stats_1_weapon_usages_4_headshots
-player_stats_1_weapon_usages_4_shots
-player_stats_1_weapon_usages_4_hits
-player_stats_1_weapon_usages_4_accuracy
-player_stats_1_weapon_usages_4_is_main
-player_stats_1_weapon_usages_5_weapon_id
-player_stats_1_weapon_usages_5_weapon_name
-player_stats_1_weapon_usages_5_weapon_type
-player_stats_1_weapon_usages_5_damage
-player_stats_1_weapon_usages_5_kills
-player_stats_1_weapon_usages_5_headshots
-player_stats_1_weapon_usages_5_shots
-player_stats_1_weapon_usages_5_hits
-player_stats_1_weapon_usages_5_accuracy
-player_stats_1_weapon_usages_5_is_main
-player_stats_1_weapon_usages_6_weapon_id
-player_stats_1_weapon_usages_6_weapon_name
-player_stats_1_weapon_usages_6_weapon_type
-player_stats_1_weapon_usages_6_damage
-player_stats_1_weapon_usages_6_kills
-player_stats_1_weapon_usages_6_headshots
-player_stats_1_weapon_usages_6_shots
-player_stats_1_weapon_usages_6_hits
-player_stats_1_weapon_usages_6_accuracy
-player_stats_1_weapon_usages_6_is_main
-player_stats_1_weapon_usages_7_weapon_id
-player_stats_1_weapon_usages_7_weapon_name
-player_stats_1_weapon_usages_7_weapon_type
-player_stats_1_weapon_usages_7_damage
-player_stats_1_weapon_usages_7_kills
-player_stats_1_weapon_usages_7_headshots
-player_stats_1_weapon_usages_7_shots
-player_stats_1_weapon_usages_7_hits
-player_stats_1_weapon_usages_7_accuracy
-player_stats_1_weapon_usages_7_is_main
-player_stats_1_weapon_usages_8_weapon_id
-player_stats_1_weapon_usages_8_weapon_name
-player_stats_1_weapon_usages_8_weapon_type
-player_stats_1_weapon_usages_8_damage
-player_stats_1_weapon_usages_8_kills
-player_stats_1_weapon_usages_8_headshots
-player_stats_1_weapon_usages_8_shots
-player_stats_1_weapon_usages_8_hits
-player_stats_1_weapon_usages_8_accuracy
-player_stats_1_weapon_usages_8_is_main
-player_stats_2_account_id
-player_stats_2_nickname
-player_stats_2_kills
-player_stats_2_assists
-player_stats_2_damage
-player_stats_2_headshots
-player_stats_2_knockdowns
-player_stats_2_revives
-player_stats_2_heals
-player_stats_2_survival_time
-player_stats_2_alive_time
-player_stats_2_distance
-player_stats_2_rank
-player_stats_2_is_mvp
-player_stats_2_character_id
-player_stats_2_character_name
-player_stats_2_pet_id
-player_stats_2_pet_name
-player_stats_2_skill_ids_0
-player_stats_2_skill_ids_1
-player_stats_2_skill_ids_2
-player_stats_2_skill_ids_3
-player_stats_2_coordinate_info_x_coordinate
-player_stats_2_coordinate_info_y_coordinate
-player_stats_2_coordinate_info_z_coordinate
-player_stats_2_weapon_usages_0_weapon_id
-player_stats_2_weapon_usages_0_weapon_name
-player_stats_2_weapon_usages_0_weapon_type
-player_stats_2_weapon_usages_0_damage
-player_stats_2_weapon_usages_0_kills
-player_stats_2_weapon_usages_0_headshots
-player_stats_2_weapon_usages_0_shots
-player_stats_2_weapon_usages_0_hits
-player_stats_2_weapon_usages_0_accuracy
-player_stats_2_weapon_usages_0_is_main
-player_stats_2_weapon_usages_1_weapon_id
-player_stats_2_weapon_usages_1_weapon_name
-player_stats_2_weapon_usages_1_weapon_type
-player_stats_2_weapon_usages_1_damage
-player_stats_2_weapon_usages_1_kills
-player_stats_2_weapon_usages_1_headshots
-player_stats_2_weapon_usages_1_shots
-player_stats_2_weapon_usages_1_hits
-player_stats_2_weapon_usages_1_accuracy
-player_stats_2_weapon_usages_1_is_main
-player_stats_2_weapon_usages_2_weapon_id
-player_stats_2_weapon_usages_2_weapon_name
-player_stats_2_weapon_usages_2_weapon_type
-player_stats_2_weapon_usages_2_damage
-player_stats_2_weapon_usages_2_kills
-player_stats_2_weapon_usages_2_headshots
-player_stats_2_weapon_usages_2_shots
-player_stats_2_weapon_usages_2_hits
-player_stats_2_weapon_usages_2_accuracy
-player_stats_2_weapon_usages_2_is_main
-player_stats_2_weapon_usages_3_weapon_id
-player_stats_2_weapon_usages_3_weapon_name
-player_stats_2_weapon_usages_3_weapon_type
-player_stats_2_weapon_usages_3_damage
-player_stats_2_weapon_usages_3_kills
-player_stats_2_weapon_usages_3_headshots
-player_stats_2_weapon_usages_3_shots
-player_stats_2_weapon_usages_3_hits
-player_stats_2_weapon_usages_3_accuracy
-player_stats_2_weapon_usages_3_is_main
-player_stats_2_weapon_usages_4_weapon_id
-player_stats_2_weapon_usages_4_weapon_name
-player_stats_2_weapon_usages_4_weapon_type
-player_stats_2_weapon_usages_4_damage
-player_stats_2_weapon_usages_4_kills
-player_stats_2_weapon_usages_4_headshots
-player_stats_2_weapon_usages_4_shots
-player_stats_2_weapon_usages_4_hits
-player_stats_2_weapon_usages_4_accuracy
-player_stats_2_weapon_usages_4_is_main
-player_stats_2_weapon_usages_5_weapon_id
-player_stats_2_weapon_usages_5_weapon_name
-player_stats_2_weapon_usages_5_weapon_type
-player_stats_2_weapon_usages_5_damage
-player_stats_2_weapon_usages_5_kills
-player_stats_2_weapon_usages_5_headshots
-player_stats_2_weapon_usages_5_shots
-player_stats_2_weapon_usages_5_hits
-player_stats_2_weapon_usages_5_accuracy
-player_stats_2_weapon_usages_5_is_main
-player_stats_2_weapon_usages_6_weapon_id
-player_stats_2_weapon_usages_6_weapon_name
-player_stats_2_weapon_usages_6_weapon_type
-player_stats_2_weapon_usages_6_damage
-player_stats_2_weapon_usages_6_kills
-player_stats_2_weapon_usages_6_headshots
-player_stats_2_weapon_usages_6_shots
-player_stats_2_weapon_usages_6_hits
-player_stats_2_weapon_usages_6_accuracy
-player_stats_2_weapon_usages_6_is_main
-player_stats_2_weapon_usages_7_weapon_id
-player_stats_2_weapon_usages_7_weapon_name
-player_stats_2_weapon_usages_7_weapon_type
-player_stats_2_weapon_usages_7_damage
-player_stats_2_weapon_usages_7_kills
-player_stats_2_weapon_usages_7_headshots
-player_stats_2_weapon_usages_7_shots
-player_stats_2_weapon_usages_7_hits
-player_stats_2_weapon_usages_7_accuracy
-player_stats_2_weapon_usages_7_is_main
-player_stats_2_weapon_usages_8_weapon_id
-player_stats_2_weapon_usages_8_weapon_name
-player_stats_2_weapon_usages_8_weapon_type
-player_stats_2_weapon_usages_8_damage
-player_stats_2_weapon_usages_8_kills
-player_stats_2_weapon_usages_8_headshots
-player_stats_2_weapon_usages_8_shots
-player_stats_2_weapon_usages_8_hits
-player_stats_2_weapon_usages_8_accuracy
-player_stats_2_weapon_usages_8_is_main
-player_stats_3_account_id
-player_stats_3_nickname
-player_stats_3_kills
-player_stats_3_assists
-player_stats_3_damage
-player_stats_3_headshots
-player_stats_3_knockdowns
-player_stats_3_revives
-player_stats_3_heals
-player_stats_3_survival_time
-player_stats_3_alive_time
-player_stats_3_distance
-player_stats_3_rank
-player_stats_3_is_mvp
-player_stats_3_character_id
-player_stats_3_character_name
-player_stats_3_pet_id
-player_stats_3_pet_name
-player_stats_3_skill_ids_0
-player_stats_3_skill_ids_1
-player_stats_3_skill_ids_2
-player_stats_3_skill_ids_3
-player_stats_3_coordinate_info_x_coordinate
-player_stats_3_coordinate_info_y_coordinate
-player_stats_3_coordinate_info_z_coordinate
-player_stats_3_weapon_usages_0_weapon_id
-player_stats_3_weapon_usages_0_weapon_name
-player_stats_3_weapon_usages_0_weapon_type
-player_stats_3_weapon_usages_0_damage
-player_stats_3_weapon_usages_0_kills
-player_stats_3_weapon_usages_0_headshots
-player_stats_3_weapon_usages_0_shots
-player_stats_3_weapon_usages_0_hits
-player_stats_3_weapon_usages_0_accuracy
-player_stats_3_weapon_usages_0_is_main
-player_stats_3_weapon_usages_1_weapon_id
-player_stats_3_weapon_usages_1_weapon_name
-player_stats_3_weapon_usages_1_weapon_type
-player_stats_3_weapon_usages_1_damage
-player_stats_3_weapon_usages_1_kills
-player_stats_3_weapon_usages_1_headshots
-player_stats_3_weapon_usages_1_shots
-player_stats_3_weapon_usages_1_hits
-player_stats_3_weapon_usages_1_accuracy
-player_stats_3_weapon_usages_1_is_main
-player_stats_3_weapon_usages_2_weapon_id
-player_stats_3_weapon_usages_2_weapon_name
-player_stats_3_weapon_usages_2_weapon_type
-player_stats_3_weapon_usages_2_damage
-player_stats_3_weapon_usages_2_kills
-player_stats_3_weapon_usages_2_headshots
-player_stats_3_weapon_usages_2_shots
-player_stats_3_weapon_usages_2_hits
-player_stats_3_weapon_usages_2_accuracy
-player_stats_3_weapon_usages_2_is_main
-player_stats_3_weapon_usages_3_weapon_id
-player_stats_3_weapon_usages_3_weapon_name
-player_stats_3_weapon_usages_3_weapon_type
-player_stats_3_weapon_usages_3_damage
-player_stats_3_weapon_usages_3_kills
-player_stats_3_weapon_usages_3_headshots
-player_stats_3_weapon_usages_3_shots
-player_stats_3_weapon_usages_3_hits
-player_stats_3_weapon_usages_3_accuracy
-player_stats_3_weapon_usages_3_is_main
-player_stats_3_weapon_usages_4_weapon_id
-player_stats_3_weapon_usages_4_weapon_name
-player_stats_3_weapon_usages_4_weapon_type
-player_stats_3_weapon_usages_4_damage
-player_stats_3_weapon_usages_4_kills
-player_stats_3_weapon_usages_4_headshots
-player_stats_3_weapon_usages_4_shots
-player_stats_3_weapon_usages_4_hits
-player_stats_3_weapon_usages_4_accuracy
-player_stats_3_weapon_usages_4_is_main
-player_stats_3_weapon_usages_5_weapon_id
-player_stats_3_weapon_usages_5_weapon_name
-player_stats_3_weapon_usages_5_weapon_type
-player_stats_3_weapon_usages_5_damage
-player_stats_3_weapon_usages_5_kills
-player_stats_3_weapon_usages_5_headshots
-player_stats_3_weapon_usages_5_shots
-player_stats_3_weapon_usages_5_hits
-player_stats_3_weapon_usages_5_accuracy
-player_stats_3_weapon_usages_5_is_main
-player_stats_3_weapon_usages_6_weapon_id
-player_stats_3_weapon_usages_6_weapon_name
-player_stats_3_weapon_usages_6_weapon_type
-player_stats_3_weapon_usages_6_damage
-player_stats_3_weapon_usages_6_kills
-player_stats_3_weapon_usages_6_headshots
-player_stats_3_weapon_usages_6_shots
-player_stats_3_weapon_usages_6_hits
-player_stats_3_weapon_usages_6_accuracy
-player_stats_3_weapon_usages_6_is_main
-player_stats_3_weapon_usages_7_weapon_id
-player_stats_3_weapon_usages_7_weapon_name
-player_stats_3_weapon_usages_7_weapon_type
-player_stats_3_weapon_usages_7_damage
-player_stats_3_weapon_usages_7_kills
-player_stats_3_weapon_usages_7_headshots
-player_stats_3_weapon_usages_7_shots
-player_stats_3_weapon_usages_7_hits
-player_stats_3_weapon_usages_7_accuracy
-player_stats_3_weapon_usages_7_is_main
-player_stats_3_weapon_usages_8_weapon_id
-player_stats_3_weapon_usages_8_weapon_name
-player_stats_3_weapon_usages_8_weapon_type
-player_stats_3_weapon_usages_8_damage
-player_stats_3_weapon_usages_8_kills
-player_stats_3_weapon_usages_8_headshots
-player_stats_3_weapon_usages_8_shots
-player_stats_3_weapon_usages_8_hits
-player_stats_3_weapon_usages_8_accuracy
-player_stats_3_weapon_usages_8_is_main
-created_at
-updated_at`;
-  const SCHEMA_SET = new Set(SCHEMA_COLS_TXT.trim().split(/\s+/g).filter(Boolean));
+  function parseIntLoose(v){
+    const s = (v ?? "").toString().trim();
+    if(!s) return null;
+    const m = s.match(/-?\d+/);
+    if(!m) return null;
+    const n = parseInt(m[0], 10);
+    return Number.isFinite(n) ? n : null;
+  }
 
   function toDbSafeKey(key){
     let s = String(key ?? "").trim();
     if(!s) return s;
-
-    // normalize bracket indexes and dotted paths
     s = s.replace(/\[(\d+)\]/g, "_$1_");
     s = s.replace(/\./g, "_");
-
-    // sanitize
     s = s.replace(/[^a-zA-Z0-9_]/g, "_");
     s = s.replace(/_+/g, "_");
     s = s.replace(/^_+|_+$/g, "");
-
-    // special-case: match_number -> matchnumber (schema uses matchnumber)
-    if (s.toLowerCase() === "match_number") s = "matchnumber";
-
     if(/^\d/.test(s)) s = "c_" + s;
     if(!s) s = "col";
-
-    return s.toLowerCase();
+    return s.toLowerCase(); // ✅ schema-friendly for Postgres
   }
 
   function isPrimitive(x){
@@ -1253,8 +728,8 @@ updated_at`;
 
     const out = Array.from(paths);
     out.sort((a,b)=>{
-      const ap = a.includes("player_stats") ? 0 : 1;
-      const bp = b.includes("player_stats") ? 0 : 1;
+      const ap = a.includes("team_stats") ? 0 : 1;
+      const bp = b.includes("team_stats") ? 0 : 1;
       if(ap !== bp) return ap - bp;
       return a.localeCompare(b);
     });
@@ -1298,8 +773,11 @@ updated_at`;
     return out;
   }
 
-  function explodeObjects(records, explodePaths){
+  // ✅ UPDATED: supports hoist to root for schema compatibility
+  function explodeObjects(records, explodePaths, opts={}){
+    const hoist = !!opts.hoist;
     let current = records;
+
     for(const rawP of explodePaths){
       const p = rawP.trim();
       if(!p) continue;
@@ -1324,26 +802,27 @@ updated_at`;
 
         for(const item of arr.filter(isPlainObject)){
           const cloned = deepCloneJSON(rec);
+
+          // remove original array from record
           deleteByPath(cloned, p);
-          setByPath(cloned, p, item);
+
+          // hoist only when p is top-level key (common: team_stats)
+          const canHoist = hoist && !p.includes(".") && !p.includes("[");
+          if(canHoist){
+            for(const [k,v] of Object.entries(item)){
+              cloned[k] = v;
+            }
+          } else {
+            setByPath(cloned, p, item);
+          }
+
           next.push(cloned);
         }
       }
       current = next;
     }
-    return current;
-  }
 
-  // ✅ schema helper: lift exploded "team_stats" object to root (so player_stats becomes a root array)
-  function liftTopLevelKey(records, key){
-    return (records || []).map(rec=>{
-      if(!isPlainObject(rec)) return rec;
-      const v = rec[key];
-      if(!isPlainObject(v)) return rec;
-      const merged = Object.assign({}, rec, v);
-      delete merged[key];
-      return merged;
-    });
+    return current;
   }
 
   function toCSV(rows, cols){
@@ -1503,50 +982,30 @@ updated_at`;
     }
   }
 
-  // ✅ inject defaults (aligned to schema lower-case column names)
+  // ✅ UPDATED defaults to schema keys (lowercase)
   function injectDefaultsIntoRecords(records){
     const modeVal = ($("defMode").value ?? "").trim();
     const tVal = ($("defTournament").value ?? "").trim();
     const sVal = ($("defStage").value ?? "").trim();
     const yVal = parseYearMaybe($("defYear").value);
 
-    const wVal = ($("defWeek").value ?? "").trim();
-    const dVal = ($("defDay").value ?? "").trim();
-    const mnVal = ($("defMatchNumber").value ?? "").trim(); // matchnumber
+    const wVal = parseIntLoose($("defWeek").value);
+    const dVal = parseIntLoose($("defDay").value);
+    const mnVal = parseIntLoose($("defMatchNumber").value);
 
     const midVal = ($("defMatchId").value ?? "").trim();
-    const tidVal = ($("defTeamId").value ?? "").trim();
-    const tnVal  = ($("defTeamName").value ?? "").trim();
 
     return records.map(r=>{
       if(!isPlainObject(r)) return r;
-
-      // normalize common accidental casing
-      if(!("mode" in r) && ("Mode" in r)) r.mode = r.Mode;
-      if(!("tournament" in r) && ("Tournament" in r)) r.tournament = r.Tournament;
-      if(!("stage" in r) && ("Stage" in r)) r.stage = r.Stage;
-      if(!("year" in r) && ("Year" in r)) r.year = r.Year;
-      if(!("week" in r) && ("Week" in r)) r.week = r.Week;
-      if(!("day" in r) && ("Day" in r)) r.day = r.Day;
-      if(!("matchnumber" in r) && ("MatchNumber" in r)) r.matchnumber = r.MatchNumber;
-      if(!("team_id" in r) && ("teamId" in r)) r.team_id = r.teamId;
-      if(!("team_name" in r) && ("teamName" in r)) r.team_name = r.teamName;
 
       if(!("mode" in r)) r.mode = modeVal || null;
       if(!("tournament" in r)) r.tournament = tVal || null;
       if(!("stage" in r)) r.stage = sVal || null;
       if(!("year" in r)) r.year = yVal;
 
-      if(!("week" in r)) r.week = wVal || null;
-      if(!("day" in r)) r.day = dVal || null;
-      if(!("matchnumber" in r)) r.matchnumber = mnVal || null;
-
-      if(!("team_id" in r) || r.team_id == null || r.team_id === ""){
-        r.team_id = tidVal || null;
-      }
-      if(!("team_name" in r) || r.team_name == null || r.team_name === ""){
-        if(tnVal) r.team_name = tnVal;
-      }
+      if(!("week" in r)) r.week = (wVal ?? null);
+      if(!("day" in r)) r.day = (dVal ?? null);
+      if(!("matchnumber" in r)) r.matchnumber = (mnVal ?? null);
 
       if(!("match_id" in r) || r.match_id == null || r.match_id === ""){
         const inferred = inferMatchIdFromRecord(r);
@@ -1602,12 +1061,7 @@ updated_at`;
     let shaped = BASE_RECORDS;
     if(explodePaths.length){
       try{
-        shaped = explodeObjects(BASE_RECORDS, explodePaths);
-
-        // ✅ schema match: if we exploded team_stats, lift it to root
-        if(explodePaths.includes("team_stats")) shaped = liftTopLevelKey(shaped, "team_stats");
-        if(explodePaths.includes("teamStats")) shaped = liftTopLevelKey(shaped, "teamStats");
-
+        shaped = explodeObjects(BASE_RECORDS, explodePaths, { hoist: $("hoistExplode").checked });
       }catch(err){
         setPill("bad","Explode failed");
         setStatus("parseStatus", `Explode error:\n${err.message}`, true);
@@ -1627,11 +1081,11 @@ updated_at`;
     const colSet = new Set();
     for(const r of flat) Object.keys(r).forEach(k => colSet.add(k));
 
-    // ✅ always include schema defaults in columns
-    ["match_id","team_id","mode","tournament","stage","year","week","day","matchnumber"].forEach(k => colSet.add(k));
+    // ✅ always include schema defaults
+    ["match_id","mode","tournament","stage","year","week","day","matchnumber"].forEach(k => colSet.add(k));
 
     const cols = Array.from(colSet);
-    const common = ["match_id","team_id","mode","tournament","stage","year","week","day","matchnumber"];
+    const common = ["match_id","mode","tournament","stage","year","week","day","matchnumber"];
     cols.sort((a,b)=>{
       const ia = common.indexOf(a), ib = common.indexOf(b);
       if(ia !== -1 || ib !== -1){
@@ -1643,13 +1097,9 @@ updated_at`;
     ROWS = flat;
     COLS = cols;
 
-    // ✅ default column config: include only schema columns (row_id excluded)
     COLCFG = {};
     for(const c of COLS){
-      const dbName = toDbSafeKey(c);
-      const inSchema = SCHEMA_SET.has(dbName);
-      const include = inSchema && dbName !== "row_id";
-      COLCFG[c] = { include, name: dbName };
+      COLCFG[c] = { include:true, name: toDbSafeKey(c) };
     }
 
     updateMeta();
@@ -1663,8 +1113,8 @@ updated_at`;
 Base rows: ${BASE_RECORDS.length}
 Current rows: ${ROWS.length} ${label}
 Columns: ${COLS.length}
-
-Schema filter: ON (non-schema columns default to unchecked)
+Hoist exploded object: ${$("hoistExplode").checked ? "ON" : "OFF"}
+Explode choices: ${DETECTED_PATHS.length ? DETECTED_PATHS.join(", ") : "(none)"}
 Preview shows up to ${$("maxRows").value} rows.`
     );
   }
@@ -1737,10 +1187,11 @@ Preview shows up to ${$("maxRows").value} rows.`
 Base rows: ${BASE_RECORDS.length}
 Records path: ${usedPath}
 
-For ff_stats_raw:
-1) Explode dataset: team_stats
-2) Flatten arrays of objects: index
-3) Ensure match_id + team_id are present`
+Tip for ff_stats_raw:
+- Records path: data.matches
+- Explode paths: team_stats
+- Hoist exploded object: ON
+- Flatten arrays: index`
     );
 
     rebuildDataset();
@@ -1836,26 +1287,19 @@ For ff_stats_raw:
       return;
     }
 
-    // quick schema-required sanity check
-    const missingRequired = rows.some(r => !r.match_id || !r.team_id);
-    if(missingRequired){
-      setStatus("upStatus", "Missing required columns: match_id and/or team_id. Set defaults or ensure JSON contains them.", true);
-      setProgress(0);
-      return;
-    }
-
     const chunks = [];
     for(let i=0;i<rows.length;i+=chunkSize){
       chunks.push(rows.slice(i, i+chunkSize));
     }
 
     let ok = 0;
+    let failed = 0;
 
     for(let i=0;i<chunks.length;i++){
       const batch = chunks[i];
       setStatus("upStatus", `Uploading ${i+1}/${chunks.length}…
 Batch size: ${batch.length}
-Uploaded: ${ok}/${total}
+Uploaded: ${ok}/${total} • Failed: ${failed}
 
 ${mode === "upsert" ? `onConflict: ${onConflict}` : ""}`);
       setProgress(Math.round((i / chunks.length) * 100));
@@ -1878,6 +1322,7 @@ ${mode === "upsert" ? `onConflict: ${onConflict}` : ""}`);
 
         ok += batch.length;
       }catch(e){
+        failed += batch.length;
         setStatus("upStatus", `Network/runtime error on batch ${i+1}:\n${e.message}`, true);
         setProgress(Math.round(((i+1)/chunks.length)*100));
         return;
@@ -1887,6 +1332,7 @@ ${mode === "upsert" ? `onConflict: ${onConflict}` : ""}`);
     setProgress(100);
     setStatus("upStatus", `Done ✅
 Uploaded: ${ok}/${total}
+Failed: ${failed}
 Mode: ${mode}${mode==="upsert" ? ` (onConflict: ${onConflict})` : ""}`);
   }
 
@@ -1899,12 +1345,13 @@ Mode: ${mode}${mode==="upsert" ? ` (onConflict: ${onConflict})` : ""}`);
     $("jsonText").value = "";
     $("pathText").value = "";
     $("explodePaths").value = "team_stats";
-    $("explodePick").value = "";
+    $("explodePick").value = "__input__";
     $("fetchUrl").value = "";
-    $("arrMode").value = "keep";
+    $("arrMode").value = "index";
     $("maxRows").value = "2000";
 
     $("autoExplode").checked = false;
+    $("hoistExplode").checked = true;
 
     $("defMode").value = "BR";
     $("defTournament").value = "";
@@ -1915,8 +1362,6 @@ Mode: ${mode}${mode==="upsert" ? ` (onConflict: ${onConflict})` : ""}`);
     $("defDay").value = "";
     $("defMatchNumber").value = "";
     $("defMatchId").value = "";
-    $("defTeamId").value = "";
-    $("defTeamName").value = "";
 
     $("autoTimestamps").checked = true;
 
@@ -1946,13 +1391,15 @@ Mode: ${mode}${mode==="upsert" ? ` (onConflict: ${onConflict})` : ""}`);
             map_id: 4,
             team_stats: [
               {
-                team_id: "1001",
+                team_id: 1001,
                 team_name: "ABC",
+                placement: 1,
+                kill_count: 10,
                 player_stats: [
                   { account_id: 111, nickname: "A1", kills: 3, damage: 812, skill_ids:[101,202,303] },
                   { account_id: 222, nickname: "A2", kills: 2, damage: 540, skill_ids:[404,505] },
-                  { account_id: 333, nickname: "A3", kills: 1, damage: 220, skill_ids:[606] },
-                  { account_id: 444, nickname: "A4", kills: 0, damage: 90,  skill_ids:[] }
+                  { account_id: 333, nickname: "A3", kills: 4, damage: 900, skill_ids:[606] },
+                  { account_id: 444, nickname: "A4", kills: 1, damage: 250, skill_ids:[707,808] }
                 ]
               }
             ]
@@ -1966,19 +1413,19 @@ Mode: ${mode}${mode==="upsert" ? ` (onConflict: ${onConflict})` : ""}`);
     $("maxRows").value = "2000";
 
     $("autoExplode").checked = false;
+    $("hoistExplode").checked = true;
 
     $("defMode").value = "BR";
     $("defTournament").value = "Sample Cup";
     $("defStage").value = "Finals";
     $("defYear").value = String(new Date().getFullYear());
-    $("defWeek").value = "W1";
-    $("defDay").value = "D1";
+    $("defWeek").value = "1";
+    $("defDay").value = "1";
     $("defMatchNumber").value = "1";
     $("defMatchId").value = "1725487677733611520";
-    $("defTeamId").value = "1001";
-    $("defTeamName").value = "ABC";
 
     $("explodePaths").value = "team_stats";
+    $("explodePick").value = "__input__";
     renderExplodePickOptions(explodePathsInputList());
 
     setPill("neutral","Sample loaded");
@@ -2061,6 +1508,10 @@ If so, fetch server-side (proxy/Edge Function) then paste the JSON here.`, true)
     }
   });
 
+  $("hoistExplode").addEventListener("change", ()=>{
+    if(BASE_RECORDS.length) rebuildDataset();
+  });
+
   $("btnUpload").addEventListener("click", uploadToSupabase);
 
   $("btnCSV").addEventListener("click", ()=>{
@@ -2095,6 +1546,7 @@ If so, fetch server-side (proxy/Edge Function) then paste the JSON here.`, true)
   (function initDefaults(){
     $("defYear").value = String(new Date().getFullYear());
     $("autoExplode").checked = false;
+    $("hoistExplode").checked = true;
     renderExplodePickOptions(explodePathsInputList());
     updateMeta();
     setPill("neutral","Waiting for JSON");
