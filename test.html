@@ -112,7 +112,6 @@
       outline:none;
     }
 
-    /* ✅ Prevent white-on-white dropdowns (options) */
     select{
       color-scheme: dark;
       background: rgba(0,0,0,.25);
@@ -309,16 +308,16 @@
           <div class="field" style="min-width:220px;flex:.8">
             <label>Flatten arrays of objects</label>
             <select id="arrMode">
-              <option value="keep">Keep as JSON</option>
-              <option value="index" selected>Explode to columns with [index] (teams[0].tag)</option>
+              <option value="keep" selected>Keep as JSON</option>
+              <option value="index">Explode to columns with [index] (teams[0].tag)</option>
             </select>
             <div class="hint">Index mode is good for small fixed arrays. For stats tables, use “Explode dataset”.</div>
           </div>
 
           <div class="field" style="min-width:260px;flex:1.2">
             <label>Explode paths (editable, comma-separated)</label>
-            <input id="explodePaths" type="text" value="team_stats" placeholder="e.g. team_stats"/>
-            <div class="hint">If Auto-detect is OFF, these are used as the dataset choices.</div>
+            <input id="explodePaths" type="text" value="team_stats,team_stats.player_stats" placeholder="e.g. team_stats,team_stats.player_stats"/>
+            <div class="hint">For <span class="kbd">ff_player_stats_raw</span>, this is the recommended default.</div>
           </div>
         </div>
 
@@ -400,6 +399,11 @@
           <b>Auto-rename for DB is ON:</b> keys like <span class="kbd">player_stats.account_id</span> become <span class="kbd">player_stats_account_id</span>.
           <br/>
           <b>skill_ids breakdown is ON:</b> arrays named <span class="kbd">skill_ids</span> become separate columns (skill_ids[0], skill_ids[1], …).
+          <br/><br/>
+          <b>Alignment fix (important):</b> When exploding <span class="kbd">team_stats</span> + <span class="kbd">team_stats.player_stats</span>, we auto-promote:
+          <span class="kbd">team_stats.* → team_id/team_name/booyah/...</span> and
+          <span class="kbd">team_stats.player_stats → player_stats.*</span>
+          to match <span class="kbd">ff_player_stats_raw</span>.
         </div>
 
         <div class="row">
@@ -481,9 +485,25 @@
 
             <div class="row">
               <div class="field">
+                <label>Schema guard (recommended)</label>
+                <div class="checkrow">
+                  <input id="schemaGuard" type="checkbox" checked />
+                  <div>
+                    <div style="font-size:12px">If table is <span class="kbd">ff_player_stats_raw</span>, only include columns that exist in that schema.</div>
+                    <div class="small">Prevents 400 Bad Request from extra/unknown columns.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="field">
                 <label>On conflict (Upsert only)</label>
-                <input id="sbConflict" type="text" placeholder="e.g. match_id,player_stats.account_id"/>
-                <div class="hint">You can type original keys; we auto-map to DB-safe names (dots → underscores).</div>
+                <input id="sbConflict" type="text" value="match_id,team_id,player_stats_account_id" placeholder="e.g. match_id,team_id,player_stats_account_id"/>
+                <div class="hint">
+                  Recommended for player stats: <span class="kbd">match_id,team_id,player_stats_account_id</span><br/>
+                  <b>Important:</b> Upsert needs a UNIQUE constraint/index on the same column set in Postgres.
+                </div>
               </div>
             </div>
 
@@ -574,6 +594,12 @@
     const s = (v ?? "").toString().trim();
     if(!s) return null;
     return /^[0-9]{4}$/.test(s) ? parseInt(s, 10) : s;
+  }
+
+  function parseIntMaybe(v){
+    const s = (v ?? "").toString().trim();
+    if(!s) return null;
+    return /^[0-9]+$/.test(s) ? parseInt(s, 10) : s;
   }
 
   function toDbSafeKey(key){
@@ -840,6 +866,81 @@
   }
 
   // -----------------------------
+  // Schema guard for ff_player_stats_raw
+  // -----------------------------
+  const FF_PLAYER_STATS_RAW_SCHEMA = new Set([
+    "id","match_id","Mode","Tournament","Stage","Year","Week","Day","MatchNumber",
+    "booyah","eliminated_team_name","final","is_double_kill_score","is_eliminated","is_focus",
+    "kill_count","killing_score","player_stats_account_id","player_stats_alok_heal_hP",
+    "player_stats_assists","player_stats_avatar_id","player_stats_bag_inv","player_stats_be_killed_time",
+    "player_stats_chrono_block_damage","player_stats_clothes_skin_headwear","player_stats_clothes_skin_pants",
+    "player_stats_clothes_skin_shoes","player_stats_clothes_skin_top",
+    "player_stats_coordinate_info_x_coordinate","player_stats_coordinate_info_y_coordinate",
+    "player_stats_damage","player_stats_dragon_grenade_kill","player_stats_enable_emulator_check",
+    "player_stats_grenade_kill","player_stats_grenade_use","player_stats_headshot_killtimes",
+    "player_stats_headshots","player_stats_helmet_inv","player_stats_hits","player_stats_hp_added",
+    "player_stats_hp_info_current_hp","player_stats_hp_info_current_shield_hp",
+    "player_stats_hp_info_total_hp","player_stats_hp_info_total_shield_hp",
+    "player_stats_ice_grenade_kill","player_stats_icewall_destroyed_times","player_stats_icewall_use",
+    "player_stats_is_in_bomb_zone","player_stats_is_in_safe_zone","player_stats_kill_distance",
+    "player_stats_kill_info","player_stats_kill_info_kill_distance","player_stats_kill_info_kill_timestamp",
+    "player_stats_kill_info_killer_id","player_stats_kill_info_player_killed_id","player_stats_kill_info_weapon_used_id",
+    "player_stats_kills","player_stats_knock_down","player_stats_knock_down_damage_info",
+    "player_stats_knock_down_damage_info_account_id","player_stats_knock_down_damage_info_damage",
+    "player_stats_knock_down_damage_info_damage_type","player_stats_knock_down_damage_info_nickname",
+    "player_stats_knock_down_damage_info_time_ms","player_stats_knockdown_real_damage","player_stats_leg_hits",
+    "player_stats_loadouts","player_stats_medkit_use","player_stats_moving_distance","player_stats_nb_skill_usages",
+    "player_stats_nickname","player_stats_oil_kill","player_stats_pet_skill_id","player_stats_pet_skill_name",
+    "player_stats_player_state","player_stats_rescue_times","player_stats_revive_teammate_nums",
+    "player_stats_revive_teammate_times","player_stats_revived_times","player_stats_shoots",
+    "player_stats_skill_autoflightbomb_hit_num","player_stats_skill_clu_scan_nums","player_stats_skill_dimitri_revived_nums",
+    "player_stats_skill_ids_0","player_stats_skill_ids_1","player_stats_skill_ids_2","player_stats_skill_ids_3",
+    "player_stats_skill_info_active_count","player_stats_skill_info_skill_active","player_stats_skill_info_skill_id",
+    "player_stats_skill_info_skill_name","player_stats_skill_kenta_reduce_damage","player_stats_skill_markicewall_damage",
+    "player_stats_skill_resist_exploded_num","player_stats_skill_silence_num","player_stats_skill_sonia_fatal_revival_nums",
+    "player_stats_skill_villain_damage","player_stats_skill_villain_recover","player_stats_skyler_ice_wall_destroy",
+    "player_stats_survival_time","player_stats_torso_hits","player_stats_vehicle_kill","player_stats_vehicle_move_distance",
+    "player_stats_vest_inv","player_stats_weapon_skin_ids","player_stats_weapon_usages","player_stats_weapon_usages_damage",
+    "player_stats_weapon_usages_headshots","player_stats_weapon_usages_hits","player_stats_weapon_usages_kills",
+    "player_stats_weapon_usages_shoots","player_stats_weapon_usages_weapon_id","player_stats_weapon_usages_weapon_name",
+    "ranking_score","team_id","team_name","win_rate","created_at","updated_at"
+  ]);
+
+  function isSchemaGuardActive(){
+    const t = ($("sbTable").value || "").trim().toLowerCase();
+    return $("schemaGuard").checked && t === "ff_player_stats_raw";
+  }
+
+  // -----------------------------
+  // Promotion to align exploded data with ff_player_stats_raw
+  // -----------------------------
+  function promoteTeamStatsForFFPlayerStatsRaw(rec){
+    if(!isPlainObject(rec)) return rec;
+
+    // If we have team_stats as an object (after exploding team_stats), promote its fields to root
+    const ts = rec.team_stats;
+    if(isPlainObject(ts)){
+      // promote nested player_stats if present (after exploding team_stats.player_stats it is an object)
+      if(isPlainObject(ts.player_stats) && !isPlainObject(rec.player_stats)){
+        rec.player_stats = ts.player_stats;
+      }
+
+      // avoid duplicating huge nested objects under team_stats
+      if("player_stats" in ts) delete ts.player_stats;
+
+      // copy fields from team_stats to root if root doesn't already have them
+      for(const [k,v] of Object.entries(ts)){
+        if(!(k in rec)) rec[k] = v;
+      }
+
+      delete rec.team_stats;
+    }
+
+    // If player_stats exists but isn't an object, leave it
+    return rec;
+  }
+
+  // -----------------------------
   // App state
   // -----------------------------
   let RAW = null;
@@ -865,6 +966,18 @@
       }
     }
     return {keys, names};
+  }
+
+  function applySchemaGuardToColCfg(){
+    if(!COLS.length) return;
+    if(!isSchemaGuardActive()) return;
+
+    for(const c of COLS){
+      const cfg = COLCFG[c] ?? (COLCFG[c] = { include:true, name: toDbSafeKey(c) });
+      const db = cfg.name || toDbSafeKey(c);
+      // Never include identity id by default
+      cfg.include = (db !== "id") && FF_PLAYER_STATS_RAW_SCHEMA.has(db);
+    }
   }
 
   function renderColList(){
@@ -898,6 +1011,11 @@
       inp.addEventListener("input", ()=>{
         const val = (inp.value || "").trim();
         COLCFG[c].name = val ? val : toDbSafeKey(c);
+        // if schema guard is active, re-apply include based on renamed key
+        if(isSchemaGuardActive()){
+          applySchemaGuardToColCfg();
+          renderColList();
+        }
         renderTable();
       });
 
@@ -941,7 +1059,6 @@
   function setStatus(el, msg, isError=false){
     $(el).textContent = msg;
     if(el === "upStatus"){
-      // small visual cue
       $(el).style.borderColor = isError ? "rgba(255,107,107,.35)" : "rgba(255,255,255,.10)";
     }
   }
@@ -954,7 +1071,7 @@
 
     const wVal = ($("defWeek").value ?? "").trim();
     const dVal = ($("defDay").value ?? "").trim();
-    const mnVal = ($("defMatchNumber").value ?? "").trim(); // ✅ MatchNumber
+    const mnVal = parseIntMaybe($("defMatchNumber").value); // MatchNumber is integer in table
 
     const midVal = ($("defMatchId").value ?? "").trim();
 
@@ -968,7 +1085,7 @@
 
       if(!("Week" in r)) r.Week = wVal || null;
       if(!("Day" in r)) r.Day = dVal || null;
-      if(!("MatchNumber" in r)) r.MatchNumber = mnVal || null; // ✅ MatchNumber
+      if(!("MatchNumber" in r)) r.MatchNumber = mnVal;
 
       if(!("match_id" in r) || r.match_id == null || r.match_id === ""){
         const inferred = inferMatchIdFromRecord(r);
@@ -997,7 +1114,7 @@
       sel.value = current;
       return;
     }
-    sel.value = "";
+    sel.value = "__input__";
   }
 
   function rebuildDataset(){
@@ -1032,6 +1149,9 @@
       }
     }
 
+    // Promote team_stats + player_stats to align with ff_player_stats_raw
+    shaped = shaped.map(promoteTeamStatsForFFPlayerStatsRaw);
+
     const flat = [];
     for(const rec of shaped){
       if(isPlainObject(rec)){
@@ -1044,7 +1164,7 @@
     const colSet = new Set();
     for(const r of flat) Object.keys(r).forEach(k => colSet.add(k));
 
-    // ✅ always include defaults in columns
+    // always include defaults in columns
     ["match_id","Mode","Tournament","Stage","Year","Week","Day","MatchNumber"].forEach(k => colSet.add(k));
 
     const cols = Array.from(colSet);
@@ -1065,6 +1185,12 @@
       COLCFG[c] = { include:true, name: toDbSafeKey(c) };
     }
 
+    // Default: never include identity id if it appears
+    if(COLCFG["id"]) COLCFG["id"].include = false;
+
+    // Apply schema guard if enabled + correct table name
+    applySchemaGuardToColCfg();
+
     updateMeta();
     renderColList();
     renderTable();
@@ -1077,7 +1203,11 @@ Base rows: ${BASE_RECORDS.length}
 Current rows: ${ROWS.length} ${label}
 Columns: ${COLS.length}
 Explode choices: ${DETECTED_PATHS.length ? DETECTED_PATHS.join(", ") : "(none)"}
-Preview shows up to ${$("maxRows").value} rows.`
+Preview shows up to ${$("maxRows").value} rows.
+
+Alignment:
+- Promoted team_stats.* → root (team_id, team_name, booyah, ...)
+- Promoted team_stats.player_stats → player_stats.*`
     );
   }
 
@@ -1170,12 +1300,21 @@ Choose "Explode dataset" to preview/upload player_stats, team_stats, etc (or use
 
     const addTimestamps = $("autoTimestamps").checked;
     const nowIso = new Date().toISOString();
+    const schemaActive = isSchemaGuardActive();
 
-    return sourceRows.map(r=>{
+    const omitted = new Set();
+
+    const outRows = sourceRows.map(r=>{
       const o = {};
       for(let i=0;i<keys.length;i++){
         const srcKey = keys[i];
         const dbKey = names[i];
+
+        if(schemaActive && !FF_PLAYER_STATS_RAW_SCHEMA.has(dbKey)){
+          omitted.add(dbKey);
+          continue;
+        }
+
         o[dbKey] = r[srcKey];
       }
 
@@ -1185,6 +1324,8 @@ Choose "Explode dataset" to preview/upload player_stats, team_stats, etc (or use
       }
       return o;
     });
+
+    return {rows: outRows, omitted: Array.from(omitted)};
   }
 
   function resolveOnConflict(raw){
@@ -1237,7 +1378,10 @@ Choose "Explode dataset" to preview/upload player_stats, team_stats, etc (or use
 
     const sb = supabase.createClient(url, key);
 
-    const rows = buildUploadRows(rowMode);
+    const built = buildUploadRows(rowMode);
+    const rows = built.rows;
+    const omitted = built.omitted;
+
     const total = rows.length;
     if(!total){
       setStatus("upStatus", "Nothing to upload after column selection.", true);
@@ -1259,7 +1403,7 @@ Choose "Explode dataset" to preview/upload player_stats, team_stats, etc (or use
 Batch size: ${batch.length}
 Uploaded: ${ok}/${total} • Failed: ${failed}
 
-${mode === "upsert" ? `onConflict: ${onConflict}` : ""}`);
+${mode === "upsert" ? `onConflict: ${onConflict}` : ""}${omitted.length ? `\nSchema-guard omitted: ${omitted.slice(0,12).join(", ")}${omitted.length>12?" …":""}` : ""}`);
       setProgress(Math.round((i / chunks.length) * 100));
 
       try{
@@ -1270,7 +1414,6 @@ ${mode === "upsert" ? `onConflict: ${onConflict}` : ""}`);
           res = await sb.from(table).upsert(batch, { onConflict: onConflict.replace(/\s+/g,"") });
         }
 
-        // ✅ show full JSON error in UI + console
         const error = res.error;
         if (error) {
           console.error(error);
@@ -1292,7 +1435,8 @@ ${mode === "upsert" ? `onConflict: ${onConflict}` : ""}`);
     setStatus("upStatus", `Done ✅
 Uploaded: ${ok}/${total}
 Failed: ${failed}
-Mode: ${mode}${mode==="upsert" ? ` (onConflict: ${onConflict})` : ""}`);
+Mode: ${mode}${mode==="upsert" ? ` (onConflict: ${onConflict})` : ""}
+${omitted.length ? `\nSchema-guard omitted ${omitted.length} unknown cols.` : ""}`);
   }
 
   // -----------------------------
@@ -1303,8 +1447,8 @@ Mode: ${mode}${mode==="upsert" ? ` (onConflict: ${onConflict})` : ""}`);
   $("btnClear").addEventListener("click", ()=>{
     $("jsonText").value = "";
     $("pathText").value = "";
-    $("explodePaths").value = "team_stats";
-    $("explodePick").value = "";
+    $("explodePaths").value = "team_stats,team_stats.player_stats";
+    $("explodePick").value = "__input__";
     $("fetchUrl").value = "";
     $("arrMode").value = "keep";
     $("maxRows").value = "2000";
@@ -1318,7 +1462,7 @@ Mode: ${mode}${mode==="upsert" ? ` (onConflict: ${onConflict})` : ""}`);
     $("defYear").value = String(new Date().getFullYear());
     $("defWeek").value = "";
     $("defDay").value = "";
-    $("defMatchNumber").value = "";   // ✅
+    $("defMatchNumber").value = "";
     $("defMatchId").value = "";
 
     $("autoTimestamps").checked = true;
@@ -1346,10 +1490,13 @@ Mode: ${mode}${mode==="upsert" ? ` (onConflict: ${onConflict})` : ""}`);
         matches: [
           {
             match_id: "1725487677733611520",
-            map_id: 4,
             team_stats: [
               {
+                team_id: 10,
                 team_name: "ABC",
+                booyah: true,
+                kill_count: 7,
+                ranking_score: 12,
                 player_stats: [
                   { account_id: 111, nickname: "A1", kills: 3, damage: 812, skill_ids:[101,202,303] },
                   { account_id: 222, nickname: "A2", kills: 2, damage: 540, skill_ids:[404,505] }
@@ -1373,10 +1520,11 @@ Mode: ${mode}${mode==="upsert" ? ` (onConflict: ${onConflict})` : ""}`);
     $("defYear").value = String(new Date().getFullYear());
     $("defWeek").value = "W1";
     $("defDay").value = "D1";
-    $("defMatchNumber").value = "1"; // ✅
+    $("defMatchNumber").value = "1";
     $("defMatchId").value = "1725487677733611520";
 
-    $("explodePaths").value = "team_stats";
+    $("explodePick").value = "__input__";
+    $("explodePaths").value = "team_stats,team_stats.player_stats";
     renderExplodePickOptions(explodePathsInputList());
 
     setPill("neutral","Sample loaded");
@@ -1427,6 +1575,8 @@ If so, fetch server-side (proxy/Edge Function) then paste the JSON here.`, true)
 
   $("btnAll").addEventListener("click", ()=>{
     for(const c of COLS){ COLCFG[c].include = true; }
+    // If schema guard is active, clamp again
+    applySchemaGuardToColCfg();
     renderColList(); renderTable();
   });
 
@@ -1459,6 +1609,15 @@ If so, fetch server-side (proxy/Edge Function) then paste the JSON here.`, true)
     }
   });
 
+  $("schemaGuard").addEventListener("change", ()=>{
+    if(BASE_RECORDS.length) rebuildDataset();
+  });
+
+  $("sbTable").addEventListener("input", ()=>{
+    // If table name changes, reapply schema guard effect
+    if(BASE_RECORDS.length) rebuildDataset();
+  });
+
   $("btnUpload").addEventListener("click", uploadToSupabase);
 
   $("btnCSV").addEventListener("click", ()=>{
@@ -1466,7 +1625,8 @@ If so, fetch server-side (proxy/Edge Function) then paste the JSON here.`, true)
     const {keys, names} = getSelectedCols();
     if(!keys.length){ alert("No columns selected."); return; }
     const rowMode = $("sbRows").value;
-    const rows = buildUploadRows(rowMode);
+    const built = buildUploadRows(rowMode);
+    const rows = built.rows;
 
     const cols = names;
     const normalized = rows.map(r=>{
@@ -1485,14 +1645,16 @@ If so, fetch server-side (proxy/Edge Function) then paste the JSON here.`, true)
   $("btnJSON").addEventListener("click", ()=>{
     if(!ROWS.length){ alert("Parse JSON first."); return; }
     const rowMode = $("sbRows").value;
-    const rows = buildUploadRows(rowMode);
-    downloadText("rows_export.json", JSON.stringify(rows, null, 2), "application/json");
+    const built = buildUploadRows(rowMode);
+    downloadText("rows_export.json", JSON.stringify(built.rows, null, 2), "application/json");
   });
 
   // init defaults
   (function initDefaults(){
     $("defYear").value = String(new Date().getFullYear());
     $("autoExplode").checked = false;
+    $("explodePick").value = "__input__";
+    $("arrMode").value = "keep";
     renderExplodePickOptions(explodePathsInputList());
     updateMeta();
     setPill("neutral","Waiting for JSON");
