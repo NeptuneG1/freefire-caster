@@ -195,6 +195,8 @@
       padding:10px 12px;
       border-bottom:1px solid rgba(255,255,255,.10);
       background: rgba(0,0,0,.18);
+      gap:10px;
+      flex-wrap:wrap;
     }
     .colbox .colbd{max-height: 260px;overflow:auto}
     .colrow{
@@ -241,6 +243,11 @@
       background: rgba(0,0,0,.18);
     }
     .checkrow input{width:auto}
+
+    /* auth area */
+    .auth-body{padding:12px}
+    .auth-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    .auth-meta{display:flex;flex-direction:column;gap:4px}
   </style>
 </head>
 <body>
@@ -469,6 +476,52 @@
               </div>
             </div>
 
+            <!-- ✅ AUTH IDENTITY BOX -->
+            <div class="colbox" style="margin:10px 0 0">
+              <div class="colhd">
+                <div class="auth-meta">
+                  <div style="font-size:12px">Auth identity</div>
+                  <div class="small">Sign in so your inserts/upserts can pass RLS (if enabled).</div>
+                </div>
+                <div class="pill" id="authPill">
+                  <span class="dot neutral"></span><span id="authText">Anon</span>
+                </div>
+              </div>
+              <div class="auth-body">
+                <div class="small" id="authMeta">Enter URL + anon key to load session.</div>
+
+                <div class="row" style="margin-top:10px;align-items:flex-end">
+                  <div class="field" style="min-width:220px">
+                    <label>Email</label>
+                    <input id="authEmail" type="text" placeholder="you@example.com" autocomplete="email"/>
+                  </div>
+                  <div class="field" style="min-width:220px">
+                    <label>Password</label>
+                    <input id="authPass" type="password" placeholder="••••••••" autocomplete="current-password"/>
+                  </div>
+                </div>
+
+                <div class="auth-actions" style="margin-top:8px">
+                  <button class="btn" id="btnAuthRefresh">Refresh</button>
+                  <button class="btn primary" id="btnSignIn">Sign in</button>
+                  <button class="btn" id="btnSignUp">Sign up</button>
+                  <button class="btn bad" id="btnSignOut">Sign out</button>
+                </div>
+
+                <div class="row" style="margin-top:10px">
+                  <div class="field">
+                    <label>Attach signed-in user id to column (optional)</label>
+                    <input id="authUserCol" type="text" placeholder="e.g. created_by (leave blank to disable)"/>
+                    <div class="small">
+                      If set and you are signed in, uploader will set that column on every row = your auth user id.
+                      <br/>If Schema Guard is ON for <span class="kbd">ff_player_stats_raw</span>, this column must exist in that table schema (or disable Schema Guard).
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- /AUTH -->
+
             <div class="row">
               <div class="field" style="flex:1">
                 <label>Table name</label>
@@ -577,6 +630,15 @@
     dot.classList.remove("good","bad","neutral");
     dot.classList.add(state);
     $("pillText").textContent = text;
+  }
+
+  function setAuthPill(state, text, meta){
+    const pill = $("authPill");
+    const dot = pill.querySelector(".dot");
+    dot.classList.remove("good","bad","neutral");
+    dot.classList.add(state);
+    $("authText").textContent = text || "";
+    $("authMeta").textContent = meta || "";
   }
 
   function safeString(v){
@@ -865,6 +927,150 @@
       .filter(Boolean);
   }
 
+  /* -----------------------------
+     ✅ Better Supabase error formatting
+     ----------------------------- */
+  function formatSupabaseError(err, fallbackPrefix="Supabase error"){
+    if(!err) return `${fallbackPrefix}: (unknown)`;
+    const parts = [];
+    const read = (k) => {
+      try { return err?.[k]; } catch { return undefined; }
+    };
+    const msg = read("message");
+    const code = read("code");
+    const details = read("details");
+    const hint = read("hint");
+
+    if(msg) parts.push(`message: ${msg}`);
+    if(code) parts.push(`code: ${code}`);
+    if(details) parts.push(`details: ${details}`);
+    if(hint) parts.push(`hint: ${hint}`);
+
+    // if SupabaseError has non-enumerable props, JSON.stringify -> {}
+    if(!parts.length){
+      try { parts.push(String(err)); } catch {}
+      try {
+        const json = JSON.stringify(err, null, 2);
+        if(json && json !== "{}") parts.push(json);
+      } catch {}
+    }
+
+    return parts.join("\n");
+  }
+
+  /* -----------------------------
+     ✅ Supabase client (cached) + Auth UI
+     ----------------------------- */
+  let SB = null;
+  let SB_URL = "";
+  let SB_KEY = "";
+  let SB_SUB = null;
+
+  function getSbClient(){
+    const url = ($("sbUrl").value || "").trim();
+    const key = ($("sbKey").value || "").trim();
+    if(!url || !key) return null;
+
+    if(SB && SB_URL === url && SB_KEY === key) return SB;
+
+    SB_URL = url;
+    SB_KEY = key;
+
+    SB = supabase.createClient(url, key, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
+
+    try{
+      if(SB_SUB?.unsubscribe) SB_SUB.unsubscribe();
+      const { data } = SB.auth.onAuthStateChange((_event, _session) => {
+        refreshAuthUI().catch(()=>{});
+      });
+      SB_SUB = data?.subscription || null;
+    }catch(_e){}
+
+    return SB;
+  }
+
+  async function refreshAuthUI(){
+    const sb = getSbClient();
+    if(!sb){
+      setAuthPill("neutral", "Anon", "Enter URL + anon key to load session.");
+      return;
+    }
+    const { data, error } = await sb.auth.getSession();
+    if(error){
+      setAuthPill("bad", "Auth error", formatSupabaseError(error, "Auth error"));
+      return;
+    }
+    const session = data?.session || null;
+    const user = session?.user || null;
+
+    if(user){
+      const role = user.role || "authenticated";
+      const email = user.email || "(no email)";
+      setAuthPill("good", "Signed in", `${email} • ${role}\nuid: ${user.id}`);
+    }else{
+      setAuthPill("neutral", "Anon", "No active session (writes may fail if RLS requires auth).");
+    }
+  }
+
+  async function authSignIn(){
+    const sb = getSbClient();
+    if(!sb){
+      setAuthPill("bad", "No client", "Fill Supabase URL + anon key first.");
+      return;
+    }
+    const email = ($("authEmail").value || "").trim();
+    const password = ($("authPass").value || "").trim();
+    if(!email || !password){
+      setAuthPill("bad", "Missing", "Enter email + password.");
+      return;
+    }
+    setAuthPill("neutral", "Signing in…", "Please wait.");
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if(error){
+      setAuthPill("bad", "Sign-in failed", formatSupabaseError(error, "Sign-in failed"));
+      return;
+    }
+    await refreshAuthUI();
+  }
+
+  async function authSignUp(){
+    const sb = getSbClient();
+    if(!sb){
+      setAuthPill("bad", "No client", "Fill Supabase URL + anon key first.");
+      return;
+    }
+    const email = ($("authEmail").value || "").trim();
+    const password = ($("authPass").value || "").trim();
+    if(!email || !password){
+      setAuthPill("bad", "Missing", "Enter email + password.");
+      return;
+    }
+    setAuthPill("neutral", "Signing up…", "If email confirmation is enabled, check your inbox.");
+    const { error } = await sb.auth.signUp({ email, password });
+    if(error){
+      setAuthPill("bad", "Sign-up failed", formatSupabaseError(error, "Sign-up failed"));
+      return;
+    }
+    await refreshAuthUI();
+  }
+
+  async function authSignOut(){
+    const sb = getSbClient();
+    if(!sb){
+      setAuthPill("neutral", "Anon", "No Supabase client.");
+      return;
+    }
+    setAuthPill("neutral", "Signing out…", "");
+    const { error } = await sb.auth.signOut();
+    if(error){
+      setAuthPill("bad", "Sign-out failed", formatSupabaseError(error, "Sign-out failed"));
+      return;
+    }
+    await refreshAuthUI();
+  }
+
   // -----------------------------
   // Schema guard for ff_player_stats_raw
   // -----------------------------
@@ -917,26 +1123,18 @@
   function promoteTeamStatsForFFPlayerStatsRaw(rec){
     if(!isPlainObject(rec)) return rec;
 
-    // If we have team_stats as an object (after exploding team_stats), promote its fields to root
     const ts = rec.team_stats;
     if(isPlainObject(ts)){
-      // promote nested player_stats if present (after exploding team_stats.player_stats it is an object)
       if(isPlainObject(ts.player_stats) && !isPlainObject(rec.player_stats)){
         rec.player_stats = ts.player_stats;
       }
-
-      // avoid duplicating huge nested objects under team_stats
       if("player_stats" in ts) delete ts.player_stats;
 
-      // copy fields from team_stats to root if root doesn't already have them
       for(const [k,v] of Object.entries(ts)){
         if(!(k in rec)) rec[k] = v;
       }
-
       delete rec.team_stats;
     }
-
-    // If player_stats exists but isn't an object, leave it
     return rec;
   }
 
@@ -975,7 +1173,6 @@
     for(const c of COLS){
       const cfg = COLCFG[c] ?? (COLCFG[c] = { include:true, name: toDbSafeKey(c) });
       const db = cfg.name || toDbSafeKey(c);
-      // Never include identity id by default
       cfg.include = (db !== "id") && FF_PLAYER_STATS_RAW_SCHEMA.has(db);
     }
   }
@@ -1011,7 +1208,6 @@
       inp.addEventListener("input", ()=>{
         const val = (inp.value || "").trim();
         COLCFG[c].name = val ? val : toDbSafeKey(c);
-        // if schema guard is active, re-apply include based on renamed key
         if(isSchemaGuardActive()){
           applySchemaGuardToColCfg();
           renderColList();
@@ -1071,7 +1267,7 @@
 
     const wVal = ($("defWeek").value ?? "").trim();
     const dVal = ($("defDay").value ?? "").trim();
-    const mnVal = parseIntMaybe($("defMatchNumber").value); // MatchNumber is integer in table
+    const mnVal = parseIntMaybe($("defMatchNumber").value);
 
     const midVal = ($("defMatchId").value ?? "").trim();
 
@@ -1149,7 +1345,6 @@
       }
     }
 
-    // Promote team_stats + player_stats to align with ff_player_stats_raw
     shaped = shaped.map(promoteTeamStatsForFFPlayerStatsRaw);
 
     const flat = [];
@@ -1163,8 +1358,6 @@
 
     const colSet = new Set();
     for(const r of flat) Object.keys(r).forEach(k => colSet.add(k));
-
-    // always include defaults in columns
     ["match_id","Mode","Tournament","Stage","Year","Week","Day","MatchNumber"].forEach(k => colSet.add(k));
 
     const cols = Array.from(colSet);
@@ -1185,10 +1378,8 @@
       COLCFG[c] = { include:true, name: toDbSafeKey(c) };
     }
 
-    // Default: never include identity id if it appears
     if(COLCFG["id"]) COLCFG["id"].include = false;
 
-    // Apply schema guard if enabled + correct table name
     applySchemaGuardToColCfg();
 
     updateMeta();
@@ -1292,7 +1483,7 @@ Choose "Explode dataset" to preview/upload player_stats, team_stats, etc (or use
     $("bar").style.width = `${Math.max(0, Math.min(100, pct))}%`;
   }
 
-  function buildUploadRows(limitMode){
+  function buildUploadRows(limitMode, opts={}){
     const {keys, names} = getSelectedCols();
     const sourceRows = (limitMode === "preview")
       ? ROWS.slice(0, parseInt($("maxRows").value,10))
@@ -1301,6 +1492,9 @@ Choose "Explode dataset" to preview/upload player_stats, team_stats, etc (or use
     const addTimestamps = $("autoTimestamps").checked;
     const nowIso = new Date().toISOString();
     const schemaActive = isSchemaGuardActive();
+
+    const userId = opts.userId || null;
+    const userCol = (opts.userCol || "").trim();
 
     const omitted = new Set();
 
@@ -1316,6 +1510,15 @@ Choose "Explode dataset" to preview/upload player_stats, team_stats, etc (or use
         }
 
         o[dbKey] = r[srcKey];
+      }
+
+      if(userCol && userId){
+        // only attach if it won't be blocked by schema guard
+        if(!schemaActive || FF_PLAYER_STATS_RAW_SCHEMA.has(userCol)){
+          if(!(userCol in o)) o[userCol] = userId;
+        } else {
+          omitted.add(userCol);
+        }
       }
 
       if(addTimestamps){
@@ -1376,9 +1579,23 @@ Choose "Explode dataset" to preview/upload player_stats, team_stats, etc (or use
     setStatus("upStatus", "Preparing rows…");
     setProgress(0);
 
-    const sb = supabase.createClient(url, key);
+    const sb = getSbClient();
+    if(!sb){
+      setStatus("upStatus", "Could not create Supabase client. Check URL/key.", true);
+      setProgress(0);
+      return;
+    }
 
-    const built = buildUploadRows(rowMode);
+    // pull identity
+    let userId = null;
+    try{
+      const { data } = await sb.auth.getSession();
+      userId = data?.session?.user?.id || null;
+    }catch(_e){}
+
+    const userCol = ($("authUserCol").value || "").trim();
+
+    const built = buildUploadRows(rowMode, { userId, userCol });
     const rows = built.rows;
     const omitted = built.omitted;
 
@@ -1402,8 +1619,9 @@ Choose "Explode dataset" to preview/upload player_stats, team_stats, etc (or use
       setStatus("upStatus", `Uploading ${i+1}/${chunks.length}…
 Batch size: ${batch.length}
 Uploaded: ${ok}/${total} • Failed: ${failed}
+Auth: ${userId ? `signed-in (${userId})` : "anon"}
 
-${mode === "upsert" ? `onConflict: ${onConflict}` : ""}${omitted.length ? `\nSchema-guard omitted: ${omitted.slice(0,12).join(", ")}${omitted.length>12?" …":""}` : ""}`);
+${mode === "upsert" ? `onConflict: ${onConflict}` : ""}${omitted.length ? `\nOmitted: ${omitted.slice(0,12).join(", ")}${omitted.length>12?" …":""}` : ""}`);
       setProgress(Math.round((i / chunks.length) * 100));
 
       try{
@@ -1414,10 +1632,11 @@ ${mode === "upsert" ? `onConflict: ${onConflict}` : ""}${omitted.length ? `\nSch
           res = await sb.from(table).upsert(batch, { onConflict: onConflict.replace(/\s+/g,"") });
         }
 
-        const error = res.error;
-        if (error) {
-          console.error(error);
-          setStatus("upStatus", "Supabase error:\n" + JSON.stringify(error, null, 2), true);
+        if(res?.error || (res?.status && res.status >= 400)){
+          const statusLine = `HTTP: ${res?.status ?? "?"} ${res?.statusText ?? ""}`.trim();
+          const msg = res?.error ? formatSupabaseError(res.error) : "Request failed (no error payload).";
+          console.error(res?.error || res);
+          setStatus("upStatus", `${statusLine}\n${msg}`, true);
           setProgress(Math.round(((i+1)/chunks.length)*100));
           return;
         }
@@ -1435,8 +1654,9 @@ ${mode === "upsert" ? `onConflict: ${onConflict}` : ""}${omitted.length ? `\nSch
     setStatus("upStatus", `Done ✅
 Uploaded: ${ok}/${total}
 Failed: ${failed}
+Auth: ${userId ? `signed-in (${userId})` : "anon"}
 Mode: ${mode}${mode==="upsert" ? ` (onConflict: ${onConflict})` : ""}
-${omitted.length ? `\nSchema-guard omitted ${omitted.length} unknown cols.` : ""}`);
+${omitted.length ? `\nOmitted ${omitted.length} cols.` : ""}`);
   }
 
   // -----------------------------
@@ -1467,6 +1687,10 @@ ${omitted.length ? `\nSchema-guard omitted ${omitted.length} unknown cols.` : ""
 
     $("autoTimestamps").checked = true;
 
+    $("authEmail").value = "";
+    $("authPass").value = "";
+    $("authUserCol").value = "";
+
     RAW = null;
     BASE_RECORDS = [];
     DETECTED_PATHS = [];
@@ -1482,6 +1706,7 @@ ${omitted.length ? `\nSchema-guard omitted ${omitted.length} unknown cols.` : ""
     setProgress(0);
 
     renderExplodePickOptions(explodePathsInputList());
+    refreshAuthUI().catch(()=>{});
   });
 
   $("btnSample").addEventListener("click", ()=>{
@@ -1575,7 +1800,6 @@ If so, fetch server-side (proxy/Edge Function) then paste the JSON here.`, true)
 
   $("btnAll").addEventListener("click", ()=>{
     for(const c of COLS){ COLCFG[c].include = true; }
-    // If schema guard is active, clamp again
     applySchemaGuardToColCfg();
     renderColList(); renderTable();
   });
@@ -1614,7 +1838,6 @@ If so, fetch server-side (proxy/Edge Function) then paste the JSON here.`, true)
   });
 
   $("sbTable").addEventListener("input", ()=>{
-    // If table name changes, reapply schema guard effect
     if(BASE_RECORDS.length) rebuildDataset();
   });
 
@@ -1649,6 +1872,16 @@ If so, fetch server-side (proxy/Edge Function) then paste the JSON here.`, true)
     downloadText("rows_export.json", JSON.stringify(built.rows, null, 2), "application/json");
   });
 
+  /* ✅ Auth button events */
+  $("btnAuthRefresh").addEventListener("click", ()=>refreshAuthUI().catch(()=>{}));
+  $("btnSignIn").addEventListener("click", ()=>authSignIn().catch(()=>{}));
+  $("btnSignUp").addEventListener("click", ()=>authSignUp().catch(()=>{}));
+  $("btnSignOut").addEventListener("click", ()=>authSignOut().catch(()=>{}));
+
+  /* refresh auth UI when URL/key changes */
+  $("sbUrl").addEventListener("change", ()=>refreshAuthUI().catch(()=>{}));
+  $("sbKey").addEventListener("change", ()=>refreshAuthUI().catch(()=>{}));
+
   // init defaults
   (function initDefaults(){
     $("defYear").value = String(new Date().getFullYear());
@@ -1658,6 +1891,7 @@ If so, fetch server-side (proxy/Edge Function) then paste the JSON here.`, true)
     renderExplodePickOptions(explodePathsInputList());
     updateMeta();
     setPill("neutral","Waiting for JSON");
+    refreshAuthUI().catch(()=>{});
   })();
 </script>
 </body>
