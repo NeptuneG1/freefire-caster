@@ -95,10 +95,7 @@
     .card .hd h2{font-size:14px;margin:0;letter-spacing:.25px}
     .card .bd{padding:14px}
 
-    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
-    .field{display:flex;flex-direction:column;gap:6px;min-width:220px;flex:1}
     label{font-size:12px;color:var(--muted)}
-
     input[type="text"], select{
       width:100%;
       border:1px solid rgba(255,255,255,.10);
@@ -121,6 +118,7 @@
       background: rgba(255,255,255,.04);
       color:var(--ink);
       display:inline-flex;gap:8px;align-items:center;
+      white-space:nowrap;
     }
     .dot{width:8px;height:8px;border-radius:50%}
     .dot.good{background:var(--good)}
@@ -137,6 +135,47 @@
       color: rgba(244,246,255,.92);
       line-height:1.35;
       white-space:pre-wrap;
+    }
+
+    /* ✅ more presentable “Select Team” layout */
+    .selectShell{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.16);
+      border-radius: var(--radius);
+      padding:12px;
+    }
+    .selectTop{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom:10px;
+    }
+    .selectTitle{
+      display:flex; flex-direction:column; gap:4px;
+    }
+    .selectTitle .t{
+      font-weight:800; letter-spacing:.2px;
+    }
+    .selectTitle .s{
+      font-size:12px; color:var(--muted);
+    }
+    .filtersGrid{
+      display:grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap:10px;
+      align-items:end;
+    }
+    .field{display:flex;flex-direction:column;gap:6px}
+    .span12{grid-column: span 12;}
+    .span6{grid-column: span 6;}
+    .span4{grid-column: span 4;}
+    .span3{grid-column: span 3;}
+    .span2{grid-column: span 2;}
+
+    @media (max-width: 980px){
+      .span6,.span4,.span3,.span2{grid-column: span 12;}
     }
 
     .summary{
@@ -253,6 +292,7 @@
     .small{font-size:11px;color:var(--muted);font-family: var(--sans)}
   </style>
 </head>
+
 <body>
 <header>
   <div class="wrap">
@@ -283,69 +323,99 @@
 
     <section class="card">
       <div class="hd">
-        <h2>1) Select Team</h2>
-        <span class="pill"><span class="dot neutral"></span><span id="metaText">—</span></span>
+        <h2>Team & Filters</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <span class="pill"><span class="dot neutral"></span><span id="metaText">—</span></span>
+          <span class="pill" title="Auto-build report when filters change"><span class="dot good"></span><span id="autoText">Auto Build: ON</span></span>
+        </div>
       </div>
+
       <div class="bd">
-        <div class="row">
-          <div class="field" style="min-width:260px;flex:1.1">
-            <label>Team (team_name)</label>
-            <select id="teamSel">
-              <option value="">Loading…</option>
-            </select>
-            <div class="hint">Shows players that belong to the selected team (from <span style="font-family:var(--mono)">team_name</span>).</div>
+        <div class="selectShell">
+          <div class="selectTop">
+            <div class="selectTitle">
+              <div class="t">Select a team</div>
+              <div class="s">Report updates automatically when you change filters.</div>
+            </div>
+            <div class="pill" id="scopePill"><span class="dot neutral"></span><span id="scopeTextMini">All rows</span></div>
           </div>
 
-          <!-- ✅ Filters changed to dropdowns (auto-filled from data for selected team) -->
-          <div class="field" style="min-width:220px;flex:.9">
-            <label>Filter: Tournament</label>
-            <select id="fTournament" disabled>
-              <option value="">All</option>
-            </select>
+          <div class="filtersGrid">
+            <div class="field span6">
+              <label>Team (team_name)</label>
+              <select id="teamSel">
+                <option value="">Loading…</option>
+              </select>
+              <div class="hint">Shows players that belong to the selected team.</div>
+            </div>
+
+            <div class="field span3">
+              <label>Mode</label>
+              <select id="fMode" disabled>
+                <option value="">All</option>
+              </select>
+            </div>
+
+            <div class="field span3">
+              <label>Year</label>
+              <select id="fYear" disabled>
+                <option value="">All</option>
+              </select>
+            </div>
+
+            <div class="field span4">
+              <label>Tournament</label>
+              <select id="fTournament" disabled>
+                <option value="">All</option>
+              </select>
+            </div>
+
+            <div class="field span4">
+              <label>Stage</label>
+              <select id="fStage" disabled>
+                <option value="">All</option>
+              </select>
+            </div>
+
+            <div class="field span4">
+              <label>Kill range (m)</label>
+              <select id="rangePreset">
+                <option value="15,50" selected>Close ≤15 • Mid 16–50 • Long &gt;50</option>
+                <option value="10,40">Close ≤10 • Mid 11–40 • Long &gt;40</option>
+                <option value="20,60">Close ≤20 • Mid 21–60 • Long &gt;60</option>
+              </select>
+            </div>
+
+            <div class="field span4">
+              <label>Week</label>
+              <select id="fWeek" disabled>
+                <option value="">All</option>
+              </select>
+            </div>
+
+            <div class="field span4">
+              <label>Day</label>
+              <select id="fDay" disabled>
+                <option value="">All</option>
+              </select>
+            </div>
+
+            <div class="field span4">
+              <label>Match #</label>
+              <select id="fMatchNum" disabled>
+                <option value="">All</option>
+              </select>
+            </div>
           </div>
 
-          <div class="field" style="min-width:200px;flex:.6">
-            <label>Filter: Stage</label>
-            <select id="fStage" disabled>
-              <option value="">All</option>
-            </select>
-          </div>
-
-          <div class="field" style="min-width:150px;flex:.4">
-            <label>Filter: Year</label>
-            <select id="fYear" disabled>
-              <option value="">All</option>
-            </select>
-          </div>
-
-          <div class="field" style="min-width:160px;flex:.5">
-            <label>Filter: Match ID</label>
-            <select id="fMatchId" disabled>
-              <option value="">All</option>
-            </select>
-          </div>
-
-          <div class="field" style="min-width:140px;flex:.35">
-            <label>Kill range (m)</label>
-            <select id="rangePreset">
-              <option value="15,50" selected>Close ≤15 • Mid 16–50 • Long &gt;50</option>
-              <option value="10,40">Close ≤10 • Mid 11–40 • Long &gt;40</option>
-              <option value="20,60">Close ≤20 • Mid 21–60 • Long &gt;60</option>
-            </select>
-          </div>
+          <div class="status" id="status">Ready.</div>
         </div>
-
-        <div class="row" style="justify-content:flex-end;align-items:center">
-          <button class="btn primary" id="btnRun">Build Report</button>
-        </div>
-
-        <div class="status" id="status">Ready.</div>
       </div>
     </section>
 
     <section class="card" id="reportCard" style="display:none">
       <div class="hd">
-        <h2>2) Team Summary</h2>
+        <h2>Team Summary</h2>
         <span class="pill"><span class="dot neutral"></span><span id="scopeText">—</span></span>
       </div>
       <div class="bd">
@@ -366,9 +436,10 @@
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE";
   const TABLE = "ff_stats_raw";
 
-  // minimal columns needed for your report (team rows)
+  // ✅ includes ranking_score for placement total
   const SELECT_COLS = [
     "owner_id","match_id","Mode","Tournament","Stage","Year","Week","Day","MatchNumber",
+    "ranking_score",
     "team_name","eliminated_team_name",
     "player_stats_account_id","player_stats_nickname",
     "player_stats_kills","player_stats_assists",
@@ -390,8 +461,8 @@
     "player_stats_weapon_usages"
   ].join(",");
 
-  // meta-only cols for building dropdown filters
-  const META_COLS = ["Tournament","Stage","Year","match_id"].join(",");
+  // ✅ meta rows for smart dropdown options (cascading)
+  const META_COLS = ["Tournament","Stage","Year","Mode","Week","Day","MatchNumber"].join(",");
 
   // =============================
   // Helpers
@@ -465,6 +536,14 @@
     $("authText").textContent = text;
   }
 
+  function setScopePill(text, state="neutral"){
+    const pill = $("scopePill");
+    const dot = pill.querySelector(".dot");
+    dot.classList.remove("good","bad","neutral");
+    dot.classList.add(state);
+    $("scopeTextMini").textContent = text;
+  }
+
   function setStatus(msg, isErr=false){
     $("status").textContent = msg;
     $("status").style.borderColor = isErr ? "rgba(255,107,107,.35)" : "rgba(255,255,255,.10)";
@@ -476,7 +555,7 @@
     return out;
   }
 
-  // ✅ W-D-M formatter (requested)
+  // ✅ W-D-M label
   function fmtWDM(week, day, matchNum){
     const w = (week !== null && week !== undefined && week !== "") ? `W${week}` : "W?";
     const d = (day !== null && day !== undefined && day !== "") ? `D${day}` : "D?";
@@ -484,11 +563,14 @@
     return `${w}-${d}-${m}`;
   }
 
-  function setSelectOptions(sel, values, { allLabel="All", placeholderIfEmpty="All", sort="alpha" } = {}){
-    const unique = Array.from(new Set((values || []).filter(v => v !== null && v !== undefined && String(v).trim() !== "")));
+  function setSelectOptions(sel, values, { allLabel="All", placeholderIfEmpty="All", sort="alpha" } = {}, keepValue=""){
+    const unique = Array.from(new Set((values || [])
+      .filter(v => v !== null && v !== undefined && String(v).trim() !== "")
+      .map(v => String(v).trim())
+    ));
 
     if(sort === "alpha"){
-      unique.sort((a,b)=>String(a).localeCompare(String(b)));
+      unique.sort((a,b)=>a.localeCompare(b));
     }else if(sort === "num"){
       unique.sort((a,b)=>Number(a) - Number(b));
     }
@@ -502,6 +584,19 @@
     if(!hasData){
       sel.innerHTML = `<option value="">${escapeHtml(placeholderIfEmpty)}</option>`;
     }
+
+    if(keepValue && unique.includes(keepValue)){
+      sel.value = keepValue;
+    }else{
+      sel.value = keepValue ? "" : sel.value; // keep empty if it was empty
+    }
+  }
+
+  function toMaybeNumber(v){
+    const s = String(v ?? "").trim();
+    if(!s) return null;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : s;
   }
 
   // =============================
@@ -518,7 +613,7 @@
     if(location.protocol === "file:"){
       setAuthPill("bad", "file:// (host this folder)");
       setStatus(
-        "You're opening via file://.\nSupabase sessions may not persist across pages, causing redirects.\n\nFix: host the folder, e.g.\npython3 -m http.server 8080\nthen open http://localhost:8080/index.html",
+        "You're opening via file://.\nSupabase sessions may not persist across pages.\n\nFix: host the folder, e.g.\npython3 -m http.server 8080\nthen open http://localhost:8080/index.html",
         true
       );
       return null;
@@ -624,8 +719,12 @@
 
       if(filters.tournament) q = q.eq("Tournament", filters.tournament);
       if(filters.stage) q = q.eq("Stage", filters.stage);
-      if(filters.year !== null && filters.year !== undefined && filters.year !== "") q = q.eq("Year", filters.year);
-      if(filters.matchId) q = q.eq("match_id", filters.matchId);
+      if(filters.mode) q = q.eq("Mode", filters.mode);
+
+      if(filters.year !== null) q = q.eq("Year", filters.year);
+      if(filters.week !== null) q = q.eq("Week", filters.week);
+      if(filters.day !== null) q = q.eq("Day", filters.day);
+      if(filters.matchNum !== null) q = q.eq("MatchNumber", filters.matchNum);
 
       const { data, error } = await q.range(from, from + pageSize - 1);
       if(error) throw error;
@@ -639,16 +738,11 @@
     return all;
   }
 
-  async function fetchTeamMeta(teamName){
-    if(!UID) return { tournaments:[], stages:[], years:[], matchIds:[] };
-
+  async function fetchTeamMetaRows(teamName){
+    if(!UID) return [];
     const pageSize = 1000;
     let from = 0;
-
-    const tournaments = new Set();
-    const stages = new Set();
-    const years = new Set();
-    const matchIds = new Set();
+    const all = [];
 
     while(true){
       const { data, error } = await sb
@@ -660,24 +754,13 @@
 
       if(error) throw error;
 
-      for(const r of (data || [])){
-        if(r.Tournament != null && String(r.Tournament).trim() !== "") tournaments.add(String(r.Tournament).trim());
-        if(r.Stage != null && String(r.Stage).trim() !== "") stages.add(String(r.Stage).trim());
-        if(r.Year != null && String(r.Year).trim() !== "") years.add(String(r.Year).trim());
-        if(r.match_id != null && String(r.match_id).trim() !== "") matchIds.add(String(r.match_id).trim());
-      }
-
+      all.push(...(data || []));
       if(!data || data.length < pageSize) break;
       from += pageSize;
       if(from > 200000) break;
     }
 
-    return {
-      tournaments: Array.from(tournaments),
-      stages: Array.from(stages),
-      years: Array.from(years),
-      matchIds: Array.from(matchIds),
-    };
+    return all;
   }
 
   async function fetchLobbyRowsByMatchIds(matchIds){
@@ -735,6 +818,99 @@
   }
 
   // =============================
+  // Filters (cascading dropdowns)
+  // =============================
+  let META_ROWS = [];
+  let UPDATING_FILTERS = false;
+
+  const FILTER_DEFS = [
+    { id:"fMode", col:"Mode", sort:"alpha" },
+    { id:"fYear", col:"Year", sort:"num" },
+    { id:"fTournament", col:"Tournament", sort:"alpha" },
+    { id:"fStage", col:"Stage", sort:"alpha" },
+    { id:"fWeek", col:"Week", sort:"num" },
+    { id:"fDay", col:"Day", sort:"num" },
+    { id:"fMatchNum", col:"MatchNumber", sort:"num" },
+  ];
+
+  function currentFilterState(){
+    return {
+      mode: $("fMode").value || "",
+      year: $("fYear").value || "",
+      tournament: $("fTournament").value || "",
+      stage: $("fStage").value || "",
+      week: $("fWeek").value || "",
+      day: $("fDay").value || "",
+      matchNum: $("fMatchNum").value || "",
+    };
+  }
+
+  function metaFilteredRows(exceptId=null){
+    const s = currentFilterState();
+    return META_ROWS.filter(r=>{
+      for(const def of FILTER_DEFS){
+        if(def.id === exceptId) continue;
+        const val = s[
+          def.id === "fMode" ? "mode" :
+          def.id === "fYear" ? "year" :
+          def.id === "fTournament" ? "tournament" :
+          def.id === "fStage" ? "stage" :
+          def.id === "fWeek" ? "week" :
+          def.id === "fDay" ? "day" : "matchNum"
+        ];
+        if(!val) continue;
+        const rv = (r[def.col] == null ? "" : String(r[def.col]).trim());
+        if(rv !== String(val).trim()) return false;
+      }
+      return true;
+    });
+  }
+
+  function refreshFilterOptions(){
+    if(!META_ROWS.length){
+      for(const def of FILTER_DEFS){
+        const sel = $(def.id);
+        sel.disabled = true;
+        sel.innerHTML = `<option value="">All</option>`;
+      }
+      setScopePill("All rows", "neutral");
+      return;
+    }
+
+    const prev = currentFilterState();
+    UPDATING_FILTERS = true;
+
+    for(const def of FILTER_DEFS){
+      const sel = $(def.id);
+      const rows = metaFilteredRows(def.id);
+      const values = rows.map(r => r[def.col]).filter(v => v !== null && v !== undefined && String(v).trim() !== "");
+      const keep =
+        def.id==="fMode" ? prev.mode :
+        def.id==="fYear" ? prev.year :
+        def.id==="fTournament" ? prev.tournament :
+        def.id==="fStage" ? prev.stage :
+        def.id==="fWeek" ? prev.week :
+        def.id==="fDay" ? prev.day : prev.matchNum;
+
+      setSelectOptions(sel, values, { allLabel:"All", placeholderIfEmpty:"All", sort:def.sort }, keep);
+    }
+
+    UPDATING_FILTERS = false;
+
+    // mini scope pill
+    const s2 = currentFilterState();
+    const bits = [];
+    if(s2.mode) bits.push(`Mode=${s2.mode}`);
+    if(s2.year) bits.push(`Year=${s2.year}`);
+    if(s2.tournament) bits.push(`Tournament=${s2.tournament}`);
+    if(s2.stage) bits.push(`Stage=${s2.stage}`);
+    if(s2.week) bits.push(`W${s2.week}`);
+    if(s2.day) bits.push(`D${s2.day}`);
+    if(s2.matchNum) bits.push(`M${s2.matchNum}`);
+    setScopePill(bits.length ? bits.join(" • ") : "All rows", bits.length ? "good" : "neutral");
+  }
+
+  // =============================
   // Report build
   // =============================
   function buildReport(rows, maps){
@@ -747,17 +923,31 @@
       matches: new Set(),
       players: new Map(),
       totalKills: 0,
-      totalAssists: 0
+      totalAssists: 0,
+      placement: 0
     };
+
+    // placement (ranking_score) aggregated once per match_id
+    const placementByMatch = new Map();
 
     for(const r of (rows || [])){
       const pid = r.player_stats_account_id;
       if(!pid) continue;
 
+      const matchId = (r.match_id != null ? String(r.match_id) : "");
+      if(matchId) team.matches.add(matchId);
+
+      // ✅ sum ranking_score once per match (take max across players just in case)
+      if(matchId){
+        const rs = num(r.ranking_score);
+        if(rs){
+          const prev = placementByMatch.get(matchId) || 0;
+          if(rs > prev) placementByMatch.set(matchId, rs);
+        }
+      }
+
       const key = String(pid);
       const nick = (r.player_stats_nickname || idToNick.get(key) || "(unknown)");
-
-      if(r.match_id !== null && r.match_id !== undefined) team.matches.add(String(r.match_id));
 
       if(!team.players.has(key)){
         team.players.set(key, {
@@ -771,8 +961,8 @@
           headshots: 0,
           headshotKilltimes: 0,
           medkit: 0,
-          revivedTimes: 0,           // player was revived
-          reviveTeammateTimes: 0,    // player revived others
+          revivedTimes: 0,
+          reviveTeammateTimes: 0,
           reviveTeammateNums: 0,
           killDistances: [],
           killFeed: [],
@@ -782,7 +972,7 @@
       }
 
       const p = team.players.get(key);
-      if(r.match_id !== null && r.match_id !== undefined) p.matches.add(String(r.match_id));
+      if(matchId) p.matches.add(matchId);
       if(!p.nickname || p.nickname === "(unknown)") p.nickname = nick;
 
       p.kills += num(r.player_stats_kills);
@@ -796,10 +986,12 @@
       p.reviveTeammateTimes += num(r.player_stats_revive_teammate_times);
       p.reviveTeammateNums += num(r.player_stats_revive_teammate_nums);
 
-      // distances list fallback (pipe list)
       p.killDistances.push(...parsePipeInts(r.player_stats_kill_distance));
 
-      // kill feed from kill_info (victim + weapon + distance + timestamp)
+      const wk = Number.isFinite(Number(r.Week)) ? Number(r.Week) : -1;
+      const dy = Number.isFinite(Number(r.Day)) ? Number(r.Day) : -1;
+      const mn = Number.isFinite(Number(r.MatchNumber)) ? Number(r.MatchNumber) : -1;
+
       const kills = parseKillInfo(r.player_stats_kill_info);
       for(const k of kills){
         const killerId = (k?.killer_id ?? key);
@@ -808,7 +1000,6 @@
         const dist = Number(k?.kill_distance);
         const ts = Number(k?.kill_timestamp);
 
-        // prefer kill_info distance for bucketing
         if(Number.isFinite(dist)) p.killDistances.push(dist);
 
         const killerKey = String(killerId);
@@ -820,12 +1011,12 @@
         const weaponName = weaponIdToName.get(weaponKey) || "";
 
         p.killFeed.push({
-          // ✅ requested: show Week-Day-MatchNumber instead of kill_timestamp
+          // ✅ display label requested
           wdm: fmtWDM(r.Week, r.Day, r.MatchNumber),
 
-          // keep these for internal use / sorting
-          match_id: (r.match_id != null ? String(r.match_id) : ""),
-          kill_timestamp: Number.isFinite(ts) ? ts : null,
+          // ✅ for sorting
+          week: wk, day: dy, matchNum: mn,
+          kill_timestamp: Number.isFinite(ts) ? ts : -1,
 
           killer_id: killerKey,
           killer_nickname: killerNick || killerKey,
@@ -836,7 +1027,6 @@
 
           weapon_used_id: weaponKey,
           weapon_name: weaponName,
-
           kill_distance: Number.isFinite(dist) ? dist : null,
         });
 
@@ -845,20 +1035,20 @@
         }
       }
 
-      // who eliminated the player (team that eliminated them)
       const elimTeam = String(r.eliminated_team_name || "").trim();
       if(elimTeam){
         p.eliminatedBy[elimTeam] = (p.eliminatedBy[elimTeam] || 0) + 1;
       }
     }
 
-    // team totals
+    // totals
     for(const p of team.players.values()){
       team.totalKills += p.kills;
       team.totalAssists += p.assists;
     }
 
-    // finalize each player
+    team.placement = Array.from(placementByMatch.values()).reduce((a,b)=>a+b,0);
+
     const players = Array.from(team.players.values()).map(p=>{
       const d = p.killDistances.filter(Number.isFinite);
       const close = d.filter(x=>x <= closeMax).length;
@@ -866,8 +1056,13 @@
       const long = d.filter(x=>x > midMax).length;
       const avgDist = d.length ? (d.reduce((a,b)=>a+b,0) / d.length) : 0;
 
-      // sort by timestamp if present (still useful), otherwise keep insertion order
-      p.killFeed.sort((a,b)=>(a.kill_timestamp ?? 9e15) - (b.kill_timestamp ?? 9e15));
+      // ✅ sort kill feed: most recent on top
+      p.killFeed.sort((a,b)=>
+        (b.week - a.week) ||
+        (b.day - a.day) ||
+        (b.matchNum - a.matchNum) ||
+        ((b.kill_timestamp ?? -1) - (a.kill_timestamp ?? -1))
+      );
 
       const topWeapons = Object.entries(p.weaponCounts)
         .sort((a,b)=>b[1]-a[1])
@@ -895,6 +1090,7 @@
       playerCount: players.length,
       totalKills: team.totalKills,
       totalAssists: team.totalAssists,
+      placement: team.placement,
       players
     };
   }
@@ -908,10 +1104,13 @@
 
   function renderTeamKpis(teamName, report, filters){
     const scopeBits = [];
+    if(filters.mode) scopeBits.push(`Mode=${filters.mode}`);
     if(filters.tournament) scopeBits.push(`Tournament=${filters.tournament}`);
     if(filters.stage) scopeBits.push(`Stage=${filters.stage}`);
-    if(filters.year !== null && filters.year !== undefined && filters.year !== "") scopeBits.push(`Year=${filters.year}`);
-    if(filters.matchId) scopeBits.push(`match_id=${filters.matchId}`);
+    if(filters.year !== null) scopeBits.push(`Year=${filters.year}`);
+    if(filters.week !== null) scopeBits.push(`Week=${filters.week}`);
+    if(filters.day !== null) scopeBits.push(`Day=${filters.day}`);
+    if(filters.matchNum !== null) scopeBits.push(`Match=${filters.matchNum}`);
     $("scopeText").textContent = scopeBits.length ? scopeBits.join(" • ") : "All rows for selected team";
 
     const box = $("teamKpis");
@@ -919,15 +1118,14 @@
       kpiHTML("Team", teamName),
       kpiHTML("Matches", String(report.matchesPlayed)),
       kpiHTML("Players", String(report.playerCount)),
+      kpiHTML("Placement", String(report.placement)),   // ✅ ranking_score total
       kpiHTML("Total Kills", String(report.totalKills)),
-      kpiHTML("Total Assists", String(report.totalAssists)),
-      kpiHTML("K+A", String(report.totalKills + report.totalAssists))
+      kpiHTML("Total Assists", String(report.totalAssists))
     ].join("");
   }
 
   function renderPlayers(players){
     const { closeMax, midMax } = pickRanges();
-
     const container = $("players");
     container.innerHTML = "";
 
@@ -963,8 +1161,8 @@
         ? p.topElimBy.map(x=>`<span class="chip">${escapeHtml(x.t)}×${escapeHtml(x.c)}</span>`).join(" ")
         : `<span class="small">—</span>`;
 
-      // ✅ show W-D-M instead of kill_timestamp
-      const feedRows = (p.killFeed || []).slice(-30).reverse().map(k=>{
+      // ✅ already sorted most recent first; show top 30
+      const feedRows = (p.killFeed || []).slice(0, 30).map(k=>{
         const wdm = (k.wdm ?? "");
         const victim = k.victim_nickname || k.player_killed_id || "";
         const victimId = k.player_killed_id || "";
@@ -1002,7 +1200,7 @@
           </table>
         </div>
         <div class="small" style="margin-top:6px">
-          W-D-M is from the match row fields: <b>Week</b>, <b>Day</b>, <b>MatchNumber</b> (e.g., W1-D4-M2).
+          Kill feed is sorted by <b>Week → Day → Match → kill_timestamp</b> (most recent first).
         </div>
       `;
 
@@ -1064,54 +1262,99 @@
   }
 
   // =============================
-  // Filter dropdown population
+  // Auto-run (debounced)
   // =============================
-  const FILTER_CACHE = new Map(); // teamName -> meta sets
+  const AUTO_RUN = true;
+  let RUN_TIMER = null;
+  let RUN_INFLIGHT = false;
+  let LAST_RUN_KEY = "";
 
-  async function loadFiltersForTeam(teamName){
-    // reset report visibility when switching team
-    $("reportCard").style.display = "none";
+  function buildRunKey(teamName){
+    const s = currentFilterState();
+    return [
+      teamName,
+      s.mode, s.year, s.tournament, s.stage, s.week, s.day, s.matchNum,
+      $("rangePreset").value
+    ].join("|");
+  }
 
-    // reset selects
-    setSelectOptions($("fTournament"), [], { allLabel:"All", placeholderIfEmpty:"All" });
-    setSelectOptions($("fStage"), [], { allLabel:"All", placeholderIfEmpty:"All" });
-    setSelectOptions($("fYear"), [], { allLabel:"All", placeholderIfEmpty:"All" });
-    setSelectOptions($("fMatchId"), [], { allLabel:"All", placeholderIfEmpty:"All" });
-
+  function scheduleRun(reason=""){
+    if(!AUTO_RUN) return;
+    const teamName = ($("teamSel").value || "").trim();
     if(!teamName) return;
 
-    try{
-      setStatus("Loading filter options…");
-      let meta = FILTER_CACHE.get(teamName);
-      if(!meta){
-        meta = await fetchTeamMeta(teamName);
-        FILTER_CACHE.set(teamName, meta);
-      }
-
-      setSelectOptions($("fTournament"), meta.tournaments, { allLabel:"All", placeholderIfEmpty:"All", sort:"alpha" });
-      setSelectOptions($("fStage"), meta.stages, { allLabel:"All", placeholderIfEmpty:"All", sort:"alpha" });
-      setSelectOptions($("fYear"), meta.years, { allLabel:"All", placeholderIfEmpty:"All", sort:"num" });
-      setSelectOptions($("fMatchId"), meta.matchIds, { allLabel:"All", placeholderIfEmpty:"All", sort:"alpha" });
-
-      setStatus("Ready.");
-    }catch(e){
-      console.error(e);
-      setStatus("Failed to load filter options:\n" + (e.message || String(e)), true);
-      // keep them disabled if failed
-      $("fTournament").disabled = true;
-      $("fStage").disabled = true;
-      $("fYear").disabled = true;
-      $("fMatchId").disabled = true;
-    }
+    clearTimeout(RUN_TIMER);
+    RUN_TIMER = setTimeout(async ()=>{
+      const key = buildRunKey(teamName);
+      if(key === LAST_RUN_KEY) return;
+      await runReport(reason);
+    }, 420);
   }
 
   // =============================
-  // Events
+  // Main flow
   // =============================
+  async function runReport(reason=""){
+    const teamName = ($("teamSel").value || "").trim();
+    if(!teamName) return;
+
+    if(RUN_INFLIGHT) return;
+
+    const filters = {
+      mode: ($("fMode").value || "").trim() || null,
+      tournament: ($("fTournament").value || "").trim() || null,
+      stage: ($("fStage").value || "").trim() || null,
+      year: toMaybeNumber($("fYear").value),
+      week: toMaybeNumber($("fWeek").value),
+      day: toMaybeNumber($("fDay").value),
+      matchNum: toMaybeNumber($("fMatchNum").value),
+    };
+
+    const key = buildRunKey(teamName);
+    LAST_RUN_KEY = key;
+
+    RUN_INFLIGHT = true;
+    setStatus(`Building report…${reason ? "\n" + reason : ""}`);
+
+    try{
+      const rows = await fetchTeamRows(teamName, filters);
+      if(!rows.length){
+        setStatus("No rows found for this team (with current filters).", true);
+        $("reportCard").style.display = "none";
+        RUN_INFLIGHT = false;
+        return;
+      }
+
+      const matchIds = Array.from(new Set(rows.map(r => r.match_id != null ? String(r.match_id) : "").filter(Boolean)));
+
+      setStatus(`Rows: ${rows.length}\nMatches: ${matchIds.length}\nResolving player_killed_id → nickname…`);
+
+      const lobbyRows = await fetchLobbyRowsByMatchIds(matchIds);
+      const maps = buildIdentityMaps(lobbyRows);
+
+      setStatus(`Finalizing…\nRows: ${rows.length}\nLobby rows: ${lobbyRows.length}`);
+
+      const report = buildReport(rows, maps);
+
+      renderTeamKpis(teamName, report, filters);
+      renderPlayers(report.players);
+
+      $("reportCard").style.display = "";
+      setStatus(`Done ✅\nTeam: ${teamName}\nRows: ${rows.length}\nPlayers: ${report.playerCount}\nMatches: ${report.matchesPlayed}\nPlacement: ${report.placement}`);
+    }catch(e){
+      console.error(e);
+      setStatus("Report failed:\n" + (e.message || String(e)), true);
+      $("reportCard").style.display = "none";
+    }finally{
+      RUN_INFLIGHT = false;
+    }
+  }
+
   async function loadTeamsUI(){
     setStatus("Loading teams…");
     $("teamSel").innerHTML = `<option value="">Loading…</option>`;
     $("metaText").textContent = "—";
+    setScopePill("All rows", "neutral");
 
     try{
       const teams = await fetchAllTeams();
@@ -1127,10 +1370,6 @@
       )).join("");
 
       $("metaText").textContent = `${teams.length} teams`;
-
-      // keep filters disabled until team selected
-      await loadFiltersForTeam("");
-
       setStatus("Ready.");
     }catch(e){
       console.error(e);
@@ -1139,59 +1378,36 @@
     }
   }
 
-  async function runReport(){
-    const teamName = ($("teamSel").value || "").trim();
+  async function loadFiltersForTeam(teamName){
+    $("reportCard").style.display = "none";
+    META_ROWS = [];
+    refreshFilterOptions();
+
     if(!teamName){
-      setStatus("Pick a team first.", true);
+      setStatus("Ready.");
       return;
     }
 
-    const tournament = ($("fTournament").value || "").trim() || null;
-    const stage = ($("fStage").value || "").trim() || null;
-    const yearRaw = ($("fYear").value || "").trim();
-    const matchId = ($("fMatchId").value || "").trim() || null;
-
-    const filters = {
-      tournament,
-      stage,
-      year: yearRaw ? (Number.isFinite(Number(yearRaw)) ? Number(yearRaw) : yearRaw) : null,
-      matchId,
-    };
-
-    setStatus("Fetching team rows…");
-
     try{
-      const rows = await fetchTeamRows(teamName, filters);
-      if(!rows.length){
-        setStatus("No rows found for this team (with current filters).", true);
-        $("reportCard").style.display = "none";
-        return;
-      }
+      setStatus("Loading filter options…");
+      META_ROWS = await fetchTeamMetaRows(teamName);
 
-      const matchIds = Array.from(new Set(rows.map(r => r.match_id != null ? String(r.match_id) : "").filter(Boolean)));
+      // enable/compute options
+      refreshFilterOptions();
 
-      setStatus(`Rows: ${rows.length}\nMatches: ${matchIds.length}\nResolving player_killed_id → nickname…`);
-
-      const lobbyRows = await fetchLobbyRowsByMatchIds(matchIds);
-      const maps = buildIdentityMaps(lobbyRows);
-
-      setStatus(`Building report…\nRows: ${rows.length}\nLobby rows for mapping: ${lobbyRows.length}`);
-
-      const report = buildReport(rows, maps);
-
-      renderTeamKpis(teamName, report, filters);
-      renderPlayers(report.players);
-
-      $("reportCard").style.display = "";
-      setStatus(`Done ✅\nTeam: ${teamName}\nRows: ${rows.length}\nPlayers: ${report.playerCount}\nMatches: ${report.matchesPlayed}`);
+      setStatus("Ready.");
+      scheduleRun("Auto-run after team select");
     }catch(e){
       console.error(e);
-      setStatus("Report failed:\n" + (e.message || String(e)), true);
-      $("reportCard").style.display = "none";
+      setStatus("Failed to load filter options:\n" + (e.message || String(e)), true);
+      META_ROWS = [];
+      refreshFilterOptions();
     }
   }
 
-  $("btnRun").addEventListener("click", runReport);
+  // =============================
+  // Events
+  // =============================
   $("btnReloadTeams").addEventListener("click", loadTeamsUI);
   $("btnSignOut").addEventListener("click", signOut);
 
@@ -1199,6 +1415,16 @@
     const teamName = ($("teamSel").value || "").trim();
     await loadFiltersForTeam(teamName);
   });
+
+  for(const def of FILTER_DEFS){
+    $(def.id).addEventListener("change", () => {
+      if(UPDATING_FILTERS) return;
+      refreshFilterOptions();   // keep dropdowns consistent
+      scheduleRun("Filter changed");
+    });
+  }
+
+  $("rangePreset").addEventListener("change", () => scheduleRun("Range preset changed"));
 
   // =============================
   // Init
