@@ -53,7 +53,7 @@
     .sub{font-size:12px;color:var(--muted);margin-top:2px}
     .actions{display:flex;gap:10px;flex-wrap:wrap}
 
-    .btn, input, select, textarea{font-family:inherit}
+    .btn, input, select{font-family:inherit}
     .btn{
       border:1px solid var(--line);
       background: rgba(255,255,255,.03);
@@ -104,7 +104,7 @@
     .field{display:flex;flex-direction:column;gap:6px;min-width:220px;flex:1}
     label{font-size:12px;color:var(--muted)}
 
-    input[type="text"], input[type="password"], select{
+    input[type="text"], select{
       width:100%;
       border:1px solid rgba(255,255,255,.10);
       background: rgba(0,0,0,.25);
@@ -232,10 +232,12 @@
         <img class="fflogo" src="https://upload.wikimedia.org/wikipedia/en/7/7d/Garena_Free_Fire_logo.png" alt="Free Fire" onerror="this.style.display='none'"/>
         <div>
           <h1>FF Team Report</h1>
-          <div class="sub">Team → Players → kills/elims, distance buckets, victims + weapon, assists, hits, headshot killtimes, medkits, revived, revives.</div>
+          <div class="sub">Select team → player summary → kill log (victim + weapon + distance bucket + killer id).</div>
         </div>
       </div>
       <div class="actions">
+        <div class="pill" id="authPill"><span class="dot neutral"></span><span id="authText">Checking session…</span></div>
+        <button class="btn" id="btnBack">Back</button>
         <button class="btn" id="btnLoadTeams">Load Teams</button>
         <button class="btn primary" id="btnRun">Run Report</button>
         <button class="btn" id="btnExportPlayers">Export Player Summary CSV</button>
@@ -248,50 +250,21 @@
 <main>
   <div class="grid">
 
-    <!-- LEFT: connection + controls -->
+    <!-- LEFT -->
     <section class="card">
       <div class="hd">
-        <h2>1) Connect & Select</h2>
-        <div class="pill" id="authPill"><span class="dot neutral"></span><span id="authText">Anon</span></div>
+        <h2>1) Filters</h2>
+        <div class="pill"><span class="dot neutral"></span><span id="metaLeft">—</span></div>
       </div>
       <div class="bd">
 
         <div class="row">
           <div class="field">
-            <label>Supabase URL</label>
-            <input id="sbUrl" type="text" placeholder="https://xxxx.supabase.co"/>
+            <label>Table</label>
+            <input id="tableName" type="text" value="ff_stats_raw"/>
+            <div class="small">Reads from <span class="kbd">public.ff_stats_raw</span> (RLS enforced).</div>
           </div>
         </div>
-        <div class="row">
-          <div class="field">
-            <label>Supabase anon key</label>
-            <input id="sbKey" type="password" placeholder="anon public key"/>
-            <div class="hint">With RLS enabled, you must sign in to read your own rows.</div>
-          </div>
-        </div>
-
-        <div class="divider"></div>
-
-        <div class="row" style="align-items:flex-end">
-          <div class="field" style="min-width:220px">
-            <label>Email</label>
-            <input id="authEmail" type="text" placeholder="you@example.com" autocomplete="email"/>
-          </div>
-          <div class="field" style="min-width:220px">
-            <label>Password</label>
-            <input id="authPass" type="password" placeholder="••••••••" autocomplete="current-password"/>
-          </div>
-        </div>
-        <div class="row" style="justify-content:flex-end">
-          <button class="btn" id="btnAuthRefresh">Refresh</button>
-          <button class="btn primary" id="btnSignIn">Sign in</button>
-          <button class="btn" id="btnSignUp">Sign up</button>
-          <button class="btn bad" id="btnSignOut">Sign out</button>
-        </div>
-
-        <div class="status" id="authMeta">Enter URL + anon key, then Sign in.</div>
-
-        <div class="divider"></div>
 
         <div class="row">
           <div class="field">
@@ -299,7 +272,6 @@
             <select id="teamSel">
               <option value="">(Load teams first)</option>
             </select>
-            <div class="small">Uses <span class="kbd">team_name</span> from <span class="kbd">ff_stats_raw</span>.</div>
           </div>
         </div>
 
@@ -313,21 +285,21 @@
             <input id="midMax" type="text" value="50"/>
           </div>
           <div class="field" style="flex:1">
-            <label>Table</label>
-            <input id="tableName" type="text" value="ff_stats_raw"/>
+            <label>Distance source</label>
+            <input type="text" value="player_stats_kill_info[].kill_distance" disabled/>
           </div>
         </div>
 
         <div class="hint">
-          Distance buckets are calculated from <span class="kbd">player_stats_kill_info</span> items’ <span class="kbd">kill_distance</span>.
-          If your data changes format later, I can update the parser.
+          If no session is detected, this page redirects to <span class="kbd">index.html</span>.
+          Make sure this report page is hosted on the same domain as your main dashboard so it can read the same auth session.
         </div>
 
         <div class="status" id="status">Ready.</div>
       </div>
     </section>
 
-    <!-- RIGHT: results -->
+    <!-- RIGHT -->
     <section class="card">
       <div class="hd">
         <h2>2) Team Players</h2>
@@ -361,7 +333,7 @@
               </tr>
             </thead>
             <tbody id="tbody">
-              <tr><td colspan="17" class="muted">Run a report to see players.</td></tr>
+              <tr><td colspan="17" class="muted">Load teams and run a report.</td></tr>
             </tbody>
           </table>
         </div>
@@ -372,7 +344,7 @@
   </div>
 </main>
 
-<!-- Modal: kill log -->
+<!-- Modal -->
 <div class="modal" id="modal">
   <div class="modal-card">
     <div class="modal-hd">
@@ -408,12 +380,32 @@
 </div>
 
 <script>
+  /************************************************************
+   ✅ EMBED THESE (replace with your own)
+  *************************************************************/
+  const SUPABASE_URL = "https://YOURPROJECT.supabase.co";
+  const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+
+  /************************************************************
+   ✅ Redirect target if not logged in
+  *************************************************************/
+  const LOGIN_PAGE = "index.html";
+
   const $ = (id) => document.getElementById(id);
 
-  /* -----------------------------
-     Supabase client + auth UI
-  ----------------------------- */
-  let SB=null, SB_URL="", SB_KEY="", SB_SUB=null;
+  function setAuthPill(state, text){
+    const pill = $("authPill");
+    const dot = pill.querySelector(".dot");
+    dot.classList.remove("good","bad","neutral");
+    dot.classList.add(state);
+    $("authText").textContent = text || "";
+  }
+
+  function setStatus(msg, isError=false){
+    const el = $("status");
+    el.textContent = msg;
+    el.style.borderColor = isError ? "rgba(255,107,107,.35)" : "rgba(255,255,255,.10)";
+  }
 
   function formatSupabaseError(err, fallbackPrefix="Supabase error"){
     if(!err) return `${fallbackPrefix}: (unknown)`;
@@ -430,102 +422,52 @@
     return parts.join("\n");
   }
 
-  function setAuthPill(state, text){
-    const pill = $("authPill");
-    const dot = pill.querySelector(".dot");
-    dot.classList.remove("good","bad","neutral");
-    dot.classList.add(state);
-    $("authText").textContent = text || "";
-  }
+  // Create client once (embedded URL/key)
+  const SB = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
+  });
 
-  function setStatus(msg, isError=false){
-    const el = $("status");
-    el.textContent = msg;
-    el.style.borderColor = isError ? "rgba(255,107,107,.35)" : "rgba(255,255,255,.10)";
-  }
-
-  function getSbClient(){
-    const url = ($("sbUrl").value||"").trim();
-    const key = ($("sbKey").value||"").trim();
-    if(!url || !key) return null;
-
-    if(SB && SB_URL===url && SB_KEY===key) return SB;
-
-    SB_URL=url; SB_KEY=key;
-    SB = supabase.createClient(url, key, {
-      auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
-    });
-
+  async function requireSessionOrRedirect(){
+    setAuthPill("neutral", "Checking session…");
     try{
-      if(SB_SUB?.unsubscribe) SB_SUB.unsubscribe();
-      const { data } = SB.auth.onAuthStateChange(()=>refreshAuthUI().catch(()=>{}));
-      SB_SUB = data?.subscription || null;
-    }catch(_e){}
-
-    return SB;
-  }
-
-  async function refreshAuthUI(){
-    const sb = getSbClient();
-    if(!sb){
-      setAuthPill("neutral", "Anon");
-      $("authMeta").textContent = "Enter URL + anon key, then Sign in.";
-      return;
-    }
-    const { data, error } = await sb.auth.getSession();
-    if(error){
+      const { data, error } = await SB.auth.getSession();
+      if(error){
+        setAuthPill("bad", "Auth error");
+        setStatus(formatSupabaseError(error, "Auth error"), true);
+        // redirect anyway (user should re-auth on index)
+        setTimeout(()=>location.replace(LOGIN_PAGE), 600);
+        return null;
+      }
+      const session = data?.session || null;
+      const user = session?.user || null;
+      if(!user){
+        setAuthPill("bad", "Not signed in");
+        setStatus("No session detected. Redirecting to index.html…", true);
+        setTimeout(()=>location.replace(LOGIN_PAGE), 450);
+        return null;
+      }
+      setAuthPill("good", user.email ? user.email : "Signed in");
+      $("metaLeft").textContent = `uid: ${user.id}`;
+      return session;
+    }catch(e){
       setAuthPill("bad", "Auth error");
-      $("authMeta").textContent = formatSupabaseError(error, "Auth error");
-      return;
-    }
-    const user = data?.session?.user || null;
-    if(user){
-      setAuthPill("good", "Signed in");
-      $("authMeta").textContent = `${user.email || "(no email)"}\nuid: ${user.id}`;
-    }else{
-      setAuthPill("neutral", "Anon");
-      $("authMeta").textContent = "No active session (RLS will block reads).";
+      setStatus(`Auth check failed: ${e.message}`, true);
+      setTimeout(()=>location.replace(LOGIN_PAGE), 600);
+      return null;
     }
   }
 
-  async function authSignIn(){
-    const sb = getSbClient();
-    if(!sb) return setStatus("Fill Supabase URL + anon key first.", true);
-    const email = ($("authEmail").value||"").trim();
-    const password = ($("authPass").value||"").trim();
-    if(!email || !password) return setStatus("Enter email + password.", true);
-    setStatus("Signing in…");
-    const { error } = await sb.auth.signInWithPassword({ email, password });
-    if(error) return setStatus(formatSupabaseError(error, "Sign-in failed"), true);
-    await refreshAuthUI();
-    setStatus("Signed in.");
-  }
-
-  async function authSignUp(){
-    const sb = getSbClient();
-    if(!sb) return setStatus("Fill Supabase URL + anon key first.", true);
-    const email = ($("authEmail").value||"").trim();
-    const password = ($("authPass").value||"").trim();
-    if(!email || !password) return setStatus("Enter email + password.", true);
-    setStatus("Signing up… (check email if confirmations are enabled)");
-    const { error } = await sb.auth.signUp({ email, password });
-    if(error) return setStatus(formatSupabaseError(error, "Sign-up failed"), true);
-    await refreshAuthUI();
-    setStatus("Sign-up complete.");
-  }
-
-  async function authSignOut(){
-    const sb = getSbClient();
-    if(!sb) return setStatus("No Supabase client.", true);
-    setStatus("Signing out…");
-    const { error } = await sb.auth.signOut();
-    if(error) return setStatus(formatSupabaseError(error, "Sign-out failed"), true);
-    await refreshAuthUI();
-    setStatus("Signed out.");
-  }
+  // If user signs out elsewhere, bounce back
+  try{
+    SB.auth.onAuthStateChange((_event, session)=>{
+      if(!session){
+        location.replace(LOGIN_PAGE);
+      }
+    });
+  }catch(_e){}
 
   /* -----------------------------
-     Data fetch helpers
+     Report logic
   ----------------------------- */
   function n(v){ const x = Number(v); return Number.isFinite(x) ? x : 0; }
 
@@ -551,10 +493,9 @@
     return "long";
   }
 
-  async function fetchAllRowsForTeam(sb, table, teamName){
-    // NOTE: includes quoted columns for mixed-case fields
+  async function fetchAllRowsForTeam(table, teamName){
     const selectCols = [
-      "team_name","team_id","team_name",
+      "team_name","team_id",
       "player_stats_account_id","player_stats_nickname",
       "match_id","is_eliminated",
       "player_stats_kills","player_stats_assists",
@@ -572,7 +513,7 @@
     const all = [];
 
     while(true){
-      const { data, error } = await sb
+      const { data, error } = await SB
         .from(table)
         .select(selectCols)
         .eq("team_name", teamName)
@@ -584,25 +525,21 @@
       if(!data || data.length < pageSize) break;
 
       from += pageSize;
-      if(from > 50000) break; // safety
+      if(from > 50000) break;
     }
     return all;
   }
 
   async function loadTeams(){
-    const sb = getSbClient();
-    if(!sb) return setStatus("Fill Supabase URL + anon key first.", true);
-
-    setStatus("Loading teams…");
     const table = ($("tableName").value || "ff_stats_raw").trim() || "ff_stats_raw";
 
-    // fetch team_name only, then dedupe
+    setStatus("Loading teams…");
     const pageSize = 2000;
     let from = 0;
     const set = new Set();
 
     while(true){
-      const { data, error } = await sb
+      const { data, error } = await SB
         .from(table)
         .select("team_name")
         .not("team_name","is",null)
@@ -622,14 +559,11 @@
 
     const teams = Array.from(set).sort((a,b)=>a.localeCompare(b));
     const sel = $("teamSel");
-    sel.innerHTML = `<option value="">(Select team)</option>` + teams.map(t=>`<option>${t}</option>`).join("");
+    sel.innerHTML = `<option value="">(Select team)</option>` + teams.map(t=>`<option>${escapeHtml(t)}</option>`).join("");
 
-    setStatus(`Loaded ${teams.length} team(s). Select a team then Run Report.`);
+    setStatus(`Loaded ${teams.length} team(s). Select one then Run Report.`);
   }
 
-  /* -----------------------------
-     Build report
-  ----------------------------- */
   let LAST_PLAYERS = [];
   let LAST_KILL_LOG = [];
   let SORT_KEY = "kills";
@@ -648,7 +582,7 @@
   function pill(text){
     const d = document.createElement("div");
     d.className = "pill";
-    d.innerHTML = `<span class="dot neutral"></span><span>${text}</span>`;
+    d.innerHTML = `<span class="dot neutral"></span><span>${escapeHtml(text)}</span>`;
     return d;
   }
 
@@ -664,14 +598,6 @@
     const long = players.reduce((s,p)=>s+p.long,0);
     const hs = players.reduce((s,p)=>s+p.headshots,0);
 
-    const tSet = new Set(), sSet = new Set(), ySet = new Set(), mSet = new Set();
-    rows.forEach(r=>{
-      if(r.Tournament) tSet.add(String(r.Tournament));
-      if(r.Stage) sSet.add(String(r.Stage));
-      if(r.Year != null) ySet.add(String(r.Year));
-      if(r.Mode) mSet.add(String(r.Mode));
-    });
-
     sr.appendChild(pill(`Players: ${players.length}`));
     sr.appendChild(pill(`Rows: ${rows.length}`));
     sr.appendChild(pill(`Kills: ${kills}`));
@@ -679,11 +605,6 @@
     sr.appendChild(pill(`Assists: ${assists}`));
     sr.appendChild(pill(`HS: ${hs}`));
     sr.appendChild(pill(`Dist (C/M/L): ${close}/${mid}/${long}`));
-
-    if(mSet.size) sr.appendChild(pill(`Mode: ${Array.from(mSet).join(", ")}`));
-    if(ySet.size) sr.appendChild(pill(`Year: ${Array.from(ySet).join(", ")}`));
-    if(tSet.size) sr.appendChild(pill(`Tournament: ${Array.from(tSet).slice(0,2).join(", ")}${tSet.size>2?"…":""}`));
-    if(sSet.size) sr.appendChild(pill(`Stage: ${Array.from(sSet).slice(0,2).join(", ")}${sSet.size>2?"…":""}`));
 
     $("metaText").textContent = `${players.length} players • ${rows.length} rows • ${kills} kills`;
   }
@@ -722,7 +643,6 @@
       tb.appendChild(tr);
     }
 
-    // bind open buttons
     tb.querySelectorAll('button[data-open]').forEach(btn=>{
       btn.addEventListener("click", ()=>{
         const pid = btn.getAttribute("data-open");
@@ -748,7 +668,6 @@
     kb.innerHTML = "";
 
     const log = player.killLog.slice().sort((a,b)=>{
-      // sort by match then timestamp
       const ma = String(a.match_id ?? ""), mb = String(b.match_id ?? "");
       if(ma !== mb) return ma.localeCompare(mb);
       return (n(a.ts) - n(b.ts));
@@ -780,14 +699,9 @@
     };
   }
 
-  function closeKillModal(){
-    $("modal").classList.remove("show");
-  }
+  function closeKillModal(){ $("modal").classList.remove("show"); }
 
   async function runReport(){
-    const sb = getSbClient();
-    if(!sb) return setStatus("Fill Supabase URL + anon key first.", true);
-
     const team = ($("teamSel").value||"").trim();
     if(!team) return setStatus("Select a team first.", true);
 
@@ -799,12 +713,17 @@
 
     let rows;
     try{
-      rows = await fetchAllRowsForTeam(sb, table, team);
+      rows = await fetchAllRowsForTeam(table, team);
     }catch(err){
-      return setStatus(formatSupabaseError(err, "Fetch failed"), true);
+      // if RLS blocks, redirect to index (no session / expired)
+      const msg = formatSupabaseError(err, "Fetch failed");
+      setStatus(msg, true);
+      if((err?.code || "").toString().includes("PGRST") || (err?.message || "").toLowerCase().includes("jwt")){
+        setTimeout(()=>location.replace(LOGIN_PAGE), 700);
+      }
+      return;
     }
 
-    // aggregate per player
     const map = new Map();
     const allKillLog = [];
 
@@ -823,8 +742,8 @@
           deaths: 0,
           assists: 0,
           medkits: 0,
-          revived: 0,      // number of times player was revived
-          reviveMate: 0,   // number of times they revived teammates
+          revived: 0,
+          reviveMate: 0,
           torso: 0,
           leg: 0,
           headshots: 0,
@@ -852,7 +771,6 @@
 
       if(r.is_eliminated === true) p.deaths += 1;
 
-      // kill events: player killed + weapon used + killer id + distance bucket
       const evs = parseJsonArray(r.player_stats_kill_info);
       if(evs.length){
         for(const ev of evs){
@@ -880,7 +798,6 @@
     }
 
     const players = Array.from(map.values());
-
     LAST_PLAYERS = players;
     LAST_KILL_LOG = allKillLog;
 
@@ -890,9 +807,6 @@
     setStatus(`Done. Team: ${team} • Rows: ${rows.length} • Players: ${players.length}`);
   }
 
-  /* -----------------------------
-     Export helpers
-  ----------------------------- */
   function toCSV(rows, cols){
     const esc = (s) => {
       const str = s == null ? "" : String(s);
@@ -935,27 +849,16 @@
     downloadText("ff_team_kill_log.csv", csv, "text/csv");
   }
 
-  /* -----------------------------
-     Events
-  ----------------------------- */
-  $("btnAuthRefresh").addEventListener("click", ()=>refreshAuthUI().catch(()=>{}));
-  $("btnSignIn").addEventListener("click", ()=>authSignIn().catch(()=>{}));
-  $("btnSignUp").addEventListener("click", ()=>authSignUp().catch(()=>{}));
-  $("btnSignOut").addEventListener("click", ()=>authSignOut().catch(()=>{}));
-
-  $("sbUrl").addEventListener("change", ()=>refreshAuthUI().catch(()=>{}));
-  $("sbKey").addEventListener("change", ()=>refreshAuthUI().catch(()=>{}));
-
+  // Events
+  $("btnBack").addEventListener("click", ()=>location.href = LOGIN_PAGE);
   $("btnLoadTeams").addEventListener("click", loadTeams);
   $("btnRun").addEventListener("click", runReport);
-
   $("btnExportPlayers").addEventListener("click", exportPlayersCSV);
   $("btnExportKills").addEventListener("click", exportKillLogCSV);
 
   $("btnClose").addEventListener("click", closeKillModal);
   $("modal").addEventListener("click", (e)=>{ if(e.target === $("modal")) closeKillModal(); });
 
-  // sortable header
   $("thead").addEventListener("click", (e)=>{
     const th = e.target.closest("th[data-k]");
     if(!th) return;
@@ -966,10 +869,15 @@
     renderPlayers(LAST_PLAYERS);
   });
 
-  // init
-  (function init(){
-    refreshAuthUI().catch(()=>{});
-    setStatus("Ready. Fill URL + anon key, sign in, Load Teams, then Run Report.");
+  // Init
+  (async function init(){
+    setStatus("Checking session…");
+    const session = await requireSessionOrRedirect();
+    if(!session) return;
+
+    setStatus("Session ok ✅ Loading teams…");
+    await loadTeams();
+    setStatus("Ready. Select a team then Run Report.");
   })();
 </script>
 </body>
