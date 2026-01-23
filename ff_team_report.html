@@ -71,10 +71,6 @@
       border-color: rgba(255,189,89,.35);
       background: linear-gradient(180deg, rgba(255,189,89,.16), rgba(255,119,51,.10));
     }
-    .btn.good{
-      border-color: rgba(113,208,131,.35);
-      background: linear-gradient(180deg, rgba(113,208,131,.16), rgba(113,208,131,.08));
-    }
     .btn.bad{
       border-color: rgba(255,107,107,.35);
       background: linear-gradient(180deg, rgba(255,107,107,.16), rgba(255,107,107,.08));
@@ -300,32 +296,41 @@
             <div class="hint">Shows players that belong to the selected team (from <span style="font-family:var(--mono)">team_name</span>).</div>
           </div>
 
+          <!-- ✅ Filters changed to dropdowns (auto-filled from data for selected team) -->
           <div class="field" style="min-width:220px;flex:.9">
-            <label>Optional filter: Tournament</label>
-            <input id="fTournament" type="text" placeholder="(leave blank = all)"/>
+            <label>Filter: Tournament</label>
+            <select id="fTournament" disabled>
+              <option value="">All</option>
+            </select>
           </div>
 
           <div class="field" style="min-width:200px;flex:.6">
-            <label>Optional filter: Stage</label>
-            <input id="fStage" type="text" placeholder="(leave blank = all)"/>
+            <label>Filter: Stage</label>
+            <select id="fStage" disabled>
+              <option value="">All</option>
+            </select>
           </div>
 
           <div class="field" style="min-width:150px;flex:.4">
-            <label>Optional filter: Year</label>
-            <input id="fYear" type="text" placeholder="e.g. 2026"/>
+            <label>Filter: Year</label>
+            <select id="fYear" disabled>
+              <option value="">All</option>
+            </select>
           </div>
 
           <div class="field" style="min-width:160px;flex:.5">
-            <label>Optional filter: Match ID</label>
-            <input id="fMatchId" type="text" placeholder="(leave blank = all)"/>
+            <label>Filter: Match ID</label>
+            <select id="fMatchId" disabled>
+              <option value="">All</option>
+            </select>
           </div>
 
           <div class="field" style="min-width:140px;flex:.35">
             <label>Kill range (m)</label>
             <select id="rangePreset">
-              <option value="15,50" selected>Close ≤15 • Mid 16–50 • Long >50</option>
-              <option value="10,40">Close ≤10 • Mid 11–40 • Long >40</option>
-              <option value="20,60">Close ≤20 • Mid 21–60 • Long >60</option>
+              <option value="15,50" selected>Close ≤15 • Mid 16–50 • Long &gt;50</option>
+              <option value="10,40">Close ≤10 • Mid 11–40 • Long &gt;40</option>
+              <option value="20,60">Close ≤20 • Mid 21–60 • Long &gt;60</option>
             </select>
           </div>
         </div>
@@ -358,9 +363,7 @@
   // CONFIG
   // =============================
   const SUPABASE_URL = "https://gkugecflfddkpitlrmws.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpX71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE".replace("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpX71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE"
-  );
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE";
   const TABLE = "ff_stats_raw";
 
   // minimal columns needed for your report (team rows)
@@ -386,6 +389,9 @@
     "player_stats_nickname",
     "player_stats_weapon_usages"
   ].join(",");
+
+  // meta-only cols for building dropdown filters
+  const META_COLS = ["Tournament","Stage","Year","match_id"].join(",");
 
   // =============================
   // Helpers
@@ -470,6 +476,34 @@
     return out;
   }
 
+  // ✅ W-D-M formatter (requested)
+  function fmtWDM(week, day, matchNum){
+    const w = (week !== null && week !== undefined && week !== "") ? `W${week}` : "W?";
+    const d = (day !== null && day !== undefined && day !== "") ? `D${day}` : "D?";
+    const m = (matchNum !== null && matchNum !== undefined && matchNum !== "") ? `M${matchNum}` : "M?";
+    return `${w}-${d}-${m}`;
+  }
+
+  function setSelectOptions(sel, values, { allLabel="All", placeholderIfEmpty="All", sort="alpha" } = {}){
+    const unique = Array.from(new Set((values || []).filter(v => v !== null && v !== undefined && String(v).trim() !== "")));
+
+    if(sort === "alpha"){
+      unique.sort((a,b)=>String(a).localeCompare(String(b)));
+    }else if(sort === "num"){
+      unique.sort((a,b)=>Number(a) - Number(b));
+    }
+
+    const hasData = unique.length > 0;
+    sel.innerHTML = `<option value="">${escapeHtml(allLabel)}</option>` + unique.map(v=>{
+      return `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`;
+    }).join("");
+
+    sel.disabled = !hasData;
+    if(!hasData){
+      sel.innerHTML = `<option value="">${escapeHtml(placeholderIfEmpty)}</option>`;
+    }
+  }
+
   // =============================
   // Supabase client + session gate
   // =============================
@@ -481,14 +515,12 @@
   let UID = null;
 
   async function requireSessionOrRedirect(){
-    // If opened via file://, auth persistence across pages can break and cause redirect loops.
     if(location.protocol === "file:"){
       setAuthPill("bad", "file:// (host this folder)");
       setStatus(
         "You're opening via file://.\nSupabase sessions may not persist across pages, causing redirects.\n\nFix: host the folder, e.g.\npython3 -m http.server 8080\nthen open http://localhost:8080/index.html",
         true
       );
-      // Don’t redirect on file:// (you can still test reads if RLS allows).
       return null;
     }
 
@@ -592,7 +624,7 @@
 
       if(filters.tournament) q = q.eq("Tournament", filters.tournament);
       if(filters.stage) q = q.eq("Stage", filters.stage);
-      if(filters.year) q = q.eq("Year", filters.year);
+      if(filters.year !== null && filters.year !== undefined && filters.year !== "") q = q.eq("Year", filters.year);
       if(filters.matchId) q = q.eq("match_id", filters.matchId);
 
       const { data, error } = await q.range(from, from + pageSize - 1);
@@ -607,8 +639,48 @@
     return all;
   }
 
+  async function fetchTeamMeta(teamName){
+    if(!UID) return { tournaments:[], stages:[], years:[], matchIds:[] };
+
+    const pageSize = 1000;
+    let from = 0;
+
+    const tournaments = new Set();
+    const stages = new Set();
+    const years = new Set();
+    const matchIds = new Set();
+
+    while(true){
+      const { data, error } = await sb
+        .from(TABLE)
+        .select(META_COLS)
+        .eq("owner_id", UID)
+        .eq("team_name", teamName)
+        .range(from, from + pageSize - 1);
+
+      if(error) throw error;
+
+      for(const r of (data || [])){
+        if(r.Tournament != null && String(r.Tournament).trim() !== "") tournaments.add(String(r.Tournament).trim());
+        if(r.Stage != null && String(r.Stage).trim() !== "") stages.add(String(r.Stage).trim());
+        if(r.Year != null && String(r.Year).trim() !== "") years.add(String(r.Year).trim());
+        if(r.match_id != null && String(r.match_id).trim() !== "") matchIds.add(String(r.match_id).trim());
+      }
+
+      if(!data || data.length < pageSize) break;
+      from += pageSize;
+      if(from > 200000) break;
+    }
+
+    return {
+      tournaments: Array.from(tournaments),
+      stages: Array.from(stages),
+      years: Array.from(years),
+      matchIds: Array.from(matchIds),
+    };
+  }
+
   async function fetchLobbyRowsByMatchIds(matchIds){
-    // This is the key for: player_killed_id -> nickname resolution
     if(!UID || !matchIds.length) return [];
 
     const ids = Array.from(new Set(matchIds.map(x=>String(x)).filter(Boolean)));
@@ -748,6 +820,11 @@
         const weaponName = weaponIdToName.get(weaponKey) || "";
 
         p.killFeed.push({
+          // ✅ requested: show Week-Day-MatchNumber instead of kill_timestamp
+          wdm: fmtWDM(r.Week, r.Day, r.MatchNumber),
+
+          // keep these for internal use / sorting
+          match_id: (r.match_id != null ? String(r.match_id) : ""),
           kill_timestamp: Number.isFinite(ts) ? ts : null,
 
           killer_id: killerKey,
@@ -781,7 +858,7 @@
       team.totalAssists += p.assists;
     }
 
-    // finalize each player: distance buckets, averages, sort feeds
+    // finalize each player
     const players = Array.from(team.players.values()).map(p=>{
       const d = p.killDistances.filter(Number.isFinite);
       const close = d.filter(x=>x <= closeMax).length;
@@ -789,12 +866,13 @@
       const long = d.filter(x=>x > midMax).length;
       const avgDist = d.length ? (d.reduce((a,b)=>a+b,0) / d.length) : 0;
 
+      // sort by timestamp if present (still useful), otherwise keep insertion order
       p.killFeed.sort((a,b)=>(a.kill_timestamp ?? 9e15) - (b.kill_timestamp ?? 9e15));
 
       const topWeapons = Object.entries(p.weaponCounts)
         .sort((a,b)=>b[1]-a[1])
         .slice(0, 6)
-        .map(([wid,c])=>({ wid, c, name: (maps.weaponIdToName.get(wid) || "") }));
+        .map(([wid,c])=>({ wid, c, name: (weaponIdToName.get(wid) || "") }));
 
       const topElimBy = Object.entries(p.eliminatedBy)
         .sort((a,b)=>b[1]-a[1])
@@ -810,7 +888,6 @@
       };
     });
 
-    // sort players by kills desc, then assists desc
     players.sort((a,b)=> (b.kills - a.kills) || (b.assists - a.assists) || a.nickname.localeCompare(b.nickname));
 
     return {
@@ -833,7 +910,7 @@
     const scopeBits = [];
     if(filters.tournament) scopeBits.push(`Tournament=${filters.tournament}`);
     if(filters.stage) scopeBits.push(`Stage=${filters.stage}`);
-    if(filters.year) scopeBits.push(`Year=${filters.year}`);
+    if(filters.year !== null && filters.year !== undefined && filters.year !== "") scopeBits.push(`Year=${filters.year}`);
     if(filters.matchId) scopeBits.push(`match_id=${filters.matchId}`);
     $("scopeText").textContent = scopeBits.length ? scopeBits.join(" • ") : "All rows for selected team";
 
@@ -886,8 +963,9 @@
         ? p.topElimBy.map(x=>`<span class="chip">${escapeHtml(x.t)}×${escapeHtml(x.c)}</span>`).join(" ")
         : `<span class="small">—</span>`;
 
+      // ✅ show W-D-M instead of kill_timestamp
       const feedRows = (p.killFeed || []).slice(-30).reverse().map(k=>{
-        const ts = (k.kill_timestamp ?? "");
+        const wdm = (k.wdm ?? "");
         const victim = k.victim_nickname || k.player_killed_id || "";
         const victimId = k.player_killed_id || "";
         const vteam = k.victim_team ? ` • ${k.victim_team}` : "";
@@ -896,7 +974,7 @@
 
         return `
           <tr>
-            <td>${escapeHtml(ts)}</td>
+            <td>${escapeHtml(wdm)}</td>
             <td>
               ${escapeHtml(victim)}${vteam ? `<div class="small">${escapeHtml(vteam.trim())}</div>` : ""}
               ${victimId ? `<div class="small">id: ${escapeHtml(victimId)}</div>` : ""}
@@ -912,7 +990,7 @@
           <table>
             <thead>
               <tr>
-                <th>kill_timestamp</th>
+                <th>W-D-M</th>
                 <th>Victim (from player_killed_id)</th>
                 <th>Weapon used</th>
                 <th>Distance</th>
@@ -924,7 +1002,7 @@
           </table>
         </div>
         <div class="small" style="margin-top:6px">
-          Victim nickname is resolved by querying all players from the same match_id(s) and mapping <b>account_id → nickname</b>.
+          W-D-M is from the match row fields: <b>Week</b>, <b>Day</b>, <b>MatchNumber</b> (e.g., W1-D4-M2).
         </div>
       `;
 
@@ -986,6 +1064,48 @@
   }
 
   // =============================
+  // Filter dropdown population
+  // =============================
+  const FILTER_CACHE = new Map(); // teamName -> meta sets
+
+  async function loadFiltersForTeam(teamName){
+    // reset report visibility when switching team
+    $("reportCard").style.display = "none";
+
+    // reset selects
+    setSelectOptions($("fTournament"), [], { allLabel:"All", placeholderIfEmpty:"All" });
+    setSelectOptions($("fStage"), [], { allLabel:"All", placeholderIfEmpty:"All" });
+    setSelectOptions($("fYear"), [], { allLabel:"All", placeholderIfEmpty:"All" });
+    setSelectOptions($("fMatchId"), [], { allLabel:"All", placeholderIfEmpty:"All" });
+
+    if(!teamName) return;
+
+    try{
+      setStatus("Loading filter options…");
+      let meta = FILTER_CACHE.get(teamName);
+      if(!meta){
+        meta = await fetchTeamMeta(teamName);
+        FILTER_CACHE.set(teamName, meta);
+      }
+
+      setSelectOptions($("fTournament"), meta.tournaments, { allLabel:"All", placeholderIfEmpty:"All", sort:"alpha" });
+      setSelectOptions($("fStage"), meta.stages, { allLabel:"All", placeholderIfEmpty:"All", sort:"alpha" });
+      setSelectOptions($("fYear"), meta.years, { allLabel:"All", placeholderIfEmpty:"All", sort:"num" });
+      setSelectOptions($("fMatchId"), meta.matchIds, { allLabel:"All", placeholderIfEmpty:"All", sort:"alpha" });
+
+      setStatus("Ready.");
+    }catch(e){
+      console.error(e);
+      setStatus("Failed to load filter options:\n" + (e.message || String(e)), true);
+      // keep them disabled if failed
+      $("fTournament").disabled = true;
+      $("fStage").disabled = true;
+      $("fYear").disabled = true;
+      $("fMatchId").disabled = true;
+    }
+  }
+
+  // =============================
   // Events
   // =============================
   async function loadTeamsUI(){
@@ -1007,6 +1127,10 @@
       )).join("");
 
       $("metaText").textContent = `${teams.length} teams`;
+
+      // keep filters disabled until team selected
+      await loadFiltersForTeam("");
+
       setStatus("Ready.");
     }catch(e){
       console.error(e);
@@ -1022,14 +1146,17 @@
       return;
     }
 
-    const filters = {
-      tournament: ($("fTournament").value || "").trim() || null,
-      stage: ($("fStage").value || "").trim() || null,
-      year: ($("fYear").value || "").trim() || null,
-      matchId: ($("fMatchId").value || "").trim() || null,
-    };
+    const tournament = ($("fTournament").value || "").trim() || null;
+    const stage = ($("fStage").value || "").trim() || null;
+    const yearRaw = ($("fYear").value || "").trim();
+    const matchId = ($("fMatchId").value || "").trim() || null;
 
-    if(filters.year && /^[0-9]{4}$/.test(filters.year)) filters.year = Number(filters.year);
+    const filters = {
+      tournament,
+      stage,
+      year: yearRaw ? (Number.isFinite(Number(yearRaw)) ? Number(yearRaw) : yearRaw) : null,
+      matchId,
+    };
 
     setStatus("Fetching team rows…");
 
@@ -1041,12 +1168,10 @@
         return;
       }
 
-      // Build match_id list for cycling player_killed_id -> nickname
       const matchIds = Array.from(new Set(rows.map(r => r.match_id != null ? String(r.match_id) : "").filter(Boolean)));
 
       setStatus(`Rows: ${rows.length}\nMatches: ${matchIds.length}\nResolving player_killed_id → nickname…`);
 
-      // Pull all lobby rows for these match IDs and build maps
       const lobbyRows = await fetchLobbyRowsByMatchIds(matchIds);
       const maps = buildIdentityMaps(lobbyRows);
 
@@ -1069,6 +1194,11 @@
   $("btnRun").addEventListener("click", runReport);
   $("btnReloadTeams").addEventListener("click", loadTeamsUI);
   $("btnSignOut").addEventListener("click", signOut);
+
+  $("teamSel").addEventListener("change", async () => {
+    const teamName = ($("teamSel").value || "").trim();
+    await loadFiltersForTeam(teamName);
+  });
 
   // =============================
   // Init
