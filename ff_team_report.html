@@ -4,8 +4,10 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>FF Team Report</title>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet"/>
+
   <style>
     :root{
       --bg:#07090f; --bg2:#0b1020;
@@ -63,7 +65,7 @@
       transition: transform .08s ease, border-color .2s ease, background .2s ease;
       user-select:none;
       text-decoration:none;
-      display:inline-flex; align-items:center; gap:8px;
+      display:inline-flex;align-items:center;gap:8px;
     }
     .btn:hover{border-color: rgba(255,255,255,.16); background: rgba(255,255,255,.05)}
     .btn:active{transform: translateY(1px)}
@@ -79,9 +81,22 @@
       border-color: rgba(255,107,107,.35);
       background: linear-gradient(180deg, rgba(255,107,107,.16), rgba(255,107,107,.08));
     }
+    .pill{
+      font-size:12px; padding:6px 10px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      color:var(--ink);
+      display:inline-flex;gap:8px;align-items:center;
+      white-space:nowrap;
+    }
+    .dot{width:8px;height:8px;border-radius:50%}
+    .dot.good{background:var(--good)}
+    .dot.bad{background:var(--bad)}
+    .dot.neutral{background:var(--accent)}
 
     main{max-width:1280px;margin:0 auto;padding:16px}
-    .grid{display:grid;grid-template-columns: 1fr;gap:14px}
+    .grid{display:grid;grid-template-columns: 1.1fr .9fr;gap:14px}
+    @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
 
     .card{
       background: linear-gradient(180deg, var(--panel), var(--panel2));
@@ -93,17 +108,17 @@
     .card .hd{
       padding:14px 14px 10px;
       border-bottom:1px solid var(--line);
-      display:flex;align-items:center;justify-content:space-between;gap:10px;
-      flex-wrap:wrap;
+      display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
     }
     .card .hd h2{font-size:14px;margin:0;letter-spacing:.25px}
     .card .bd{padding:14px}
 
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+    .row + .row{margin-top:10px}
     .field{display:flex;flex-direction:column;gap:6px;min-width:220px;flex:1}
     label{font-size:12px;color:var(--muted)}
 
-    input[type="text"], select{
+    input[type="text"], input[type="number"], select{
       width:100%;
       border:1px solid rgba(255,255,255,.10);
       background: rgba(0,0,0,.25);
@@ -112,25 +127,14 @@
       padding:10px 10px;
       outline:none;
     }
-    select{color-scheme: dark}
+    select{color-scheme: dark; background: rgba(0,0,0,.25); color: var(--ink);}
+    select option{background-color:#0b1020;color:var(--ink)}
     input:focus, select:focus{
       border-color: rgba(77,211,255,.45);
       box-shadow: 0 0 0 3px rgba(77,211,255,.12);
     }
-    .hint{font-size:12px;color:var(--muted);line-height:1.3}
 
-    .pill{
-      font-size:12px; padding:6px 10px; border-radius:999px;
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.04);
-      color:var(--ink);
-      display:inline-flex;gap:8px;align-items:center;
-    }
-    .dot{width:8px;height:8px;border-radius:50%}
-    .dot.good{background:var(--good)}
-    .dot.bad{background:var(--bad)}
-    .dot.neutral{background:var(--accent)}
-
+    .hint{font-size:12px;color:var(--muted);line-height:1.35}
     .status{
       margin-top:10px;
       padding:10px 12px;
@@ -143,96 +147,60 @@
       white-space:pre-wrap;
     }
 
-    .summary{
-      display:grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
-      gap:10px;
-    }
-    @media (max-width: 1000px){ .summary{grid-template-columns: repeat(3, minmax(0, 1fr));} }
-    @media (max-width: 560px){ .summary{grid-template-columns: repeat(2, minmax(0, 1fr));} }
-
+    .kpis{display:grid;grid-template-columns: repeat(4, 1fr); gap:10px}
+    @media (max-width: 980px){ .kpis{grid-template-columns: repeat(2, 1fr)} }
     .kpi{
       border:1px solid rgba(255,255,255,.10);
       background: rgba(0,0,0,.18);
       border-radius:14px;
       padding:10px 12px;
     }
-    .kpi .k{font-size:11px;color:var(--muted)}
-    .kpi .v{font-size:18px;font-weight:800;letter-spacing:.2px;margin-top:4px}
+    .kpi .v{font-size:18px;font-weight:700;letter-spacing:.2px}
+    .kpi .k{font-size:11px;color:var(--muted);margin-top:2px}
 
-    .players{
-      display:grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap:12px;
-    }
-    @media (max-width: 980px){ .players{grid-template-columns:1fr} }
-
-    details.pcard{
+    .bars{
       border:1px solid rgba(255,255,255,.10);
       background: rgba(0,0,0,.18);
-      border-radius: var(--radius);
-      overflow:hidden;
-    }
-    details.pcard summary{
-      list-style:none;
-      cursor:pointer;
-      padding:12px 12px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-    }
-    details.pcard summary::-webkit-details-marker{display:none}
-    .pname{display:flex;flex-direction:column;gap:2px}
-    .pname .n{font-weight:800}
-    .pname .s{font-size:12px;color:var(--muted);font-family:var(--mono)}
-    .pright{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-    .chip{
-      font-size:12px;
-      padding:6px 10px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.04);
-      color: rgba(244,246,255,.92);
-      display:inline-flex;gap:6px;align-items:center;
-    }
-    .chip b{font-family:var(--mono)}
-    .pbody{padding:12px;border-top:1px solid rgba(255,255,255,.08)}
-    .statgrid{
-      display:grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap:10px;
-    }
-    @media (max-width: 740px){ .statgrid{grid-template-columns: repeat(2, minmax(0, 1fr));} }
-    .stat{
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.16);
       border-radius:14px;
-      padding:10px 10px;
+      padding:10px 12px;
     }
-    .stat .k{font-size:11px;color:var(--muted)}
-    .stat .v{font-size:16px;font-weight:800;margin-top:4px}
-
-    .barwrap{
-      margin-top:10px;
+    .barrow{display:grid;grid-template-columns: 80px 1fr 60px; gap:10px; align-items:center; margin:8px 0}
+    .track{
+      height:10px;border-radius:999px;
       border:1px solid rgba(255,255,255,.12);
       background: rgba(255,255,255,.05);
-      border-radius:999px;
       overflow:hidden;
-      height:10px;
     }
-    .barseg{height:100%;display:inline-block}
-    .legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--muted)}
-    .lg{display:inline-flex;align-items:center;gap:6px}
-    .sq{width:10px;height:10px;border-radius:3px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.18)}
+    .fill{
+      height:100%;
+      width:0%;
+      background: linear-gradient(90deg, rgba(77,211,255,.70), rgba(255,189,89,.70), rgba(255,119,51,.70));
+      transition: width .2s ease;
+    }
+    .small{font-size:11px;color:var(--muted)}
+    .mono{font-family:var(--mono)}
+
+    .tabs{display:flex;gap:8px;flex-wrap:wrap}
+    .tab{
+      padding:8px 10px;border-radius:12px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      cursor:pointer;
+      font-size:12px;
+    }
+    .tab.active{
+      border-color: rgba(255,189,89,.35);
+      background: linear-gradient(180deg, rgba(255,189,89,.16), rgba(255,119,51,.10));
+    }
+    .panel{display:none}
+    .panel.active{display:block}
 
     .tablewrap{
-      margin-top:10px;
       border:1px solid rgba(255,255,255,.10);
       border-radius: 14px;
       overflow:hidden;
       background: rgba(0,0,0,.22);
-      max-height: 260px;
+      max-height: 560px;
       overflow:auto;
     }
     table{width:100%;border-collapse:collapse;font-size:12px}
@@ -249,26 +217,28 @@
       border-top:1px solid rgba(255,255,255,.06);
       padding:8px 10px;
       vertical-align:top;
+      max-width: 380px;
       word-break: break-word;
       color: rgba(244,246,255,.92);
-      font-family: var(--mono);
     }
     tbody tr:hover td{background: rgba(255,255,255,.03)}
-    .small{font-size:11px;color:var(--muted)}
+
+    .warn{
+      border-color: rgba(255,189,89,.35) !important;
+      background: rgba(255,189,89,.08) !important;
+    }
   </style>
 </head>
+
 <body>
 <header>
   <div class="wrap">
     <div class="topbar">
       <div class="brand">
-        <img class="fflogo"
-             src="https://upload.wikimedia.org/wikipedia/en/7/7d/Garena_Free_Fire_logo.png"
-             alt="Free Fire"
-             onerror="this.style.display='none'"/>
+        <img class="fflogo" src="https://upload.wikimedia.org/wikipedia/en/7/7d/Garena_Free_Fire_logo.png" alt="Free Fire" onerror="this.style.display='none'"/>
         <div>
-          <h1>FF Team Report</h1>
-          <div class="sub">Team = <b>team_name</b> (player’s team) • Eliminator = <b>eliminated_team_name</b></div>
+          <h1>Team Report</h1>
+          <div class="sub">Per-player performance + kill feed from <span class="mono">ff_stats_raw</span></div>
         </div>
       </div>
 
@@ -276,7 +246,7 @@
         <a class="btn" href="dashboard.html">Back to Dashboard</a>
         <button class="btn" id="btnReloadTeams">Reload Teams</button>
         <button class="btn bad" id="btnSignOut">Sign out</button>
-        <span class="pill" id="authPill"><span class="dot neutral"></span><span id="authText">Checking session…</span></span>
+        <div class="pill" id="authPill"><span class="dot neutral"></span><span id="authText">Checking session…</span></div>
       </div>
     </div>
   </div>
@@ -285,68 +255,209 @@
 <main>
   <div class="grid">
 
+    <!-- LEFT: Controls + Summary -->
     <section class="card">
       <div class="hd">
-        <h2>1) Select Team</h2>
-        <span class="pill"><span class="dot neutral"></span><span id="metaText">—</span></span>
+        <h2>1) Select Team & Build Report</h2>
+        <div class="pill"><span class="dot neutral"></span><span id="metaText">—</span></div>
       </div>
       <div class="bd">
+
         <div class="row">
-          <div class="field" style="min-width:260px;flex:1.1">
+          <div class="field" style="flex:1.2; min-width:260px">
             <label>Team (team_name)</label>
-            <select id="teamSel">
-              <option value="">Loading…</option>
+            <select id="teamPick">
+              <option value="">Loading teams…</option>
             </select>
-            <div class="hint">Shows players that belong to the selected team (from <span style="font-family:var(--mono)">team_name</span>).</div>
+            <div class="hint">This uses <span class="mono">team_name</span> (player’s team). <span class="mono">eliminated_team_name</span> = who eliminated them.</div>
           </div>
 
-          <div class="field" style="min-width:220px;flex:.9">
-            <label>Optional filter: Tournament</label>
-            <input id="fTournament" type="text" placeholder="(leave blank = all)"/>
-          </div>
-
-          <div class="field" style="min-width:200px;flex:.6">
-            <label>Optional filter: Stage</label>
-            <input id="fStage" type="text" placeholder="(leave blank = all)"/>
-          </div>
-
-          <div class="field" style="min-width:150px;flex:.4">
-            <label>Optional filter: Year</label>
-            <input id="fYear" type="text" placeholder="e.g. 2026"/>
-          </div>
-
-          <div class="field" style="min-width:160px;flex:.5">
-            <label>Optional filter: Match ID</label>
-            <input id="fMatchId" type="text" placeholder="(leave blank = all)"/>
-          </div>
-
-          <div class="field" style="min-width:140px;flex:.35">
-            <label>Kill range (m)</label>
-            <select id="rangePreset">
-              <option value="15,50" selected>Close ≤15 • Mid 16–50 • Long >50</option>
-              <option value="10,40">Close ≤10 • Mid 11–40 • Long >40</option>
-              <option value="20,60">Close ≤20 • Mid 21–60 • Long >60</option>
+          <div class="field" style="flex:.8; min-width:200px">
+            <label>Mode</label>
+            <select id="modePick">
+              <option value="">All</option>
+              <option value="BR">BR</option>
+              <option value="CS">CS</option>
             </select>
           </div>
         </div>
 
-        <div class="row" style="justify-content:flex-end;align-items:center">
-          <button class="btn primary" id="btnRun">Build Report</button>
+        <div class="row">
+          <div class="field">
+            <label>Tournament (optional)</label>
+            <input id="tournamentPick" type="text" placeholder="e.g. FFWS Global Finals 2025"/>
+          </div>
+          <div class="field">
+            <label>Stage (optional)</label>
+            <input id="stagePick" type="text" placeholder="e.g. Group Stage / Finals"/>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field" style="flex:.7">
+            <label>Year (optional)</label>
+            <input id="yearPick" type="number" placeholder="e.g. 2026"/>
+          </div>
+          <div class="field" style="flex:.65">
+            <label>Week (optional)</label>
+            <input id="weekPick" type="text" placeholder="e.g. W1"/>
+          </div>
+          <div class="field" style="flex:.65">
+            <label>Day (optional)</label>
+            <input id="dayPick" type="text" placeholder="e.g. D1"/>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field" style="flex:.7">
+            <label>Close ≤ (meters)</label>
+            <input id="closeMax" type="number" value="10" min="0"/>
+          </div>
+          <div class="field" style="flex:.7">
+            <label>Mid ≤ (meters)</label>
+            <input id="midMax" type="number" value="30" min="0"/>
+          </div>
+          <div class="field" style="flex:1.2">
+            <label>Rows per fetch page</label>
+            <select id="pageSize">
+              <option value="500">500</option>
+              <option value="1000" selected>1000</option>
+              <option value="1500">1500</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row" style="justify-content:flex-end">
+          <button class="btn primary" id="btnRun">Generate Report</button>
+          <button class="btn" id="btnExportPlayers">Export Players CSV</button>
+          <button class="btn" id="btnExportKills">Export Kill Feed CSV</button>
         </div>
 
         <div class="status" id="status">Ready.</div>
+
+        <div style="height:12px"></div>
+
+        <div class="kpis" id="kpis">
+          <div class="kpi"><div class="v" id="kpiMatches">—</div><div class="k">Matches</div></div>
+          <div class="kpi"><div class="v" id="kpiKills">—</div><div class="k">Team kills</div></div>
+          <div class="kpi"><div class="v" id="kpiAssists">—</div><div class="k">Team assists</div></div>
+          <div class="kpi"><div class="v" id="kpiDeaths">—</div><div class="k">Deaths (eliminated)</div></div>
+          <div class="kpi"><div class="v" id="kpiMedkits">—</div><div class="k">Medkits used</div></div>
+          <div class="kpi"><div class="v" id="kpiRevived">—</div><div class="k">Revived times (was revived)</div></div>
+          <div class="kpi"><div class="v" id="kpiRevTeammate">—</div><div class="k">Revive teammate times</div></div>
+          <div class="kpi"><div class="v" id="kpiHeadshots">—</div><div class="k">Headshots</div></div>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div class="bars">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+            <div style="font-size:12px">Kill distance breakdown (team)</div>
+            <div class="small">Close ≤ <span id="lblClose">10</span> • Mid ≤ <span id="lblMid">30</span> • Long &gt; <span id="lblMid2">30</span></div>
+          </div>
+
+          <div class="barrow">
+            <div class="small">Close</div>
+            <div class="track"><div class="fill" id="barClose"></div></div>
+            <div class="small" id="valClose">—</div>
+          </div>
+          <div class="barrow">
+            <div class="small">Mid</div>
+            <div class="track"><div class="fill" id="barMid"></div></div>
+            <div class="small" id="valMid">—</div>
+          </div>
+          <div class="barrow">
+            <div class="small">Long</div>
+            <div class="track"><div class="fill" id="barLong"></div></div>
+            <div class="small" id="valLong">—</div>
+          </div>
+
+          <div class="hint" style="margin-top:8px">
+            Uses <span class="mono">player_stats_kill_info[*].kill_distance</span> when available (best). If missing, falls back to <span class="mono">player_stats_kill_distance</span>.
+          </div>
+        </div>
+
       </div>
     </section>
 
-    <section class="card" id="reportCard" style="display:none">
+    <!-- RIGHT: Tables -->
+    <section class="card">
       <div class="hd">
-        <h2>2) Team Summary</h2>
-        <span class="pill"><span class="dot neutral"></span><span id="scopeText">—</span></span>
+        <h2>2) Players & Kill Feed</h2>
+        <div class="tabs">
+          <div class="tab active" data-tab="players">Players</div>
+          <div class="tab" data-tab="kills">Kill Feed</div>
+        </div>
       </div>
       <div class="bd">
-        <div class="summary" id="teamKpis"></div>
-        <div style="height:12px"></div>
-        <div class="players" id="players"></div>
+
+        <div class="panel active" id="panelPlayers">
+          <div class="tablewrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Player</th>
+                  <th>Matches</th>
+                  <th>Kills</th>
+                  <th>Assists</th>
+                  <th>Close</th>
+                  <th>Mid</th>
+                  <th>Long</th>
+                  <th>Headshots</th>
+                  <th>HS Killtimes</th>
+                  <th>Torso</th>
+                  <th>Leg</th>
+                  <th>Medkit</th>
+                  <th>Revived (was)</th>
+                  <th>Rev Teammate</th>
+                  <th>Deaths</th>
+                </tr>
+              </thead>
+              <tbody id="playersBody">
+                <tr><td colspan="15" class="small" style="padding:12px;color:var(--muted)">Generate a report to view players.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel" id="panelKills">
+          <div class="row">
+            <div class="field" style="min-width:240px">
+              <label>Filter by killer</label>
+              <select id="killerFilter">
+                <option value="">All killers</option>
+              </select>
+            </div>
+            <div class="field" style="min-width:220px">
+              <label>Search victim / weapon</label>
+              <input id="killSearch" type="text" placeholder="type to filter…"/>
+            </div>
+          </div>
+
+          <div class="tablewrap" style="margin-top:10px">
+            <table>
+              <thead>
+                <tr>
+                  <th>Match</th>
+                  <th>Killer</th>
+                  <th>Victim</th>
+                  <th>Victim Team</th>
+                  <th>Weapon</th>
+                  <th>Distance</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody id="killsBody">
+                <tr><td colspan="7" class="small" style="padding:12px;color:var(--muted)">Generate a report to view kill feed.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="hint" style="margin-top:8px">
+            Kill feed is built from <span class="mono">player_stats_kill_info</span>. Weapon names are mapped from <span class="mono">player_stats_weapon_usages[*].weapon_name</span> across the same match_ids.
+          </div>
+        </div>
+
       </div>
     </section>
 
@@ -354,78 +465,22 @@
 </main>
 
 <script>
-  // =============================
-  // CONFIG
-  // =============================
-  const SUPABASE_URL = "https://gkugecflfddkpitlrmws.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE";
-  const TABLE = "ff_stats_raw";
+  /***************
+   * CONFIG
+   ***************/
+  const SUPABASE_URL = 'https://gkugecflfddkpitlrmws.supabase.co';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE';
+  const TABLE = 'ff_stats_raw';
+  const REDIRECT_IF_NO_SESSION = true;
 
-  // minimal columns needed for your report
-  const SELECT_COLS = [
-    "owner_id","match_id","Mode","Tournament","Stage","Year","Week","Day","MatchNumber",
-    "team_name","eliminated_team_name",
-    "player_stats_account_id","player_stats_nickname",
-    "player_stats_kills","player_stats_assists",
-    "player_stats_kill_distance","player_stats_kill_info",
-    "player_stats_torso_hits","player_stats_leg_hits","player_stats_headshots",
-    "player_stats_headshot_killtimes",
-    "player_stats_medkit_use",
-    "player_stats_revived_times",
-    "player_stats_revive_teammate_times","player_stats_revive_teammate_nums"
-  ].join(",");
+  const SB = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+  });
 
-  // =============================
-  // Helpers
-  // =============================
+  /***************
+   * DOM helpers
+   ***************/
   const $ = (id) => document.getElementById(id);
-
-  function escapeHtml(s){
-    return String(s ?? "")
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;")
-      .replaceAll("'","&#039;");
-  }
-
-  function num(v){
-    if(v === null || v === undefined || v === "") return 0;
-    const n = Number(v);
-    return Number.isFinite(n) ? n : 0;
-  }
-
-  function parsePipeInts(v){
-    if(v === null || v === undefined) return [];
-    const s = String(v).trim();
-    if(!s || s === "[]" || s.toLowerCase() === "nan") return [];
-    // sometimes it might already be a JSON array string
-    if(s.startsWith("[") && s.endsWith("]")){
-      try{
-        const arr = JSON.parse(s);
-        if(Array.isArray(arr)) return arr.map(x=>Number(x)).filter(Number.isFinite);
-      }catch(_e){}
-    }
-    return s.split("|").map(x=>x.trim()).filter(Boolean).map(x=>Number(x)).filter(Number.isFinite);
-  }
-
-  function parseKillInfo(v){
-    if(v === null || v === undefined) return [];
-    if(Array.isArray(v)) return v;
-    const s = String(v).trim();
-    if(!s || s === "[]" || s.toLowerCase() === "nan") return [];
-    try{
-      const arr = JSON.parse(s);
-      return Array.isArray(arr) ? arr : [];
-    }catch(_e){
-      return [];
-    }
-  }
-
-  function pickRanges(){
-    const [closeMax, midMax] = ($("rangePreset").value || "15,50").split(",").map(x=>Number(x.trim()));
-    return { closeMax: Number.isFinite(closeMax)?closeMax:15, midMax: Number.isFinite(midMax)?midMax:50 };
-  }
 
   function setAuthPill(state, text){
     const pill = $("authPill");
@@ -435,524 +490,688 @@
     $("authText").textContent = text;
   }
 
-  function setStatus(msg, isErr=false){
-    $("status").textContent = msg;
-    $("status").style.borderColor = isErr ? "rgba(255,107,107,.35)" : "rgba(255,255,255,.10)";
+  function setStatus(msg, isWarn=false){
+    const el = $("status");
+    el.textContent = msg;
+    el.classList.toggle("warn", !!isWarn);
   }
 
-  // =============================
-  // Supabase client + session gate
-  // =============================
-  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-  });
+  function escapeHtml(s){
+    const str = String(s ?? "");
+    return str.replace(/[&<>"']/g, (c)=>({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[c]));
+  }
 
-  let SESSION = null;
-  let UID = null;
+  function num(v){
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  }
 
-  async function requireSessionOrRedirect(){
-    // First check
-    const { data, error } = await sb.auth.getSession();
-    if(error){
-      setAuthPill("bad", "Auth error");
-      setStatus("Auth error:\n" + error.message, true);
-      window.location.replace("index.html");
-      return null;
+  function parseJSONSafe(v){
+    if(v == null) return null;
+    if(typeof v === "object") return v;
+    const s = String(v).trim();
+    if(!s) return null;
+    try { return JSON.parse(s); } catch { return null; }
+  }
+
+  function toCSV(rows, cols){
+    const esc = (x) => {
+      const s = x == null ? "" : String(x);
+      if(/[",\n\r]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
+      return s;
+    };
+    const header = cols.map(esc).join(",");
+    const lines = rows.map(r => cols.map(c => esc(r[c])).join(","));
+    return [header, ...lines].join("\n");
+  }
+
+  function downloadText(filename, content, mime="text/plain"){
+    const blob = new Blob([content], {type:mime});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 800);
+  }
+
+  function fmtMs(ms){
+    const n = Number(ms);
+    if(!Number.isFinite(n) || n < 0) return "";
+    const sec = Math.floor(n / 1000);
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${String(s).padStart(2,"0")}`;
+  }
+
+  /***************
+   * Auth gating (no login UI here)
+   ***************/
+  async function ensureSession(){
+    // If opened via file://, session persistence across pages is unreliable.
+    if(location.protocol === "file:"){
+      setAuthPill("bad", "file:// detected (session may not persist)");
+      setStatus(
+        "You opened this page via file://.\nSupabase auth sessions may NOT persist across pages, so redirects can loop.\n\nFix: host the folder (example):\n  python3 -m http.server 8080\nThen open:\n  http://localhost:8080/index.html",
+        true
+      );
+      // Don’t auto-redirect on file:// to avoid infinite bounce.
+      return { session: null, fileProtocol: true };
     }
-    if(data?.session){
-      SESSION = data.session;
-      UID = data.session.user?.id || null;
-      const email = data.session.user?.email || "signed in";
-      setAuthPill("good", email);
-      return data.session;
-    }
 
-    // Grace path: sometimes session hydration is delayed (storage / refresh)
-    setAuthPill("neutral", "Loading session…");
-    return await new Promise((resolve) => {
-      let done = false;
+    // Wait for INITIAL_SESSION event or fallback to getSession after short delay.
+    let resolved = false;
+    let sub = null;
 
-      const sub = sb.auth.onAuthStateChange(async (_evt, session) => {
-        if(done) return;
-        if(session){
-          done = true;
-          sub?.data?.subscription?.unsubscribe?.();
-          SESSION = session;
-          UID = session.user?.id || null;
-          setAuthPill("good", session.user?.email || "signed in");
-          resolve(session);
+    const p = new Promise((resolve) => {
+      const t = setTimeout(async()=>{
+        if(resolved) return;
+        const { data } = await SB.auth.getSession();
+        resolved = true;
+        try{ sub?.unsubscribe?.(); }catch(_e){}
+        resolve(data?.session || null);
+      }, 1200);
+
+      const { data } = SB.auth.onAuthStateChange((event, session) => {
+        if(resolved) return;
+        if(event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED"){
+          clearTimeout(t);
+          resolved = true;
+          try{ sub?.unsubscribe?.(); }catch(_e){}
+          resolve(session || null);
         }
       });
-
-      setTimeout(async () => {
-        if(done) return;
-        const { data: d2 } = await sb.auth.getSession();
-        if(d2?.session){
-          done = true;
-          sub?.data?.subscription?.unsubscribe?.();
-          SESSION = d2.session;
-          UID = d2.session.user?.id || null;
-          setAuthPill("good", d2.session.user?.email || "signed in");
-          resolve(d2.session);
-          return;
-        }
-        // no session => go login
-        window.location.replace("index.html");
-      }, 800);
+      sub = data?.subscription || null;
     });
+
+    const session = await p;
+    return { session, fileProtocol: false };
   }
 
   async function signOut(){
-    try{
-      await sb.auth.signOut();
-    }catch(_e){}
-    window.location.replace("index.html");
+    try{ await SB.auth.signOut(); }catch(_e){}
+    location.href = "index.html";
   }
 
-  // =============================
-  // Data fetch (paged)
-  // =============================
-  async function fetchAllTeams(){
-    if(!UID) return [];
-    const pageSize = 1000;
+  /***************
+   * Data fetch helpers (pagination)
+   ***************/
+  async function fetchAll(selectCols, builderFn){
+    const pageSize = parseInt($("pageSize").value, 10) || 1000;
+    let out = [];
     let from = 0;
-    const set = new Set();
 
     while(true){
-      const { data, error } = await sb
-        .from(TABLE)
-        .select("team_name")
-        .eq("owner_id", UID)
-        .neq("team_name", null)
-        .range(from, from + pageSize - 1);
+      let q = SB.from(TABLE).select(selectCols).range(from, from + pageSize - 1);
+      if(typeof builderFn === "function") q = builderFn(q);
 
-      if(error){
-        throw error;
-      }
-      for(const r of (data || [])){
-        const t = String(r.team_name || "").trim();
-        if(t) set.add(t);
-      }
-      if(!data || data.length < pageSize) break;
-      from += pageSize;
-
-      // safety cap (avoid infinite loops)
-      if(from > 200000) break;
-    }
-
-    return Array.from(set).sort((a,b)=>a.localeCompare(b));
-  }
-
-  async function fetchTeamRows(teamName, filters){
-    if(!UID) return [];
-    const pageSize = 1000;
-    let from = 0;
-    const all = [];
-
-    while(true){
-      let q = sb
-        .from(TABLE)
-        .select(SELECT_COLS)
-        .eq("owner_id", UID)
-        .eq("team_name", teamName);
-
-      if(filters.tournament) q = q.eq("Tournament", filters.tournament);
-      if(filters.stage) q = q.eq("Stage", filters.stage);
-      if(filters.year) q = q.eq("Year", filters.year);
-      if(filters.matchId) q = q.eq("match_id", filters.matchId);
-
-      const { data, error } = await q.range(from, from + pageSize - 1);
+      const { data, error } = await q;
       if(error) throw error;
 
-      all.push(...(data || []));
-      if(!data || data.length < pageSize) break;
-      from += pageSize;
-      if(from > 200000) break;
-    }
+      const batch = data || [];
+      out = out.concat(batch);
 
-    return all;
+      if(batch.length < pageSize) break;
+      from += pageSize;
+
+      // soft safety: prevent runaway
+      if(out.length > 200000) break;
+    }
+    return out;
   }
 
-  // =============================
-  // Report build
-  // =============================
-  function buildReport(rows){
-    const { closeMax, midMax } = pickRanges();
+  function chunk(arr, n){
+    const out = [];
+    for(let i=0;i<arr.length;i+=n) out.push(arr.slice(i, i+n));
+    return out;
+  }
 
-    const team = {
-      matches: new Set(),
-      players: new Map(),
-      totalKills: 0,
-      totalAssists: 0
-    };
+  /***************
+   * Report builder
+   ***************/
+  function categorizeDistance(dist, closeMax, midMax){
+    const d = Number(dist);
+    if(!Number.isFinite(d)) return null;
+    if(d <= closeMax) return "close";
+    if(d <= midMax) return "mid";
+    return "long";
+  }
 
-    for(const r of (rows || [])){
-      const pid = r.player_stats_account_id;
+  function parseDistancesFallback(v){
+    // v like: "67 | 28" or "[]"
+    if(v == null) return [];
+    if(Array.isArray(v)) return v.map(Number).filter(Number.isFinite);
+    const s = String(v).trim();
+    if(!s || s === "[]") return [];
+    return s.split("|").map(x => Number(String(x).trim())).filter(Number.isFinite);
+  }
+
+  function buildMapsFromLobbyRows(lobbyRows){
+    const nickMap = new Map();   // account_id -> nickname
+    const teamMap = new Map();   // account_id -> team_name
+    const weaponMap = new Map(); // weapon_id -> weapon_name
+
+    for(const r of (lobbyRows || [])){
+      const id = r.player_stats_account_id != null ? String(r.player_stats_account_id) : "";
+      const nick = r.player_stats_nickname != null ? String(r.player_stats_nickname) : "";
+      const t = r.team_name != null ? String(r.team_name) : "";
+
+      if(id){
+        if(nick && !nickMap.has(id)) nickMap.set(id, nick);
+        if(t && !teamMap.has(id)) teamMap.set(id, t);
+      }
+
+      const usages = parseJSONSafe(r.player_stats_weapon_usages);
+      if(Array.isArray(usages)){
+        for(const u of usages){
+          const wid = u?.weapon_id;
+          const wnm = u?.weapon_name;
+          if(wid != null && wnm != null){
+            const key = String(wid);
+            if(!weaponMap.has(key)) weaponMap.set(key, String(wnm));
+          }
+        }
+      }
+    }
+    return { nickMap, teamMap, weaponMap };
+  }
+
+  function buildReport(teamRows, maps, closeMax, midMax){
+    const { nickMap, teamMap, weaponMap } = maps;
+
+    const players = new Map(); // account_id -> stats
+    const killFeed = [];
+
+    const teamMatchSet = new Set();
+    let teamKills = 0, teamAssists = 0, teamDeaths = 0, teamMed = 0, teamRevived = 0, teamRevMate = 0, teamHeadshots = 0;
+    let teamClose = 0, teamMid = 0, teamLong = 0;
+
+    for(const r of (teamRows || [])){
+      const pid = r.player_stats_account_id != null ? String(r.player_stats_account_id) : "";
       if(!pid) continue;
 
-      const nick = r.player_stats_nickname || "(unknown)";
-      const key = String(pid);
+      const nick = (r.player_stats_nickname != null ? String(r.player_stats_nickname) : "") || (nickMap.get(pid) || "");
+      const matchId = r.match_id != null ? String(r.match_id) : "";
 
-      if(r.match_id !== null && r.match_id !== undefined) team.matches.add(String(r.match_id));
+      if(matchId) teamMatchSet.add(matchId);
 
-      if(!team.players.has(key)){
-        team.players.set(key, {
-          account_id: key,
-          nickname: nick,
+      if(!players.has(pid)){
+        players.set(pid, {
+          player_id: pid,
+          nickname: nick || pid,
           matches: new Set(),
           kills: 0,
           assists: 0,
-          torso: 0,
-          leg: 0,
+          deaths: 0,
+          close: 0,
+          mid: 0,
+          long: 0,
           headshots: 0,
           headshotKilltimes: 0,
+          torso: 0,
+          leg: 0,
           medkit: 0,
-          revivedTimes: 0,           // player was revived
-          reviveTeammateTimes: 0,    // player revived others
-          reviveTeammateNums: 0,
-          killDistances: [],
-          killFeed: [],
-          weaponCounts: {},
-          eliminatedBy: {}
+          revivedTimes: 0,
+          reviveTeammateTimes: 0
         });
       }
 
-      const p = team.players.get(key);
-      if(r.match_id !== null && r.match_id !== undefined) p.matches.add(String(r.match_id));
-      if(!p.nickname || p.nickname === "(unknown)") p.nickname = nick;
+      const p = players.get(pid);
+      if(matchId) p.matches.add(matchId);
 
       p.kills += num(r.player_stats_kills);
       p.assists += num(r.player_stats_assists);
-      p.torso += num(r.player_stats_torso_hits);
-      p.leg += num(r.player_stats_leg_hits);
       p.headshots += num(r.player_stats_headshots);
       p.headshotKilltimes += num(r.player_stats_headshot_killtimes);
+      p.torso += num(r.player_stats_torso_hits);
+      p.leg += num(r.player_stats_leg_hits);
       p.medkit += num(r.player_stats_medkit_use);
       p.revivedTimes += num(r.player_stats_revived_times);
       p.reviveTeammateTimes += num(r.player_stats_revive_teammate_times);
-      p.reviveTeammateNums += num(r.player_stats_revive_teammate_nums);
+      p.deaths += (r.is_eliminated === true || r.is_eliminated === "true") ? 1 : 0;
 
-      // distances list (one per kill)
-      p.killDistances.push(...parsePipeInts(r.player_stats_kill_distance));
+      // Build kill feed from kill_info JSON
+      const killInfo = parseJSONSafe(r.player_stats_kill_info);
+      if(Array.isArray(killInfo) && killInfo.length){
+        for(const k of killInfo){
+          const killerId = k?.killer_id != null ? String(k.killer_id) : pid;
+          const victimId = k?.player_killed_id != null ? String(k.player_killed_id) : "";
+          const weaponId = k?.weapon_used_id != null ? String(k.weapon_used_id) : "";
+          const dist = (k?.kill_distance != null) ? Number(k.kill_distance) : null;
+          const tms = (k?.kill_timestamp != null) ? Number(k.kill_timestamp) : null;
 
-      // kill feed from kill_info (victim + weapon + distance + timestamp)
-      const kills = parseKillInfo(r.player_stats_kill_info);
-      for(const k of kills){
-        const killerId = k?.killer_id ?? "";
-        const victimId = k?.player_killed_id ?? "";
-        const weaponId = k?.weapon_used_id ?? "";
-        const dist = Number(k?.kill_distance);
-        const ts = Number(k?.kill_timestamp);
+          const cat = categorizeDistance(dist, closeMax, midMax);
+          if(cat === "close"){ p.close++; teamClose++; }
+          else if(cat === "mid"){ p.mid++; teamMid++; }
+          else if(cat === "long"){ p.long++; teamLong++; }
 
-        p.killFeed.push({
-          killer_id: String(killerId),
-          player_killed_id: String(victimId),
-          weapon_used_id: String(weaponId),
-          kill_distance: Number.isFinite(dist) ? dist : null,
-          kill_timestamp: Number.isFinite(ts) ? ts : null
-        });
-
-        if(weaponId !== "" && weaponId !== "undefined" && weaponId !== "null"){
-          p.weaponCounts[weaponId] = (p.weaponCounts[weaponId] || 0) + 1;
+          killFeed.push({
+            match_id: matchId,
+            killer_id: killerId,
+            killer_nickname: nickMap.get(killerId) || (killerId === pid ? (nick || pid) : killerId),
+            victim_id: victimId,
+            victim_nickname: victimId ? (nickMap.get(victimId) || victimId) : "",
+            victim_team: victimId ? (teamMap.get(victimId) || "") : "",
+            weapon_id: weaponId,
+            weapon_name: weaponId ? (weaponMap.get(weaponId) || "") : "",
+            kill_distance: Number.isFinite(dist) ? dist : null,
+            kill_timestamp: Number.isFinite(tms) ? tms : null
+          });
+        }
+      } else {
+        // Fallback distance breakdown from player_stats_kill_distance (no victim/weapon)
+        const dists = parseDistancesFallback(r.player_stats_kill_distance);
+        for(const d of dists){
+          const cat = categorizeDistance(d, closeMax, midMax);
+          if(cat === "close"){ p.close++; teamClose++; }
+          else if(cat === "mid"){ p.mid++; teamMid++; }
+          else if(cat === "long"){ p.long++; teamLong++; }
         }
       }
-
-      // who eliminated the player (team that eliminated them)
-      const elimTeam = String(r.eliminated_team_name || "").trim();
-      if(elimTeam){
-        p.eliminatedBy[elimTeam] = (p.eliminatedBy[elimTeam] || 0) + 1;
-      }
     }
 
-    // team totals
-    for(const p of team.players.values()){
-      team.totalKills += p.kills;
-      team.totalAssists += p.assists;
+    // Team totals from players
+    for(const p of players.values()){
+      teamKills += p.kills;
+      teamAssists += p.assists;
+      teamDeaths += p.deaths;
+      teamMed += p.medkit;
+      teamRevived += p.revivedTimes;
+      teamRevMate += p.reviveTeammateTimes;
+      teamHeadshots += p.headshots;
     }
 
-    // finalize each player: distance buckets, averages, sort feeds
-    const players = Array.from(team.players.values()).map(p=>{
-      const d = p.killDistances;
-      const close = d.filter(x=>x <= closeMax).length;
-      const mid = d.filter(x=>x > closeMax && x <= midMax).length;
-      const long = d.filter(x=>x > midMax).length;
-      const avgDist = d.length ? (d.reduce((a,b)=>a+b,0) / d.length) : 0;
+    const playerList = Array.from(players.values()).map(p => ({
+      ...p,
+      matches: p.matches.size
+    })).sort((a,b)=> b.kills - a.kills || b.assists - a.assists || a.nickname.localeCompare(b.nickname));
 
-      p.killFeed.sort((a,b)=>(a.kill_timestamp ?? 9e15) - (b.kill_timestamp ?? 9e15));
-
-      const topWeapons = Object.entries(p.weaponCounts)
-        .sort((a,b)=>b[1]-a[1])
-        .slice(0, 6)
-        .map(([wid,c])=>({ wid, c }));
-
-      const topElimBy = Object.entries(p.eliminatedBy)
-        .sort((a,b)=>b[1]-a[1])
-        .slice(0, 3)
-        .map(([t,c])=>({ t, c }));
-
-      return {
-        ...p,
-        matchesPlayed: p.matches.size,
-        dist: { close, mid, long, avg: avgDist, total: d.length },
-        topWeapons,
-        topElimBy
-      };
+    // Sort kill feed: match_id then timestamp
+    killFeed.sort((a,b)=>{
+      if(a.match_id !== b.match_id) return String(a.match_id).localeCompare(String(b.match_id));
+      const ta = Number.isFinite(a.kill_timestamp) ? a.kill_timestamp : 1e18;
+      const tb = Number.isFinite(b.kill_timestamp) ? b.kill_timestamp : 1e18;
+      return ta - tb;
     });
 
-    // sort players by kills desc, then assists desc
-    players.sort((a,b)=> (b.kills - a.kills) || (b.assists - a.assists) || a.nickname.localeCompare(b.nickname));
-
     return {
-      matchesPlayed: team.matches.size,
-      playerCount: players.length,
-      totalKills: team.totalKills,
-      totalAssists: team.totalAssists,
-      players
+      playerList,
+      killFeed,
+      teamSummary: {
+        matches: teamMatchSet.size,
+        kills: teamKills,
+        assists: teamAssists,
+        deaths: teamDeaths,
+        medkits: teamMed,
+        revived: teamRevived,
+        reviveTeammate: teamRevMate,
+        headshots: teamHeadshots,
+        dist: { close: teamClose, mid: teamMid, long: teamLong }
+      }
     };
   }
 
-  // =============================
-  // Render
-  // =============================
-  function kpiHTML(k, v){
-    return `<div class="kpi"><div class="k">${escapeHtml(k)}</div><div class="v">${escapeHtml(v)}</div></div>`;
-  }
+  /***************
+   * Render
+   ***************/
+  let LAST_PLAYERS = [];
+  let LAST_KILLS = [];
 
-  function renderTeamKpis(teamName, report, filters){
-    const scopeBits = [];
-    if(filters.tournament) scopeBits.push(`Tournament=${filters.tournament}`);
-    if(filters.stage) scopeBits.push(`Stage=${filters.stage}`);
-    if(filters.year) scopeBits.push(`Year=${filters.year}`);
-    if(filters.matchId) scopeBits.push(`match_id=${filters.matchId}`);
-    $("scopeText").textContent = scopeBits.length ? scopeBits.join(" • ") : "All rows for selected team";
+  function renderSummary(sum, closeMax, midMax){
+    $("metaText").textContent = `${sum.matches} matches • ${sum.kills} kills • ${sum.assists} assists`;
 
-    const box = $("teamKpis");
-    box.innerHTML = [
-      kpiHTML("Team", teamName),
-      kpiHTML("Matches", String(report.matchesPlayed)),
-      kpiHTML("Players", String(report.playerCount)),
-      kpiHTML("Total Kills", String(report.totalKills)),
-      kpiHTML("Total Assists", String(report.totalAssists)),
-      kpiHTML("K+A", String(report.totalKills + report.totalAssists))
-    ].join("");
+    $("kpiMatches").textContent = sum.matches;
+    $("kpiKills").textContent = sum.kills;
+    $("kpiAssists").textContent = sum.assists;
+    $("kpiDeaths").textContent = sum.deaths;
+    $("kpiMedkits").textContent = sum.medkits;
+    $("kpiRevived").textContent = sum.revived;
+    $("kpiRevTeammate").textContent = sum.reviveTeammate;
+    $("kpiHeadshots").textContent = sum.headshots;
+
+    $("lblClose").textContent = closeMax;
+    $("lblMid").textContent = midMax;
+    $("lblMid2").textContent = midMax;
+
+    const total = sum.dist.close + sum.dist.mid + sum.dist.long;
+    const pct = (x) => total ? Math.round((x/total)*100) : 0;
+
+    $("valClose").textContent = `${sum.dist.close} (${pct(sum.dist.close)}%)`;
+    $("valMid").textContent = `${sum.dist.mid} (${pct(sum.dist.mid)}%)`;
+    $("valLong").textContent = `${sum.dist.long} (${pct(sum.dist.long)}%)`;
+
+    $("barClose").style.width = `${pct(sum.dist.close)}%`;
+    $("barMid").style.width = `${pct(sum.dist.mid)}%`;
+    $("barLong").style.width = `${pct(sum.dist.long)}%`;
   }
 
   function renderPlayers(players){
-    const { closeMax, midMax } = pickRanges();
-
-    const container = $("players");
-    container.innerHTML = "";
-
-    for(const p of players){
-      const d = p.dist;
-      const total = Math.max(1, d.total);
-      const closePct = Math.round((d.close/total)*100);
-      const midPct = Math.round((d.mid/total)*100);
-      const longPct = Math.max(0, 100 - closePct - midPct);
-
-      // bars (use CSS-only colors via opacity; no hard-coded palette)
-      const bar = `
-        <div class="barwrap" title="Kill distance distribution">
-          <span class="barseg" style="width:${closePct}%;background: rgba(77,211,255,.75)"></span>
-          <span class="barseg" style="width:${midPct}%;background: rgba(255,189,89,.72)"></span>
-          <span class="barseg" style="width:${longPct}%;background: rgba(255,119,51,.72)"></span>
-        </div>
-        <div class="legend">
-          <span class="lg"><span class="sq" style="background:rgba(77,211,255,.65)"></span>Close ≤${closeMax}: <b>${d.close}</b></span>
-          <span class="lg"><span class="sq" style="background:rgba(255,189,89,.62)"></span>Mid ≤${midMax}: <b>${d.mid}</b></span>
-          <span class="lg"><span class="sq" style="background:rgba(255,119,51,.62)"></span>Long &gt;${midMax}: <b>${d.long}</b></span>
-          <span class="lg">Avg: <b>${d.avg ? d.avg.toFixed(1) : "0.0"}</b></span>
-        </div>
-      `;
-
-      const topWeapons = p.topWeapons.length
-        ? p.topWeapons.map(x=>`<span class="chip">W<b>${escapeHtml(x.wid)}</b>×${escapeHtml(x.c)}</span>`).join(" ")
-        : `<span class="small">No weapon ids in kill_info.</span>`;
-
-      const topElimBy = p.topElimBy.length
-        ? p.topElimBy.map(x=>`<span class="chip">${escapeHtml(x.t)}×${escapeHtml(x.c)}</span>`).join(" ")
-        : `<span class="small">—</span>`;
-
-      const feedRows = (p.killFeed || []).slice(-30).reverse().map(k=>{
-        const ts = (k.kill_timestamp ?? "");
-        const victim = k.player_killed_id || "";
-        const weapon = k.weapon_used_id || "";
-        const dist = (k.kill_distance ?? "");
-        const killer = k.killer_id || "";
-        return `
-          <tr>
-            <td>${escapeHtml(ts)}</td>
-            <td>${escapeHtml(victim)}</td>
-            <td>${escapeHtml(weapon)}</td>
-            <td>${escapeHtml(dist)}</td>
-            <td>${escapeHtml(killer)}</td>
-          </tr>
-        `;
-      }).join("");
-
-      const feedTable = `
-        <div class="tablewrap">
-          <table>
-            <thead>
-              <tr>
-                <th>kill_timestamp</th>
-                <th>player_killed_id</th>
-                <th>weapon_used_id</th>
-                <th>kill_distance</th>
-                <th>killer_id</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${feedRows || `<tr><td colspan="5" class="small" style="font-family:var(--sans)">No kills in kill_info for this player.</td></tr>`}
-            </tbody>
-          </table>
-        </div>
-        <div class="small" style="margin-top:6px">
-          Showing up to last 30 kills (from <span style="font-family:var(--mono)">player_stats_kill_info</span>).
-        </div>
-      `;
-
-      const el = document.createElement("details");
-      el.className = "pcard";
-      el.innerHTML = `
-        <summary>
-          <div class="pname">
-            <div class="n">${escapeHtml(p.nickname)}</div>
-            <div class="s">account_id: ${escapeHtml(p.account_id)} • matches: ${escapeHtml(p.matchesPlayed)}</div>
-          </div>
-          <div class="pright">
-            <span class="chip">Kills <b>${escapeHtml(p.kills)}</b></span>
-            <span class="chip">Asst <b>${escapeHtml(p.assists)}</b></span>
-            <span class="chip">Medkit <b>${escapeHtml(p.medkit)}</b></span>
-            <span class="chip">Revived <b>${escapeHtml(p.revivedTimes)}</b></span>
-          </div>
-        </summary>
-
-        <div class="pbody">
-          <div class="statgrid">
-            <div class="stat"><div class="k">Elims / Kills</div><div class="v">${escapeHtml(p.kills)}</div></div>
-            <div class="stat"><div class="k">Assists</div><div class="v">${escapeHtml(p.assists)}</div></div>
-            <div class="stat"><div class="k">Torso Hits</div><div class="v">${escapeHtml(p.torso)}</div></div>
-            <div class="stat"><div class="k">Leg Hits</div><div class="v">${escapeHtml(p.leg)}</div></div>
-            <div class="stat"><div class="k">Headshots</div><div class="v">${escapeHtml(p.headshots)}</div></div>
-            <div class="stat"><div class="k">Headshot Killtimes</div><div class="v">${escapeHtml(p.headshotKilltimes)}</div></div>
-            <div class="stat"><div class="k">Medkit Use</div><div class="v">${escapeHtml(p.medkit)}</div></div>
-            <div class="stat"><div class="k">Revived Times (was revived)</div><div class="v">${escapeHtml(p.revivedTimes)}</div></div>
-            <div class="stat"><div class="k">Revive Teammate Times</div><div class="v">${escapeHtml(p.reviveTeammateTimes)}</div></div>
-            <div class="stat"><div class="k">Revive Teammate Nums</div><div class="v">${escapeHtml(p.reviveTeammateNums)}</div></div>
-            <div class="stat"><div class="k">Kill distances count</div><div class="v">${escapeHtml(p.dist.total)}</div></div>
-            <div class="stat"><div class="k">Avg kill distance</div><div class="v">${escapeHtml(p.dist.avg ? p.dist.avg.toFixed(1) : "0.0")}</div></div>
-          </div>
-
-          <div style="margin-top:10px">
-            <div class="small">Kill distance buckets (from <span style="font-family:var(--mono)">player_stats_kill_distance</span>)</div>
-            ${bar}
-          </div>
-
-          <div style="margin-top:10px">
-            <div class="small">Player killed + weapon used (parsed from <span style="font-family:var(--mono)">player_stats_kill_info</span>)</div>
-            ${feedTable}
-          </div>
-
-          <div style="margin-top:10px">
-            <div class="small">Top weapon_used_id (from kill_info)</div>
-            <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">${topWeapons}</div>
-          </div>
-
-          <div style="margin-top:10px">
-            <div class="small">Eliminated by (team that eliminated this player) — from <span style="font-family:var(--mono)">eliminated_team_name</span></div>
-            <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">${topElimBy}</div>
-          </div>
-        </div>
-      `;
-      container.appendChild(el);
+    LAST_PLAYERS = players || [];
+    const tb = $("playersBody");
+    if(!LAST_PLAYERS.length){
+      tb.innerHTML = `<tr><td colspan="15" class="small" style="padding:12px;color:var(--muted)">No player rows found for this team/filter.</td></tr>`;
+      return;
     }
+
+    tb.innerHTML = LAST_PLAYERS.map(p => `
+      <tr>
+        <td>${escapeHtml(p.nickname)}<div class="small mono">${escapeHtml(p.player_id)}</div></td>
+        <td>${p.matches}</td>
+        <td>${p.kills}</td>
+        <td>${p.assists}</td>
+        <td>${p.close}</td>
+        <td>${p.mid}</td>
+        <td>${p.long}</td>
+        <td>${p.headshots}</td>
+        <td>${p.headshotKilltimes}</td>
+        <td>${p.torso}</td>
+        <td>${p.leg}</td>
+        <td>${p.medkit}</td>
+        <td>${p.revivedTimes}</td>
+        <td>${p.reviveTeammateTimes}</td>
+        <td>${p.deaths}</td>
+      </tr>
+    `).join("");
   }
 
-  // =============================
-  // Events
-  // =============================
-  async function loadTeamsUI(){
+  function renderKillerFilter(players){
+    const sel = $("killerFilter");
+    const cur = sel.value;
+    sel.innerHTML = `<option value="">All killers</option>` +
+      (players || []).map(p => `<option value="${escapeHtml(p.player_id)}">${escapeHtml(p.nickname)}</option>`).join("");
+    // restore if possible
+    const exists = Array.from(sel.options).some(o => o.value === cur);
+    sel.value = exists ? cur : "";
+  }
+
+  function renderKills(kills){
+    LAST_KILLS = kills || [];
+    applyKillFilters();
+  }
+
+  function applyKillFilters(){
+    const killerId = $("killerFilter").value || "";
+    const q = ($("killSearch").value || "").trim().toLowerCase();
+
+    const rows = LAST_KILLS.filter(k => {
+      if(killerId && String(k.killer_id) !== String(killerId)) return false;
+      if(!q) return true;
+
+      const victim = (k.victim_nickname || "").toLowerCase();
+      const wid = (k.weapon_id || "").toLowerCase();
+      const wnm = (k.weapon_name || "").toLowerCase();
+      const vteam = (k.victim_team || "").toLowerCase();
+      return victim.includes(q) || wid.includes(q) || wnm.includes(q) || vteam.includes(q);
+    });
+
+    const tb = $("killsBody");
+    if(!rows.length){
+      tb.innerHTML = `<tr><td colspan="7" class="small" style="padding:12px;color:var(--muted)">No kill events match the filter.</td></tr>`;
+      return;
+    }
+
+    tb.innerHTML = rows.map(k => {
+      const weaponLabel = k.weapon_name ? `${k.weapon_name} (${k.weapon_id})` : (k.weapon_id || "");
+      const dist = (k.kill_distance != null && Number.isFinite(Number(k.kill_distance))) ? Number(k.kill_distance).toFixed(1) : "";
+      const time = k.kill_timestamp != null ? `${k.kill_timestamp} ${fmtMs(k.kill_timestamp) ? "(" + fmtMs(k.kill_timestamp) + ")" : ""}` : "";
+      return `
+        <tr>
+          <td class="mono">${escapeHtml(k.match_id || "")}</td>
+          <td>${escapeHtml(k.killer_nickname || k.killer_id)}<div class="small mono">${escapeHtml(k.killer_id || "")}</div></td>
+          <td>${escapeHtml(k.victim_nickname || k.victim_id)}<div class="small mono">${escapeHtml(k.victim_id || "")}</div></td>
+          <td>${escapeHtml(k.victim_team || "")}</td>
+          <td>${escapeHtml(weaponLabel)}</td>
+          <td>${escapeHtml(dist)}</td>
+          <td class="mono">${escapeHtml(time)}</td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  /***************
+   * Load teams + generate
+   ***************/
+  async function loadTeams(){
     setStatus("Loading teams…");
-    $("teamSel").innerHTML = `<option value="">Loading…</option>`;
-    $("metaText").textContent = "—";
+    $("teamPick").innerHTML = `<option value="">Loading…</option>`;
 
-    try{
-      const teams = await fetchAllTeams();
-      if(!teams.length){
-        $("teamSel").innerHTML = `<option value="">(No teams found)</option>`;
-        $("metaText").textContent = "0 teams";
-        setStatus("No teams found for this account. Upload rows first.", true);
-        return;
-      }
+    const rows = await fetchAll("team_name", (q)=>q);
+    const teams = Array.from(new Set((rows || []).map(r => (r.team_name ?? "").toString().trim()).filter(Boolean)))
+      .sort((a,b)=>a.localeCompare(b));
 
-      $("teamSel").innerHTML = `<option value="">Select a team…</option>` + teams.map(t=>(
-        `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`
-      )).join("");
+    $("teamPick").innerHTML = `<option value="">Select a team…</option>` +
+      teams.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
 
-      $("metaText").textContent = `${teams.length} teams`;
-      setStatus("Ready.");
-    }catch(e){
-      console.error(e);
-      setStatus("Failed to load teams:\n" + (e.message || String(e)), true);
-      $("teamSel").innerHTML = `<option value="">(Load failed)</option>`;
-    }
+    setStatus(`Teams loaded: ${teams.length}`);
   }
 
-  async function runReport(){
-    const teamName = ($("teamSel").value || "").trim();
-    if(!teamName){
+  function buildFilters(){
+    const mode = ($("modePick").value || "").trim();
+    const t = ($("tournamentPick").value || "").trim();
+    const s = ($("stagePick").value || "").trim();
+    const y = ($("yearPick").value || "").trim();
+    const w = ($("weekPick").value || "").trim();
+    const d = ($("dayPick").value || "").trim();
+
+    return { mode, t, s, y, w, d };
+  }
+
+  function applyFiltersToQuery(q, f){
+    if(f.mode) q = q.eq("Mode", f.mode);
+    if(f.t) q = q.eq("Tournament", f.t);
+    if(f.s) q = q.eq("Stage", f.s);
+    if(f.y) q = q.eq("Year", Number(f.y));
+    if(f.w) q = q.eq("Week", f.w);
+    if(f.d) q = q.eq("Day", f.d);
+    return q;
+  }
+
+  async function generateReport(){
+    const team = $("teamPick").value;
+    if(!team){
       setStatus("Pick a team first.", true);
       return;
     }
 
-    const filters = {
-      tournament: ($("fTournament").value || "").trim() || null,
-      stage: ($("fStage").value || "").trim() || null,
-      year: ($("fYear").value || "").trim() || null,
-      matchId: ($("fMatchId").value || "").trim() || null,
-    };
+    const closeMax = Math.max(0, Number($("closeMax").value || 10));
+    const midMax = Math.max(closeMax, Number($("midMax").value || 30));
+    const f = buildFilters();
 
-    // normalize Year numeric if user typed 2026
-    if(filters.year && /^[0-9]{4}$/.test(filters.year)) filters.year = Number(filters.year);
+    $("lblClose").textContent = closeMax;
+    $("lblMid").textContent = midMax;
+    $("lblMid2").textContent = midMax;
 
-    setStatus("Fetching rows…");
+    setStatus("Fetching team rows…");
 
-    try{
-      const rows = await fetchTeamRows(teamName, filters);
-      if(!rows.length){
-        setStatus("No rows found for this team (with current filters).", true);
-        $("reportCard").style.display = "none";
-        return;
-      }
+    // Columns we need
+    const TEAM_COLS = [
+      "match_id","Mode","Tournament","Stage","Year","Week","Day","MatchNumber",
+      "team_name","eliminated_team_name","is_eliminated",
+      "player_stats_account_id","player_stats_nickname",
+      "player_stats_kills","player_stats_assists",
+      "player_stats_kill_info","player_stats_kill_distance",
+      "player_stats_headshots","player_stats_headshot_killtimes",
+      "player_stats_torso_hits","player_stats_leg_hits",
+      "player_stats_medkit_use",
+      "player_stats_revived_times","player_stats_revive_teammate_times",
+      "player_stats_weapon_usages"
+    ].join(",");
 
-      setStatus(`Building report…\nRows: ${rows.length}`);
-      const report = buildReport(rows);
+    // 1) Fetch team rows (all matches)
+    const teamRows = await fetchAll(TEAM_COLS, (q)=>{
+      q = q.eq("team_name", team);
+      q = applyFiltersToQuery(q, f);
+      return q;
+    });
 
-      renderTeamKpis(teamName, report, filters);
-      renderPlayers(report.players);
-
-      $("reportCard").style.display = "";
-      setStatus(`Done ✅\nTeam: ${teamName}\nRows: ${rows.length}\nPlayers: ${report.playerCount}\nMatches: ${report.matchesPlayed}`);
-    }catch(e){
-      console.error(e);
-      setStatus("Report failed:\n" + (e.message || String(e)), true);
-      $("reportCard").style.display = "none";
+    if(!teamRows.length){
+      renderPlayers([]);
+      renderKills([]);
+      renderSummary({matches:0,kills:0,assists:0,deaths:0,medkits:0,revived:0,reviveTeammate:0,headshots:0,dist:{close:0,mid:0,long:0}}, closeMax, midMax);
+      setStatus("No rows found for that team/filter.", true);
+      return;
     }
+
+    setStatus(`Team rows: ${teamRows.length}\nBuilding match id list…`);
+
+    // 2) Get match_ids and fetch lobby rows (for nickname + weapon maps)
+    const matchIds = Array.from(new Set(teamRows.map(r => r.match_id != null ? String(r.match_id) : "").filter(Boolean)));
+
+    setStatus(`Match IDs: ${matchIds.length}\nFetching lobby rows for nickname/weapon resolution…`);
+
+    // We'll chunk match_ids to avoid huge URL
+    const chunks = chunk(matchIds, 50);
+
+    const LOBBY_COLS = [
+      "match_id","team_name","player_stats_account_id","player_stats_nickname","player_stats_weapon_usages"
+    ].join(",");
+
+    let lobbyRows = [];
+    for(let i=0;i<chunks.length;i++){
+      setStatus(`Fetching lobby rows ${i+1}/${chunks.length}…`);
+      const part = await fetchAll(LOBBY_COLS, (q)=>{
+        q = q.in("match_id", chunks[i]);
+        // No need to re-apply filters: match_id is already scoped, but safe to keep Mode/Tournament/Stage if you want.
+        return q;
+      });
+      lobbyRows = lobbyRows.concat(part);
+    }
+
+    const maps = buildMapsFromLobbyRows(lobbyRows);
+
+    setStatus("Computing report…");
+
+    const report = buildReport(teamRows, maps, closeMax, midMax);
+
+    renderSummary(report.teamSummary, closeMax, midMax);
+    renderPlayers(report.playerList);
+    renderKillerFilter(report.playerList);
+    renderKills(report.killFeed);
+
+    setStatus(
+      `Done ✅\nTeam: ${team}\nMatches: ${report.teamSummary.matches}\nPlayers: ${report.playerList.length}\nKill events: ${report.killFeed.length}`
+    );
   }
 
-  $("btnRun").addEventListener("click", runReport);
-  $("btnReloadTeams").addEventListener("click", loadTeamsUI);
-  $("btnSignOut").addEventListener("click", signOut);
+  /***************
+   * Export buttons
+   ***************/
+  function exportPlayersCSV(){
+    if(!LAST_PLAYERS.length){ setStatus("No players to export.", true); return; }
+    const cols = ["nickname","player_id","matches","kills","assists","close","mid","long","headshots","headshotKilltimes","torso","leg","medkit","revivedTimes","reviveTeammateTimes","deaths"];
+    const rows = LAST_PLAYERS.map(p => ({
+      nickname: p.nickname,
+      player_id: p.player_id,
+      matches: p.matches,
+      kills: p.kills,
+      assists: p.assists,
+      close: p.close,
+      mid: p.mid,
+      long: p.long,
+      headshots: p.headshots,
+      headshotKilltimes: p.headshotKilltimes,
+      torso: p.torso,
+      leg: p.leg,
+      medkit: p.medkit,
+      revivedTimes: p.revivedTimes,
+      reviveTeammateTimes: p.reviveTeammateTimes,
+      deaths: p.deaths
+    }));
+    downloadText("ff_team_report_players.csv", toCSV(rows, cols), "text/csv");
+  }
 
-  // =============================
-  // Init
-  // =============================
+  function exportKillsCSV(){
+    if(!LAST_KILLS.length){ setStatus("No kill feed to export.", true); return; }
+    const cols = ["match_id","killer_nickname","killer_id","victim_nickname","victim_id","victim_team","weapon_name","weapon_id","kill_distance","kill_timestamp"];
+    const rows = LAST_KILLS.map(k => ({
+      match_id: k.match_id,
+      killer_nickname: k.killer_nickname,
+      killer_id: k.killer_id,
+      victim_nickname: k.victim_nickname,
+      victim_id: k.victim_id,
+      victim_team: k.victim_team,
+      weapon_name: k.weapon_name,
+      weapon_id: k.weapon_id,
+      kill_distance: k.kill_distance,
+      kill_timestamp: k.kill_timestamp
+    }));
+    downloadText("ff_team_report_killfeed.csv", toCSV(rows, cols), "text/csv");
+  }
+
+  /***************
+   * Tabs
+   ***************/
+  function setupTabs(){
+    document.querySelectorAll(".tab").forEach(t => {
+      t.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+        t.classList.add("active");
+        const tab = t.getAttribute("data-tab");
+        $("panelPlayers").classList.toggle("active", tab === "players");
+        $("panelKills").classList.toggle("active", tab === "kills");
+      });
+    });
+  }
+
+  /***************
+   * Boot
+   ***************/
   (async function init(){
-    await requireSessionOrRedirect();
-    if(!SESSION) return;
-    await loadTeamsUI();
+    setupTabs();
+
+    $("btnRun").addEventListener("click", ()=>generateReport().catch(err=>{
+      console.error(err);
+      setStatus("Error generating report:\n" + (err?.message || String(err)), true);
+    }));
+
+    $("btnReloadTeams").addEventListener("click", ()=>loadTeams().catch(err=>{
+      console.error(err);
+      setStatus("Error loading teams:\n" + (err?.message || String(err)), true);
+    }));
+
+    $("btnSignOut").addEventListener("click", ()=>signOut());
+
+    $("btnExportPlayers").addEventListener("click", exportPlayersCSV);
+    $("btnExportKills").addEventListener("click", exportKillsCSV);
+
+    $("killerFilter").addEventListener("change", applyKillFilters);
+    $("killSearch").addEventListener("input", applyKillFilters);
+
+    $("closeMax").addEventListener("change", ()=>{
+      $("lblClose").textContent = $("closeMax").value;
+    });
+    $("midMax").addEventListener("change", ()=>{
+      $("lblMid").textContent = $("midMax").value;
+      $("lblMid2").textContent = $("midMax").value;
+    });
+
+    // Auth gate
+    const { session, fileProtocol } = await ensureSession();
+
+    if(fileProtocol){
+      // still load teams so you can view schema/data if RLS allows anon (or for debugging)
+      try{ await loadTeams(); } catch(_e){}
+      return;
+    }
+
+    if(session?.user){
+      const email = session.user.email || "signed-in";
+      setAuthPill("good", email);
+    } else {
+      setAuthPill("bad", "No session");
+      if(REDIRECT_IF_NO_SESSION){
+        location.href = "index.html";
+        return;
+      }
+    }
+
+    // Load teams
+    await loadTeams();
   })();
 </script>
+
 </body>
 </html>
