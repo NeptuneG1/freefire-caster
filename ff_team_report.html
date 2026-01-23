@@ -1,0 +1,976 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>FF Team Report — ff_stats_raw</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --bg:#07090f; --bg2:#0b1020;
+      --panel: rgba(20, 26, 38, .72);
+      --panel2: rgba(14, 18, 28, .70);
+      --line: rgba(255,255,255,.10);
+      --ink:#f4f6ff; --muted:#aab1c5;
+      --brand:#ffbd59; --brand2:#ff7733; --accent:#4dd3ff;
+      --radius:16px; --radius-lg:22px;
+      --shadow: 0 22px 70px rgba(0,0,0,.55);
+      --good:#71d083; --bad:#ff6b6b;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+      --sans: system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; color:var(--ink);
+      background:
+        radial-gradient(1200px 700px at 15% -10%, rgba(77,211,255,.18), transparent 60%),
+        radial-gradient(900px 600px at 90% 0%, rgba(255,189,89,.20), transparent 55%),
+        radial-gradient(900px 600px at 80% 110%, rgba(255,119,51,.16), transparent 55%),
+        linear-gradient(180deg, var(--bg), var(--bg2));
+      font-family:var(--sans);
+      overflow-x:hidden;
+    }
+    header{
+      position:sticky; top:0; z-index:50;
+      backdrop-filter: blur(12px);
+      background: linear-gradient(180deg, rgba(7,9,15,.80), rgba(7,9,15,.55));
+      border-bottom:1px solid var(--line);
+    }
+    .wrap{max-width:1280px;margin:0 auto;padding:14px 16px}
+    .topbar{display:flex;gap:12px;align-items:center;justify-content:space-between}
+    .brand{display:flex;align-items:center;gap:12px}
+    .fflogo{
+      width:44px;height:44px;border-radius:14px;
+      object-fit:contain;
+      background: rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.10);
+      box-shadow: 0 14px 40px rgba(0,0,0,.30);
+      padding:6px;
+    }
+    h1{font-size:16px;margin:0;letter-spacing:.3px;font-family:Orbitron, var(--sans)}
+    .sub{font-size:12px;color:var(--muted);margin-top:2px}
+    .actions{display:flex;gap:10px;flex-wrap:wrap}
+
+    .btn, input, select, textarea{font-family:inherit}
+    .btn{
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.03);
+      color:var(--ink);
+      padding:10px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      transition: transform .08s ease, border-color .2s ease, background .2s ease;
+      user-select:none;
+      white-space:nowrap;
+    }
+    .btn:hover{border-color: rgba(255,255,255,.16); background: rgba(255,255,255,.05)}
+    .btn:active{transform: translateY(1px)}
+    .btn.primary{
+      border-color: rgba(255,189,89,.35);
+      background: linear-gradient(180deg, rgba(255,189,89,.16), rgba(255,119,51,.10));
+    }
+    .btn.good{
+      border-color: rgba(113,208,131,.35);
+      background: linear-gradient(180deg, rgba(113,208,131,.16), rgba(113,208,131,.08));
+    }
+    .btn.bad{
+      border-color: rgba(255,107,107,.35);
+      background: linear-gradient(180deg, rgba(255,107,107,.16), rgba(255,107,107,.08));
+    }
+
+    main{max-width:1280px;margin:0 auto;padding:16px}
+    .grid{display:grid;grid-template-columns: .95fr 1.05fr;gap:14px}
+    @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
+
+    .card{
+      background: linear-gradient(180deg, var(--panel), var(--panel2));
+      border:1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card .hd{
+      padding:14px 14px 10px;
+      border-bottom:1px solid var(--line);
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+    }
+    .card .hd h2{font-size:14px;margin:0;letter-spacing:.25px}
+    .card .bd{padding:14px}
+
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .row + .row{margin-top:10px}
+    .field{display:flex;flex-direction:column;gap:6px;min-width:220px;flex:1}
+    label{font-size:12px;color:var(--muted)}
+
+    input[type="text"], input[type="password"], select{
+      width:100%;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.25);
+      color: var(--ink);
+      border-radius: 12px;
+      padding:10px 10px;
+      outline:none;
+    }
+    select{color-scheme:dark}
+    input:focus, select:focus{
+      border-color: rgba(77,211,255,.45);
+      box-shadow: 0 0 0 3px rgba(77,211,255,.12);
+    }
+    .hint{font-size:12px;color:var(--muted);line-height:1.3}
+    .pill{
+      font-size:12px; padding:6px 10px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      color:var(--ink);
+      display:inline-flex;gap:8px;align-items:center;
+    }
+    .dot{width:8px;height:8px;border-radius:50%}
+    .dot.good{background:var(--good)}
+    .dot.bad{background:var(--bad)}
+    .dot.neutral{background:var(--accent)}
+    .small{font-size:11px;color:var(--muted)}
+    .kbd{
+      font-family:var(--mono);
+      font-size:11px;
+      padding:3px 7px;border-radius:8px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.25);
+      color: rgba(244,246,255,.88);
+    }
+    .status{
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      font-size:12px;
+      color: rgba(244,246,255,.92);
+      line-height:1.35;
+      white-space:pre-wrap;
+    }
+    .divider{height:1px;background:rgba(255,255,255,.08);margin:12px 0}
+
+    .tablewrap{
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 14px;
+      overflow:hidden;
+      background: rgba(0,0,0,.22);
+    }
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    thead th{
+      position: sticky; top: 0;
+      background: rgba(7,9,15,.92);
+      border-bottom:1px solid rgba(255,255,255,.10);
+      padding:10px 10px;
+      text-align:left;
+      white-space:nowrap;
+      z-index:2;
+      cursor:pointer;
+      user-select:none;
+    }
+    tbody td{
+      border-top:1px solid rgba(255,255,255,.06);
+      padding:8px 10px;
+      vertical-align:top;
+      max-width: 340px;
+      word-break: break-word;
+      color: rgba(244,246,255,.92);
+    }
+    tbody tr:hover td{background: rgba(255,255,255,.03)}
+    .right{text-align:right}
+    .nowrap{white-space:nowrap}
+    .muted{color:rgba(244,246,255,.70)}
+    .tag{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:4px 8px;border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      font-size:11px;
+    }
+
+    /* Modal */
+    .modal{
+      position:fixed; inset:0;
+      display:none;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(8px);
+      z-index:999;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+    }
+    .modal.show{display:flex}
+    .modal-card{
+      width:min(980px, 100%);
+      max-height: 85vh;
+      overflow:hidden;
+      border-radius: 18px;
+      border:1px solid rgba(255,255,255,.12);
+      background: linear-gradient(180deg, rgba(20,26,38,.92), rgba(14,18,28,.88));
+      box-shadow: 0 30px 90px rgba(0,0,0,.65);
+      display:flex;
+      flex-direction:column;
+    }
+    .modal-hd{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      padding:12px 14px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+    }
+    .modal-title{display:flex;flex-direction:column;gap:2px}
+    .modal-title b{font-size:14px}
+    .modal-bd{padding:12px 14px;overflow:auto}
+    .mono{font-family:var(--mono)}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <img class="fflogo" src="https://upload.wikimedia.org/wikipedia/en/7/7d/Garena_Free_Fire_logo.png" alt="Free Fire" onerror="this.style.display='none'"/>
+        <div>
+          <h1>FF Team Report</h1>
+          <div class="sub">Team → Players → kills/elims, distance buckets, victims + weapon, assists, hits, headshot killtimes, medkits, revived, revives.</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="btnLoadTeams">Load Teams</button>
+        <button class="btn primary" id="btnRun">Run Report</button>
+        <button class="btn" id="btnExportPlayers">Export Player Summary CSV</button>
+        <button class="btn" id="btnExportKills">Export Kill Log CSV</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="grid">
+
+    <!-- LEFT: connection + controls -->
+    <section class="card">
+      <div class="hd">
+        <h2>1) Connect & Select</h2>
+        <div class="pill" id="authPill"><span class="dot neutral"></span><span id="authText">Anon</span></div>
+      </div>
+      <div class="bd">
+
+        <div class="row">
+          <div class="field">
+            <label>Supabase URL</label>
+            <input id="sbUrl" type="text" placeholder="https://xxxx.supabase.co"/>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Supabase anon key</label>
+            <input id="sbKey" type="password" placeholder="anon public key"/>
+            <div class="hint">With RLS enabled, you must sign in to read your own rows.</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="row" style="align-items:flex-end">
+          <div class="field" style="min-width:220px">
+            <label>Email</label>
+            <input id="authEmail" type="text" placeholder="you@example.com" autocomplete="email"/>
+          </div>
+          <div class="field" style="min-width:220px">
+            <label>Password</label>
+            <input id="authPass" type="password" placeholder="••••••••" autocomplete="current-password"/>
+          </div>
+        </div>
+        <div class="row" style="justify-content:flex-end">
+          <button class="btn" id="btnAuthRefresh">Refresh</button>
+          <button class="btn primary" id="btnSignIn">Sign in</button>
+          <button class="btn" id="btnSignUp">Sign up</button>
+          <button class="btn bad" id="btnSignOut">Sign out</button>
+        </div>
+
+        <div class="status" id="authMeta">Enter URL + anon key, then Sign in.</div>
+
+        <div class="divider"></div>
+
+        <div class="row">
+          <div class="field">
+            <label>Team</label>
+            <select id="teamSel">
+              <option value="">(Load teams first)</option>
+            </select>
+            <div class="small">Uses <span class="kbd">team_name</span> from <span class="kbd">ff_stats_raw</span>.</div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field" style="min-width:180px;flex:.6">
+            <label>Close range max (m)</label>
+            <input id="closeMax" type="text" value="15"/>
+          </div>
+          <div class="field" style="min-width:180px;flex:.6">
+            <label>Mid range max (m)</label>
+            <input id="midMax" type="text" value="50"/>
+          </div>
+          <div class="field" style="flex:1">
+            <label>Table</label>
+            <input id="tableName" type="text" value="ff_stats_raw"/>
+          </div>
+        </div>
+
+        <div class="hint">
+          Distance buckets are calculated from <span class="kbd">player_stats_kill_info</span> items’ <span class="kbd">kill_distance</span>.
+          If your data changes format later, I can update the parser.
+        </div>
+
+        <div class="status" id="status">Ready.</div>
+      </div>
+    </section>
+
+    <!-- RIGHT: results -->
+    <section class="card">
+      <div class="hd">
+        <h2>2) Team Players</h2>
+        <div class="pill"><span class="dot neutral"></span><span id="metaText">0 players • 0 rows • 0 kills</span></div>
+      </div>
+      <div class="bd">
+
+        <div class="row" id="summaryRow" style="gap:8px;flex-wrap:wrap"></div>
+
+        <div class="tablewrap" style="max-height:560px;overflow:auto;margin-top:10px">
+          <table>
+            <thead>
+              <tr id="thead">
+                <th data-k="nickname">Player</th>
+                <th data-k="id" class="nowrap">Killer ID</th>
+                <th data-k="matches" class="right">Rows</th>
+                <th data-k="kills" class="right">Kills</th>
+                <th data-k="deaths" class="right">Eliminated</th>
+                <th data-k="assists" class="right">Asst</th>
+                <th data-k="close" class="right">Close</th>
+                <th data-k="mid" class="right">Mid</th>
+                <th data-k="long" class="right">Long</th>
+                <th data-k="headshots" class="right">Headshots</th>
+                <th data-k="hsKilltimes" class="right">HS Killtimes</th>
+                <th data-k="torso" class="right">Torso</th>
+                <th data-k="leg" class="right">Leg</th>
+                <th data-k="medkits" class="right">Medkit</th>
+                <th data-k="revived" class="right">Revived</th>
+                <th data-k="reviveMate" class="right">Revive Teammate</th>
+                <th data-k="log" class="nowrap">Kill Log</th>
+              </tr>
+            </thead>
+            <tbody id="tbody">
+              <tr><td colspan="17" class="muted">Run a report to see players.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<!-- Modal: kill log -->
+<div class="modal" id="modal">
+  <div class="modal-card">
+    <div class="modal-hd">
+      <div class="modal-title">
+        <b id="modalTitle">Kill Log</b>
+        <div class="small" id="modalSub">—</div>
+      </div>
+      <div class="row" style="gap:8px">
+        <button class="btn" id="btnCopyJson">Copy JSON</button>
+        <button class="btn bad" id="btnClose">Close</button>
+      </div>
+    </div>
+    <div class="modal-bd">
+      <div class="tablewrap" style="max-height:60vh;overflow:auto">
+        <table>
+          <thead>
+            <tr>
+              <th class="nowrap">Match</th>
+              <th class="nowrap">Killer ID</th>
+              <th class="nowrap">Player killed</th>
+              <th class="nowrap">Weapon used</th>
+              <th class="right nowrap">Distance</th>
+              <th class="nowrap">Bucket</th>
+              <th class="nowrap">Timestamp</th>
+            </tr>
+          </thead>
+          <tbody id="killBody"></tbody>
+        </table>
+      </div>
+      <div class="status mono" id="killJson" style="margin-top:10px;max-height:220px;overflow:auto"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  /* -----------------------------
+     Supabase client + auth UI
+  ----------------------------- */
+  let SB=null, SB_URL="", SB_KEY="", SB_SUB=null;
+
+  function formatSupabaseError(err, fallbackPrefix="Supabase error"){
+    if(!err) return `${fallbackPrefix}: (unknown)`;
+    const parts=[];
+    const msg = err?.message, code=err?.code, details=err?.details, hint=err?.hint;
+    if(msg) parts.push(`message: ${msg}`);
+    if(code) parts.push(`code: ${code}`);
+    if(details) parts.push(`details: ${details}`);
+    if(hint) parts.push(`hint: ${hint}`);
+    if(!parts.length){
+      try{ parts.push(String(err)); }catch(_e){}
+      try{ const j=JSON.stringify(err,null,2); if(j && j!=="{}") parts.push(j); }catch(_e){}
+    }
+    return parts.join("\n");
+  }
+
+  function setAuthPill(state, text){
+    const pill = $("authPill");
+    const dot = pill.querySelector(".dot");
+    dot.classList.remove("good","bad","neutral");
+    dot.classList.add(state);
+    $("authText").textContent = text || "";
+  }
+
+  function setStatus(msg, isError=false){
+    const el = $("status");
+    el.textContent = msg;
+    el.style.borderColor = isError ? "rgba(255,107,107,.35)" : "rgba(255,255,255,.10)";
+  }
+
+  function getSbClient(){
+    const url = ($("sbUrl").value||"").trim();
+    const key = ($("sbKey").value||"").trim();
+    if(!url || !key) return null;
+
+    if(SB && SB_URL===url && SB_KEY===key) return SB;
+
+    SB_URL=url; SB_KEY=key;
+    SB = supabase.createClient(url, key, {
+      auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
+    });
+
+    try{
+      if(SB_SUB?.unsubscribe) SB_SUB.unsubscribe();
+      const { data } = SB.auth.onAuthStateChange(()=>refreshAuthUI().catch(()=>{}));
+      SB_SUB = data?.subscription || null;
+    }catch(_e){}
+
+    return SB;
+  }
+
+  async function refreshAuthUI(){
+    const sb = getSbClient();
+    if(!sb){
+      setAuthPill("neutral", "Anon");
+      $("authMeta").textContent = "Enter URL + anon key, then Sign in.";
+      return;
+    }
+    const { data, error } = await sb.auth.getSession();
+    if(error){
+      setAuthPill("bad", "Auth error");
+      $("authMeta").textContent = formatSupabaseError(error, "Auth error");
+      return;
+    }
+    const user = data?.session?.user || null;
+    if(user){
+      setAuthPill("good", "Signed in");
+      $("authMeta").textContent = `${user.email || "(no email)"}\nuid: ${user.id}`;
+    }else{
+      setAuthPill("neutral", "Anon");
+      $("authMeta").textContent = "No active session (RLS will block reads).";
+    }
+  }
+
+  async function authSignIn(){
+    const sb = getSbClient();
+    if(!sb) return setStatus("Fill Supabase URL + anon key first.", true);
+    const email = ($("authEmail").value||"").trim();
+    const password = ($("authPass").value||"").trim();
+    if(!email || !password) return setStatus("Enter email + password.", true);
+    setStatus("Signing in…");
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if(error) return setStatus(formatSupabaseError(error, "Sign-in failed"), true);
+    await refreshAuthUI();
+    setStatus("Signed in.");
+  }
+
+  async function authSignUp(){
+    const sb = getSbClient();
+    if(!sb) return setStatus("Fill Supabase URL + anon key first.", true);
+    const email = ($("authEmail").value||"").trim();
+    const password = ($("authPass").value||"").trim();
+    if(!email || !password) return setStatus("Enter email + password.", true);
+    setStatus("Signing up… (check email if confirmations are enabled)");
+    const { error } = await sb.auth.signUp({ email, password });
+    if(error) return setStatus(formatSupabaseError(error, "Sign-up failed"), true);
+    await refreshAuthUI();
+    setStatus("Sign-up complete.");
+  }
+
+  async function authSignOut(){
+    const sb = getSbClient();
+    if(!sb) return setStatus("No Supabase client.", true);
+    setStatus("Signing out…");
+    const { error } = await sb.auth.signOut();
+    if(error) return setStatus(formatSupabaseError(error, "Sign-out failed"), true);
+    await refreshAuthUI();
+    setStatus("Signed out.");
+  }
+
+  /* -----------------------------
+     Data fetch helpers
+  ----------------------------- */
+  function n(v){ const x = Number(v); return Number.isFinite(x) ? x : 0; }
+
+  function parseJsonArray(v){
+    if(v == null) return [];
+    if(Array.isArray(v)) return v;
+    if(typeof v === "object") return [];
+    const s = String(v).trim();
+    if(!s || s === "[]") return [];
+    try{
+      const j = JSON.parse(s);
+      return Array.isArray(j) ? j : [];
+    }catch(_e){
+      return [];
+    }
+  }
+
+  function bucketDistance(dist, closeMax, midMax){
+    const d = Number(dist);
+    if(!Number.isFinite(d)) return "unknown";
+    if(d <= closeMax) return "close";
+    if(d <= midMax) return "mid";
+    return "long";
+  }
+
+  async function fetchAllRowsForTeam(sb, table, teamName){
+    // NOTE: includes quoted columns for mixed-case fields
+    const selectCols = [
+      "team_name","team_id","team_name",
+      "player_stats_account_id","player_stats_nickname",
+      "match_id","is_eliminated",
+      "player_stats_kills","player_stats_assists",
+      "player_stats_medkit_use",
+      "player_stats_revived_times",
+      "player_stats_revive_teammate_times",
+      "player_stats_torso_hits","player_stats_leg_hits",
+      "player_stats_headshots","player_stats_headshot_killtimes",
+      "player_stats_kill_info",
+      "\"Mode\"","\"Tournament\"","\"Stage\"","\"Year\"","\"Week\"","\"Day\"","\"MatchNumber\""
+    ].join(",");
+
+    const pageSize = 1000;
+    let from = 0;
+    const all = [];
+
+    while(true){
+      const { data, error } = await sb
+        .from(table)
+        .select(selectCols)
+        .eq("team_name", teamName)
+        .range(from, from + pageSize - 1);
+
+      if(error) throw error;
+
+      all.push(...(data || []));
+      if(!data || data.length < pageSize) break;
+
+      from += pageSize;
+      if(from > 50000) break; // safety
+    }
+    return all;
+  }
+
+  async function loadTeams(){
+    const sb = getSbClient();
+    if(!sb) return setStatus("Fill Supabase URL + anon key first.", true);
+
+    setStatus("Loading teams…");
+    const table = ($("tableName").value || "ff_stats_raw").trim() || "ff_stats_raw";
+
+    // fetch team_name only, then dedupe
+    const pageSize = 2000;
+    let from = 0;
+    const set = new Set();
+
+    while(true){
+      const { data, error } = await sb
+        .from(table)
+        .select("team_name")
+        .not("team_name","is",null)
+        .range(from, from + pageSize - 1);
+
+      if(error) return setStatus(formatSupabaseError(error, "Load teams failed"), true);
+
+      (data || []).forEach(r=>{
+        const t = (r.team_name || "").trim();
+        if(t) set.add(t);
+      });
+
+      if(!data || data.length < pageSize) break;
+      from += pageSize;
+      if(from > 50000) break;
+    }
+
+    const teams = Array.from(set).sort((a,b)=>a.localeCompare(b));
+    const sel = $("teamSel");
+    sel.innerHTML = `<option value="">(Select team)</option>` + teams.map(t=>`<option>${t}</option>`).join("");
+
+    setStatus(`Loaded ${teams.length} team(s). Select a team then Run Report.`);
+  }
+
+  /* -----------------------------
+     Build report
+  ----------------------------- */
+  let LAST_PLAYERS = [];
+  let LAST_KILL_LOG = [];
+  let SORT_KEY = "kills";
+  let SORT_DIR = "desc";
+
+  function sortPlayers(arr){
+    const dir = SORT_DIR === "asc" ? 1 : -1;
+    const k = SORT_KEY;
+    return arr.slice().sort((a,b)=>{
+      const va = a[k], vb = b[k];
+      if(typeof va === "number" && typeof vb === "number") return (va - vb) * dir;
+      return String(va ?? "").localeCompare(String(vb ?? "")) * dir;
+    });
+  }
+
+  function pill(text){
+    const d = document.createElement("div");
+    d.className = "pill";
+    d.innerHTML = `<span class="dot neutral"></span><span>${text}</span>`;
+    return d;
+  }
+
+  function renderSummary(rows, players){
+    const sr = $("summaryRow");
+    sr.innerHTML = "";
+
+    const kills = players.reduce((s,p)=>s+p.kills,0);
+    const assists = players.reduce((s,p)=>s+p.assists,0);
+    const deaths = players.reduce((s,p)=>s+p.deaths,0);
+    const close = players.reduce((s,p)=>s+p.close,0);
+    const mid = players.reduce((s,p)=>s+p.mid,0);
+    const long = players.reduce((s,p)=>s+p.long,0);
+    const hs = players.reduce((s,p)=>s+p.headshots,0);
+
+    const tSet = new Set(), sSet = new Set(), ySet = new Set(), mSet = new Set();
+    rows.forEach(r=>{
+      if(r.Tournament) tSet.add(String(r.Tournament));
+      if(r.Stage) sSet.add(String(r.Stage));
+      if(r.Year != null) ySet.add(String(r.Year));
+      if(r.Mode) mSet.add(String(r.Mode));
+    });
+
+    sr.appendChild(pill(`Players: ${players.length}`));
+    sr.appendChild(pill(`Rows: ${rows.length}`));
+    sr.appendChild(pill(`Kills: ${kills}`));
+    sr.appendChild(pill(`Eliminated: ${deaths}`));
+    sr.appendChild(pill(`Assists: ${assists}`));
+    sr.appendChild(pill(`HS: ${hs}`));
+    sr.appendChild(pill(`Dist (C/M/L): ${close}/${mid}/${long}`));
+
+    if(mSet.size) sr.appendChild(pill(`Mode: ${Array.from(mSet).join(", ")}`));
+    if(ySet.size) sr.appendChild(pill(`Year: ${Array.from(ySet).join(", ")}`));
+    if(tSet.size) sr.appendChild(pill(`Tournament: ${Array.from(tSet).slice(0,2).join(", ")}${tSet.size>2?"…":""}`));
+    if(sSet.size) sr.appendChild(pill(`Stage: ${Array.from(sSet).slice(0,2).join(", ")}${sSet.size>2?"…":""}`));
+
+    $("metaText").textContent = `${players.length} players • ${rows.length} rows • ${kills} kills`;
+  }
+
+  function renderPlayers(players){
+    const tb = $("tbody");
+    const sorted = sortPlayers(players);
+
+    tb.innerHTML = "";
+    if(!sorted.length){
+      tb.innerHTML = `<tr><td colspan="17" class="muted">No data for this team.</td></tr>`;
+      return;
+    }
+
+    for(const p of sorted){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><b>${escapeHtml(p.nickname || "(no name)")}</b><div class="small muted">${escapeHtml(p.team_name || "")}</div></td>
+        <td class="mono nowrap">${escapeHtml(String(p.id))}</td>
+        <td class="right">${p.matches}</td>
+        <td class="right"><b>${p.kills}</b></td>
+        <td class="right">${p.deaths}</td>
+        <td class="right">${p.assists}</td>
+        <td class="right">${p.close}</td>
+        <td class="right">${p.mid}</td>
+        <td class="right">${p.long}</td>
+        <td class="right">${p.headshots}</td>
+        <td class="right">${p.hsKilltimes}</td>
+        <td class="right">${p.torso}</td>
+        <td class="right">${p.leg}</td>
+        <td class="right">${p.medkits}</td>
+        <td class="right">${p.revived}</td>
+        <td class="right">${p.reviveMate}</td>
+        <td class="nowrap"><button class="btn" data-open="${escapeAttr(String(p.id))}">Open (${p.killLog.length})</button></td>
+      `;
+      tb.appendChild(tr);
+    }
+
+    // bind open buttons
+    tb.querySelectorAll('button[data-open]').forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const pid = btn.getAttribute("data-open");
+        const p = LAST_PLAYERS.find(x => String(x.id) === String(pid));
+        if(p) openKillModal(p);
+      });
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s ?? "").replace(/[&<>"']/g, (m)=>({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[m]));
+  }
+  function escapeAttr(s){ return escapeHtml(s).replace(/"/g,"&quot;"); }
+
+  function openKillModal(player){
+    $("modalTitle").textContent = `${player.nickname || "(no name)"} — Kill Log`;
+    $("modalSub").textContent = `Killer ID: ${player.id} • Kills: ${player.kills} • Close/Mid/Long: ${player.close}/${player.mid}/${player.long}`;
+    $("modal").classList.add("show");
+
+    const kb = $("killBody");
+    kb.innerHTML = "";
+
+    const log = player.killLog.slice().sort((a,b)=>{
+      // sort by match then timestamp
+      const ma = String(a.match_id ?? ""), mb = String(b.match_id ?? "");
+      if(ma !== mb) return ma.localeCompare(mb);
+      return (n(a.ts) - n(b.ts));
+    });
+
+    for(const ev of log){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="mono nowrap">${escapeHtml(String(ev.match_id ?? ""))}</td>
+        <td class="mono nowrap">${escapeHtml(String(ev.killer_id ?? ""))}</td>
+        <td class="mono nowrap">${escapeHtml(String(ev.player_killed_id ?? ""))}</td>
+        <td class="mono nowrap">${escapeHtml(String(ev.weapon_used_id ?? ""))}</td>
+        <td class="right">${Number.isFinite(ev.distance) ? ev.distance : ""}</td>
+        <td><span class="tag">${escapeHtml(ev.bucket)}</span></td>
+        <td class="mono nowrap">${escapeHtml(String(ev.ts ?? ""))}</td>
+      `;
+      kb.appendChild(tr);
+    }
+
+    $("killJson").textContent = JSON.stringify(log, null, 2);
+    $("btnCopyJson").onclick = async ()=>{
+      try{
+        await navigator.clipboard.writeText(JSON.stringify(log, null, 2));
+        $("btnCopyJson").textContent = "Copied!";
+        setTimeout(()=>$("btnCopyJson").textContent="Copy JSON", 900);
+      }catch(_e){
+        alert("Copy failed (browser permission).");
+      }
+    };
+  }
+
+  function closeKillModal(){
+    $("modal").classList.remove("show");
+  }
+
+  async function runReport(){
+    const sb = getSbClient();
+    if(!sb) return setStatus("Fill Supabase URL + anon key first.", true);
+
+    const team = ($("teamSel").value||"").trim();
+    if(!team) return setStatus("Select a team first.", true);
+
+    const table = ($("tableName").value || "ff_stats_raw").trim() || "ff_stats_raw";
+    const closeMax = Math.max(0, n(($("closeMax").value||"15").trim()));
+    const midMax = Math.max(closeMax, n(($("midMax").value||"50").trim()));
+
+    setStatus(`Fetching rows for ${team}…`);
+
+    let rows;
+    try{
+      rows = await fetchAllRowsForTeam(sb, table, team);
+    }catch(err){
+      return setStatus(formatSupabaseError(err, "Fetch failed"), true);
+    }
+
+    // aggregate per player
+    const map = new Map();
+    const allKillLog = [];
+
+    for(const r of (rows||[])){
+      const pid = r.player_stats_account_id;
+      const key = String(pid ?? "");
+      if(!key) continue;
+
+      if(!map.has(key)){
+        map.set(key, {
+          id: pid,
+          nickname: r.player_stats_nickname || "",
+          team_name: r.team_name || "",
+          matches: 0,
+          kills: 0,
+          deaths: 0,
+          assists: 0,
+          medkits: 0,
+          revived: 0,      // number of times player was revived
+          reviveMate: 0,   // number of times they revived teammates
+          torso: 0,
+          leg: 0,
+          headshots: 0,
+          hsKilltimes: 0,
+          close: 0,
+          mid: 0,
+          long: 0,
+          unknown: 0,
+          killLog: []
+        });
+      }
+
+      const p = map.get(key);
+      p.matches += 1;
+
+      p.kills += n(r.player_stats_kills);
+      p.assists += n(r.player_stats_assists);
+      p.medkits += n(r.player_stats_medkit_use);
+      p.revived += n(r.player_stats_revived_times);
+      p.reviveMate += n(r.player_stats_revive_teammate_times);
+      p.torso += n(r.player_stats_torso_hits);
+      p.leg += n(r.player_stats_leg_hits);
+      p.headshots += n(r.player_stats_headshots);
+      p.hsKilltimes += n(r.player_stats_headshot_killtimes);
+
+      if(r.is_eliminated === true) p.deaths += 1;
+
+      // kill events: player killed + weapon used + killer id + distance bucket
+      const evs = parseJsonArray(r.player_stats_kill_info);
+      if(evs.length){
+        for(const ev of evs){
+          const dist = Number(ev?.kill_distance ?? ev?.killDistance ?? ev?.distance);
+          const bucket = bucketDistance(dist, closeMax, midMax);
+
+          if(bucket === "close") p.close += 1;
+          else if(bucket === "mid") p.mid += 1;
+          else if(bucket === "long") p.long += 1;
+          else p.unknown += 1;
+
+          const out = {
+            match_id: r.match_id,
+            killer_id: ev?.killer_id ?? pid,
+            player_killed_id: ev?.player_killed_id ?? "",
+            weapon_used_id: ev?.weapon_used_id ?? "",
+            distance: Number.isFinite(dist) ? dist : null,
+            bucket,
+            ts: ev?.kill_timestamp ?? ev?.killTimestamp ?? ""
+          };
+          p.killLog.push(out);
+          allKillLog.push({ player_id: pid, player_nickname: p.nickname, team_name: p.team_name, ...out });
+        }
+      }
+    }
+
+    const players = Array.from(map.values());
+
+    LAST_PLAYERS = players;
+    LAST_KILL_LOG = allKillLog;
+
+    renderSummary(rows, players);
+    renderPlayers(players);
+
+    setStatus(`Done. Team: ${team} • Rows: ${rows.length} • Players: ${players.length}`);
+  }
+
+  /* -----------------------------
+     Export helpers
+  ----------------------------- */
+  function toCSV(rows, cols){
+    const esc = (s) => {
+      const str = s == null ? "" : String(s);
+      if(/[",\n\r]/.test(str)) return `"${str.replace(/"/g,'""')}"`;
+      return str;
+    };
+    const header = cols.map(esc).join(",");
+    const lines = rows.map(r => cols.map(c => esc(r[c])).join(","));
+    return [header, ...lines].join("\n");
+  }
+
+  function downloadText(filename, content, mime="text/plain"){
+    const blob = new Blob([content], {type:mime});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 800);
+  }
+
+  function exportPlayersCSV(){
+    if(!LAST_PLAYERS.length) return alert("Run report first.");
+    const cols = ["team_name","id","nickname","matches","kills","deaths","assists","close","mid","long","unknown","headshots","hsKilltimes","torso","leg","medkits","revived","reviveMate"];
+    const csv = toCSV(LAST_PLAYERS.map(p=>({
+      team_name:p.team_name, id:p.id, nickname:p.nickname,
+      matches:p.matches, kills:p.kills, deaths:p.deaths, assists:p.assists,
+      close:p.close, mid:p.mid, long:p.long, unknown:p.unknown,
+      headshots:p.headshots, hsKilltimes:p.hsKilltimes, torso:p.torso, leg:p.leg,
+      medkits:p.medkits, revived:p.revived, reviveMate:p.reviveMate
+    })), cols);
+    downloadText("ff_team_player_summary.csv", csv, "text/csv");
+  }
+
+  function exportKillLogCSV(){
+    if(!LAST_KILL_LOG.length) return alert("No kill log. Run report first.");
+    const cols = ["team_name","player_id","player_nickname","match_id","killer_id","player_killed_id","weapon_used_id","distance","bucket","ts"];
+    const csv = toCSV(LAST_KILL_LOG, cols);
+    downloadText("ff_team_kill_log.csv", csv, "text/csv");
+  }
+
+  /* -----------------------------
+     Events
+  ----------------------------- */
+  $("btnAuthRefresh").addEventListener("click", ()=>refreshAuthUI().catch(()=>{}));
+  $("btnSignIn").addEventListener("click", ()=>authSignIn().catch(()=>{}));
+  $("btnSignUp").addEventListener("click", ()=>authSignUp().catch(()=>{}));
+  $("btnSignOut").addEventListener("click", ()=>authSignOut().catch(()=>{}));
+
+  $("sbUrl").addEventListener("change", ()=>refreshAuthUI().catch(()=>{}));
+  $("sbKey").addEventListener("change", ()=>refreshAuthUI().catch(()=>{}));
+
+  $("btnLoadTeams").addEventListener("click", loadTeams);
+  $("btnRun").addEventListener("click", runReport);
+
+  $("btnExportPlayers").addEventListener("click", exportPlayersCSV);
+  $("btnExportKills").addEventListener("click", exportKillLogCSV);
+
+  $("btnClose").addEventListener("click", closeKillModal);
+  $("modal").addEventListener("click", (e)=>{ if(e.target === $("modal")) closeKillModal(); });
+
+  // sortable header
+  $("thead").addEventListener("click", (e)=>{
+    const th = e.target.closest("th[data-k]");
+    if(!th) return;
+    const k = th.getAttribute("data-k");
+    if(k === "log") return;
+    if(SORT_KEY === k) SORT_DIR = (SORT_DIR === "asc" ? "desc" : "asc");
+    else { SORT_KEY = k; SORT_DIR = "desc"; }
+    renderPlayers(LAST_PLAYERS);
+  });
+
+  // init
+  (function init(){
+    refreshAuthUI().catch(()=>{});
+    setStatus("Ready. Fill URL + anon key, sign in, Load Teams, then Run Report.");
+  })();
+</script>
+</body>
+</html>
