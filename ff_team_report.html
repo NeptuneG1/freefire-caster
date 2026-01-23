@@ -3,14 +3,9 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>FF Team Report — Eliminations & Utility</title>
-
-  <!-- Supabase JS v2 -->
+  <title>FF Team Report</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <!-- Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet"/>
-
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
   <style>
     :root{
       --bg:#07090f; --bg2:#0b1020;
@@ -43,9 +38,9 @@
       background: linear-gradient(180deg, rgba(7,9,15,.80), rgba(7,9,15,.55));
       border-bottom:1px solid var(--line);
     }
-    .wrap{max-width:1280px;margin:0 auto;padding:14px 16px}
-    .topbar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-    .brand{display:flex;align-items:center;gap:12px;min-width:260px}
+    .wrap{max-width:1320px;margin:0 auto;padding:14px 16px}
+    .topbar{display:flex;gap:12px;align-items:center;justify-content:space-between}
+    .brand{display:flex;align-items:center;gap:12px}
     .fflogo{
       width:44px;height:44px;border-radius:14px;
       object-fit:contain;
@@ -54,9 +49,9 @@
       box-shadow: 0 14px 40px rgba(0,0,0,.30);
       padding:6px;
     }
-    h1{font-size:16px;margin:0;letter-spacing:.3px;font-family:Orbitron, var(--sans)}
+    h1{font-size:16px;margin:0;letter-spacing:.3px}
     .sub{font-size:12px;color:var(--muted);margin-top:2px}
-    .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     .btn, input, select{font-family:inherit}
     .btn{
       border:1px solid var(--line);
@@ -67,7 +62,8 @@
       cursor:pointer;
       transition: transform .08s ease, border-color .2s ease, background .2s ease;
       user-select:none;
-      white-space:nowrap;
+      text-decoration:none;
+      display:inline-flex;align-items:center;gap:8px;
     }
     .btn:hover{border-color: rgba(255,255,255,.16); background: rgba(255,255,255,.05)}
     .btn:active{transform: translateY(1px)}
@@ -83,10 +79,22 @@
       border-color: rgba(255,107,107,.35);
       background: linear-gradient(180deg, rgba(255,107,107,.16), rgba(255,107,107,.08));
     }
+    .pill{
+      font-size:12px; padding:6px 10px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      color:var(--ink);
+      display:inline-flex;gap:8px;align-items:center;
+      white-space:nowrap;
+    }
+    .dot{width:8px;height:8px;border-radius:50%}
+    .dot.good{background:var(--good)}
+    .dot.bad{background:var(--bad)}
+    .dot.neutral{background:var(--accent)}
 
-    main{max-width:1280px;margin:0 auto;padding:16px}
+    main{max-width:1320px;margin:0 auto;padding:16px}
     .grid{display:grid;grid-template-columns: 1.05fr .95fr;gap:14px}
-    @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
+    @media (max-width: 1080px){ .grid{grid-template-columns:1fr} }
 
     .card{
       background: linear-gradient(180deg, var(--panel), var(--panel2));
@@ -104,7 +112,9 @@
     .card .hd h2{font-size:14px;margin:0;letter-spacing:.25px}
     .card .bd{padding:14px}
 
-    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+    .row + .row{margin-top:10px}
+
     .field{display:flex;flex-direction:column;gap:6px;min-width:220px;flex:1}
     label{font-size:12px;color:var(--muted)}
     input[type="text"], input[type="number"], select{
@@ -116,34 +126,22 @@
       padding:10px 10px;
       outline:none;
     }
-    input:focus, select:focus{
-      border-color: rgba(77,211,255,.45);
-      box-shadow: 0 0 0 3px rgba(77,211,255,.12);
-    }
     select{
       color-scheme: dark;
       background: rgba(0,0,0,.25);
       color: var(--ink);
     }
-    select option{
+    select option, select optgroup{
       background-color: #0b1020;
       color: var(--ink);
     }
-    .hint{font-size:12px;color:var(--muted);line-height:1.3}
-    .pill{
-      font-size:12px; padding:6px 10px; border-radius:999px;
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.04);
-      color:var(--ink);
-      display:inline-flex;gap:8px;align-items:center;
-      max-width:100%;
+    input:focus, select:focus{
+      border-color: rgba(77,211,255,.45);
+      box-shadow: 0 0 0 3px rgba(77,211,255,.12);
     }
-    .dot{width:8px;height:8px;border-radius:50%}
-    .dot.good{background:var(--good)}
-    .dot.bad{background:var(--bad)}
-    .dot.neutral{background:var(--accent)}
+
+    .hint{font-size:12px;color:var(--muted);line-height:1.3}
     .mono{font-family:var(--mono)}
-    .small{font-size:11px;color:var(--muted)}
     .status{
       margin-top:10px;
       padding:10px 12px;
@@ -155,18 +153,6 @@
       line-height:1.35;
       white-space:pre-wrap;
     }
-
-    .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:10px}
-    @media (max-width: 980px){ .kpis{grid-template-columns:repeat(3,1fr)} }
-    .kpi{
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.18);
-      border-radius:14px;
-      padding:10px 12px;
-      min-height:58px;
-    }
-    .kpi .k{font-size:11px;color:var(--muted)}
-    .kpi .v{font-size:16px;margin-top:3px;font-family:Orbitron, var(--sans);letter-spacing:.3px}
 
     .tablewrap{
       border:1px solid rgba(255,255,255,.10);
@@ -193,73 +179,83 @@
       color: rgba(244,246,255,.92);
     }
     tbody tr:hover td{background: rgba(255,255,255,.03)}
-    tbody tr.active td{
-      background: linear-gradient(90deg, rgba(255,189,89,.10), rgba(77,211,255,.06));
-      border-top-color: rgba(255,189,89,.20);
+    tbody tr.clickable{cursor:pointer}
+    .small{font-size:11px;color:var(--muted)}
+    .kbd{
+      font-family:var(--mono);
+      font-size:11px;
+      padding:3px 7px;border-radius:8px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.25);
+      color: rgba(244,246,255,.88);
     }
-    .clickable{cursor:pointer}
-    .rightStack{display:flex;flex-direction:column;gap:12px}
-    .split2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    @media (max-width: 980px){ .split2{grid-template-columns:1fr} }
 
-    .barrow{display:flex;align-items:center;gap:10px}
-    .bar{
-      flex:1;
-      height:10px;
-      border-radius:999px;
+    .chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .chip{
+      font-size:12px; padding:6px 10px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      color:rgba(244,246,255,.92);
+      display:inline-flex;gap:6px;align-items:center;
+    }
+    .chip b{font-weight:700;color:var(--ink)}
+    .chip .tag{font-family:var(--mono);font-size:11px;color:rgba(244,246,255,.82)}
+    .sep{width:1px;height:18px;background:rgba(255,255,255,.12);margin:0 2px}
+
+    /* loader */
+    .overlay{
+      position:fixed; inset:0; z-index:9999;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(6px);
+      display:none;
+      align-items:center; justify-content:center;
+      padding:16px;
+    }
+    .overlay.on{display:flex}
+    .loader{
+      width:min(560px, 96vw);
+      border:1px solid rgba(255,255,255,.12);
+      background: linear-gradient(180deg, rgba(20, 26, 38, .85), rgba(14, 18, 28, .78));
+      box-shadow: var(--shadow);
+      border-radius: 18px;
+      padding:16px;
+    }
+    .loader h3{margin:0 0 6px 0;font-size:14px}
+    .progress{
+      height:10px;border-radius:999px;
       border:1px solid rgba(255,255,255,.12);
       background: rgba(255,255,255,.05);
       overflow:hidden;
+      margin-top:10px;
     }
-    .bar > i{
-      display:block;height:100%;
+    .bar{
+      height:100%;
       width:0%;
       background: linear-gradient(90deg, rgba(77,211,255,.75), rgba(255,189,89,.72), rgba(255,119,51,.72));
+      transition: width .2s ease;
     }
 
-    details{
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.16);
-      border-radius:14px;
-      padding:10px 12px;
-    }
-    details summary{cursor:pointer;color:rgba(244,246,255,.92)}
-    .link{
-      color: var(--brand);
-      text-decoration:none;
-    }
-    .link:hover{color:#ffd48f}
-    .badge{
-      display:inline-flex;gap:6px;align-items:center;
-      padding:4px 8px;border-radius:999px;
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.04);
-      font-size:11px;color:rgba(244,246,255,.92);
-      white-space:nowrap;
-    }
+    .rightStack{display:flex;flex-direction:column;gap:14px}
   </style>
 </head>
-
 <body>
 <header>
   <div class="wrap">
     <div class="topbar">
       <div class="brand">
         <img class="fflogo"
-          src="https://upload.wikimedia.org/wikipedia/en/7/7d/Garena_Free_Fire_logo.png"
-          alt="Free Fire"
-          onerror="this.style.display='none'"/>
+             src="https://upload.wikimedia.org/wikipedia/en/7/7d/Garena_Free_Fire_logo.png"
+             alt="Free Fire"
+             onerror="this.style.display='none'" />
         <div>
           <h1>FF Team Report</h1>
-          <div class="sub">Select a team → players list + kill distance breakdown + kill feed (killed ID + weapon used) + utility.</div>
+          <div class="sub">Select a team → generate per-player stats + kill-feed from <span class="kbd">ff_stats_raw</span>.</div>
         </div>
       </div>
-
       <div class="actions">
-        <a class="btn" href="dashboard.html">Back to Dashboard</a>
-        <button class="btn" id="btnReload">Reload</button>
-        <button class="btn bad" id="btnLogout">Sign out</button>
-        <span class="pill" id="authPill"><span class="dot neutral"></span><span id="authText">Checking…</span></span>
+        <a class="btn" href="dashboard.html">Back</a>
+        <button class="btn" id="btnReloadTeams">Reload teams</button>
+        <div class="pill" id="authPill"><span class="dot neutral"></span><span id="authText">Checking session…</span></div>
       </div>
     </div>
   </div>
@@ -268,929 +264,987 @@
 <main>
   <div class="grid">
 
-    <!-- LEFT: Team + Players -->
+    <!-- LEFT: Controls + Player Summary -->
     <section class="card">
       <div class="hd">
-        <h2>Team & Players</h2>
-        <div class="pill"><span class="dot neutral"></span><span id="metaText">—</span></div>
+        <h2>1) Team + Filters</h2>
+        <div class="pill"><span class="dot neutral"></span><span id="metaText">0 players • 0 kills</span></div>
       </div>
       <div class="bd">
 
         <div class="row">
-          <div class="field" style="min-width:260px">
-            <label>Team name</label>
-            <input id="teamInput" type="text" placeholder="Type team (e.g. HB / KTP / RVG)" list="teamList"/>
-            <datalist id="teamList"></datalist>
-            <div class="hint">Tip: start typing to search teams from <span class="mono">ff_stats_raw</span>.</div>
+          <div class="field" style="min-width:320px;flex:1.4">
+            <label>Team</label>
+            <select id="teamSelect">
+              <option value="">Loading teams…</option>
+            </select>
+            <div class="hint">Team list is built from <span class="kbd">team_id</span> + <span class="kbd">team_name</span> in the table.</div>
           </div>
-          <div class="field" style="min-width:180px;max-width:220px;flex:.55">
+
+          <div class="field" style="min-width:260px;flex:1">
+            <label>Quick search teams</label>
+            <input id="teamSearch" type="text" placeholder="type to filter (e.g. FLCN / Falcons)"/>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field" style="min-width:160px;flex:.7">
             <label>Mode</label>
-            <select id="modeFilter">
+            <select id="fMode">
               <option value="">All</option>
               <option value="BR">BR</option>
               <option value="CS">CS</option>
             </select>
           </div>
-        </div>
-
-        <div class="row">
-          <div class="field">
+          <div class="field" style="min-width:260px;flex:1.3">
             <label>Tournament</label>
-            <select id="tournamentFilter">
-              <option value="">All</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Stage</label>
-            <select id="stageFilter">
-              <option value="">All</option>
-            </select>
-          </div>
-          <div class="field" style="min-width:140px;max-width:180px;flex:.6">
-            <label>Year</label>
-            <select id="yearFilter">
-              <option value="">All</option>
-            </select>
+            <input id="fTournament" type="text" placeholder="(optional) exact match e.g. FFWS Global Finals 2025"/>
           </div>
         </div>
 
         <div class="row">
-          <div class="field" style="min-width:170px;max-width:210px;flex:.7">
-            <label>Close range max (m)</label>
-            <input id="closeMax" type="number" value="20" min="1" step="1"/>
+          <div class="field" style="min-width:240px;flex:1.1">
+            <label>Stage</label>
+            <input id="fStage" type="text" placeholder="(optional) exact match e.g. Finals"/>
           </div>
-          <div class="field" style="min-width:170px;max-width:210px;flex:.7">
-            <label>Mid range max (m)</label>
-            <input id="midMax" type="number" value="60" min="2" step="1"/>
+          <div class="field" style="min-width:160px;flex:.6">
+            <label>Year</label>
+            <input id="fYear" type="number" placeholder="e.g. 2026"/>
           </div>
-          <div class="field" style="min-width:180px;max-width:220px;flex:.6">
-            <label>&nbsp;</label>
-            <button class="btn primary" id="btnLoad">Load Team Report</button>
+          <div class="field" style="min-width:160px;flex:.6">
+            <label>Week</label>
+            <input id="fWeek" type="text" placeholder="e.g. W1"/>
+          </div>
+          <div class="field" style="min-width:160px;flex:.6">
+            <label>Day</label>
+            <input id="fDay" type="text" placeholder="e.g. D1"/>
+          </div>
+          <div class="field" style="min-width:170px;flex:.7">
+            <label>Match #</label>
+            <input id="fMatchNumber" type="text" placeholder="e.g. 1"/>
           </div>
         </div>
 
-        <div class="kpis" id="teamKpis">
-          <div class="kpi"><div class="k">Players</div><div class="v" id="kpiPlayers">—</div></div>
-          <div class="kpi"><div class="k">Kills</div><div class="v" id="kpiKills">—</div></div>
-          <div class="kpi"><div class="k">Assists</div><div class="v" id="kpiAssists">—</div></div>
-          <div class="kpi"><div class="k">Headshots</div><div class="v" id="kpiHeadshots">—</div></div>
-          <div class="kpi"><div class="k">Medkits</div><div class="v" id="kpiMedkits">—</div></div>
-          <div class="kpi"><div class="k">Revived (was)</div><div class="v" id="kpiRevived">—</div></div>
+        <div class="row">
+          <div class="field" style="min-width:200px;flex:.8">
+            <label>Close range ≤ (meters)</label>
+            <input id="thClose" type="number" value="15"/>
+          </div>
+          <div class="field" style="min-width:200px;flex:.8">
+            <label>Mid range ≤ (meters)</label>
+            <input id="thMid" type="number" value="50"/>
+          </div>
+          <div class="field" style="min-width:220px;flex:1">
+            <label>Kill-feed rows</label>
+            <select id="feedLimit">
+              <option value="200" selected>200</option>
+              <option value="500">500</option>
+              <option value="1000">1000</option>
+              <option value="5000">5000</option>
+            </select>
+          </div>
         </div>
 
-        <div class="kpis" style="grid-template-columns:repeat(3,1fr)">
-          <div class="kpi"><div class="k">Close</div><div class="v" id="kpiClose">—</div></div>
-          <div class="kpi"><div class="k">Mid</div><div class="v" id="kpiMid">—</div></div>
-          <div class="kpi"><div class="k">Long</div><div class="v" id="kpiLong">—</div></div>
+        <div class="row" style="justify-content:flex-end">
+          <button class="btn primary" id="btnRun">Run Report</button>
+          <button class="btn" id="btnClear">Clear</button>
         </div>
 
         <div class="status" id="status">Ready.</div>
 
         <div style="height:12px"></div>
 
+        <div class="chips" id="chips"></div>
+
+        <div style="height:12px"></div>
+
         <div class="tablewrap" style="max-height:520px; overflow:auto">
           <table>
             <thead>
-              <tr>
-                <th>Player</th>
-                <th>K</th>
-                <th>Asst</th>
-                <th>Close</th>
-                <th>Mid</th>
-                <th>Long</th>
-                <th>HS</th>
-                <th>HS Kills</th>
-                <th>Med</th>
-                <th>Revived</th>
-                <th>Rev Teammate</th>
-                <th>Torso</th>
-                <th>Leg</th>
-              </tr>
+              <tr id="playersHead"></tr>
             </thead>
-            <tbody id="playersBody">
-              <tr><td colspan="13" class="small">Load a team to see players.</td></tr>
-            </tbody>
+            <tbody id="playersBody"></tbody>
           </table>
         </div>
 
-        <details style="margin-top:12px">
-          <summary>Diagnostics</summary>
-          <div class="small" id="diagText" style="margin-top:10px;white-space:pre-wrap"></div>
-        </details>
+        <div class="row" style="justify-content:flex-end;margin-top:10px">
+          <button class="btn" id="btnExportPlayers">Export Player Summary CSV</button>
+        </div>
 
       </div>
     </section>
 
-    <!-- RIGHT: Player Details -->
-    <section class="card">
-      <div class="hd">
-        <h2>Player Detail</h2>
-        <div class="pill"><span class="dot neutral"></span><span id="playerMeta">—</span></div>
-      </div>
-      <div class="bd">
-        <div class="rightStack">
-          <div id="playerHeader" style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-end">
-            <div>
-              <div class="small">Selected player</div>
-              <div style="font-size:18px;font-family:Orbitron, var(--sans);letter-spacing:.3px" id="pName">—</div>
-              <div class="small mono" id="pId">—</div>
+    <!-- RIGHT: Kill Feed + Player Focus -->
+    <div class="rightStack">
+
+      <section class="card">
+        <div class="hd">
+          <h2>2) Kill Feed</h2>
+          <div class="pill" id="feedPill"><span class="dot neutral"></span><span id="feedMeta">0 rows</span></div>
+        </div>
+        <div class="bd">
+
+          <div class="row">
+            <div class="field" style="min-width:260px;flex:1.2">
+              <label>Filter by killer (click a player row to auto-set)</label>
+              <select id="killerFilter">
+                <option value="">All team players</option>
+              </select>
+              <div class="hint">Shows “player killed + weapon used”, kill distance bucket, and killer ID.</div>
             </div>
-            <div class="row" style="gap:8px">
-              <span class="badge" id="bMatches">Matches: —</span>
-              <span class="badge" id="bBooyah">Booyah: —</span>
-              <span class="badge" id="bElim">Eliminated: —</span>
+            <div class="field" style="min-width:260px;flex:1">
+              <label>Text search (victim / weapon / match)</label>
+              <input id="feedSearch" type="text" placeholder="e.g. 58, 1725…, nickname…"/>
             </div>
           </div>
 
-          <div class="split2">
-            <div class="kpi">
-              <div class="k">Kills / Assists</div>
-              <div class="v" id="pKillsAsst">—</div>
-              <div class="small" id="pKdaHint">—</div>
-            </div>
-            <div class="kpi">
-              <div class="k">Headshots</div>
-              <div class="v" id="pHs">—</div>
-              <div class="small">Headshot killtimes: <span class="mono" id="pHsKt">—</span></div>
-            </div>
-          </div>
-
-          <div class="kpi">
-            <div class="k">Kill Distance (Close / Mid / Long)</div>
-            <div class="row" style="margin-top:8px;align-items:center;gap:10px">
-              <span class="badge">Close: <span class="mono" id="pClose">—</span></span>
-              <span class="badge">Mid: <span class="mono" id="pMid">—</span></span>
-              <span class="badge">Long: <span class="mono" id="pLong">—</span></span>
-            </div>
-            <div class="barrow" style="margin-top:10px">
-              <div class="small" style="min-width:92px">Distribution</div>
-              <div class="bar"><i id="distBar"></i></div>
-              <div class="small mono" id="distPct">—</div>
-            </div>
-          </div>
-
-          <div class="split2">
-            <div class="kpi">
-              <div class="k">Utility</div>
-              <div class="small" style="margin-top:8px">Medkit use: <span class="mono" id="pMed">—</span></div>
-              <div class="small">Revived times (was revived): <span class="mono" id="pRevived">—</span></div>
-              <div class="small">Revive teammate times: <span class="mono" id="pRevTeammate">—</span></div>
-            </div>
-            <div class="kpi">
-              <div class="k">Hits</div>
-              <div class="small" style="margin-top:8px">Torso hits: <span class="mono" id="pTorso">—</span></div>
-              <div class="small">Leg hits: <span class="mono" id="pLeg">—</span></div>
-              <div class="small">Headshots (hits): <span class="mono" id="pHsHits">—</span></div>
-            </div>
-          </div>
-
-          <div class="kpi">
-            <div class="k">Top Weapons (from Kill Info)</div>
-            <div class="small" id="pWeapons">—</div>
-          </div>
-
-          <div class="tablewrap" style="max-height:360px; overflow:auto">
+          <div class="tablewrap" style="max-height:520px; overflow:auto; margin-top:10px">
             <table>
               <thead>
-                <tr>
-                  <th>Match</th>
-                  <th>Killer ID</th>
-                  <th>Player killed</th>
-                  <th>Weapon</th>
-                  <th>Dist</th>
-                  <th>Range</th>
-                  <th>Timestamp</th>
-                </tr>
+                <tr id="feedHead"></tr>
               </thead>
-              <tbody id="killFeedBody">
-                <tr><td colspan="7" class="small">Select a player to view kill feed.</td></tr>
-              </tbody>
+              <tbody id="feedBody"></tbody>
             </table>
           </div>
 
-          <div class="hint">
-            If you see “permission denied”, your table RLS is blocking SELECT for your current session.
-            <br/>Go to <a class="link" href="index.html">index.html</a>, login, then open this page from the same site/origin.
+          <div class="row" style="justify-content:flex-end;margin-top:10px">
+            <button class="btn" id="btnExportFeed">Export Kill Feed CSV</button>
+            <button class="btn" id="btnResetFeedFilter">Reset killer filter</button>
           </div>
+
         </div>
-      </div>
-    </section>
+      </section>
+
+      <section class="card">
+        <div class="hd">
+          <h2>3) Player Focus</h2>
+          <div class="pill"><span class="dot neutral"></span><span id="focusMeta">Click a player</span></div>
+        </div>
+        <div class="bd">
+          <div class="hint">This mirrors your priority metrics: Kills, Kill distance buckets, Assists, Hits, Headshot killtimes, Medkit use, Revived (was revived), Revive teammate times.</div>
+          <div style="height:10px"></div>
+          <div class="chips" id="focusChips"></div>
+        </div>
+      </section>
+
+    </div>
 
   </div>
 </main>
 
+<div class="overlay" id="overlay">
+  <div class="loader">
+    <h3 id="loadTitle">Loading…</h3>
+    <div class="small" id="loadMsg">Please wait</div>
+    <div class="progress"><div class="bar" id="bar"></div></div>
+  </div>
+</div>
+
 <script>
-  /***********************
-   * CONFIG
-   ***********************/
-  const SUPABASE_URL = "https://gkugecflfddkpitlrmws.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS"," +
-    "I6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE";
-  // ^ NOTE: The key above is intentionally embedded per your request.
-
-  const TABLE = "ff_stats_raw";
-  const LOGIN_PAGE = "index.html";
-
-  // If true: requires an existing session; if missing/expired -> redirects to index.html (robust, avoids redirect loop).
-  // If false: will still work for public SELECT (if your RLS allows it).
-  const REQUIRE_AUTH = true;
-
-  // How many rows to pull max per team (paginate).
-  const MAX_ROWS = 20000;
-  const PAGE_SIZE = 1000;
-
-  const SELECT_COLS = [
-    "match_id","Mode","Tournament","Stage","Year","Week","Day","MatchNumber",
-    "team_id","team_name","booyah","is_eliminated",
-    "player_stats_account_id","player_stats_nickname",
-    "player_stats_kills","player_stats_assists",
-    "player_stats_headshots","player_stats_headshot_killtimes",
-    "player_stats_medkit_use",
-    "player_stats_revived_times",
-    "player_stats_revive_teammate_times",
-    "player_stats_torso_hits","player_stats_leg_hits",
-    "player_stats_kill_info","player_stats_kill_distance"
-  ].join(",");
-
-  /***********************
-   * HELPERS
-   ***********************/
   const $ = (id) => document.getElementById(id);
 
+  /***********************
+   * ✅ Supabase config
+   ***********************/
+  const SUPABASE_URL = "https://gkugecflfddkpitlrmws.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE";
+  const TABLE = "ff_stats_raw";
+
+  const SB = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+  });
+
+  /***********************
+   * UI helpers
+   ***********************/
+  function setOverlay(on, title="Loading…", msg=""){
+    const o = $("overlay");
+    if(on){
+      $("loadTitle").textContent = title;
+      $("loadMsg").textContent = msg || "";
+      $("bar").style.width = "0%";
+      o.classList.add("on");
+    }else{
+      o.classList.remove("on");
+    }
+  }
+  function setProgress(pct){
+    $("bar").style.width = `${Math.max(0, Math.min(100, pct))}%`;
+  }
   function setAuthPill(state, text){
     const pill = $("authPill");
     const dot = pill.querySelector(".dot");
     dot.classList.remove("good","bad","neutral");
     dot.classList.add(state);
-    $("authText").textContent = text || "";
+    $("authText").textContent = text;
   }
-
-  function fmt(n){
-    const x = Number(n);
-    if(!isFinite(x)) return "0";
-    return x.toLocaleString();
+  function setStatus(msg, isErr=false){
+    $("status").textContent = msg;
+    $("status").style.borderColor = isErr ? "rgba(255,107,107,.35)" : "rgba(255,255,255,.10)";
   }
-
-  function n0(v){
-    const x = Number(v);
-    return isFinite(x) ? x : 0;
-  }
-
-  function safeStr(v){
+  function safe(v){
     if(v === null || v === undefined) return "";
     if(typeof v === "string") return v;
-    return String(v);
+    if(typeof v === "number" || typeof v === "boolean") return String(v);
+    try { return JSON.stringify(v); } catch { return String(v); }
+  }
+  function num(v){
+    if(v === null || v === undefined || v === "") return 0;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  }
+  function downloadText(filename, content, mime="text/plain"){
+    const blob = new Blob([content], {type:mime});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 800);
+  }
+  function toCSV(rows, cols){
+    const esc = (s) => {
+      const str = s == null ? "" : String(s);
+      if(/[",\n\r]/.test(str)) return `"${str.replace(/"/g,'""')}"`;
+      return str;
+    };
+    const header = cols.map(esc).join(",");
+    const lines = rows.map(r => cols.map(c => esc(r[c])).join(","));
+    return [header, ...lines].join("\n");
   }
 
-  function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
-
-  function rangeBucket(dist, closeMax, midMax){
-    const d = Number(dist);
-    if(!isFinite(d)) return null;
-    if(d <= closeMax) return "close";
-    if(d <= midMax) return "mid";
-    return "long";
-  }
-
-  function tryJson(v){
-    if(v === null || v === undefined) return null;
-    if(typeof v === "object") return v;
-    const s = String(v).trim();
+  function parseJSONish(v){
+    if(v === null || v === undefined || v === "") return null;
+    if(Array.isArray(v) || (typeof v === "object" && v)) return v;
+    if(typeof v !== "string") return null;
+    const s = v.trim();
     if(!s) return null;
-    try{ return JSON.parse(s); }catch(_e){ return null; }
+    if(!(s.startsWith("[") || s.startsWith("{"))) return null;
+    try { return JSON.parse(s); } catch { return null; }
   }
 
-  function parseKillInfo(row){
-    // expected: array of {killer_id, player_killed_id, weapon_used_id, kill_timestamp, kill_distance}
-    const arr = tryJson(row?.player_stats_kill_info);
-    if(Array.isArray(arr)) return arr.filter(x => x && typeof x === "object");
-    return [];
+  function bucketRange(dist, closeMax, midMax){
+    const d = Number(dist);
+    if(!Number.isFinite(d)) return "Unknown";
+    if(d <= closeMax) return "Close";
+    if(d <= midMax) return "Mid";
+    return "Long";
   }
 
-  function parseDistancesFallback(row){
-    // player_stats_kill_distance is typically "5 | 111 | 1" or "[]"
-    const raw = row?.player_stats_kill_distance;
-    if(raw === null || raw === undefined) return [];
-    const s = String(raw).trim();
-    if(!s || s === "[]" || s === "[ ]") return [];
-    // split by | (your uploader joined primitive arrays using " | ")
-    const parts = s.split("|").map(x=>x.trim()).filter(Boolean);
-    const out = [];
-    for(const p of parts){
-      const d = Number(p);
-      if(isFinite(d)) out.push(d);
-    }
-    return out;
-  }
-
-  function uniq(arr){
-    return Array.from(new Set(arr.filter(x=>x!==null && x!==undefined && String(x).trim()!=="").map(x=>String(x))));
-  }
-
-  function setStatus(msg, isError=false){
-    $("status").textContent = msg;
-    $("status").style.borderColor = isError ? "rgba(255,107,107,.35)" : "rgba(255,255,255,.10)";
-  }
-
-  function updateDiag(diag){
-    $("diagText").textContent = diag;
+  function formatTime(msLike){
+    const n = Number(msLike);
+    if(!Number.isFinite(n)) return safe(msLike);
+    // most exports look like milliseconds into match
+    const sec = Math.round((n/1000)*10)/10;
+    return `${sec}s`;
   }
 
   /***********************
-   * SUPABASE CLIENT
+   * State
    ***********************/
-  const SB = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-      // Force the same storage key across pages (default is this anyway, but explicit helps).
-      storageKey: "sb-gkugecflfddkpitlrmws-auth-token"
-    }
-  });
+  let TEAM_ROWS = [];          // raw rows fetched from DB for selected team + filters
+  let PLAYER_SUMMARY = [];     // computed summary rows (per player)
+  let KILL_FEED = [];          // computed kill feed rows (from kill_info)
+  let TEAM_INDEX = [];         // [{team_id, team_name}]
+  let FILTERED_TEAM_INDEX = []; // for team search
+  let NICK_BY_MATCH = new Map(); // match_id -> Map(account_id -> nickname)
 
-  SB.auth.onAuthStateChange((event, session) => {
-    // Avoid redirect loops: only redirect on real sign-out failures
-    if(REQUIRE_AUTH && (event === "SIGNED_OUT" || event === "USER_DELETED" || event === "TOKEN_REFRESH_FAILED")){
-      location.replace(LOGIN_PAGE);
-      return;
-    }
-    renderAuth(session);
-  });
+  const PLAYER_COLS = [
+    {k:"player", t:"Player"},
+    {k:"account_id", t:"Account ID"},
+    {k:"matches", t:"Matches"},
+    {k:"kills", t:"Kills"},
+    {k:"assists", t:"Assists"},
+    {k:"close", t:"Close"},
+    {k:"mid", t:"Mid"},
+    {k:"long", t:"Long"},
+    {k:"hs_kills", t:"HS Killtimes"},
+    {k:"headshots", t:"Headshots"},
+    {k:"torso", t:"Torso"},
+    {k:"leg", t:"Leg"},
+    {k:"medkit", t:"Medkit"},
+    {k:"revived", t:"Revived (was)"},
+    {k:"revive_tm", t:"Revive teammate"},
+    {k:"kpm", t:"K/Match"}
+  ];
 
-  function renderAuth(session){
-    const user = session?.user || null;
-    if(user){
-      setAuthPill("good", user.email ? `Signed in: ${user.email}` : "Signed in");
-    } else {
-      setAuthPill("neutral", "Anon");
-    }
-  }
+  const FEED_COLS = [
+    {k:"match_id", t:"Match"},
+    {k:"killer_name", t:"Killer"},
+    {k:"killer_id", t:"Killer ID"},
+    {k:"victim_name", t:"Victim"},
+    {k:"victim_id", t:"Victim ID"},
+    {k:"weapon_used_id", t:"Weapon ID"},
+    {k:"kill_distance", t:"Dist"},
+    {k:"range", t:"Range"},
+    {k:"time", t:"Time"}
+  ];
 
-  async function requireSessionOrRedirect(){
-    const origin = location.origin;
-    const storageKey = "sb-gkugecflfddkpitlrmws-auth-token";
-    const rawToken = localStorage.getItem(storageKey);
-
-    updateDiag(
-`Origin: ${origin}
-StorageKey present: ${rawToken ? "YES" : "NO"}
-StorageKey: ${storageKey}
-
-If you get redirected while logged-in:
-- Make sure index.html and this page are opened under the SAME origin (not file:// vs http://, not different ports).`
-    );
-
-    // quick check: if no token stored, redirect fast (when REQUIRE_AUTH)
-    if(REQUIRE_AUTH && !rawToken){
-      setAuthPill("bad", "No session");
-      setStatus("No stored session found on this origin. Redirecting to index.html…", true);
-      await sleep(300);
-      location.replace(LOGIN_PAGE);
-      return null;
-    }
-
-    // robust session hydrate
-    for(let attempt=1; attempt<=3; attempt++){
+  /***********************
+   * Auth/session handling (no login UI here)
+   * - We do NOT auto-redirect immediately.
+   * - We attempt a lightweight query; if it fails due to RLS/auth, we redirect to index.html.
+   ***********************/
+  async function checkSession(){
+    try{
       const { data, error } = await SB.auth.getSession();
       if(error){
         setAuthPill("bad", "Auth error");
-        setStatus(`Auth error: ${error.message}`, true);
-        if(REQUIRE_AUTH){ await sleep(400); location.replace(LOGIN_PAGE); }
-        return null;
+        return { session: null, error };
       }
-
-      if(data?.session?.user){
-        renderAuth(data.session);
-        return data.session;
+      const session = data?.session || null;
+      if(session?.user){
+        setAuthPill("good", `Signed in: ${session.user.email || session.user.id}`);
+      }else{
+        setAuthPill("neutral", "Anon (will query)");
       }
-
-      // try refresh once
-      try{ await SB.auth.refreshSession(); }catch(_e){}
-      await sleep(180);
+      return { session, error: null };
+    }catch(e){
+      setAuthPill("bad", "Auth exception");
+      return { session: null, error: e };
     }
+  }
 
-    // still no session
-    renderAuth(null);
-    if(REQUIRE_AUTH){
-      setAuthPill("bad", "Not signed in");
-      setStatus("Session not available (expired or different origin). Redirecting…", true);
-      await sleep(400);
-      location.replace(LOGIN_PAGE);
-      return null;
-    }
-
-    return null;
+  function redirectToIndex(){
+    // Prevent endless loop: only redirect if we truly cannot read data.
+    window.location.href = "index.html";
   }
 
   /***********************
-   * STATE
+   * Load team index
    ***********************/
-  let CURRENT_TEAM = "";
-  let CURRENT_PLAYER_ID = null;
-
-  // computed
-  let PLAYER_LIST = []; // [{id,nickname,stats,..., killsFeed:[]}]
-  let TEAM_SUMMARY = null;
-
-  /***********************
-   * DATA LOADERS
-   ***********************/
-  async function searchTeams(q){
-    const query = String(q || "").trim();
-    if(query.length < 1) return [];
-
-    const { data, error } = await SB
-      .from(TABLE)
-      .select("team_name")
-      .ilike("team_name", `%${query}%`)
-      .limit(50);
-
-    if(error) throw error;
-
-    const names = uniq((data || []).map(r => r.team_name));
-    names.sort((a,b)=>a.localeCompare(b));
-    return names;
-  }
-
-  async function warmFilterOptions(){
-    // best-effort: pulls some rows and de-dupes tournament/stage/year
-    const { data, error } = await SB
-      .from(TABLE)
-      .select("Tournament,Stage,Year")
-      .not("Tournament", "is", null)
-      .limit(2000);
-
-    if(error) return; // ignore
-
-    const tourneys = uniq(data.map(r=>r.Tournament));
-    const stages = uniq(data.map(r=>r.Stage));
-    const years = uniq(data.map(r=>r.Year)).sort((a,b)=>Number(b)-Number(a));
-
-    const tSel = $("tournamentFilter");
-    const sSel = $("stageFilter");
-    const ySel = $("yearFilter");
-
-    for(const v of tourneys.sort((a,b)=>a.localeCompare(b))){
-      const opt = document.createElement("option");
-      opt.value = v; opt.textContent = v;
-      tSel.appendChild(opt);
-    }
-    for(const v of stages.sort((a,b)=>a.localeCompare(b))){
-      const opt = document.createElement("option");
-      opt.value = v; opt.textContent = v;
-      sSel.appendChild(opt);
-    }
-    for(const v of years){
-      const opt = document.createElement("option");
-      opt.value = v; opt.textContent = v;
-      ySel.appendChild(opt);
-    }
-  }
-
-  async function fetchTeamRows(team){
-    const mode = $("modeFilter").value.trim();
-    const tournament = $("tournamentFilter").value.trim();
-    const stage = $("stageFilter").value.trim();
-    const year = $("yearFilter").value.trim();
-
-    let all = [];
-    for(let from=0; from<MAX_ROWS; from += PAGE_SIZE){
-      let q = SB.from(TABLE)
-        .select(SELECT_COLS)
-        .eq("team_name", team)
-        .order("match_id", { ascending:false })
-        .range(from, from + PAGE_SIZE - 1);
-
-      if(mode) q = q.eq("Mode", mode);
-      if(tournament) q = q.eq("Tournament", tournament);
-      if(stage) q = q.eq("Stage", stage);
-      if(year) q = q.eq("Year", year);
-
-      const { data, error } = await q;
-      if(error) throw error;
-
-      const rows = data || [];
-      all.push(...rows);
-
-      setStatus(`Loading… ${all.length} rows (page ${Math.floor(from/PAGE_SIZE)+1})`);
-
-      if(rows.length < PAGE_SIZE) break;
-      await sleep(50);
-    }
-    return all;
-  }
-
-  /***********************
-   * AGGREGATION
-   ***********************/
-  function buildReport(rows){
-    const closeMax = Math.max(1, Number($("closeMax").value) || 20);
-    const midMax = Math.max(closeMax+1, Number($("midMax").value) || 60);
-
-    const players = new Map();
-
-    let teamKills=0, teamAsst=0, teamHs=0, teamHsKt=0, teamMed=0, teamRevived=0;
-    let tClose=0, tMid=0, tLong=0;
-
-    for(const r of (rows || [])){
-      const pid = safeStr(r.player_stats_account_id);
-      const nick = safeStr(r.player_stats_nickname) || "(no name)";
-      if(!pid) continue;
-
-      if(!players.has(pid)){
-        players.set(pid, {
-          id: pid,
-          nickname: nick,
-          matches: 0,
-          booyahMatches: 0,
-          eliminatedMatches: 0,
-          kills: 0,
-          assists: 0,
-          headshots: 0,
-          headshotKilltimes: 0,
-          medkitUse: 0,
-          revivedTimes: 0,
-          reviveTeammateTimes: 0,
-          torsoHits: 0,
-          legHits: 0,
-          close: 0, mid: 0, long: 0,
-          killFeed: [], // {match_id, killer_id, player_killed_id, weapon_used_id, kill_distance, range, kill_timestamp}
-          weaponCounts: new Map()
-        });
-      }
-
-      const p = players.get(pid);
-
-      p.matches += 1;
-      if(Boolean(r.booyah)) p.booyahMatches += 1;
-      if(Boolean(r.is_eliminated)) p.eliminatedMatches += 1;
-
-      p.kills += n0(r.player_stats_kills);
-      p.assists += n0(r.player_stats_assists);
-      p.headshots += n0(r.player_stats_headshots);
-      p.headshotKilltimes += n0(r.player_stats_headshot_killtimes);
-      p.medkitUse += n0(r.player_stats_medkit_use);
-      p.revivedTimes += n0(r.player_stats_revived_times);
-      p.reviveTeammateTimes += n0(r.player_stats_revive_teammate_times);
-      p.torsoHits += n0(r.player_stats_torso_hits);
-      p.legHits += n0(r.player_stats_leg_hits);
-
-      // kill info feed
-      const killInfo = parseKillInfo(r);
-      if(killInfo.length){
-        for(const k of killInfo){
-          const dist = k.kill_distance;
-          const bucket = rangeBucket(dist, closeMax, midMax);
-          if(bucket === "close"){ p.close++; tClose++; }
-          else if(bucket === "mid"){ p.mid++; tMid++; }
-          else if(bucket === "long"){ p.long++; tLong++; }
-
-          const wid = k.weapon_used_id;
-          if(wid !== undefined && wid !== null){
-            const key = String(wid);
-            p.weaponCounts.set(key, (p.weaponCounts.get(key) || 0) + 1);
-          }
-
-          p.killFeed.push({
-            match_id: r.match_id,
-            killer_id: k.killer_id ?? pid,
-            player_killed_id: k.player_killed_id ?? "",
-            weapon_used_id: k.weapon_used_id ?? "",
-            kill_distance: k.kill_distance ?? "",
-            range: bucket || "",
-            kill_timestamp: k.kill_timestamp ?? ""
-          });
-        }
-      } else {
-        // fallback distances if kill_info is empty
-        const dists = parseDistancesFallback(r);
-        for(const d of dists){
-          const bucket = rangeBucket(d, closeMax, midMax);
-          if(bucket === "close"){ p.close++; tClose++; }
-          else if(bucket === "mid"){ p.mid++; tMid++; }
-          else if(bucket === "long"){ p.long++; tLong++; }
-        }
-      }
-
-      teamKills += n0(r.player_stats_kills);
-      teamAsst += n0(r.player_stats_assists);
-      teamHs += n0(r.player_stats_headshots);
-      teamHsKt += n0(r.player_stats_headshot_killtimes);
-      teamMed += n0(r.player_stats_medkit_use);
-      teamRevived += n0(r.player_stats_revived_times);
-    }
-
-    // finalize player list
-    const list = Array.from(players.values()).map(p => {
-      // sort killfeed newest-ish (timestamp is within match; also we have match_id ordering)
-      p.killFeed.sort((a,b)=>{
-        const ma = String(a.match_id), mb = String(b.match_id);
-        if(ma !== mb) return mb.localeCompare(ma);
-        return n0(b.kill_timestamp) - n0(a.kill_timestamp);
-      });
-      return p;
-    });
-
-    // sort by kills desc, then assists desc
-    list.sort((a,b)=>{
-      if(b.kills !== a.kills) return b.kills - a.kills;
-      if(b.assists !== a.assists) return b.assists - a.assists;
-      return a.nickname.localeCompare(b.nickname);
-    });
-
-    return {
-      players: list,
-      team: {
-        players: list.length,
-        kills: teamKills,
-        assists: teamAsst,
-        headshots: teamHs,
-        headshotKilltimes: teamHsKt,
-        medkits: teamMed,
-        revived: teamRevived,
-        close: tClose, mid: tMid, long: tLong
-      }
-    };
-  }
-
-  /***********************
-   * RENDER
-   ***********************/
-  function renderTeamSummary(team){
-    $("kpiPlayers").textContent = fmt(team.players);
-    $("kpiKills").textContent = fmt(team.kills);
-    $("kpiAssists").textContent = fmt(team.assists);
-    $("kpiHeadshots").textContent = fmt(team.headshots);
-    $("kpiMedkits").textContent = fmt(team.medkits);
-    $("kpiRevived").textContent = fmt(team.revived);
-    $("kpiClose").textContent = fmt(team.close);
-    $("kpiMid").textContent = fmt(team.mid);
-    $("kpiLong").textContent = fmt(team.long);
-
-    $("metaText").textContent = `${CURRENT_TEAM || "—"} • ${team.players} players`;
-  }
-
-  function renderPlayersTable(players){
-    const tb = $("playersBody");
-    tb.innerHTML = "";
-    if(!players.length){
-      tb.innerHTML = `<tr><td colspan="13" class="small">No players found for this team (with current filters).</td></tr>`;
-      return;
-    }
-
-    for(const p of players){
-      const tr = document.createElement("tr");
-      tr.className = "clickable";
-      tr.dataset.pid = p.id;
-
-      tr.innerHTML = `
-        <td><div style="font-weight:600">${escapeHtml(p.nickname)}</div><div class="small mono">${escapeHtml(p.id)}</div></td>
-        <td>${fmt(p.kills)}</td>
-        <td>${fmt(p.assists)}</td>
-        <td>${fmt(p.close)}</td>
-        <td>${fmt(p.mid)}</td>
-        <td>${fmt(p.long)}</td>
-        <td>${fmt(p.headshots)}</td>
-        <td>${fmt(p.headshotKilltimes)}</td>
-        <td>${fmt(p.medkitUse)}</td>
-        <td>${fmt(p.revivedTimes)}</td>
-        <td>${fmt(p.reviveTeammateTimes)}</td>
-        <td>${fmt(p.torsoHits)}</td>
-        <td>${fmt(p.legHits)}</td>
-      `;
-
-      tr.addEventListener("click", ()=>selectPlayer(p.id));
-      tb.appendChild(tr);
-    }
-
-    // auto select first
-    selectPlayer(players[0].id);
-  }
-
-  function renderPlayerDetail(p){
-    if(!p){
-      $("playerMeta").textContent = "—";
-      $("pName").textContent = "—";
-      $("pId").textContent = "—";
-      return;
-    }
-
-    $("pName").textContent = p.nickname;
-    $("pId").textContent = `account_id: ${p.id}`;
-    $("playerMeta").textContent = `Kills: ${fmt(p.kills)} • Asst: ${fmt(p.assists)} • HS: ${fmt(p.headshots)}`;
-
-    $("bMatches").textContent = `Matches: ${fmt(p.matches)}`;
-    $("bBooyah").textContent = `Booyah: ${fmt(p.booyahMatches)}`;
-    $("bElim").textContent = `Eliminated: ${fmt(p.eliminatedMatches)}`;
-
-    $("pKillsAsst").textContent = `${fmt(p.kills)} / ${fmt(p.assists)}`;
-    const kda = (p.eliminatedMatches > 0) ? (p.kills / p.eliminatedMatches) : p.kills;
-    $("pKdaHint").textContent = `Kills per eliminated-match: ${kda.toFixed(2)}`;
-
-    $("pHs").textContent = fmt(p.headshots);
-    $("pHsKt").textContent = fmt(p.headshotKilltimes);
-
-    $("pClose").textContent = fmt(p.close);
-    $("pMid").textContent = fmt(p.mid);
-    $("pLong").textContent = fmt(p.long);
-
-    const totalDistKills = p.close + p.mid + p.long;
-    const cPct = totalDistKills ? (p.close/totalDistKills)*100 : 0;
-    const mPct = totalDistKills ? (p.mid/totalDistKills)*100 : 0;
-    const lPct = totalDistKills ? (p.long/totalDistKills)*100 : 0;
-
-    $("distBar").style.width = `${Math.max(2, Math.min(100, (cPct+mPct+lPct)))}%`;
-    $("distPct").textContent = totalDistKills
-      ? `C ${cPct.toFixed(0)}% • M ${mPct.toFixed(0)}% • L ${lPct.toFixed(0)}%`
-      : "No kill distances";
-
-    $("pMed").textContent = fmt(p.medkitUse);
-    $("pRevived").textContent = fmt(p.revivedTimes);
-    $("pRevTeammate").textContent = fmt(p.reviveTeammateTimes);
-
-    $("pTorso").textContent = fmt(p.torsoHits);
-    $("pLeg").textContent = fmt(p.legHits);
-    $("pHsHits").textContent = fmt(p.headshots);
-
-    // weapons
-    const wc = Array.from(p.weaponCounts.entries()).sort((a,b)=>b[1]-a[1]).slice(0, 12);
-    if(!wc.length){
-      $("pWeapons").textContent = "No weapon data (kill_info empty).";
-    } else {
-      $("pWeapons").innerHTML = wc.map(([wid,c])=>`<span class="badge">Weapon ${escapeHtml(wid)}: <span class="mono">${fmt(c)}</span></span>`).join(" ");
-    }
-
-    // kill feed table (top 40)
-    const feed = p.killFeed.slice(0, 40);
-    const tb = $("killFeedBody");
-    tb.innerHTML = "";
-    if(!feed.length){
-      tb.innerHTML = `<tr><td colspan="7" class="small">No kill feed found for this player (kill_info empty).</td></tr>`;
-    } else {
-      for(const k of feed){
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td class="mono">${escapeHtml(String(k.match_id || ""))}</td>
-          <td class="mono">${escapeHtml(String(k.killer_id || ""))}</td>
-          <td class="mono">${escapeHtml(String(k.player_killed_id || ""))}</td>
-          <td class="mono">${escapeHtml(String(k.weapon_used_id || ""))}</td>
-          <td>${escapeHtml(String(k.kill_distance ?? ""))}</td>
-          <td>${escapeHtml(String(k.range || ""))}</td>
-          <td class="mono">${escapeHtml(String(k.kill_timestamp || ""))}</td>
-        `;
-        tb.appendChild(tr);
-      }
-    }
-  }
-
-  function highlightSelectedRow(pid){
-    const rows = $("playersBody").querySelectorAll("tr");
-    rows.forEach(r=>{
-      if(r.dataset.pid === pid) r.classList.add("active");
-      else r.classList.remove("active");
-    });
-  }
-
-  function selectPlayer(pid){
-    CURRENT_PLAYER_ID = pid;
-    highlightSelectedRow(pid);
-    const p = PLAYER_LIST.find(x=>x.id === pid);
-    renderPlayerDetail(p);
-  }
-
-  function escapeHtml(s){
-    return String(s ?? "").replace(/[&<>"']/g, m => ({
-      "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"
-    }[m]));
-  }
-
-  /***********************
-   * UI EVENTS
-   ***********************/
-  let teamSearchTimer = null;
-
-  $("teamInput").addEventListener("input", ()=>{
-    clearTimeout(teamSearchTimer);
-    const q = $("teamInput").value.trim();
-    teamSearchTimer = setTimeout(async ()=>{
-      if(!q) return;
-      try{
-        const teams = await searchTeams(q);
-        const dl = $("teamList");
-        dl.innerHTML = "";
-        for(const t of teams){
-          const opt = document.createElement("option");
-          opt.value = t;
-          dl.appendChild(opt);
-        }
-      }catch(err){
-        // ignore; likely RLS
-      }
-    }, 220);
-  });
-
-  $("btnLoad").addEventListener("click", ()=>loadTeam().catch(()=>{}));
-  $("btnReload").addEventListener("click", ()=>location.reload());
-  $("btnLogout").addEventListener("click", async ()=>{
-    try{ await SB.auth.signOut(); }catch(_e){}
-    location.replace(LOGIN_PAGE);
-  });
-
-  // recompute using same rows quickly when thresholds change
-  $("closeMax").addEventListener("change", ()=>{
-    if(!TEAM_SUMMARY || !TEAM_SUMMARY._rows) return;
-    const report = buildReport(TEAM_SUMMARY._rows);
-    TEAM_SUMMARY.team = report.team;
-    PLAYER_LIST = report.players;
-    renderTeamSummary(report.team);
-    renderPlayersTable(PLAYER_LIST);
-    setStatus("Updated distance thresholds.");
-  });
-  $("midMax").addEventListener("change", ()=>{
-    if(!TEAM_SUMMARY || !TEAM_SUMMARY._rows) return;
-    const report = buildReport(TEAM_SUMMARY._rows);
-    TEAM_SUMMARY.team = report.team;
-    PLAYER_LIST = report.players;
-    renderTeamSummary(report.team);
-    renderPlayersTable(PLAYER_LIST);
-    setStatus("Updated distance thresholds.");
-  });
-
-  async function loadTeam(){
-    const team = $("teamInput").value.trim();
-    if(!team){
-      setStatus("Enter a team name first.", true);
-      return;
-    }
-
-    CURRENT_TEAM = team;
-    setStatus("Loading team rows…");
-
+  async function loadTeams(){
+    setOverlay(true, "Loading teams…", "Building team list from ff_stats_raw");
+    setStatus("Loading teams…");
     try{
-      const rows = await fetchTeamRows(team);
+      // Pull minimal columns; dedupe client-side.
+      // Increase limit if you have more teams.
+      const { data, error, status } = await SB
+        .from(TABLE)
+        .select("team_id,team_name")
+        .not("team_name", "is", null)
+        .limit(50000);
 
-      if(!rows.length){
-        setStatus("No rows found for this team (with current filters).", true);
-        $("playersBody").innerHTML = `<tr><td colspan="13" class="small">No rows found.</td></tr>`;
-        $("metaText").textContent = `${team} • 0 players`;
+      if(error){
+        const msg = `Supabase error loading teams:\n${error.message || safe(error)}\nHTTP: ${status || "?"}`;
+        setStatus(msg, true);
+        // If RLS blocks anon reads, redirect to login.
+        if(status === 401 || status === 403) redirectToIndex();
         return;
       }
 
-      const report = buildReport(rows);
-
-      TEAM_SUMMARY = { ...report, _rows: rows };
-      PLAYER_LIST = report.players;
-
-      renderTeamSummary(report.team);
-      renderPlayersTable(PLAYER_LIST);
-
-      setStatus(
-`Loaded ✅
-Team: ${team}
-Rows: ${rows.length}
-Players: ${report.team.players}
-Kills: ${report.team.kills} (Close ${report.team.close} / Mid ${report.team.mid} / Long ${report.team.long})`
-      );
-
-    }catch(err){
-      console.error(err);
-      const msg = (err && err.message) ? err.message : String(err);
-
-      // common RLS error signals
-      const deny = /permission|not allowed|RLS|JWT|row-level/i.test(msg);
-
-      setStatus(
-`Load failed:
-${msg}
-
-If this is RLS/permission:
-- Login in index.html, then open this page from the same origin.`,
-        true
-      );
-
-      if(REQUIRE_AUTH && deny){
-        await sleep(600);
-        location.replace(LOGIN_PAGE);
+      const seen = new Map(); // team_id -> name
+      for(const r of (data || [])){
+        const id = r.team_id;
+        const nm = (r.team_name || "").trim();
+        if(id == null || !nm) continue;
+        if(!seen.has(String(id))) seen.set(String(id), nm);
       }
+
+      TEAM_INDEX = Array.from(seen.entries())
+        .map(([team_id, team_name]) => ({ team_id, team_name }))
+        .sort((a,b)=>a.team_name.localeCompare(b.team_name));
+
+      FILTERED_TEAM_INDEX = TEAM_INDEX.slice();
+      renderTeamSelect();
+
+      setStatus(`Teams loaded: ${TEAM_INDEX.length}\nSelect a team, set filters (optional), then Run Report.`);
+    }catch(e){
+      setStatus("Unexpected error loading teams:\n" + (e.message || String(e)), true);
+    }finally{
+      setOverlay(false);
+    }
+  }
+
+  function renderTeamSelect(){
+    const sel = $("teamSelect");
+    const cur = sel.value;
+
+    sel.innerHTML = `<option value="">Select team…</option>`;
+    for(const t of FILTERED_TEAM_INDEX){
+      const opt = document.createElement("option");
+      opt.value = t.team_id;
+      opt.textContent = `${t.team_name}  •  ${t.team_id}`;
+      sel.appendChild(opt);
+    }
+
+    // restore if still present
+    const has = FILTERED_TEAM_INDEX.some(x => String(x.team_id) === String(cur));
+    if(has) sel.value = cur;
+  }
+
+  function applyTeamSearch(){
+    const q = ($("teamSearch").value || "").trim().toLowerCase();
+    if(!q){
+      FILTERED_TEAM_INDEX = TEAM_INDEX.slice();
+      renderTeamSelect();
+      return;
+    }
+    FILTERED_TEAM_INDEX = TEAM_INDEX.filter(t => {
+      const s = `${t.team_name} ${t.team_id}`.toLowerCase();
+      return s.includes(q);
+    });
+    renderTeamSelect();
+  }
+
+  /***********************
+   * Query rows for selected team + filters
+   ***********************/
+  function getFilters(){
+    return {
+      team_id: ($("teamSelect").value || "").trim(),
+      Mode: ($("fMode").value || "").trim(),
+      Tournament: ($("fTournament").value || "").trim(),
+      Stage: ($("fStage").value || "").trim(),
+      Year: ($("fYear").value || "").trim(),
+      Week: ($("fWeek").value || "").trim(),
+      Day: ($("fDay").value || "").trim(),
+      MatchNumber: ($("fMatchNumber").value || "").trim(),
+      closeMax: Math.max(1, num($("thClose").value) || 15),
+      midMax: Math.max(2, num($("thMid").value) || 50),
+      feedLimit: Math.max(50, num($("feedLimit").value) || 200)
+    };
+  }
+
+  async function fetchTeamRows(filters){
+    const cols = [
+      "match_id","Mode","Tournament","Stage","Year","Week","Day","MatchNumber",
+      "team_id","team_name",
+      "player_stats_account_id","player_stats_nickname",
+      "player_stats_kills","player_stats_assists",
+      "player_stats_torso_hits","player_stats_leg_hits","player_stats_headshots",
+      "player_stats_headshot_killtimes",
+      "player_stats_medkit_use",
+      "player_stats_revived_times",
+      "player_stats_revive_teammate_times",
+      "player_stats_kill_info"
+    ].join(",");
+
+    let q = SB.from(TABLE).select(cols).eq("team_id", filters.team_id);
+
+    // only apply exact-match filters when provided
+    if(filters.Mode) q = q.eq("Mode", filters.Mode);
+    if(filters.Tournament) q = q.eq("Tournament", filters.Tournament);
+    if(filters.Stage) q = q.eq("Stage", filters.Stage);
+    if(filters.Year) q = q.eq("Year", Number(filters.Year));
+    if(filters.Week) q = q.eq("Week", filters.Week);
+    if(filters.Day) q = q.eq("Day", filters.Day);
+    if(filters.MatchNumber) q = q.eq("MatchNumber", (isNaN(Number(filters.MatchNumber)) ? filters.MatchNumber : Number(filters.MatchNumber)));
+
+    // try to keep result bounded
+    q = q.limit(50000);
+
+    const res = await q;
+    return res;
+  }
+
+  /***********************
+   * Compute nick lookup + player summary + kill feed
+   ***********************/
+  function buildNickIndex(rows){
+    NICK_BY_MATCH = new Map();
+    for(const r of rows){
+      const mid = String(r.match_id || "");
+      if(!mid) continue;
+      if(!NICK_BY_MATCH.has(mid)) NICK_BY_MATCH.set(mid, new Map());
+      const mp = NICK_BY_MATCH.get(mid);
+      const aid = String(r.player_stats_account_id || "");
+      const nn = (r.player_stats_nickname || "").trim();
+      if(aid && nn && !mp.has(aid)) mp.set(aid, nn);
+    }
+  }
+
+  function compute(rows, filters){
+    const closeMax = filters.closeMax;
+    const midMax = filters.midMax;
+
+    const byPlayer = new Map(); // account_id -> agg
+
+    const feed = [];
+    const teamPlayerIds = new Set();
+
+    for(const r of rows){
+      const pid = String(r.player_stats_account_id || "");
+      if(!pid) continue;
+      teamPlayerIds.add(pid);
+
+      const nick = (r.player_stats_nickname || "").trim() || "(unknown)";
+      const key = pid;
+
+      if(!byPlayer.has(key)){
+        byPlayer.set(key, {
+          player: nick,
+          account_id: pid,
+          matches: 0,
+          kills: 0,
+          assists: 0,
+          close: 0,
+          mid: 0,
+          long: 0,
+          hs_kills: 0,
+          headshots: 0,
+          torso: 0,
+          leg: 0,
+          medkit: 0,
+          revived: 0,
+          revive_tm: 0
+        });
+      }
+
+      const agg = byPlayer.get(key);
+      agg.matches += 1;
+      agg.kills += num(r.player_stats_kills);
+      agg.assists += num(r.player_stats_assists);
+      agg.torso += num(r.player_stats_torso_hits);
+      agg.leg += num(r.player_stats_leg_hits);
+      agg.headshots += num(r.player_stats_headshots);
+      agg.hs_kills += num(r.player_stats_headshot_killtimes);
+      agg.medkit += num(r.player_stats_medkit_use);
+      agg.revived += num(r.player_stats_revived_times);
+      agg.revive_tm += num(r.player_stats_revive_teammate_times);
+
+      // kill distances + feed from kill_info
+      const killInfo = parseJSONish(r.player_stats_kill_info);
+      const arr = Array.isArray(killInfo) ? killInfo : [];
+
+      for(const ev of arr){
+        const killer_id = String(ev?.killer_id ?? "");
+        const victim_id = String(ev?.player_killed_id ?? "");
+        const weapon_used_id = (ev?.weapon_used_id ?? "");
+        const kill_distance = ev?.kill_distance ?? "";
+        const kill_timestamp = ev?.kill_timestamp ?? "";
+
+        const range = bucketRange(kill_distance, closeMax, midMax);
+        if(range === "Close") agg.close += 1;
+        else if(range === "Mid") agg.mid += 1;
+        else if(range === "Long") agg.long += 1;
+
+        const mid = String(r.match_id || "");
+        const nmap = NICK_BY_MATCH.get(mid);
+        const killerName = (nmap && killer_id && nmap.get(killer_id)) ? nmap.get(killer_id) : (killer_id === pid ? nick : "(unknown)");
+        const victimName = (nmap && victim_id && nmap.get(victim_id)) ? nmap.get(victim_id) : "(unknown)";
+
+        feed.push({
+          match_id: mid,
+          killer_name: killerName,
+          killer_id,
+          victim_name: victimName,
+          victim_id,
+          weapon_used_id: String(weapon_used_id),
+          kill_distance: String(kill_distance),
+          range,
+          time: formatTime(kill_timestamp)
+        });
+      }
+    }
+
+    // summary list
+    const list = Array.from(byPlayer.values()).map(x => {
+      const kpm = x.matches ? (x.kills / x.matches) : 0;
+      return { ...x, kpm: Math.round(kpm * 100) / 100 };
+    });
+
+    // sort by kills desc, then assists desc
+    list.sort((a,b)=> (b.kills - a.kills) || (b.assists - a.assists) || a.player.localeCompare(b.player));
+
+    // kill feed: keep only events where killer is one of team players (safety)
+    const feedFiltered = feed.filter(e => teamPlayerIds.has(String(e.killer_id || "")));
+
+    return { players: list, feed: feedFiltered };
+  }
+
+  /***********************
+   * Render
+   ***********************/
+  function renderChips(filters, teamName){
+    const chips = $("chips");
+    const parts = [];
+
+    parts.push({ label: "Team", value: teamName || "—" });
+    if(filters.Mode) parts.push({ label:"Mode", value: filters.Mode });
+    if(filters.Tournament) parts.push({ label:"Tournament", value: filters.Tournament });
+    if(filters.Stage) parts.push({ label:"Stage", value: filters.Stage });
+    if(filters.Year) parts.push({ label:"Year", value: filters.Year });
+    if(filters.Week) parts.push({ label:"Week", value: filters.Week });
+    if(filters.Day) parts.push({ label:"Day", value: filters.Day });
+    if(filters.MatchNumber) parts.push({ label:"Match#", value: filters.MatchNumber });
+
+    parts.push({ label:"Close≤", value: filters.closeMax });
+    parts.push({ label:"Mid≤", value: filters.midMax });
+
+    chips.innerHTML = parts.map(p =>
+      `<span class="chip"><b>${p.label}</b><span class="sep"></span><span class="tag">${safe(p.value)}</span></span>`
+    ).join("");
+  }
+
+  function renderPlayerTable(){
+    const head = $("playersHead");
+    const body = $("playersBody");
+
+    head.innerHTML = PLAYER_COLS.map(c => `<th>${c.t}</th>`).join("");
+    body.innerHTML = "";
+
+    if(!PLAYER_SUMMARY.length){
+      $("metaText").textContent = `0 players • 0 kills`;
+      body.innerHTML = `<tr><td colspan="${PLAYER_COLS.length}" style="color:rgba(244,246,255,.65)">No data.</td></tr>`;
+      return;
+    }
+
+    const totalKills = PLAYER_SUMMARY.reduce((s,p)=>s+p.kills, 0);
+    $("metaText").textContent = `${PLAYER_SUMMARY.length} players • ${totalKills} kills`;
+
+    // totals row
+    const totals = PLAYER_SUMMARY.reduce((a,p)=>{
+      a.matches += p.matches;
+      a.kills += p.kills;
+      a.assists += p.assists;
+      a.close += p.close;
+      a.mid += p.mid;
+      a.long += p.long;
+      a.hs_kills += p.hs_kills;
+      a.headshots += p.headshots;
+      a.torso += p.torso;
+      a.leg += p.leg;
+      a.medkit += p.medkit;
+      a.revived += p.revived;
+      a.revive_tm += p.revive_tm;
+      return a;
+    }, {matches:0,kills:0,assists:0,close:0,mid:0,long:0,hs_kills:0,headshots:0,torso:0,leg:0,medkit:0,revived:0,revive_tm:0});
+
+    const trT = document.createElement("tr");
+    trT.innerHTML = PLAYER_COLS.map(c=>{
+      if(c.k === "player") return `<td><b style="color:var(--brand)">TEAM TOTAL</b></td>`;
+      if(c.k === "account_id") return `<td class="mono" style="color:rgba(244,246,255,.55)">—</td>`;
+      if(c.k === "kpm"){
+        const kpm = totals.matches ? (totals.kills / totals.matches) : 0;
+        return `<td><b>${Math.round(kpm*100)/100}</b></td>`;
+      }
+      return `<td><b>${safe(totals[c.k] ?? "")}</b></td>`;
+    }).join("");
+    body.appendChild(trT);
+
+    for(const p of PLAYER_SUMMARY){
+      const tr = document.createElement("tr");
+      tr.className = "clickable";
+      tr.dataset.pid = p.account_id;
+      tr.innerHTML = PLAYER_COLS.map(c=>{
+        if(c.k === "player"){
+          return `<td><b>${safe(p.player)}</b><div class="small mono">${safe(p.account_id)}</div></td>`;
+        }
+        if(c.k === "account_id") return `<td class="mono">${safe(p.account_id)}</td>`;
+        return `<td>${safe(p[c.k])}</td>`;
+      }).join("");
+
+      tr.addEventListener("click", ()=>{
+        // set kill feed killer filter to this player
+        $("killerFilter").value = p.account_id;
+        renderPlayerFocus(p.account_id);
+        renderKillFeed();
+        $("focusMeta").textContent = `${p.player} • ${p.account_id}`;
+      });
+
+      body.appendChild(tr);
+    }
+  }
+
+  function renderKillerDropdown(){
+    const sel = $("killerFilter");
+    const cur = sel.value;
+
+    sel.innerHTML = `<option value="">All team players</option>`;
+    for(const p of PLAYER_SUMMARY){
+      const opt = document.createElement("option");
+      opt.value = p.account_id;
+      opt.textContent = `${p.player} • ${p.account_id}`;
+      sel.appendChild(opt);
+    }
+
+    const has = Array.from(sel.options).some(o => o.value === cur);
+    sel.value = has ? cur : "";
+  }
+
+  function renderKillFeed(){
+    const head = $("feedHead");
+    const body = $("feedBody");
+    head.innerHTML = FEED_COLS.map(c => `<th>${c.t}</th>`).join("");
+    body.innerHTML = "";
+
+    const pid = ($("killerFilter").value || "").trim();
+    const q = ($("feedSearch").value || "").trim().toLowerCase();
+    const lim = Math.max(50, num($("feedLimit").value) || 200);
+
+    let rows = KILL_FEED.slice();
+
+    if(pid){
+      rows = rows.filter(r => String(r.killer_id) === String(pid));
+    }
+
+    if(q){
+      rows = rows.filter(r => {
+        const s = `${r.match_id} ${r.killer_name} ${r.killer_id} ${r.victim_name} ${r.victim_id} ${r.weapon_used_id} ${r.range} ${r.kill_distance} ${r.time}`.toLowerCase();
+        return s.includes(q);
+      });
+    }
+
+    // prefer latest-ish by match_id then time (best effort)
+    rows.sort((a,b)=>{
+      const am = String(a.match_id||""); const bm = String(b.match_id||"");
+      if(am !== bm) return bm.localeCompare(am);
+      const at = Number((a.time||"").replace("s","")); const bt = Number((b.time||"").replace("s",""));
+      if(Number.isFinite(at) && Number.isFinite(bt) && at !== bt) return bt - at;
+      return 0;
+    });
+
+    if(rows.length > lim) rows = rows.slice(0, lim);
+
+    $("feedMeta").textContent = `${rows.length} rows`;
+    const pill = $("feedPill");
+    const dot = pill.querySelector(".dot");
+    dot.classList.remove("good","bad","neutral");
+    dot.classList.add(rows.length ? "good" : "neutral");
+
+    if(!rows.length){
+      body.innerHTML = `<tr><td colspan="${FEED_COLS.length}" style="color:rgba(244,246,255,.65)">No kill-feed rows (check filters / kill_info).</td></tr>`;
+      return;
+    }
+
+    for(const r of rows){
+      const tr = document.createElement("tr");
+      tr.innerHTML = FEED_COLS.map(c=>{
+        if(c.k === "killer_name") return `<td><b>${safe(r.killer_name)}</b></td>`;
+        if(c.k === "victim_name") return `<td><b>${safe(r.victim_name)}</b></td>`;
+        return `<td class="${(c.k.includes("_id") ? "mono" : "")}">${safe(r[c.k])}</td>`;
+      }).join("");
+      body.appendChild(tr);
+    }
+  }
+
+  function renderPlayerFocus(pid){
+    const chips = $("focusChips");
+    chips.innerHTML = "";
+
+    const p = PLAYER_SUMMARY.find(x => String(x.account_id) === String(pid));
+    if(!p){
+      $("focusMeta").textContent = "Click a player";
+      return;
+    }
+
+    const items = [
+      ["Kills", p.kills],
+      ["Assists", p.assists],
+      ["Close", p.close],
+      ["Mid", p.mid],
+      ["Long", p.long],
+      ["HS Killtimes", p.hs_kills],
+      ["Headshots", p.headshots],
+      ["Torso hits", p.torso],
+      ["Leg hits", p.leg],
+      ["Medkit use", p.medkit],
+      ["Revived (was)", p.revived],
+      ["Revive teammate", p.revive_tm],
+      ["Matches", p.matches],
+      ["K/Match", p.kpm]
+    ];
+
+    chips.innerHTML = items.map(([k,v]) =>
+      `<span class="chip"><b>${k}</b><span class="sep"></span><span class="tag">${safe(v)}</span></span>`
+    ).join("");
+  }
+
+  /***********************
+   * Main action: Run report
+   ***********************/
+  async function runReport(){
+    const f = getFilters();
+    if(!f.team_id){
+      setStatus("Select a team first.", true);
+      return;
+    }
+
+    const teamObj = TEAM_INDEX.find(t => String(t.team_id) === String(f.team_id));
+    const teamName = teamObj?.team_name || "";
+
+    setOverlay(true, "Running report…", "Querying rows + computing player totals + kill-feed");
+    setProgress(5);
+    setStatus("Querying Supabase…");
+
+    try{
+      const res = await fetchTeamRows(f);
+
+      if(res.error){
+        const status = res.status || "?";
+        setStatus(`Supabase error (HTTP ${status}):\n${res.error.message || safe(res.error)}`, true);
+        // If RLS blocks this page, go to login.
+        if(status === 401 || status === 403) redirectToIndex();
+        return;
+      }
+
+      TEAM_ROWS = res.data || [];
+      setProgress(35);
+      setStatus(`Rows fetched: ${TEAM_ROWS.length}\nComputing…`);
+
+      if(!TEAM_ROWS.length){
+        PLAYER_SUMMARY = [];
+        KILL_FEED = [];
+        renderChips(f, teamName);
+        renderPlayerTable();
+        renderKillerDropdown();
+        renderKillFeed();
+        $("focusChips").innerHTML = "";
+        $("focusMeta").textContent = "Click a player";
+        setStatus("No rows returned for this team + filters.\nTry clearing filters (Tournament/Stage/Year/etc).", true);
+        return;
+      }
+
+      // build nickname index from fetched team rows only
+      buildNickIndex(TEAM_ROWS);
+      setProgress(55);
+
+      const out = compute(TEAM_ROWS, f);
+      PLAYER_SUMMARY = out.players;
+      KILL_FEED = out.feed;
+
+      setProgress(80);
+
+      renderChips(f, teamName);
+      renderPlayerTable();
+      renderKillerDropdown();
+      renderKillFeed();
+
+      // reset focus panel
+      $("focusChips").innerHTML = "";
+      $("focusMeta").textContent = "Click a player";
+
+      setProgress(100);
+      setStatus(
+`Report ready ✅
+Team: ${teamName} (${f.team_id})
+Rows: ${TEAM_ROWS.length}
+Players: ${PLAYER_SUMMARY.length}
+Kill feed events: ${KILL_FEED.length}
+
+Tip: click a player row to filter the kill feed.`
+      );
+    }catch(e){
+      setStatus("Unexpected error:\n" + (e.message || String(e)), true);
+    }finally{
+      setOverlay(false);
     }
   }
 
   /***********************
-   * INIT
+   * Clear / Reset
+   ***********************/
+  function clearReport(){
+    TEAM_ROWS = [];
+    PLAYER_SUMMARY = [];
+    KILL_FEED = [];
+    NICK_BY_MATCH = new Map();
+
+    $("metaText").textContent = `0 players • 0 kills`;
+    $("chips").innerHTML = "";
+    $("playersHead").innerHTML = "";
+    $("playersBody").innerHTML = "";
+    $("feedHead").innerHTML = "";
+    $("feedBody").innerHTML = "";
+    $("feedMeta").textContent = "0 rows";
+    $("killerFilter").innerHTML = `<option value="">All team players</option>`;
+    $("feedSearch").value = "";
+    $("focusChips").innerHTML = "";
+    $("focusMeta").textContent = "Click a player";
+
+    setStatus("Cleared. Ready.");
+  }
+
+  /***********************
+   * Export handlers
+   ***********************/
+  function exportPlayers(){
+    if(!PLAYER_SUMMARY.length){
+      alert("No player summary to export.");
+      return;
+    }
+    const cols = PLAYER_COLS.map(c => c.k);
+    const out = PLAYER_SUMMARY.map(p => {
+      const o = {};
+      for(const c of cols) o[c] = p[c];
+      return o;
+    });
+    downloadText("ff_team_player_summary.csv", toCSV(out, cols), "text/csv");
+  }
+
+  function exportFeed(){
+    if(!KILL_FEED.length){
+      alert("No kill feed to export.");
+      return;
+    }
+    const cols = FEED_COLS.map(c => c.k);
+    const pid = ($("killerFilter").value || "").trim();
+    const q = ($("feedSearch").value || "").trim().toLowerCase();
+    const lim = Math.max(50, num($("feedLimit").value) || 200);
+
+    let rows = KILL_FEED.slice();
+    if(pid) rows = rows.filter(r => String(r.killer_id) === String(pid));
+    if(q){
+      rows = rows.filter(r => {
+        const s = `${r.match_id} ${r.killer_name} ${r.killer_id} ${r.victim_name} ${r.victim_id} ${r.weapon_used_id} ${r.range} ${r.kill_distance} ${r.time}`.toLowerCase();
+        return s.includes(q);
+      });
+    }
+    if(rows.length > lim) rows = rows.slice(0, lim);
+
+    downloadText("ff_team_kill_feed.csv", toCSV(rows, cols), "text/csv");
+  }
+
+  /***********************
+   * Wire events
+   ***********************/
+  $("btnRun").addEventListener("click", runReport);
+  $("btnClear").addEventListener("click", clearReport);
+  $("btnReloadTeams").addEventListener("click", loadTeams);
+  $("teamSearch").addEventListener("input", applyTeamSearch);
+
+  $("killerFilter").addEventListener("change", ()=>{
+    const pid = ($("killerFilter").value || "").trim();
+    if(pid){
+      renderPlayerFocus(pid);
+      const p = PLAYER_SUMMARY.find(x => String(x.account_id) === String(pid));
+      $("focusMeta").textContent = p ? `${p.player} • ${p.account_id}` : "Player Focus";
+    }else{
+      $("focusChips").innerHTML = "";
+      $("focusMeta").textContent = "Click a player";
+    }
+    renderKillFeed();
+  });
+  $("feedSearch").addEventListener("input", renderKillFeed);
+  $("feedLimit").addEventListener("change", renderKillFeed);
+
+  $("btnResetFeedFilter").addEventListener("click", ()=>{
+    $("killerFilter").value = "";
+    $("feedSearch").value = "";
+    $("focusChips").innerHTML = "";
+    $("focusMeta").textContent = "Click a player";
+    renderKillFeed();
+  });
+
+  $("btnExportPlayers").addEventListener("click", exportPlayers);
+  $("btnExportFeed").addEventListener("click", exportFeed);
+
+  /***********************
+   * Init
    ***********************/
   (async function init(){
-    setAuthPill("neutral", "Checking…");
-    setStatus("Initializing…");
+    await checkSession();
 
-    const session = await requireSessionOrRedirect();
-    renderAuth(session);
+    // If auth changes, update pill (no redirects here)
+    try{
+      SB.auth.onAuthStateChange(async ()=>{
+        await checkSession();
+      });
+    }catch(_e){}
 
-    // warm filter options (best effort)
-    setStatus("Loading filters…");
-    await warmFilterOptions();
-
-    setStatus("Ready. Type a team and click Load Team Report.");
+    await loadTeams();
   })();
 </script>
 </body>
