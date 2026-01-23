@@ -195,6 +195,8 @@
       padding:10px 12px;
       border-bottom:1px solid rgba(255,255,255,.10);
       background: rgba(0,0,0,.18);
+      gap:10px;
+      flex-wrap:wrap;
     }
     .colbox .colbd{max-height: 260px;overflow:auto}
     .colrow{
@@ -241,6 +243,11 @@
       background: rgba(0,0,0,.18);
     }
     .checkrow input{width:auto}
+
+    /* auth area */
+    .auth-body{padding:12px}
+    .auth-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    .auth-meta{display:flex;flex-direction:column;gap:4px}
   </style>
 </head>
 <body>
@@ -308,16 +315,16 @@
           <div class="field" style="min-width:220px;flex:.8">
             <label>Flatten arrays of objects</label>
             <select id="arrMode">
-              <option value="keep">Keep as JSON</option>
-              <option value="index" selected>Explode to columns with [index] (player_stats[0].account_id)</option>
+              <option value="keep" selected>Keep as JSON</option>
+              <option value="index">Explode to columns with [index] (teams[0].tag)</option>
             </select>
-            <div class="hint">For <span class="kbd">ff_stats_raw</span>, keep this on <b>index</b>.</div>
+            <div class="hint">Index mode is good for small fixed arrays. For stats tables, use “Explode dataset”.</div>
           </div>
 
           <div class="field" style="min-width:260px;flex:1.2">
             <label>Explode paths (editable, comma-separated)</label>
-            <input id="explodePaths" type="text" value="team_stats" placeholder="e.g. team_stats"/>
-            <div class="hint">If Auto-detect is OFF, these are used as the dataset choices.</div>
+            <input id="explodePaths" type="text" value="team_stats,team_stats.player_stats" placeholder="e.g. team_stats,team_stats.player_stats"/>
+            <div class="hint">For <span class="kbd">ff_player_stats_raw</span>, this is the recommended default.</div>
           </div>
         </div>
 
@@ -329,23 +336,11 @@
               <option value="__input__" selected>Use explode paths input (sequential; may multiply rows)</option>
             </select>
             <div class="hint">
-              For <span class="kbd">ff_stats_raw</span>, use <span class="kbd">team_stats</span>.
+              Pick one explode path to generate a clean table (player_stats, circle_info, spector_info, etc).
+              <br/>Sequential explode can multiply rows if you select multiple arrays.
             </div>
           </div>
 
-          <div class="field" style="min-width:220px;flex:1">
-            <label>Hoist exploded object to root (schema-friendly)</label>
-            <div class="checkrow">
-              <input id="hoistExplode" type="checkbox" checked />
-              <div>
-                <div style="font-size:12px">When exploding <span class="kbd">team_stats</span>, move its fields to root columns</div>
-                <div class="small">This makes <span class="kbd">team_id</span>, <span class="kbd">team_name</span>, <span class="kbd">player_stats[0]…</span> match <span class="kbd">ff_stats_raw</span>.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="row">
           <div class="field" style="min-width:220px;flex:1">
             <label>Auto-detect explode paths</label>
             <div class="checkrow">
@@ -358,60 +353,64 @@
           </div>
         </div>
 
-        <!-- Defaults (schema: lowercase) -->
+        <!-- Default columns -->
         <div class="row">
           <div class="field">
-            <label>Default <span class="kbd">mode</span> value</label>
+            <label>Default Mode column value</label>
             <select id="defMode">
               <option value="BR" selected>BR</option>
               <option value="CS">CS</option>
             </select>
           </div>
           <div class="field">
-            <label>Default <span class="kbd">tournament</span> value</label>
+            <label>Default Tournament column value</label>
             <input id="defTournament" type="text" placeholder="e.g. FFWS Global Finals 2025"/>
           </div>
         </div>
-
         <div class="row">
           <div class="field">
-            <label>Default <span class="kbd">stage</span> value</label>
+            <label>Default Stage column value</label>
             <input id="defStage" type="text" placeholder="e.g. Finals / Group Stage"/>
           </div>
           <div class="field">
-            <label>Default <span class="kbd">year</span> value</label>
+            <label>Default Year column value</label>
             <input id="defYear" type="text" placeholder="e.g. 2026"/>
           </div>
         </div>
 
         <div class="row">
           <div class="field">
-            <label>Default <span class="kbd">week</span> value</label>
-            <input id="defWeek" type="text" placeholder="e.g. 1 (or W1)"/>
+            <label>Default Week column value</label>
+            <input id="defWeek" type="text" placeholder="e.g. W1 / Week 1 / 1"/>
           </div>
           <div class="field">
-            <label>Default <span class="kbd">day</span> value</label>
-            <input id="defDay" type="text" placeholder="e.g. 1 (or D1)"/>
+            <label>Default Day column value</label>
+            <input id="defDay" type="text" placeholder="e.g. D1 / Day 1 / 1"/>
           </div>
         </div>
 
         <div class="row">
           <div class="field">
-            <label>Default <span class="kbd">matchnumber</span> value</label>
+            <label>Default Match Number column value</label>
             <input id="defMatchNumber" type="text" placeholder="e.g. 1"/>
           </div>
           <div class="field">
-            <label>Default <span class="kbd">match_id</span> value</label>
+            <label>Default match_id column value</label>
             <input id="defMatchId" type="text" placeholder="e.g. 1725487677733611520"/>
           </div>
         </div>
 
         <div class="hint">
-          Default columns applied to every row: <span class="kbd">mode</span>, <span class="kbd">tournament</span>, <span class="kbd">stage</span>, <span class="kbd">year</span>, <span class="kbd">week</span>, <span class="kbd">day</span>, <span class="kbd">matchnumber</span>, <span class="kbd">match_id</span>.
+          Default columns apply to every row: <span class="kbd">Mode</span>, <span class="kbd">Tournament</span>, <span class="kbd">Stage</span>, <span class="kbd">Year</span>, <span class="kbd">Week</span>, <span class="kbd">Day</span>, <span class="kbd">MatchNumber</span>, <span class="kbd">match_id</span>.
           <br/><br/>
-          <b>Auto-rename for DB is ON:</b> nested keys become underscores (and lowercased).
+          <b>Auto-rename for DB is ON:</b> keys like <span class="kbd">player_stats.account_id</span> become <span class="kbd">player_stats_account_id</span>.
           <br/>
           <b>skill_ids breakdown is ON:</b> arrays named <span class="kbd">skill_ids</span> become separate columns (skill_ids[0], skill_ids[1], …).
+          <br/><br/>
+          <b>Alignment fix (important):</b> When exploding <span class="kbd">team_stats</span> + <span class="kbd">team_stats.player_stats</span>, we auto-promote:
+          <span class="kbd">team_stats.* → team_id/team_name/booyah/...</span> and
+          <span class="kbd">team_stats.player_stats → player_stats.*</span>
+          to match <span class="kbd">ff_player_stats_raw</span>.
         </div>
 
         <div class="row">
@@ -477,10 +476,56 @@
               </div>
             </div>
 
+            <!-- ✅ AUTH IDENTITY BOX -->
+            <div class="colbox" style="margin:10px 0 0">
+              <div class="colhd">
+                <div class="auth-meta">
+                  <div style="font-size:12px">Auth identity</div>
+                  <div class="small">Sign in so your inserts/upserts can pass RLS (if enabled).</div>
+                </div>
+                <div class="pill" id="authPill">
+                  <span class="dot neutral"></span><span id="authText">Anon</span>
+                </div>
+              </div>
+              <div class="auth-body">
+                <div class="small" id="authMeta">Enter URL + anon key to load session.</div>
+
+                <div class="row" style="margin-top:10px;align-items:flex-end">
+                  <div class="field" style="min-width:220px">
+                    <label>Email</label>
+                    <input id="authEmail" type="text" placeholder="you@example.com" autocomplete="email"/>
+                  </div>
+                  <div class="field" style="min-width:220px">
+                    <label>Password</label>
+                    <input id="authPass" type="password" placeholder="••••••••" autocomplete="current-password"/>
+                  </div>
+                </div>
+
+                <div class="auth-actions" style="margin-top:8px">
+                  <button class="btn" id="btnAuthRefresh">Refresh</button>
+                  <button class="btn primary" id="btnSignIn">Sign in</button>
+                  <button class="btn" id="btnSignUp">Sign up</button>
+                  <button class="btn bad" id="btnSignOut">Sign out</button>
+                </div>
+
+                <div class="row" style="margin-top:10px">
+                  <div class="field">
+                    <label>Attach signed-in user id to column (optional)</label>
+                    <input id="authUserCol" type="text" placeholder="e.g. created_by (leave blank to disable)"/>
+                    <div class="small">
+                      If set and you are signed in, uploader will set that column on every row = your auth user id.
+                      <br/>If Schema Guard is ON for <span class="kbd">ff_player_stats_raw</span>, this column must exist in that table schema (or disable Schema Guard).
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- /AUTH -->
+
             <div class="row">
               <div class="field" style="flex:1">
                 <label>Table name</label>
-                <input id="sbTable" type="text" placeholder='e.g. ff_stats_raw' value="ff_stats_raw"/>
+                <input id="sbTable" type="text" placeholder='e.g. ff_player_stats_raw'/>
               </div>
               <div class="field" style="flex:.8">
                 <label>Mode</label>
@@ -493,9 +538,25 @@
 
             <div class="row">
               <div class="field">
+                <label>Schema guard (recommended)</label>
+                <div class="checkrow">
+                  <input id="schemaGuard" type="checkbox" checked />
+                  <div>
+                    <div style="font-size:12px">If table is <span class="kbd">ff_player_stats_raw</span>, only include columns that exist in that schema.</div>
+                    <div class="small">Prevents 400 Bad Request from extra/unknown columns.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="field">
                 <label>On conflict (Upsert only)</label>
-                <input id="sbConflict" type="text" placeholder="e.g. match_id,team_id" value="match_id,team_id"/>
-                <div class="hint">You can type original keys; we auto-map to DB-safe names.</div>
+                <input id="sbConflict" type="text" value="match_id,team_id,player_stats_account_id" placeholder="e.g. match_id,team_id,player_stats_account_id"/>
+                <div class="hint">
+                  Recommended for player stats: <span class="kbd">match_id,team_id,player_stats_account_id</span><br/>
+                  <b>Important:</b> Upsert needs a UNIQUE constraint/index on the same column set in Postgres.
+                </div>
               </div>
             </div>
 
@@ -571,6 +632,15 @@
     $("pillText").textContent = text;
   }
 
+  function setAuthPill(state, text, meta){
+    const pill = $("authPill");
+    const dot = pill.querySelector(".dot");
+    dot.classList.remove("good","bad","neutral");
+    dot.classList.add(state);
+    $("authText").textContent = text || "";
+    $("authMeta").textContent = meta || "";
+  }
+
   function safeString(v){
     if (v === null || v === undefined) return "";
     if (typeof v === "string") return v;
@@ -588,13 +658,10 @@
     return /^[0-9]{4}$/.test(s) ? parseInt(s, 10) : s;
   }
 
-  function parseIntLoose(v){
+  function parseIntMaybe(v){
     const s = (v ?? "").toString().trim();
     if(!s) return null;
-    const m = s.match(/-?\d+/);
-    if(!m) return null;
-    const n = parseInt(m[0], 10);
-    return Number.isFinite(n) ? n : null;
+    return /^[0-9]+$/.test(s) ? parseInt(s, 10) : s;
   }
 
   function toDbSafeKey(key){
@@ -607,7 +674,7 @@
     s = s.replace(/^_+|_+$/g, "");
     if(/^\d/.test(s)) s = "c_" + s;
     if(!s) s = "col";
-    return s.toLowerCase(); // ✅ schema-friendly for Postgres
+    return s;
   }
 
   function isPrimitive(x){
@@ -728,8 +795,8 @@
 
     const out = Array.from(paths);
     out.sort((a,b)=>{
-      const ap = a.includes("team_stats") ? 0 : 1;
-      const bp = b.includes("team_stats") ? 0 : 1;
+      const ap = a.includes("player_stats") ? 0 : 1;
+      const bp = b.includes("player_stats") ? 0 : 1;
       if(ap !== bp) return ap - bp;
       return a.localeCompare(b);
     });
@@ -773,11 +840,8 @@
     return out;
   }
 
-  // ✅ UPDATED: supports hoist to root for schema compatibility
-  function explodeObjects(records, explodePaths, opts={}){
-    const hoist = !!opts.hoist;
+  function explodeObjects(records, explodePaths){
     let current = records;
-
     for(const rawP of explodePaths){
       const p = rawP.trim();
       if(!p) continue;
@@ -802,26 +866,13 @@
 
         for(const item of arr.filter(isPlainObject)){
           const cloned = deepCloneJSON(rec);
-
-          // remove original array from record
           deleteByPath(cloned, p);
-
-          // hoist only when p is top-level key (common: team_stats)
-          const canHoist = hoist && !p.includes(".") && !p.includes("[");
-          if(canHoist){
-            for(const [k,v] of Object.entries(item)){
-              cloned[k] = v;
-            }
-          } else {
-            setByPath(cloned, p, item);
-          }
-
+          setByPath(cloned, p, item);
           next.push(cloned);
         }
       }
       current = next;
     }
-
     return current;
   }
 
@@ -876,6 +927,217 @@
       .filter(Boolean);
   }
 
+  /* -----------------------------
+     ✅ Better Supabase error formatting
+     ----------------------------- */
+  function formatSupabaseError(err, fallbackPrefix="Supabase error"){
+    if(!err) return `${fallbackPrefix}: (unknown)`;
+    const parts = [];
+    const read = (k) => {
+      try { return err?.[k]; } catch { return undefined; }
+    };
+    const msg = read("message");
+    const code = read("code");
+    const details = read("details");
+    const hint = read("hint");
+
+    if(msg) parts.push(`message: ${msg}`);
+    if(code) parts.push(`code: ${code}`);
+    if(details) parts.push(`details: ${details}`);
+    if(hint) parts.push(`hint: ${hint}`);
+
+    // if SupabaseError has non-enumerable props, JSON.stringify -> {}
+    if(!parts.length){
+      try { parts.push(String(err)); } catch {}
+      try {
+        const json = JSON.stringify(err, null, 2);
+        if(json && json !== "{}") parts.push(json);
+      } catch {}
+    }
+
+    return parts.join("\n");
+  }
+
+  /* -----------------------------
+     ✅ Supabase client (cached) + Auth UI
+     ----------------------------- */
+  let SB = null;
+  let SB_URL = "";
+  let SB_KEY = "";
+  let SB_SUB = null;
+
+  function getSbClient(){
+    const url = ($("sbUrl").value || "").trim();
+    const key = ($("sbKey").value || "").trim();
+    if(!url || !key) return null;
+
+    if(SB && SB_URL === url && SB_KEY === key) return SB;
+
+    SB_URL = url;
+    SB_KEY = key;
+
+    SB = supabase.createClient(url, key, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
+
+    try{
+      if(SB_SUB?.unsubscribe) SB_SUB.unsubscribe();
+      const { data } = SB.auth.onAuthStateChange((_event, _session) => {
+        refreshAuthUI().catch(()=>{});
+      });
+      SB_SUB = data?.subscription || null;
+    }catch(_e){}
+
+    return SB;
+  }
+
+  async function refreshAuthUI(){
+    const sb = getSbClient();
+    if(!sb){
+      setAuthPill("neutral", "Anon", "Enter URL + anon key to load session.");
+      return;
+    }
+    const { data, error } = await sb.auth.getSession();
+    if(error){
+      setAuthPill("bad", "Auth error", formatSupabaseError(error, "Auth error"));
+      return;
+    }
+    const session = data?.session || null;
+    const user = session?.user || null;
+
+    if(user){
+      const role = user.role || "authenticated";
+      const email = user.email || "(no email)";
+      setAuthPill("good", "Signed in", `${email} • ${role}\nuid: ${user.id}`);
+    }else{
+      setAuthPill("neutral", "Anon", "No active session (writes may fail if RLS requires auth).");
+    }
+  }
+
+  async function authSignIn(){
+    const sb = getSbClient();
+    if(!sb){
+      setAuthPill("bad", "No client", "Fill Supabase URL + anon key first.");
+      return;
+    }
+    const email = ($("authEmail").value || "").trim();
+    const password = ($("authPass").value || "").trim();
+    if(!email || !password){
+      setAuthPill("bad", "Missing", "Enter email + password.");
+      return;
+    }
+    setAuthPill("neutral", "Signing in…", "Please wait.");
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if(error){
+      setAuthPill("bad", "Sign-in failed", formatSupabaseError(error, "Sign-in failed"));
+      return;
+    }
+    await refreshAuthUI();
+  }
+
+  async function authSignUp(){
+    const sb = getSbClient();
+    if(!sb){
+      setAuthPill("bad", "No client", "Fill Supabase URL + anon key first.");
+      return;
+    }
+    const email = ($("authEmail").value || "").trim();
+    const password = ($("authPass").value || "").trim();
+    if(!email || !password){
+      setAuthPill("bad", "Missing", "Enter email + password.");
+      return;
+    }
+    setAuthPill("neutral", "Signing up…", "If email confirmation is enabled, check your inbox.");
+    const { error } = await sb.auth.signUp({ email, password });
+    if(error){
+      setAuthPill("bad", "Sign-up failed", formatSupabaseError(error, "Sign-up failed"));
+      return;
+    }
+    await refreshAuthUI();
+  }
+
+  async function authSignOut(){
+    const sb = getSbClient();
+    if(!sb){
+      setAuthPill("neutral", "Anon", "No Supabase client.");
+      return;
+    }
+    setAuthPill("neutral", "Signing out…", "");
+    const { error } = await sb.auth.signOut();
+    if(error){
+      setAuthPill("bad", "Sign-out failed", formatSupabaseError(error, "Sign-out failed"));
+      return;
+    }
+    await refreshAuthUI();
+  }
+
+  // -----------------------------
+  // Schema guard for ff_player_stats_raw
+  // -----------------------------
+  const FF_PLAYER_STATS_RAW_SCHEMA = new Set([
+    "id","match_id","Mode","Tournament","Stage","Year","Week","Day","MatchNumber",
+    "booyah","eliminated_team_name","final","is_double_kill_score","is_eliminated","is_focus",
+    "kill_count","killing_score","player_stats_account_id","player_stats_alok_heal_hP",
+    "player_stats_assists","player_stats_avatar_id","player_stats_bag_inv","player_stats_be_killed_time",
+    "player_stats_chrono_block_damage","player_stats_clothes_skin_headwear","player_stats_clothes_skin_pants",
+    "player_stats_clothes_skin_shoes","player_stats_clothes_skin_top",
+    "player_stats_coordinate_info_x_coordinate","player_stats_coordinate_info_y_coordinate",
+    "player_stats_damage","player_stats_dragon_grenade_kill","player_stats_enable_emulator_check",
+    "player_stats_grenade_kill","player_stats_grenade_use","player_stats_headshot_killtimes",
+    "player_stats_headshots","player_stats_helmet_inv","player_stats_hits","player_stats_hp_added",
+    "player_stats_hp_info_current_hp","player_stats_hp_info_current_shield_hp",
+    "player_stats_hp_info_total_hp","player_stats_hp_info_total_shield_hp",
+    "player_stats_ice_grenade_kill","player_stats_icewall_destroyed_times","player_stats_icewall_use",
+    "player_stats_is_in_bomb_zone","player_stats_is_in_safe_zone","player_stats_kill_distance",
+    "player_stats_kill_info","player_stats_kill_info_kill_distance","player_stats_kill_info_kill_timestamp",
+    "player_stats_kill_info_killer_id","player_stats_kill_info_player_killed_id","player_stats_kill_info_weapon_used_id",
+    "player_stats_kills","player_stats_knock_down","player_stats_knock_down_damage_info",
+    "player_stats_knock_down_damage_info_account_id","player_stats_knock_down_damage_info_damage",
+    "player_stats_knock_down_damage_info_damage_type","player_stats_knock_down_damage_info_nickname",
+    "player_stats_knock_down_damage_info_time_ms","player_stats_knockdown_real_damage","player_stats_leg_hits",
+    "player_stats_loadouts","player_stats_medkit_use","player_stats_moving_distance","player_stats_nb_skill_usages",
+    "player_stats_nickname","player_stats_oil_kill","player_stats_pet_skill_id","player_stats_pet_skill_name",
+    "player_stats_player_state","player_stats_rescue_times","player_stats_revive_teammate_nums",
+    "player_stats_revive_teammate_times","player_stats_revived_times","player_stats_shoots",
+    "player_stats_skill_autoflightbomb_hit_num","player_stats_skill_clu_scan_nums","player_stats_skill_dimitri_revived_nums",
+    "player_stats_skill_ids_0","player_stats_skill_ids_1","player_stats_skill_ids_2","player_stats_skill_ids_3",
+    "player_stats_skill_info_active_count","player_stats_skill_info_skill_active","player_stats_skill_info_skill_id",
+    "player_stats_skill_info_skill_name","player_stats_skill_kenta_reduce_damage","player_stats_skill_markicewall_damage",
+    "player_stats_skill_resist_exploded_num","player_stats_skill_silence_num","player_stats_skill_sonia_fatal_revival_nums",
+    "player_stats_skill_villain_damage","player_stats_skill_villain_recover","player_stats_skyler_ice_wall_destroy",
+    "player_stats_survival_time","player_stats_torso_hits","player_stats_vehicle_kill","player_stats_vehicle_move_distance",
+    "player_stats_vest_inv","player_stats_weapon_skin_ids","player_stats_weapon_usages","player_stats_weapon_usages_damage",
+    "player_stats_weapon_usages_headshots","player_stats_weapon_usages_hits","player_stats_weapon_usages_kills",
+    "player_stats_weapon_usages_shoots","player_stats_weapon_usages_weapon_id","player_stats_weapon_usages_weapon_name",
+    "ranking_score","team_id","team_name","win_rate","created_at","updated_at"
+  ]);
+
+  function isSchemaGuardActive(){
+    const t = ($("sbTable").value || "").trim().toLowerCase();
+    return $("schemaGuard").checked && t === "ff_player_stats_raw";
+  }
+
+  // -----------------------------
+  // Promotion to align exploded data with ff_player_stats_raw
+  // -----------------------------
+  function promoteTeamStatsForFFPlayerStatsRaw(rec){
+    if(!isPlainObject(rec)) return rec;
+
+    const ts = rec.team_stats;
+    if(isPlainObject(ts)){
+      if(isPlainObject(ts.player_stats) && !isPlainObject(rec.player_stats)){
+        rec.player_stats = ts.player_stats;
+      }
+      if("player_stats" in ts) delete ts.player_stats;
+
+      for(const [k,v] of Object.entries(ts)){
+        if(!(k in rec)) rec[k] = v;
+      }
+      delete rec.team_stats;
+    }
+    return rec;
+  }
+
   // -----------------------------
   // App state
   // -----------------------------
@@ -902,6 +1164,17 @@
       }
     }
     return {keys, names};
+  }
+
+  function applySchemaGuardToColCfg(){
+    if(!COLS.length) return;
+    if(!isSchemaGuardActive()) return;
+
+    for(const c of COLS){
+      const cfg = COLCFG[c] ?? (COLCFG[c] = { include:true, name: toDbSafeKey(c) });
+      const db = cfg.name || toDbSafeKey(c);
+      cfg.include = (db !== "id") && FF_PLAYER_STATS_RAW_SCHEMA.has(db);
+    }
   }
 
   function renderColList(){
@@ -935,6 +1208,10 @@
       inp.addEventListener("input", ()=>{
         const val = (inp.value || "").trim();
         COLCFG[c].name = val ? val : toDbSafeKey(c);
+        if(isSchemaGuardActive()){
+          applySchemaGuardToColCfg();
+          renderColList();
+        }
         renderTable();
       });
 
@@ -982,30 +1259,29 @@
     }
   }
 
-  // ✅ UPDATED defaults to schema keys (lowercase)
   function injectDefaultsIntoRecords(records){
     const modeVal = ($("defMode").value ?? "").trim();
     const tVal = ($("defTournament").value ?? "").trim();
     const sVal = ($("defStage").value ?? "").trim();
     const yVal = parseYearMaybe($("defYear").value);
 
-    const wVal = parseIntLoose($("defWeek").value);
-    const dVal = parseIntLoose($("defDay").value);
-    const mnVal = parseIntLoose($("defMatchNumber").value);
+    const wVal = ($("defWeek").value ?? "").trim();
+    const dVal = ($("defDay").value ?? "").trim();
+    const mnVal = parseIntMaybe($("defMatchNumber").value);
 
     const midVal = ($("defMatchId").value ?? "").trim();
 
     return records.map(r=>{
       if(!isPlainObject(r)) return r;
 
-      if(!("mode" in r)) r.mode = modeVal || null;
-      if(!("tournament" in r)) r.tournament = tVal || null;
-      if(!("stage" in r)) r.stage = sVal || null;
-      if(!("year" in r)) r.year = yVal;
+      if(!("Mode" in r)) r.Mode = modeVal || null;
+      if(!("Tournament" in r)) r.Tournament = tVal || null;
+      if(!("Stage" in r)) r.Stage = sVal || null;
+      if(!("Year" in r)) r.Year = yVal;
 
-      if(!("week" in r)) r.week = (wVal ?? null);
-      if(!("day" in r)) r.day = (dVal ?? null);
-      if(!("matchnumber" in r)) r.matchnumber = (mnVal ?? null);
+      if(!("Week" in r)) r.Week = wVal || null;
+      if(!("Day" in r)) r.Day = dVal || null;
+      if(!("MatchNumber" in r)) r.MatchNumber = mnVal;
 
       if(!("match_id" in r) || r.match_id == null || r.match_id === ""){
         const inferred = inferMatchIdFromRecord(r);
@@ -1034,7 +1310,7 @@
       sel.value = current;
       return;
     }
-    sel.value = "";
+    sel.value = "__input__";
   }
 
   function rebuildDataset(){
@@ -1061,13 +1337,15 @@
     let shaped = BASE_RECORDS;
     if(explodePaths.length){
       try{
-        shaped = explodeObjects(BASE_RECORDS, explodePaths, { hoist: $("hoistExplode").checked });
+        shaped = explodeObjects(BASE_RECORDS, explodePaths);
       }catch(err){
         setPill("bad","Explode failed");
         setStatus("parseStatus", `Explode error:\n${err.message}`, true);
         return;
       }
     }
+
+    shaped = shaped.map(promoteTeamStatsForFFPlayerStatsRaw);
 
     const flat = [];
     for(const rec of shaped){
@@ -1080,12 +1358,10 @@
 
     const colSet = new Set();
     for(const r of flat) Object.keys(r).forEach(k => colSet.add(k));
-
-    // ✅ always include schema defaults
-    ["match_id","mode","tournament","stage","year","week","day","matchnumber"].forEach(k => colSet.add(k));
+    ["match_id","Mode","Tournament","Stage","Year","Week","Day","MatchNumber"].forEach(k => colSet.add(k));
 
     const cols = Array.from(colSet);
-    const common = ["match_id","mode","tournament","stage","year","week","day","matchnumber"];
+    const common = ["match_id","Mode","Tournament","Stage","Year","Week","Day","MatchNumber"];
     cols.sort((a,b)=>{
       const ia = common.indexOf(a), ib = common.indexOf(b);
       if(ia !== -1 || ib !== -1){
@@ -1102,6 +1378,10 @@
       COLCFG[c] = { include:true, name: toDbSafeKey(c) };
     }
 
+    if(COLCFG["id"]) COLCFG["id"].include = false;
+
+    applySchemaGuardToColCfg();
+
     updateMeta();
     renderColList();
     renderTable();
@@ -1113,9 +1393,12 @@
 Base rows: ${BASE_RECORDS.length}
 Current rows: ${ROWS.length} ${label}
 Columns: ${COLS.length}
-Hoist exploded object: ${$("hoistExplode").checked ? "ON" : "OFF"}
 Explode choices: ${DETECTED_PATHS.length ? DETECTED_PATHS.join(", ") : "(none)"}
-Preview shows up to ${$("maxRows").value} rows.`
+Preview shows up to ${$("maxRows").value} rows.
+
+Alignment:
+- Promoted team_stats.* → root (team_id, team_name, booyah, ...)
+- Promoted team_stats.player_stats → player_stats.*`
     );
   }
 
@@ -1187,11 +1470,7 @@ Preview shows up to ${$("maxRows").value} rows.`
 Base rows: ${BASE_RECORDS.length}
 Records path: ${usedPath}
 
-Tip for ff_stats_raw:
-- Records path: data.matches
-- Explode paths: team_stats
-- Hoist exploded object: ON
-- Flatten arrays: index`
+Choose "Explode dataset" to preview/upload player_stats, team_stats, etc (or use sequential input).`
     );
 
     rebuildDataset();
@@ -1204,7 +1483,7 @@ Tip for ff_stats_raw:
     $("bar").style.width = `${Math.max(0, Math.min(100, pct))}%`;
   }
 
-  function buildUploadRows(limitMode){
+  function buildUploadRows(limitMode, opts={}){
     const {keys, names} = getSelectedCols();
     const sourceRows = (limitMode === "preview")
       ? ROWS.slice(0, parseInt($("maxRows").value,10))
@@ -1212,13 +1491,34 @@ Tip for ff_stats_raw:
 
     const addTimestamps = $("autoTimestamps").checked;
     const nowIso = new Date().toISOString();
+    const schemaActive = isSchemaGuardActive();
 
-    return sourceRows.map(r=>{
+    const userId = opts.userId || null;
+    const userCol = (opts.userCol || "").trim();
+
+    const omitted = new Set();
+
+    const outRows = sourceRows.map(r=>{
       const o = {};
       for(let i=0;i<keys.length;i++){
         const srcKey = keys[i];
         const dbKey = names[i];
+
+        if(schemaActive && !FF_PLAYER_STATS_RAW_SCHEMA.has(dbKey)){
+          omitted.add(dbKey);
+          continue;
+        }
+
         o[dbKey] = r[srcKey];
+      }
+
+      if(userCol && userId){
+        // only attach if it won't be blocked by schema guard
+        if(!schemaActive || FF_PLAYER_STATS_RAW_SCHEMA.has(userCol)){
+          if(!(userCol in o)) o[userCol] = userId;
+        } else {
+          omitted.add(userCol);
+        }
       }
 
       if(addTimestamps){
@@ -1227,6 +1527,8 @@ Tip for ff_stats_raw:
       }
       return o;
     });
+
+    return {rows: outRows, omitted: Array.from(omitted)};
   }
 
   function resolveOnConflict(raw){
@@ -1277,9 +1579,26 @@ Tip for ff_stats_raw:
     setStatus("upStatus", "Preparing rows…");
     setProgress(0);
 
-    const sb = supabase.createClient(url, key);
+    const sb = getSbClient();
+    if(!sb){
+      setStatus("upStatus", "Could not create Supabase client. Check URL/key.", true);
+      setProgress(0);
+      return;
+    }
 
-    const rows = buildUploadRows(rowMode);
+    // pull identity
+    let userId = null;
+    try{
+      const { data } = await sb.auth.getSession();
+      userId = data?.session?.user?.id || null;
+    }catch(_e){}
+
+    const userCol = ($("authUserCol").value || "").trim();
+
+    const built = buildUploadRows(rowMode, { userId, userCol });
+    const rows = built.rows;
+    const omitted = built.omitted;
+
     const total = rows.length;
     if(!total){
       setStatus("upStatus", "Nothing to upload after column selection.", true);
@@ -1300,8 +1619,9 @@ Tip for ff_stats_raw:
       setStatus("upStatus", `Uploading ${i+1}/${chunks.length}…
 Batch size: ${batch.length}
 Uploaded: ${ok}/${total} • Failed: ${failed}
+Auth: ${userId ? `signed-in (${userId})` : "anon"}
 
-${mode === "upsert" ? `onConflict: ${onConflict}` : ""}`);
+${mode === "upsert" ? `onConflict: ${onConflict}` : ""}${omitted.length ? `\nOmitted: ${omitted.slice(0,12).join(", ")}${omitted.length>12?" …":""}` : ""}`);
       setProgress(Math.round((i / chunks.length) * 100));
 
       try{
@@ -1312,10 +1632,11 @@ ${mode === "upsert" ? `onConflict: ${onConflict}` : ""}`);
           res = await sb.from(table).upsert(batch, { onConflict: onConflict.replace(/\s+/g,"") });
         }
 
-        const error = res.error;
-        if (error) {
-          console.error(error);
-          setStatus("upStatus", "Supabase error:\n" + JSON.stringify(error, null, 2), true);
+        if(res?.error || (res?.status && res.status >= 400)){
+          const statusLine = `HTTP: ${res?.status ?? "?"} ${res?.statusText ?? ""}`.trim();
+          const msg = res?.error ? formatSupabaseError(res.error) : "Request failed (no error payload).";
+          console.error(res?.error || res);
+          setStatus("upStatus", `${statusLine}\n${msg}`, true);
           setProgress(Math.round(((i+1)/chunks.length)*100));
           return;
         }
@@ -1333,7 +1654,9 @@ ${mode === "upsert" ? `onConflict: ${onConflict}` : ""}`);
     setStatus("upStatus", `Done ✅
 Uploaded: ${ok}/${total}
 Failed: ${failed}
-Mode: ${mode}${mode==="upsert" ? ` (onConflict: ${onConflict})` : ""}`);
+Auth: ${userId ? `signed-in (${userId})` : "anon"}
+Mode: ${mode}${mode==="upsert" ? ` (onConflict: ${onConflict})` : ""}
+${omitted.length ? `\nOmitted ${omitted.length} cols.` : ""}`);
   }
 
   // -----------------------------
@@ -1344,14 +1667,13 @@ Mode: ${mode}${mode==="upsert" ? ` (onConflict: ${onConflict})` : ""}`);
   $("btnClear").addEventListener("click", ()=>{
     $("jsonText").value = "";
     $("pathText").value = "";
-    $("explodePaths").value = "team_stats";
+    $("explodePaths").value = "team_stats,team_stats.player_stats";
     $("explodePick").value = "__input__";
     $("fetchUrl").value = "";
-    $("arrMode").value = "index";
+    $("arrMode").value = "keep";
     $("maxRows").value = "2000";
 
     $("autoExplode").checked = false;
-    $("hoistExplode").checked = true;
 
     $("defMode").value = "BR";
     $("defTournament").value = "";
@@ -1364,6 +1686,10 @@ Mode: ${mode}${mode==="upsert" ? ` (onConflict: ${onConflict})` : ""}`);
     $("defMatchId").value = "";
 
     $("autoTimestamps").checked = true;
+
+    $("authEmail").value = "";
+    $("authPass").value = "";
+    $("authUserCol").value = "";
 
     RAW = null;
     BASE_RECORDS = [];
@@ -1380,6 +1706,7 @@ Mode: ${mode}${mode==="upsert" ? ` (onConflict: ${onConflict})` : ""}`);
     setProgress(0);
 
     renderExplodePickOptions(explodePathsInputList());
+    refreshAuthUI().catch(()=>{});
   });
 
   $("btnSample").addEventListener("click", ()=>{
@@ -1388,18 +1715,16 @@ Mode: ${mode}${mode==="upsert" ? ` (onConflict: ${onConflict})` : ""}`);
         matches: [
           {
             match_id: "1725487677733611520",
-            map_id: 4,
             team_stats: [
               {
-                team_id: 1001,
+                team_id: 10,
                 team_name: "ABC",
-                placement: 1,
-                kill_count: 10,
+                booyah: true,
+                kill_count: 7,
+                ranking_score: 12,
                 player_stats: [
                   { account_id: 111, nickname: "A1", kills: 3, damage: 812, skill_ids:[101,202,303] },
-                  { account_id: 222, nickname: "A2", kills: 2, damage: 540, skill_ids:[404,505] },
-                  { account_id: 333, nickname: "A3", kills: 4, damage: 900, skill_ids:[606] },
-                  { account_id: 444, nickname: "A4", kills: 1, damage: 250, skill_ids:[707,808] }
+                  { account_id: 222, nickname: "A2", kills: 2, damage: 540, skill_ids:[404,505] }
                 ]
               }
             ]
@@ -1409,23 +1734,22 @@ Mode: ${mode}${mode==="upsert" ? ` (onConflict: ${onConflict})` : ""}`);
     };
     $("jsonText").value = JSON.stringify(sample, null, 2);
     $("pathText").value = "data.matches";
-    $("arrMode").value = "index";
+    $("arrMode").value = "keep";
     $("maxRows").value = "2000";
 
     $("autoExplode").checked = false;
-    $("hoistExplode").checked = true;
 
     $("defMode").value = "BR";
     $("defTournament").value = "Sample Cup";
     $("defStage").value = "Finals";
     $("defYear").value = String(new Date().getFullYear());
-    $("defWeek").value = "1";
-    $("defDay").value = "1";
+    $("defWeek").value = "W1";
+    $("defDay").value = "D1";
     $("defMatchNumber").value = "1";
     $("defMatchId").value = "1725487677733611520";
 
-    $("explodePaths").value = "team_stats";
     $("explodePick").value = "__input__";
+    $("explodePaths").value = "team_stats,team_stats.player_stats";
     renderExplodePickOptions(explodePathsInputList());
 
     setPill("neutral","Sample loaded");
@@ -1476,6 +1800,7 @@ If so, fetch server-side (proxy/Edge Function) then paste the JSON here.`, true)
 
   $("btnAll").addEventListener("click", ()=>{
     for(const c of COLS){ COLCFG[c].include = true; }
+    applySchemaGuardToColCfg();
     renderColList(); renderTable();
   });
 
@@ -1508,7 +1833,11 @@ If so, fetch server-side (proxy/Edge Function) then paste the JSON here.`, true)
     }
   });
 
-  $("hoistExplode").addEventListener("change", ()=>{
+  $("schemaGuard").addEventListener("change", ()=>{
+    if(BASE_RECORDS.length) rebuildDataset();
+  });
+
+  $("sbTable").addEventListener("input", ()=>{
     if(BASE_RECORDS.length) rebuildDataset();
   });
 
@@ -1519,7 +1848,8 @@ If so, fetch server-side (proxy/Edge Function) then paste the JSON here.`, true)
     const {keys, names} = getSelectedCols();
     if(!keys.length){ alert("No columns selected."); return; }
     const rowMode = $("sbRows").value;
-    const rows = buildUploadRows(rowMode);
+    const built = buildUploadRows(rowMode);
+    const rows = built.rows;
 
     const cols = names;
     const normalized = rows.map(r=>{
@@ -1538,18 +1868,30 @@ If so, fetch server-side (proxy/Edge Function) then paste the JSON here.`, true)
   $("btnJSON").addEventListener("click", ()=>{
     if(!ROWS.length){ alert("Parse JSON first."); return; }
     const rowMode = $("sbRows").value;
-    const rows = buildUploadRows(rowMode);
-    downloadText("rows_export.json", JSON.stringify(rows, null, 2), "application/json");
+    const built = buildUploadRows(rowMode);
+    downloadText("rows_export.json", JSON.stringify(built.rows, null, 2), "application/json");
   });
+
+  /* ✅ Auth button events */
+  $("btnAuthRefresh").addEventListener("click", ()=>refreshAuthUI().catch(()=>{}));
+  $("btnSignIn").addEventListener("click", ()=>authSignIn().catch(()=>{}));
+  $("btnSignUp").addEventListener("click", ()=>authSignUp().catch(()=>{}));
+  $("btnSignOut").addEventListener("click", ()=>authSignOut().catch(()=>{}));
+
+  /* refresh auth UI when URL/key changes */
+  $("sbUrl").addEventListener("change", ()=>refreshAuthUI().catch(()=>{}));
+  $("sbKey").addEventListener("change", ()=>refreshAuthUI().catch(()=>{}));
 
   // init defaults
   (function initDefaults(){
     $("defYear").value = String(new Date().getFullYear());
     $("autoExplode").checked = false;
-    $("hoistExplode").checked = true;
+    $("explodePick").value = "__input__";
+    $("arrMode").value = "keep";
     renderExplodePickOptions(explodePathsInputList());
     updateMeta();
     setPill("neutral","Waiting for JSON");
+    refreshAuthUI().catch(()=>{});
   })();
 </script>
 </body>
