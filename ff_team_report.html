@@ -254,7 +254,7 @@
       font-family: var(--mono);
     }
     tbody tr:hover td{background: rgba(255,255,255,.03)}
-    .small{font-size:11px;color:var(--muted)}
+    .small{font-size:11px;color:var(--muted);font-family: var(--sans)}
   </style>
 </head>
 <body>
@@ -358,10 +358,12 @@
   // CONFIG
   // =============================
   const SUPABASE_URL = "https://gkugecflfddkpitlrmws.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpX71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE".replace("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpX71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrdWdlY2ZsZmRka3BpdGxybXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwODMwNzQsImV4cCI6MjA2MTY1OTA3NH0.OgQOx9k71DDdK1yOa7VNKGSgoFD9kNGo8j-bR91zGKE"
+  );
   const TABLE = "ff_stats_raw";
 
-  // minimal columns needed for your report
+  // minimal columns needed for your report (team rows)
   const SELECT_COLS = [
     "owner_id","match_id","Mode","Tournament","Stage","Year","Week","Day","MatchNumber",
     "team_name","eliminated_team_name",
@@ -372,7 +374,17 @@
     "player_stats_headshot_killtimes",
     "player_stats_medkit_use",
     "player_stats_revived_times",
-    "player_stats_revive_teammate_times","player_stats_revive_teammate_nums"
+    "player_stats_revive_teammate_times","player_stats_revive_teammate_nums",
+    "player_stats_weapon_usages"
+  ].join(",");
+
+  // lobby identity cols to resolve player_killed_id -> nickname (and weapon_id -> weapon_name)
+  const LOBBY_COLS = [
+    "match_id",
+    "team_name",
+    "player_stats_account_id",
+    "player_stats_nickname",
+    "player_stats_weapon_usages"
   ].join(",");
 
   // =============================
@@ -397,9 +409,9 @@
 
   function parsePipeInts(v){
     if(v === null || v === undefined) return [];
+    if(Array.isArray(v)) return v.map(x=>Number(x)).filter(Number.isFinite);
     const s = String(v).trim();
     if(!s || s === "[]" || s.toLowerCase() === "nan") return [];
-    // sometimes it might already be a JSON array string
     if(s.startsWith("[") && s.endsWith("]")){
       try{
         const arr = JSON.parse(s);
@@ -422,6 +434,18 @@
     }
   }
 
+  function parseJSONSafe(v){
+    if(v === null || v === undefined) return null;
+    if(typeof v === "object") return v;
+    const s = String(v).trim();
+    if(!s || s === "[]" || s.toLowerCase() === "nan") return null;
+    try{
+      return JSON.parse(s);
+    }catch(_e){
+      return null;
+    }
+  }
+
   function pickRanges(){
     const [closeMax, midMax] = ($("rangePreset").value || "15,50").split(",").map(x=>Number(x.trim()));
     return { closeMax: Number.isFinite(closeMax)?closeMax:15, midMax: Number.isFinite(midMax)?midMax:50 };
@@ -440,6 +464,12 @@
     $("status").style.borderColor = isErr ? "rgba(255,107,107,.35)" : "rgba(255,255,255,.10)";
   }
 
+  function chunk(arr, n){
+    const out = [];
+    for(let i=0;i<arr.length;i+=n) out.push(arr.slice(i, i+n));
+    return out;
+  }
+
   // =============================
   // Supabase client + session gate
   // =============================
@@ -451,7 +481,17 @@
   let UID = null;
 
   async function requireSessionOrRedirect(){
-    // First check
+    // If opened via file://, auth persistence across pages can break and cause redirect loops.
+    if(location.protocol === "file:"){
+      setAuthPill("bad", "file:// (host this folder)");
+      setStatus(
+        "You're opening via file://.\nSupabase sessions may not persist across pages, causing redirects.\n\nFix: host the folder, e.g.\npython3 -m http.server 8080\nthen open http://localhost:8080/index.html",
+        true
+      );
+      // Don’t redirect on file:// (you can still test reads if RLS allows).
+      return null;
+    }
+
     const { data, error } = await sb.auth.getSession();
     if(error){
       setAuthPill("bad", "Auth error");
@@ -462,25 +502,25 @@
     if(data?.session){
       SESSION = data.session;
       UID = data.session.user?.id || null;
-      const email = data.session.user?.email || "signed in";
-      setAuthPill("good", email);
+      setAuthPill("good", data.session.user?.email || "signed in");
       return data.session;
     }
 
-    // Grace path: sometimes session hydration is delayed (storage / refresh)
     setAuthPill("neutral", "Loading session…");
     return await new Promise((resolve) => {
       let done = false;
 
-      const sub = sb.auth.onAuthStateChange(async (_evt, session) => {
+      const sub = sb.auth.onAuthStateChange(async (evt, session) => {
         if(done) return;
-        if(session){
-          done = true;
-          sub?.data?.subscription?.unsubscribe?.();
-          SESSION = session;
-          UID = session.user?.id || null;
-          setAuthPill("good", session.user?.email || "signed in");
-          resolve(session);
+        if(evt === "INITIAL_SESSION" || evt === "SIGNED_IN" || evt === "TOKEN_REFRESHED"){
+          if(session){
+            done = true;
+            sub?.data?.subscription?.unsubscribe?.();
+            SESSION = session;
+            UID = session.user?.id || null;
+            setAuthPill("good", session.user?.email || "signed in");
+            resolve(session);
+          }
         }
       });
 
@@ -496,16 +536,13 @@
           resolve(d2.session);
           return;
         }
-        // no session => go login
         window.location.replace("index.html");
-      }, 800);
+      }, 1000);
     });
   }
 
   async function signOut(){
-    try{
-      await sb.auth.signOut();
-    }catch(_e){}
+    try{ await sb.auth.signOut(); }catch(_e){}
     window.location.replace("index.html");
   }
 
@@ -526,17 +563,14 @@
         .neq("team_name", null)
         .range(from, from + pageSize - 1);
 
-      if(error){
-        throw error;
-      }
+      if(error) throw error;
+
       for(const r of (data || [])){
         const t = String(r.team_name || "").trim();
         if(t) set.add(t);
       }
       if(!data || data.length < pageSize) break;
       from += pageSize;
-
-      // safety cap (avoid infinite loops)
       if(from > 200000) break;
     }
 
@@ -573,11 +607,69 @@
     return all;
   }
 
+  async function fetchLobbyRowsByMatchIds(matchIds){
+    // This is the key for: player_killed_id -> nickname resolution
+    if(!UID || !matchIds.length) return [];
+
+    const ids = Array.from(new Set(matchIds.map(x=>String(x)).filter(Boolean)));
+    const chunks = chunk(ids, 50);
+
+    let out = [];
+    for(let i=0;i<chunks.length;i++){
+      const partIds = chunks[i];
+      setStatus(`Resolving nicknames… (${i+1}/${chunks.length})\nBuilding player map from full lobby rows...`);
+
+      const { data, error } = await sb
+        .from(TABLE)
+        .select(LOBBY_COLS)
+        .eq("owner_id", UID)
+        .in("match_id", partIds);
+
+      if(error) throw error;
+      out.push(...(data || []));
+    }
+    return out;
+  }
+
+  function buildIdentityMaps(lobbyRows){
+    const idToNick = new Map();
+    const idToTeam = new Map();
+    const weaponIdToName = new Map();
+
+    for(const r of (lobbyRows || [])){
+      const id = r.player_stats_account_id != null ? String(r.player_stats_account_id) : "";
+      const nick = r.player_stats_nickname != null ? String(r.player_stats_nickname) : "";
+      const team = r.team_name != null ? String(r.team_name) : "";
+
+      if(id){
+        if(nick && !idToNick.has(id)) idToNick.set(id, nick);
+        if(team && !idToTeam.has(id)) idToTeam.set(id, team);
+      }
+
+      const usages = parseJSONSafe(r.player_stats_weapon_usages);
+      if(Array.isArray(usages)){
+        for(const u of usages){
+          const wid = u?.weapon_id;
+          const wnm = u?.weapon_name;
+          if(wid != null && wnm != null){
+            const key = String(wid);
+            if(!weaponIdToName.has(key)) weaponIdToName.set(key, String(wnm));
+          }
+        }
+      }
+    }
+
+    return { idToNick, idToTeam, weaponIdToName };
+  }
+
   // =============================
   // Report build
   // =============================
-  function buildReport(rows){
+  function buildReport(rows, maps){
     const { closeMax, midMax } = pickRanges();
+    const idToNick = maps?.idToNick || new Map();
+    const weaponIdToName = maps?.weaponIdToName || new Map();
+    const idToTeam = maps?.idToTeam || new Map();
 
     const team = {
       matches: new Set(),
@@ -590,8 +682,8 @@
       const pid = r.player_stats_account_id;
       if(!pid) continue;
 
-      const nick = r.player_stats_nickname || "(unknown)";
       const key = String(pid);
+      const nick = (r.player_stats_nickname || idToNick.get(key) || "(unknown)");
 
       if(r.match_id !== null && r.match_id !== undefined) team.matches.add(String(r.match_id));
 
@@ -632,28 +724,47 @@
       p.reviveTeammateTimes += num(r.player_stats_revive_teammate_times);
       p.reviveTeammateNums += num(r.player_stats_revive_teammate_nums);
 
-      // distances list (one per kill)
+      // distances list fallback (pipe list)
       p.killDistances.push(...parsePipeInts(r.player_stats_kill_distance));
 
       // kill feed from kill_info (victim + weapon + distance + timestamp)
       const kills = parseKillInfo(r.player_stats_kill_info);
       for(const k of kills){
-        const killerId = k?.killer_id ?? "";
-        const victimId = k?.player_killed_id ?? "";
-        const weaponId = k?.weapon_used_id ?? "";
+        const killerId = (k?.killer_id ?? key);
+        const victimId = (k?.player_killed_id ?? "");
+        const weaponId = (k?.weapon_used_id ?? "");
         const dist = Number(k?.kill_distance);
         const ts = Number(k?.kill_timestamp);
 
+        // prefer kill_info distance for bucketing
+        if(Number.isFinite(dist)) p.killDistances.push(dist);
+
+        const killerKey = String(killerId);
+        const victimKey = String(victimId);
+        const weaponKey = String(weaponId);
+
+        const victimNick = victimKey ? (idToNick.get(victimKey) || "") : "";
+        const killerNick = idToNick.get(killerKey) || (killerKey === key ? p.nickname : "");
+        const weaponName = weaponIdToName.get(weaponKey) || "";
+
         p.killFeed.push({
-          killer_id: String(killerId),
-          player_killed_id: String(victimId),
-          weapon_used_id: String(weaponId),
+          kill_timestamp: Number.isFinite(ts) ? ts : null,
+
+          killer_id: killerKey,
+          killer_nickname: killerNick || killerKey,
+
+          player_killed_id: victimKey,
+          victim_nickname: victimNick || victimKey,
+          victim_team: victimKey ? (idToTeam.get(victimKey) || "") : "",
+
+          weapon_used_id: weaponKey,
+          weapon_name: weaponName,
+
           kill_distance: Number.isFinite(dist) ? dist : null,
-          kill_timestamp: Number.isFinite(ts) ? ts : null
         });
 
-        if(weaponId !== "" && weaponId !== "undefined" && weaponId !== "null"){
-          p.weaponCounts[weaponId] = (p.weaponCounts[weaponId] || 0) + 1;
+        if(weaponKey && weaponKey !== "undefined" && weaponKey !== "null"){
+          p.weaponCounts[weaponKey] = (p.weaponCounts[weaponKey] || 0) + 1;
         }
       }
 
@@ -672,7 +783,7 @@
 
     // finalize each player: distance buckets, averages, sort feeds
     const players = Array.from(team.players.values()).map(p=>{
-      const d = p.killDistances;
+      const d = p.killDistances.filter(Number.isFinite);
       const close = d.filter(x=>x <= closeMax).length;
       const mid = d.filter(x=>x > closeMax && x <= midMax).length;
       const long = d.filter(x=>x > midMax).length;
@@ -683,7 +794,7 @@
       const topWeapons = Object.entries(p.weaponCounts)
         .sort((a,b)=>b[1]-a[1])
         .slice(0, 6)
-        .map(([wid,c])=>({ wid, c }));
+        .map(([wid,c])=>({ wid, c, name: (maps.weaponIdToName.get(wid) || "") }));
 
       const topElimBy = Object.entries(p.eliminatedBy)
         .sort((a,b)=>b[1]-a[1])
@@ -750,7 +861,6 @@
       const midPct = Math.round((d.mid/total)*100);
       const longPct = Math.max(0, 100 - closePct - midPct);
 
-      // bars (use CSS-only colors via opacity; no hard-coded palette)
       const bar = `
         <div class="barwrap" title="Kill distance distribution">
           <span class="barseg" style="width:${closePct}%;background: rgba(77,211,255,.75)"></span>
@@ -766,8 +876,11 @@
       `;
 
       const topWeapons = p.topWeapons.length
-        ? p.topWeapons.map(x=>`<span class="chip">W<b>${escapeHtml(x.wid)}</b>×${escapeHtml(x.c)}</span>`).join(" ")
-        : `<span class="small">No weapon ids in kill_info.</span>`;
+        ? p.topWeapons.map(x=>{
+            const label = x.name ? `${x.name} (${x.wid})` : x.wid;
+            return `<span class="chip">${escapeHtml(label)} × ${escapeHtml(x.c)}</span>`;
+          }).join(" ")
+        : `<span class="small">No weapon ids found.</span>`;
 
       const topElimBy = p.topElimBy.length
         ? p.topElimBy.map(x=>`<span class="chip">${escapeHtml(x.t)}×${escapeHtml(x.c)}</span>`).join(" ")
@@ -775,17 +888,21 @@
 
       const feedRows = (p.killFeed || []).slice(-30).reverse().map(k=>{
         const ts = (k.kill_timestamp ?? "");
-        const victim = k.player_killed_id || "";
-        const weapon = k.weapon_used_id || "";
+        const victim = k.victim_nickname || k.player_killed_id || "";
+        const victimId = k.player_killed_id || "";
+        const vteam = k.victim_team ? ` • ${k.victim_team}` : "";
+        const weaponLabel = k.weapon_name ? `${k.weapon_name} (${k.weapon_used_id})` : (k.weapon_used_id || "");
         const dist = (k.kill_distance ?? "");
-        const killer = k.killer_id || "";
+
         return `
           <tr>
             <td>${escapeHtml(ts)}</td>
-            <td>${escapeHtml(victim)}</td>
-            <td>${escapeHtml(weapon)}</td>
+            <td>
+              ${escapeHtml(victim)}${vteam ? `<div class="small">${escapeHtml(vteam.trim())}</div>` : ""}
+              ${victimId ? `<div class="small">id: ${escapeHtml(victimId)}</div>` : ""}
+            </td>
+            <td>${escapeHtml(weaponLabel || "")}</td>
             <td>${escapeHtml(dist)}</td>
-            <td>${escapeHtml(killer)}</td>
           </tr>
         `;
       }).join("");
@@ -796,19 +913,18 @@
             <thead>
               <tr>
                 <th>kill_timestamp</th>
-                <th>player_killed_id</th>
-                <th>weapon_used_id</th>
-                <th>kill_distance</th>
-                <th>killer_id</th>
+                <th>Victim (from player_killed_id)</th>
+                <th>Weapon used</th>
+                <th>Distance</th>
               </tr>
             </thead>
             <tbody>
-              ${feedRows || `<tr><td colspan="5" class="small" style="font-family:var(--sans)">No kills in kill_info for this player.</td></tr>`}
+              ${feedRows || `<tr><td colspan="4" class="small">No kills in kill_info for this player.</td></tr>`}
             </tbody>
           </table>
         </div>
         <div class="small" style="margin-top:6px">
-          Showing up to last 30 kills (from <span style="font-family:var(--mono)">player_stats_kill_info</span>).
+          Victim nickname is resolved by querying all players from the same match_id(s) and mapping <b>account_id → nickname</b>.
         </div>
       `;
 
@@ -845,17 +961,17 @@
           </div>
 
           <div style="margin-top:10px">
-            <div class="small">Kill distance buckets (from <span style="font-family:var(--mono)">player_stats_kill_distance</span>)</div>
+            <div class="small">Kill distance buckets</div>
             ${bar}
           </div>
 
           <div style="margin-top:10px">
-            <div class="small">Player killed + weapon used (parsed from <span style="font-family:var(--mono)">player_stats_kill_info</span>)</div>
+            <div class="small">Player killed + weapon used (kill feed)</div>
             ${feedTable}
           </div>
 
           <div style="margin-top:10px">
-            <div class="small">Top weapon_used_id (from kill_info)</div>
+            <div class="small">Top weapons (from kill_info / weapon usages map)</div>
             <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">${topWeapons}</div>
           </div>
 
@@ -913,10 +1029,9 @@
       matchId: ($("fMatchId").value || "").trim() || null,
     };
 
-    // normalize Year numeric if user typed 2026
     if(filters.year && /^[0-9]{4}$/.test(filters.year)) filters.year = Number(filters.year);
 
-    setStatus("Fetching rows…");
+    setStatus("Fetching team rows…");
 
     try{
       const rows = await fetchTeamRows(teamName, filters);
@@ -926,8 +1041,18 @@
         return;
       }
 
-      setStatus(`Building report…\nRows: ${rows.length}`);
-      const report = buildReport(rows);
+      // Build match_id list for cycling player_killed_id -> nickname
+      const matchIds = Array.from(new Set(rows.map(r => r.match_id != null ? String(r.match_id) : "").filter(Boolean)));
+
+      setStatus(`Rows: ${rows.length}\nMatches: ${matchIds.length}\nResolving player_killed_id → nickname…`);
+
+      // Pull all lobby rows for these match IDs and build maps
+      const lobbyRows = await fetchLobbyRowsByMatchIds(matchIds);
+      const maps = buildIdentityMaps(lobbyRows);
+
+      setStatus(`Building report…\nRows: ${rows.length}\nLobby rows for mapping: ${lobbyRows.length}`);
+
+      const report = buildReport(rows, maps);
 
       renderTeamKpis(teamName, report, filters);
       renderPlayers(report.players);
