@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Portrait Slideshow 1440x3440</title>
+  <style>
+    :root{
+      --W:1440px;
+      --H:3440px;
+
+      --hold-ms: 10000;   /* 10 seconds */
+      --glitch-ms: 750;   /* glitch duration */
+      --bg:#000;
+    }
+
+    html,body{
+      height:100%;
+      margin:0;
+      background:var(--bg);
+      overflow:hidden;
+      font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+
+    /* Center and auto-scale the 1440x3440 canvas to fit viewport */
+    .viewport{
+      position:fixed;
+      inset:0;
+      display:grid;
+      place-items:center;
+      background:var(--bg);
+    }
+
+    .stage{
+      width:var(--W);
+      height:var(--H);
+      position:relative;
+      background:#000;
+      overflow:hidden;
+
+      /* scale to fit screen without cropping */
+      transform-origin:center center;
+      will-change: transform;
+    }
+
+    /* Base image layer */
+    .imgLayer{
+      position:absolute;
+      inset:0;
+      background-size:cover;
+      background-position:center;
+      background-repeat:no-repeat;
+      will-change: filter, transform, opacity;
+    }
+
+    /* Glitch layers (RGB split) */
+    .glitchLayer{
+      position:absolute;
+      inset:0;
+      background-size:cover;
+      background-position:center;
+      background-repeat:no-repeat;
+      opacity:0;
+      pointer-events:none;
+      mix-blend-mode:screen;
+      will-change: transform, opacity, filter, clip-path;
+    }
+
+    /* Slice overlays */
+    .slice{
+      position:absolute;
+      left:0; right:0;
+      height:14%;
+      opacity:0;
+      background-size:cover;
+      background-position:center;
+      background-repeat:no-repeat;
+      pointer-events:none;
+      will-change: transform, opacity, clip-path, filter;
+    }
+
+    /* Glitch ON state */
+    .glitching .glitchLayer,
+    .glitching .slice{
+      opacity:1;
+    }
+
+    /* RGB split look */
+    .r{
+      filter: drop-shadow(-8px 0 0 rgba(255,0,90,.95));
+      transform: translateX(-8px);
+    }
+    .g{
+      filter: drop-shadow(8px 0 0 rgba(0,255,180,.85));
+      transform: translateX(6px);
+    }
+    .b{
+      filter: drop-shadow(0 0 0 rgba(90,120,255,.9));
+      transform: translateX(-2px);
+    }
+
+    /* Glitch animation */
+    .glitching .r{ animation: glitchShiftR var(--glitch-ms) steps(2,end) 1; }
+    .glitching .g{ animation: glitchShiftG var(--glitch-ms) steps(2,end) 1; }
+    .glitching .b{ animation: glitchShiftB var(--glitch-ms) steps(2,end) 1; }
+
+    .glitching .slice.s1{ animation: glitchSlice1 var(--glitch-ms) steps(2,end) 1; }
+    .glitching .slice.s2{ animation: glitchSlice2 var(--glitch-ms) steps(2,end) 1; }
+    .glitching .slice.s3{ animation: glitchSlice3 var(--glitch-ms) steps(2,end) 1; }
+
+    @keyframes glitchShiftR{
+      0%{ transform:translate(-14px,-2px) skewX(0deg); opacity:.9; }
+      20%{ transform:translate(-2px,1px) skewX(-3deg); }
+      40%{ transform:translate(-18px,0) skewX(4deg); }
+      60%{ transform:translate(-6px,-1px) skewX(-2deg); }
+      80%{ transform:translate(-22px,2px) skewX(5deg); opacity:1; }
+      100%{ transform:translate(-8px,0); opacity:0; }
+    }
+
+    @keyframes glitchShiftG{
+      0%{ transform:translate(10px,1px) skewX(0deg); opacity:.85; }
+      20%{ transform:translate(2px,-1px) skewX(3deg); }
+      40%{ transform:translate(16px,2px) skewX(-4deg); }
+      60%{ transform:translate(6px,0) skewX(2deg); }
+      80%{ transform:translate(20px,-2px) skewX(-5deg); opacity:1; }
+      100%{ transform:translate(6px,0); opacity:0; }
+    }
+
+    @keyframes glitchShiftB{
+      0%{ transform:translate(-2px,0); opacity:.65; filter:contrast(1.15); }
+      25%{ transform:translate(8px,-1px); }
+      50%{ transform:translate(-10px,2px); filter:contrast(1.3); }
+      75%{ transform:translate(4px,-2px); }
+      100%{ transform:translate(-2px,0); opacity:0; filter:contrast(1.05); }
+    }
+
+    /* Slice clips feel */
+    @keyframes glitchSlice1{
+      0%{ opacity:0; transform:translateX(0); clip-path:inset(0 0 0 0); }
+      10%{ opacity:1; transform:translateX(40px); clip-path:inset(0 0 0 0); }
+      30%{ transform:translateX(-60px); }
+      60%{ transform:translateX(30px); }
+      100%{ opacity:0; transform:translateX(0); }
+    }
+    @keyframes glitchSlice2{
+      0%{ opacity:0; transform:translateX(0); }
+      15%{ opacity:1; transform:translateX(-50px); filter:brightness(1.1) contrast(1.2); }
+      35%{ transform:translateX(70px); }
+      70%{ transform:translateX(-20px); }
+      100%{ opacity:0; transform:translateX(0); filter:none; }
+    }
+    @keyframes glitchSlice3{
+      0%{ opacity:0; transform:translateX(0); }
+      20%{ opacity:1; transform:translateX(30px); filter:saturate(1.2); }
+      45%{ transform:translateX(-80px); }
+      80%{ transform:translateX(25px); }
+      100%{ opacity:0; transform:translateX(0); filter:none; }
+    }
+
+    /* Optional: tiny film grain for life (subtle) */
+    .grain{
+      position:absolute; inset:0;
+      pointer-events:none;
+      opacity:.06;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+      background-size:220px 220px;
+      mix-blend-mode:overlay;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="viewport">
+    <div class="stage" id="stage">
+      <!-- Base image -->
+      <div class="imgLayer" id="base"></div>
+
+      <!-- Glitch RGB layers -->
+      <div class="glitchLayer r" id="glitchR"></div>
+      <div class="glitchLayer g" id="glitchG"></div>
+      <div class="glitchLayer b" id="glitchB"></div>
+
+      <!-- Slice layers -->
+      <div class="slice s1" id="s1" style="top:18%"></div>
+      <div class="slice s2" id="s2" style="top:46%"></div>
+      <div class="slice s3" id="s3" style="top:70%"></div>
+
+      <div class="grain"></div>
+    </div>
+  </div>
+
+  <script>
+    // === Your images ===
+    const IMAGES = [
+      "https://i.imgur.com/Zs8eOvu.png",
+      "https://i.imgur.com/RnO9snz.png",
+      "https://i.imgur.com/MlnxEpt.png",
+      "https://i.imgur.com/SpToINb.png",
+      "https://i.imgur.com/Whgo3O9.png",
+      "https://i.imgur.com/sFPLvIp.png",
+      "https://i.imgur.com/GHYYBJs.png"
+    ];
+
+    const HOLD_MS   = 10000; // 10 seconds
+    const GLITCH_MS = 750;
+
+    const stage   = document.getElementById("stage");
+    const base    = document.getElementById("base");
+    const gR      = document.getElementById("glitchR");
+    const gG      = document.getElementById("glitchG");
+    const gB      = document.getElementById("glitchB");
+    const s1      = document.getElementById("s1");
+    const s2      = document.getElementById("s2");
+    const s3      = document.getElementById("s3");
+
+    let idx = 0;
+    let locked = false;
+
+    function setBg(el, url){
+      el.style.backgroundImage = `url("${url}")`;
+    }
+
+    // Preload images to avoid flash
+    function preload(urls){
+      return Promise.all(urls.map(u => new Promise(res=>{
+        const img = new Image();
+        img.onload = () => res(true);
+        img.onerror = () => res(false);
+        img.src = u;
+      })));
+    }
+
+    // Auto-scale stage to fit viewport
+    function fitStage(){
+      const W = 1440, H = 3440;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const scale = Math.min(vw / W, vh / H);
+      stage.style.transform = `scale(${scale})`;
+    }
+    window.addEventListener("resize", fitStage);
+
+    function randomSliceClip(){
+      // give each slice a slightly different clip inset to feel glitchy
+      const left = Math.floor(Math.random()*10);
+      const right = Math.floor(Math.random()*10);
+      const top = Math.floor(Math.random()*6);
+      const bottom = Math.floor(Math.random()*6);
+      return `inset(${top}% ${right}% ${bottom}% ${left}%)`;
+    }
+
+    async function switchTo(nextUrl){
+      if (locked) return;
+      locked = true;
+
+      // Set glitch layers to CURRENT image first (so you glitch "out")
+      const currentUrl = IMAGES[idx];
+      setBg(gR, currentUrl);
+      setBg(gG, currentUrl);
+      setBg(gB, currentUrl);
+      setBg(s1, currentUrl);
+      setBg(s2, currentUrl);
+      setBg(s3, currentUrl);
+
+      // Randomize slice clips right before glitch starts
+      s1.style.clipPath = randomSliceClip();
+      s2.style.clipPath = randomSliceClip();
+      s3.style.clipPath = randomSliceClip();
+
+      // Start glitch
+      stage.classList.add("glitching");
+
+      // Mid-glitch: swap base to next image (glitch "in")
+      setTimeout(()=>{
+        setBg(base, nextUrl);
+
+        // Also set glitch layers to NEXT image for the second half of effect
+        setBg(gR, nextUrl);
+        setBg(gG, nextUrl);
+        setBg(gB, nextUrl);
+        setBg(s1, nextUrl);
+        setBg(s2, nextUrl);
+        setBg(s3, nextUrl);
+
+        // Re-randomize clips once more for variety
+        s1.style.clipPath = randomSliceClip();
+        s2.style.clipPath = randomSliceClip();
+        s3.style.clipPath = randomSliceClip();
+      }, Math.floor(GLITCH_MS * 0.35));
+
+      // End glitch
+      setTimeout(()=>{
+        stage.classList.remove("glitching");
+        locked = false;
+      }, GLITCH_MS + 40);
+    }
+
+    async function start(){
+      fitStage();
+
+      await preload(IMAGES);
+
+      // initial
+      setBg(base, IMAGES[0]);
+      idx = 0;
+
+      // loop
+      setInterval(async ()=>{
+        const nextIdx = (idx + 1) % IMAGES.length;
+        await switchTo(IMAGES[nextIdx]);
+        idx = nextIdx;
+      }, HOLD_MS);
+    }
+
+    start();
+  </script>
+</body>
+</html>
